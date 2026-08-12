@@ -1,0 +1,78 @@
+@import "./fonts.css";
+
+:root,
+body,
+.overlay-stage {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: transparent;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.overlay-stage {
+  position: relative;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+
+.composite-panel {
+  position: absolute;
+  min-width: 120px;
+  min-height: 72px;
+  overflow: hidden;
+  border-radius: 5px;
+}
+
+.composite-panel iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: transparent;
+  pointer-events: none;
+}
+
+.composite-panel-chrome {
+  position: absolute;
+  z-index: 10;
+  inset: 0;
+  display: none;
+  border: 2px solid rgb(216 255 62 / 90%);
+  border-radius: 5px;
+  box-shadow: inset 0 0 12px rgb(216 255 62 / 14%);
+  cursor: move;
+}
+
+.editing .composite-panel-chrome {
+  display: block;
+}
+
+.composite-panel-label {
+  position: absolute;
+  top: 3px;
+  left: 4px;
+  padding: 3px 6px;
+  border-radius: 3px;
+  color: #10140b;
+  background: #d8ff3e;
+  font: 700 9px/1 "Roboto Condensed", sans-serif;
+  letter-spacing: 0.08em;
+  pointer-events: none;
+}
+
+.composite-resize {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 22px;
+  height: 22px;
+  border: 0;
+  background: linear-gradient(135deg, transparent 48%, #d8ff3e 50%);
+  cursor: nwse-resize;
+}

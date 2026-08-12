@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LMU · Mapa del circuito</title>
+  </head>
+  <body class="trackmap-body">
+    <main class="trackmap-shell" data-tauri-drag-region>
+      <svg id="trackmap" viewBox="0 0 420 420" role="img" aria-label="Mapa del circuito">
+        <path id="track-outline" class="track-outline"></path>
+        <path id="track-line" class="track-line"></path>
+        <path id="start-line" class="start-line"></path>
+        <g id="vehicle-layer"></g>
+      </svg>
+      <div id="map-status" class="map-status">APRENDIENDO CIRCUITO</div>
+    </main>
+    <script type="module" src="/src/trackmap.ts"></script>
+  </body>
+</html>

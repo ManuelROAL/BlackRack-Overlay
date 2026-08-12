@@ -1,0 +1,140 @@
+.trackmap-body {
+  padding: 8px;
+  font-family: "Roboto Condensed", sans-serif;
+  text-rendering: optimizeLegibility;
+}
+
+.trackmap-shell {
+  position: relative;
+  width: 420px;
+  height: 420px;
+  cursor: move;
+}
+
+#trackmap {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.track-outline,
+.track-line,
+.start-line {
+  fill: none;
+  pointer-events: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.track-outline {
+  stroke: rgb(12 16 21 / 88%);
+  stroke-width: 13px;
+}
+
+.track-line {
+  stroke: rgb(218 222 225 / 94%);
+  stroke-width: 8px;
+}
+
+.start-line {
+  stroke: #fff;
+  stroke-width: 3px;
+  stroke-linecap: square;
+}
+
+.vehicle-marker {
+  transform-origin: 0 0;
+  transition: transform 110ms linear;
+}
+
+.race-leader-star {
+  display: none;
+  fill: #ffe34f;
+  stroke: rgb(8 11 15 / 92%);
+  stroke-width: 1.5px;
+  stroke-linejoin: round;
+}
+
+.vehicle-marker.is-race-leader .race-leader-star {
+  display: block;
+}
+
+.pit-prediction-marker {
+  transform-origin: 0 0;
+  transition: transform 110ms linear;
+}
+
+.pit-prediction-marker[hidden] {
+  display: none;
+}
+
+.pit-prediction-marker circle {
+  fill: #f5f7f8;
+  stroke: rgb(8 11 15 / 92%);
+  stroke-width: 2px;
+}
+
+.pit-prediction-marker text {
+  fill: #111820;
+  font-size: 12px;
+  font-weight: 900;
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+
+.vehicle-disc {
+  stroke: rgb(8 11 15 / 92%);
+  stroke-width: 2px;
+}
+
+.vehicle-label {
+  fill: #fff;
+  font-size: 13px;
+  font-weight: 900;
+  text-anchor: middle;
+  dominant-baseline: central;
+  paint-order: stroke;
+  stroke: rgb(0 0 0 / 75%);
+  stroke-width: 2px;
+  stroke-linejoin: round;
+}
+
+.vehicle-marker.is-player .vehicle-disc {
+  stroke: #f4fff6;
+  stroke-width: 2.5px;
+}
+
+.player-halo {
+  fill: none;
+  stroke: #54ff79;
+  stroke-width: 4px;
+  animation: player-pulse 900ms ease-in-out infinite;
+}
+
+.vehicle-marker.is-pit {
+  opacity: 0.55;
+}
+
+.map-status {
+  position: absolute;
+  right: 12px;
+  bottom: 8px;
+  padding: 3px 7px;
+  color: rgb(255 255 255 / 72%);
+  background: rgb(8 12 17 / 58%);
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  pointer-events: none;
+}
+
+.map-status[hidden] {
+  display: none;
+}
+
+@keyframes player-pulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
+}

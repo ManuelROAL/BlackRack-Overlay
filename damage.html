@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#080b10" />
+    <title>LMU · Daños detallados</title>
+  </head>
+  <body class="damage-body">
+    <main class="damage-shell" data-tauri-drag-region>
+      <header data-tauri-drag-region>DAÑOS</header>
+      <div class="damage-content" data-tauri-drag-region>
+        <dl>
+          <div data-damage-kind="aero"><dt>Aero</dt><dd>--%</dd></div>
+          <div data-damage-kind="body"><dt>Body</dt><dd>--%</dd></div>
+          <div data-damage-kind="suspension"><dt>Susp</dt><dd>--%</dd></div>
+          <div data-damage-kind="tires"><dt>Neum.</dt><dd>--%</dd></div>
+        </dl>
+      </div>
+    </main>
+    <script type="module" src="/src/damage.ts"></script>
+  </body>
+</html>

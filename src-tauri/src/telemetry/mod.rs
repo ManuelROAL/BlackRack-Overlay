@@ -1,0 +1,983 @@
+#[cfg(all(target_os = "windows", lmu_sdk))]
+mod consumption_profile;
+#[cfg(all(target_os = "windows", lmu_sdk))]
+mod driver_ranks;
+#[cfg(all(target_os = "windows", lmu_sdk))]
+mod event_split;
+#[cfg(all(target_os = "windows", lmu_sdk))]
+mod lmu;
+#[cfg(all(target_os = "windows", lmu_sdk))]
+mod lmu_rest;
+#[cfg(not(all(target_os = "windows", lmu_sdk)))]
+mod mock;
+#[cfg(all(target_os = "windows", lmu_sdk))]
+mod racecontrol;
+mod track_geometry;
+
+use serde::{Deserialize, Serialize};
+use std::fs::{self, File};
+use std::io::{BufWriter, Write};
+use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::{Mutex, OnceLock};
+use std::time::{Instant, SystemTime, UNIX_EPOCH};
+use std::{thread, time::Duration};
+use tauri::{AppHandle, Emitter, Manager};
+
+pub(crate) use track_geometry::{official_track_map_geometry, OfficialTrackMapGeometry};
+
+#[cfg(all(target_os = "windows", lmu_sdk))]
+use lmu::LmuTelemetrySource;
+#[cfg(not(all(target_os = "windows", lmu_sdk)))]
+use mock::MockTelemetrySource;
+
+static LOGGING_ENABLED: AtomicBool = AtomicBool::new(false);
+static LOGGING_GENERATION: AtomicU64 = AtomicU64::new(0);
+static LOGGING_DIRECTORY: OnceLock<PathBuf> = OnceLock::new();
+static LOGGING_SETTINGS_PATH: OnceLock<PathBuf> = OnceLock::new();
+static ACTIVE_LOG_FILE: Mutex<Option<PathBuf>> = Mutex::new(None);
+static ANALYSIS_EVENTS: Mutex<Vec<serde_json::Value>> = Mutex::new(Vec::new());
+
+#[derive(Clone, Deserialize, Serialize)]
+struct LoggingPreferences {
+    enabled: bool,
+}
+
+#[derive(Clone, Serialize)]
+pub(crate) struct TelemetryLoggingStatus {
+    enabled: bool,
+    directory: String,
+    active_file: Option<String>,
+}
+
+pub(crate) fn configure_logging(app_data_directory: &Path) {
+    let directory = app_data_directory.join("telemetry-logs");
+    let settings = app_data_directory.join("telemetry-logging.json");
+    let enabled = fs::read(&settings)
+        .ok()
+        .and_then(|bytes| serde_json::from_slice::<LoggingPreferences>(&bytes).ok())
+        .map(|preferences| preferences.enabled)
+        .unwrap_or(false);
+    let _ = LOGGING_DIRECTORY.set(directory);
+    let _ = LOGGING_SETTINGS_PATH.set(settings);
+    LOGGING_ENABLED.store(enabled, Ordering::Relaxed);
+    if enabled {
+        LOGGING_GENERATION.fetch_add(1, Ordering::Relaxed);
+    }
+}
+
+pub(crate) fn telemetry_logging_status() -> TelemetryLoggingStatus {
+    let active_file = ACTIVE_LOG_FILE
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .as_ref()
+        .map(|path| path.display().to_string());
+    TelemetryLoggingStatus {
+        enabled: LOGGING_ENABLED.load(Ordering::Relaxed),
+        directory: LOGGING_DIRECTORY
+            .get()
+            .map(|path| path.display().to_string())
+            .unwrap_or_default(),
+        active_file,
+    }
+}
+
+pub(crate) fn set_telemetry_logging(enabled: bool) -> Result<TelemetryLoggingStatus, String> {
+    let was_enabled = LOGGING_ENABLED.swap(enabled, Ordering::Relaxed);
+    if enabled && !was_enabled {
+        LOGGING_GENERATION.fetch_add(1, Ordering::Relaxed);
+    } else if !enabled {
+        ANALYSIS_EVENTS
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .clear();
+    }
+    if let Some(path) = LOGGING_SETTINGS_PATH.get() {
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent).map_err(|error| error.to_string())?;
+        }
+        let bytes = serde_json::to_vec_pretty(&LoggingPreferences { enabled })
+            .map_err(|error| error.to_string())?;
+        fs::write(path, bytes).map_err(|error| error.to_string())?;
+    }
+    Ok(telemetry_logging_status())
+}
+
+fn analysis_logging_generation() -> Option<u64> {
+    LOGGING_ENABLED
+        .load(Ordering::Relaxed)
+        .then(|| LOGGING_GENERATION.load(Ordering::Relaxed))
+}
+
+fn queue_analysis_event(event: serde_json::Value) {
+    if !LOGGING_ENABLED.load(Ordering::Relaxed) {
+        return;
+    }
+    ANALYSIS_EVENTS
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .push(event);
+}
+
+pub(crate) fn queue_frontend_performance(mut sample: serde_json::Value) {
+    if let Some(object) = sample.as_object_mut() {
+        object.insert("event".into(), "frontend_performance_sample".into());
+        queue_analysis_event(sample);
+    }
+}
+
+fn take_analysis_events() -> Vec<serde_json::Value> {
+    std::mem::take(
+        &mut *ANALYSIS_EVENTS
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner()),
+    )
+}
+
+fn write_analysis_entry(writer: &mut BufWriter<File>, value: &serde_json::Value) -> bool {
+    let timestamp_ms = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis() as u64;
+    let mut entry = value.clone();
+    if let Some(object) = entry.as_object_mut() {
+        object.insert("timestamp_ms".into(), timestamp_ms.into());
+    } else {
+        entry = serde_json::json!({
+            "timestamp_ms": timestamp_ms,
+            "data": value,
+        });
+    }
+    serde_json::to_writer(&mut *writer, &entry).is_ok() && writeln!(writer).is_ok()
+}
+
+struct AnalysisLogger {
+    writer: Option<BufWriter<File>>,
+    last_recorded_at: Instant,
+    last_flushed_at: Instant,
+    last_lap: i32,
+    last_in_pits: bool,
+    last_connected: bool,
+}
+
+impl AnalysisLogger {
+    fn new() -> Self {
+        let now = Instant::now();
+        Self {
+            writer: None,
+            last_recorded_at: now.checked_sub(Duration::from_secs(1)).unwrap_or(now),
+            last_flushed_at: now,
+            last_lap: i32::MIN,
+            last_in_pits: false,
+            last_connected: false,
+        }
+    }
+
+    fn sync(&mut self) {
+        if LOGGING_ENABLED.load(Ordering::Relaxed) {
+            if self.writer.is_none() {
+                self.open();
+            }
+        } else if let Some(mut writer) = self.writer.take() {
+            let _ = writer.flush();
+            *ACTIVE_LOG_FILE
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner()) = None;
+        }
+    }
+
+    fn open(&mut self) {
+        let Some(directory) = LOGGING_DIRECTORY.get() else {
+            return;
+        };
+        if fs::create_dir_all(directory).is_err() {
+            return;
+        }
+        let timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_millis();
+        let path = directory.join(format!("lmu-telemetry-{timestamp}.jsonl"));
+        let Ok(file) = File::create(&path) else {
+            return;
+        };
+        self.writer = Some(BufWriter::new(file));
+        *ACTIVE_LOG_FILE
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner()) = Some(path);
+    }
+
+    fn record(&mut self, frame: &TelemetryFrame) {
+        self.sync();
+        let Some(writer) = self.writer.as_mut() else {
+            return;
+        };
+
+        for event in take_analysis_events() {
+            let _ = write_analysis_entry(writer, &event);
+        }
+
+        let now = Instant::now();
+        let state_changed = frame.lap_number != self.last_lap
+            || frame.player_in_pits != self.last_in_pits
+            || frame.connected != self.last_connected;
+        if !frame.player_active && !state_changed {
+            return;
+        }
+        if !state_changed && now.duration_since(self.last_recorded_at) < Duration::from_millis(100)
+        {
+            return;
+        }
+
+        let mut frame_value = serde_json::to_value(frame).unwrap_or_default();
+        if let Some(object) = frame_value.as_object_mut() {
+            // La clasificación completa se emite al frontend, pero no aporta
+            // información al análisis de consumo y multiplicaría el tamaño del log.
+            object.remove("standings");
+        }
+        let _ = write_analysis_entry(writer, &serde_json::json!({ "frame": frame_value }));
+        if now.duration_since(self.last_flushed_at) >= Duration::from_secs(1) {
+            let _ = writer.flush();
+            self.last_flushed_at = now;
+        }
+        self.last_recorded_at = now;
+        self.last_lap = frame.lap_number;
+        self.last_in_pits = frame.player_in_pits;
+        self.last_connected = frame.connected;
+    }
+}
+
+struct PerformanceMonitor {
+    period_started_at: Instant,
+    cycles: u64,
+    source_micros: u128,
+    source_with_standings_micros: u128,
+    source_with_standings_cycles: u64,
+    source_without_standings_micros: u128,
+    source_without_standings_cycles: u64,
+    standings_due_cycles: u64,
+    relative_due_cycles: u64,
+    standings_requested_cycles: u64,
+    logging_micros: u128,
+    visibility_micros: u128,
+    emission_micros: u128,
+    work_micros: u128,
+    max_work_micros: u128,
+    overruns: u64,
+    emitted_dashboard: u64,
+    emitted_driving: u64,
+    emitted_tires: u64,
+    emitted_damage: u64,
+    emitted_pitstop: u64,
+    emitted_fuel: u64,
+    emitted_standings: u64,
+    emitted_relative: u64,
+    emitted_flags: u64,
+    emitted_rejoin: u64,
+    max_standings_rows: usize,
+}
+
+impl PerformanceMonitor {
+    fn new() -> Self {
+        Self {
+            period_started_at: Instant::now(),
+            cycles: 0,
+            source_micros: 0,
+            source_with_standings_micros: 0,
+            source_with_standings_cycles: 0,
+            source_without_standings_micros: 0,
+            source_without_standings_cycles: 0,
+            standings_due_cycles: 0,
+            relative_due_cycles: 0,
+            standings_requested_cycles: 0,
+            logging_micros: 0,
+            visibility_micros: 0,
+            emission_micros: 0,
+            work_micros: 0,
+            max_work_micros: 0,
+            overruns: 0,
+            emitted_dashboard: 0,
+            emitted_driving: 0,
+            emitted_tires: 0,
+            emitted_damage: 0,
+            emitted_pitstop: 0,
+            emitted_fuel: 0,
+            emitted_standings: 0,
+            emitted_relative: 0,
+            emitted_flags: 0,
+            emitted_rejoin: 0,
+            max_standings_rows: 0,
+        }
+    }
+
+    fn report_if_due(&mut self) {
+        let elapsed = self.period_started_at.elapsed();
+        if elapsed < Duration::from_secs(5) || self.cycles == 0 {
+            return;
+        }
+        let cycles = self.cycles as u128;
+        queue_analysis_event(serde_json::json!({
+            "event": "performance_sample",
+            "period_ms": elapsed.as_millis() as u64,
+            "cycles": self.cycles,
+            "cycle_hz": self.cycles as f64 / elapsed.as_secs_f64(),
+            "average_source_us": (self.source_micros / cycles) as u64,
+            "standings_source": {
+                "due_cycles": self.standings_due_cycles,
+                "relative_due_cycles": self.relative_due_cycles,
+                "requested_cycles": self.standings_requested_cycles,
+                "skipped_cycles": self.cycles.saturating_sub(self.standings_requested_cycles),
+                "average_with_standings_us": (self.source_with_standings_micros
+                    / self.source_with_standings_cycles.max(1) as u128) as u64,
+                "average_without_standings_us": (self.source_without_standings_micros
+                    / self.source_without_standings_cycles.max(1) as u128) as u64,
+            },
+            "average_logging_us": (self.logging_micros / cycles) as u64,
+            "average_visibility_us": (self.visibility_micros / cycles) as u64,
+            "average_emission_us": (self.emission_micros / cycles) as u64,
+            "average_work_us": (self.work_micros / cycles) as u64,
+            "max_work_us": self.max_work_micros as u64,
+            "overruns": self.overruns,
+            "emitted": {
+                "dashboard": self.emitted_dashboard,
+                "driving": self.emitted_driving,
+                "tires": self.emitted_tires,
+                "damage": self.emitted_damage,
+                "pitstop": self.emitted_pitstop,
+                "fuel": self.emitted_fuel,
+                "standings": self.emitted_standings,
+                "relative": self.emitted_relative,
+                "flags": self.emitted_flags,
+                "rejoin": self.emitted_rejoin,
+            },
+            "max_standings_rows": self.max_standings_rows,
+        }));
+        *self = Self::new();
+    }
+}
+
+fn interval_due(last: &mut Instant, now: Instant, interval: Duration) -> bool {
+    if now.duration_since(*last) < interval {
+        return false;
+    }
+    *last = now;
+    true
+}
+
+#[derive(Clone, Serialize)]
+pub struct StandingEntry {
+    vehicle_id: i32,
+    overall_position: i32,
+    position: i32,
+    position_change: i32,
+    car_number: String,
+    driver_name: String,
+    driver_rank: String,
+    driver_rank_progress: f64,
+    estimated_driver_rank_gain: f64,
+    estimated_driver_rank_gain_available: bool,
+    safety_rank: String,
+    safety_rank_progress: f64,
+    nationality: String,
+    driver_badge: String,
+    team_name: String,
+    vehicle_name: String,
+    vehicle_class: String,
+    total_laps: i32,
+    laps_behind_leader: i32,
+    laps_behind_next: i32,
+    time_behind_leader: f64,
+    interval: f64,
+    relative_gap_seconds: f64,
+    relative_ahead_seconds: f64,
+    relative_behind_seconds: f64,
+    best_lap_seconds: f64,
+    last_lap_seconds: f64,
+    average_lap_seconds: f64,
+    virtual_energy_active: bool,
+    virtual_energy_percent: f64,
+    virtual_energy_per_lap: f64,
+    damage_percent: f64,
+    track_limits_steps: Option<u32>,
+    pit_stops: u32,
+    pit_stop_requested: bool,
+    pit_stop_time_seconds: Option<f64>,
+    tire_compound: String,
+    tire_compounds: [String; 4],
+    flag: u32,
+    causing_yellow: bool,
+    has_fastest_lap: bool,
+    in_pits: bool,
+    in_garage: bool,
+    is_out_lap: bool,
+    last_lap_valid: bool,
+    penalty_count: u32,
+    finish_status: u32,
+    is_player: bool,
+}
+
+#[derive(Clone, Serialize)]
+pub struct TrackMapVehicle {
+    vehicle_id: i32,
+    overall_position: i32,
+    vehicle_class: String,
+    world_x: f64,
+    world_y: f64,
+    lap_distance: f64,
+    total_laps: i32,
+    in_pits: bool,
+    in_garage: bool,
+    is_player: bool,
+}
+
+#[derive(Clone, Serialize)]
+pub struct TelemetryFrame {
+    source: &'static str,
+    connected: bool,
+    player_active: bool,
+    game_in_foreground: bool,
+    game_in_realtime: bool,
+    player_in_garage: bool,
+    session_type: i32,
+    game_phase: u32,
+    session_max_laps: i32,
+    session_time_remaining: f64,
+    session_elapsed_seconds: f64,
+    leader_total_laps: i32,
+    session_split_number: u32,
+    session_split_count: u32,
+    track_name: String,
+    rest_weather_available: bool,
+    ambient_temperature_c: f64,
+    track_temperature_c: f64,
+    rain_percent: f64,
+    track_wetness_percent: f64,
+    track_wetness_min_percent: f64,
+    track_wetness_max_percent: f64,
+    lap_number: i32,
+    player_total_laps: i32,
+    player_lap_valid: bool,
+    player_in_pits: bool,
+    speed_kph: f64,
+    gear: i8,
+    rpm: f64,
+    max_rpm: f64,
+    throttle: f64,
+    brake: f64,
+    brake_bias_percent: f64,
+    track_limits_steps: u32,
+    track_limits_steps_per_penalty: u32,
+    tc_active: bool,
+    abs_active: bool,
+    steering_angle_degrees: f64,
+    force_feedback: f64,
+    fuel_liters: f64,
+    fuel_added_this_lap: f64,
+    fuel_capacity_liters: f64,
+    fuel_per_lap: f64,
+    fuel_last_lap: f64,
+    fuel_qualifying_lap: f64,
+    fuel_reference_per_lap: f64,
+    fuel_projected_lap: f64,
+    fuel_pit_cycle_consumption: f64,
+    fuel_pit_out_consumption: f64,
+    estimated_fuel_laps: f64,
+    session_laps_remaining: f64,
+    session_laps_remaining_estimated: f64,
+    session_lap_equivalents_remaining: f64,
+    session_total_laps_estimated: f64,
+    fuel_needed_liters: f64,
+    fuel_to_add_liters: f64,
+    virtual_energy_active: bool,
+    virtual_energy_percent: f64,
+    virtual_energy_raw: f64,
+    virtual_energy_added_this_lap: f64,
+    virtual_energy_per_lap: f64,
+    virtual_energy_last_lap: f64,
+    virtual_energy_qualifying_lap: f64,
+    virtual_energy_reference_per_lap: f64,
+    virtual_energy_projected_lap: f64,
+    virtual_energy_pit_cycle_consumption: f64,
+    virtual_energy_pit_out_consumption: f64,
+    player_pit_out_lap: bool,
+    estimated_virtual_energy_laps: f64,
+    virtual_energy_needed_percent: f64,
+    virtual_energy_next_stint_percent: f64,
+    virtual_energy_stints_remaining: u32,
+    player_tire_remaining_percent: f64,
+    player_damage_percent: f64,
+    player_aero_damage_percent: f64,
+    player_suspension_damage_percent: f64,
+    player_suspension_damage_by_wheel_percent: [f64; 4],
+    player_body_damage_percent: f64,
+    player_damage_severity: [u8; 8],
+    player_part_detached: bool,
+    player_tire_temperature_c: [f64; 4],
+    player_brake_temperature_c: [f64; 4],
+    player_tire_remaining_by_wheel_percent: [f64; 4],
+    player_tire_flat_spot_percent: [f64; 4],
+    player_tire_compounds: [String; 4],
+    player_tire_flat: [bool; 4],
+    player_tire_detached: [bool; 4],
+    player_stint: u32,
+    player_strategy_pit: bool,
+    pit_stop_estimate_available: bool,
+    pit_stop_estimate_seconds: f64,
+    pit_stop_fuel_seconds: f64,
+    pit_stop_energy_seconds: f64,
+    pit_stop_tire_seconds: f64,
+    pit_stop_damage_seconds: f64,
+    pit_stop_penalty_seconds: f64,
+    pit_stop_driver_swap_seconds: f64,
+    lap_progress: f64,
+    track_length_meters: f64,
+    track_map_vehicles: Vec<TrackMapVehicle>,
+    consumption_profile_samples: u32,
+    current_lap_seconds: f64,
+    last_lap_seconds: f64,
+    best_lap_seconds: f64,
+    lap_delta_seconds: f64,
+    flag_warning: FlagWarning,
+    rejoin_warning: RejoinWarning,
+    standings: Vec<StandingEntry>,
+}
+
+#[derive(Clone, Serialize)]
+pub struct FlagWarning {
+    kind: &'static str,
+    active: bool,
+    distance_meters: f64,
+    car_position: i32,
+    vehicle_class: String,
+}
+
+impl Default for FlagWarning {
+    fn default() -> Self {
+        Self {
+            kind: "green",
+            active: false,
+            distance_meters: 0.0,
+            car_position: 0,
+            vehicle_class: String::new(),
+        }
+    }
+}
+
+#[derive(Clone, Serialize)]
+pub struct RejoinWarning {
+    active: bool,
+    reason: &'static str,
+    safety: &'static str,
+    rear_car_available: bool,
+    distance_meters: f64,
+    time_to_arrival_seconds: f64,
+    car_position: i32,
+    vehicle_class: String,
+}
+
+impl Default for RejoinWarning {
+    fn default() -> Self {
+        Self {
+            active: false,
+            reason: "rejoin",
+            safety: "safe",
+            rear_car_available: false,
+            distance_meters: 0.0,
+            time_to_arrival_seconds: 0.0,
+            car_position: 0,
+            vehicle_class: String::new(),
+        }
+    }
+}
+
+trait TelemetrySource: Send + 'static {
+    fn next_frame(&mut self, include_standings: bool, include_track_map: bool) -> TelemetryFrame;
+}
+
+impl TelemetryFrame {
+    pub(crate) fn should_hide_overlays(&self, overlay_has_focus: bool) -> bool {
+        !self.connected
+            || !self.player_active
+            || self.player_in_garage
+            || !self.game_in_realtime
+            || self.game_phase == 9
+            || (!self.game_in_foreground && !overlay_has_focus)
+    }
+
+    fn waiting_for_lmu(connected: bool) -> Self {
+        Self {
+            source: "lmu",
+            connected,
+            player_active: false,
+            game_in_foreground: false,
+            game_in_realtime: false,
+            player_in_garage: false,
+            session_type: 0,
+            game_phase: 0,
+            session_max_laps: 0,
+            session_time_remaining: 0.0,
+            session_elapsed_seconds: 0.0,
+            leader_total_laps: 0,
+            session_split_number: 0,
+            session_split_count: 0,
+            track_name: String::new(),
+            rest_weather_available: false,
+            ambient_temperature_c: 0.0,
+            track_temperature_c: 0.0,
+            rain_percent: 0.0,
+            track_wetness_percent: 0.0,
+            track_wetness_min_percent: 0.0,
+            track_wetness_max_percent: 0.0,
+            lap_number: 0,
+            player_total_laps: 0,
+            player_lap_valid: false,
+            player_in_pits: false,
+            speed_kph: 0.0,
+            gear: 0,
+            rpm: 0.0,
+            max_rpm: 1.0,
+            throttle: 0.0,
+            brake: 0.0,
+            brake_bias_percent: 0.0,
+            track_limits_steps: 0,
+            track_limits_steps_per_penalty: 0,
+            tc_active: false,
+            abs_active: false,
+            steering_angle_degrees: 0.0,
+            force_feedback: 0.0,
+            fuel_liters: 0.0,
+            fuel_added_this_lap: 0.0,
+            fuel_capacity_liters: 1.0,
+            fuel_per_lap: 0.0,
+            fuel_last_lap: 0.0,
+            fuel_qualifying_lap: 0.0,
+            fuel_reference_per_lap: 0.0,
+            fuel_projected_lap: 0.0,
+            fuel_pit_cycle_consumption: 0.0,
+            fuel_pit_out_consumption: 0.0,
+            estimated_fuel_laps: 0.0,
+            session_laps_remaining: 0.0,
+            session_laps_remaining_estimated: 0.0,
+            session_lap_equivalents_remaining: 0.0,
+            session_total_laps_estimated: 0.0,
+            fuel_needed_liters: 0.0,
+            fuel_to_add_liters: 0.0,
+            virtual_energy_active: false,
+            virtual_energy_percent: 0.0,
+            virtual_energy_raw: 0.0,
+            virtual_energy_added_this_lap: 0.0,
+            virtual_energy_per_lap: 0.0,
+            virtual_energy_last_lap: 0.0,
+            virtual_energy_qualifying_lap: 0.0,
+            virtual_energy_reference_per_lap: 0.0,
+            virtual_energy_projected_lap: 0.0,
+            virtual_energy_pit_cycle_consumption: 0.0,
+            virtual_energy_pit_out_consumption: 0.0,
+            player_pit_out_lap: false,
+            estimated_virtual_energy_laps: 0.0,
+            virtual_energy_needed_percent: 0.0,
+            virtual_energy_next_stint_percent: 0.0,
+            virtual_energy_stints_remaining: 0,
+            player_tire_remaining_percent: -1.0,
+            player_damage_percent: 0.0,
+            player_aero_damage_percent: -1.0,
+            player_suspension_damage_percent: -1.0,
+            player_suspension_damage_by_wheel_percent: [-1.0; 4],
+            player_body_damage_percent: 0.0,
+            player_damage_severity: [0; 8],
+            player_part_detached: false,
+            player_tire_temperature_c: [-1.0; 4],
+            player_brake_temperature_c: [-1.0; 4],
+            player_tire_remaining_by_wheel_percent: [-1.0; 4],
+            player_tire_flat_spot_percent: [0.0; 4],
+            player_tire_compounds: std::array::from_fn(|_| String::new()),
+            player_tire_flat: [false; 4],
+            player_tire_detached: [false; 4],
+            player_stint: 0,
+            player_strategy_pit: false,
+            pit_stop_estimate_available: false,
+            pit_stop_estimate_seconds: 0.0,
+            pit_stop_fuel_seconds: 0.0,
+            pit_stop_energy_seconds: 0.0,
+            pit_stop_tire_seconds: 0.0,
+            pit_stop_damage_seconds: 0.0,
+            pit_stop_penalty_seconds: 0.0,
+            pit_stop_driver_swap_seconds: 0.0,
+            lap_progress: 0.0,
+            track_length_meters: 0.0,
+            track_map_vehicles: Vec::new(),
+            consumption_profile_samples: 0,
+            current_lap_seconds: 0.0,
+            last_lap_seconds: 0.0,
+            best_lap_seconds: 0.0,
+            lap_delta_seconds: 0.0,
+            flag_warning: FlagWarning::default(),
+            rejoin_warning: RejoinWarning::default(),
+            standings: Vec::new(),
+        }
+    }
+}
+
+pub fn spawn_source(app: AppHandle) {
+    let app_data_directory = app
+        .path()
+        .app_data_dir()
+        .unwrap_or_else(|_| PathBuf::from("."));
+    configure_logging(&app_data_directory);
+    thread::spawn(move || {
+        const SOURCE_INTERVAL: Duration = Duration::from_millis(20);
+        const FUEL_INTERVAL: Duration = Duration::from_millis(20);
+        const STANDINGS_INTERVAL: Duration = Duration::from_millis(100);
+        const RELATIVE_INTERVAL: Duration = Duration::from_millis(50);
+        const TRACK_MAP_INTERVAL: Duration = Duration::from_millis(50);
+        const DAMAGE_INTERVAL: Duration = Duration::from_millis(50);
+        const PITSTOP_INTERVAL: Duration = Duration::from_millis(50);
+        const ACTIVE_REJOIN_INTERVAL: Duration = Duration::from_millis(50);
+        const IDLE_WARNING_INTERVAL: Duration = Duration::from_millis(250);
+        const VISIBILITY_INTERVAL: Duration = Duration::from_millis(250);
+        const CONTROL_INTERVAL: Duration = Duration::from_millis(500);
+
+        let mut analysis_logger = AnalysisLogger::new();
+        let mut performance = PerformanceMonitor::new();
+        let now = Instant::now();
+        let mut last_dashboard = now.checked_sub(SOURCE_INTERVAL).unwrap_or(now);
+        let mut last_fuel = now.checked_sub(FUEL_INTERVAL).unwrap_or(now);
+        let mut last_standings = now.checked_sub(STANDINGS_INTERVAL).unwrap_or(now);
+        let mut last_relative = now.checked_sub(RELATIVE_INTERVAL).unwrap_or(now);
+        let mut last_track_map = now.checked_sub(TRACK_MAP_INTERVAL).unwrap_or(now);
+        let mut last_damage = now.checked_sub(DAMAGE_INTERVAL).unwrap_or(now);
+        let mut last_pitstop = now.checked_sub(PITSTOP_INTERVAL).unwrap_or(now);
+        let mut last_flags = now.checked_sub(IDLE_WARNING_INTERVAL).unwrap_or(now);
+        let mut last_rejoin = now.checked_sub(IDLE_WARNING_INTERVAL).unwrap_or(now);
+        let mut last_visibility = now.checked_sub(VISIBILITY_INTERVAL).unwrap_or(now);
+        let mut last_control = now.checked_sub(CONTROL_INTERVAL).unwrap_or(now);
+        #[cfg(all(target_os = "windows", lmu_sdk))]
+        let mut source = LmuTelemetrySource::with_profile_directory(Some(
+            app_data_directory.join("consumption-profiles"),
+        ));
+        #[cfg(not(all(target_os = "windows", lmu_sdk)))]
+        let mut source = MockTelemetrySource::new();
+
+        loop {
+            if app.get_webview_window("control").is_none() {
+                break;
+            }
+            let cycle_started = Instant::now();
+            let schedule_now = Instant::now();
+            let standings_due = interval_due(&mut last_standings, schedule_now, STANDINGS_INTERVAL);
+            let relative_due = interval_due(&mut last_relative, schedule_now, RELATIVE_INTERVAL);
+            let track_map_due = interval_due(&mut last_track_map, schedule_now, TRACK_MAP_INTERVAL);
+            let standings_visible = super::overlay_is_active(&app, "standings");
+            let relative_visible = super::overlay_is_active(&app, "relative");
+            let track_map_visible = super::overlay_is_active(&app, "trackmap");
+            let browser_clients = crate::browser_source::has_clients();
+            let standings_requested = (standings_due && (standings_visible || browser_clients))
+                || (relative_due && relative_visible);
+            let source_started = Instant::now();
+            let track_map_requested = track_map_due && (track_map_visible || browser_clients);
+            let mut frame = source.next_frame(standings_requested, track_map_requested);
+            let source_elapsed = source_started.elapsed();
+            let now = Instant::now();
+            let standings_rows = frame.standings.len();
+
+            let visibility_started = Instant::now();
+            if interval_due(&mut last_visibility, now, VISIBILITY_INTERVAL) {
+                super::update_overlay_auto_visibility(&app, &frame);
+            }
+            let visibility_elapsed = visibility_started.elapsed();
+
+            let emission_started = Instant::now();
+            if standings_due {
+                if standings_visible && super::emit_overlay_frame(&app, "standings", &frame) {
+                    performance.emitted_standings += 1;
+                }
+                crate::browser_source::publish_frame(&frame);
+            }
+            if relative_due
+                && relative_visible
+                && super::emit_overlay_frame(&app, "relative", &frame)
+            {
+                performance.emitted_relative += 1;
+            }
+            frame.standings.clear();
+            if track_map_due && track_map_visible {
+                let _ = super::emit_overlay_frame(&app, "trackmap", &frame);
+            }
+            frame.track_map_vehicles.clear();
+
+            let driving_due = interval_due(&mut last_dashboard, now, SOURCE_INTERVAL);
+            if driving_due
+                && super::overlay_is_active(&app, "dashboard")
+                && super::emit_overlay_frame(&app, "dashboard", &frame)
+            {
+                performance.emitted_dashboard += 1;
+            }
+            if driving_due && super::overlay_is_active(&app, "driving") {
+                if super::emit_overlay_frame(&app, "driving", &frame) {
+                    performance.emitted_driving += 1;
+                }
+            }
+            if driving_due && super::overlay_is_active(&app, "tires") {
+                if super::emit_overlay_frame(&app, "tires", &frame) {
+                    performance.emitted_tires += 1;
+                }
+            }
+            if interval_due(&mut last_damage, now, DAMAGE_INTERVAL)
+                && super::overlay_is_active(&app, "damage")
+            {
+                if super::emit_overlay_frame(&app, "damage", &frame) {
+                    performance.emitted_damage += 1;
+                }
+            }
+            if interval_due(&mut last_pitstop, now, PITSTOP_INTERVAL)
+                && super::overlay_is_active(&app, "pitstop")
+            {
+                if super::emit_overlay_frame(&app, "pitstop", &frame) {
+                    performance.emitted_pitstop += 1;
+                }
+            }
+            if interval_due(&mut last_fuel, now, FUEL_INTERVAL)
+                && super::overlay_is_active(&app, "fuel")
+                && super::emit_overlay_frame(&app, "fuel", &frame)
+            {
+                performance.emitted_fuel += 1;
+            }
+            let flag_interval = if frame.flag_warning.active {
+                SOURCE_INTERVAL
+            } else {
+                IDLE_WARNING_INTERVAL
+            };
+            if interval_due(&mut last_flags, now, flag_interval)
+                && super::overlay_is_active(&app, "flags")
+                && super::emit_overlay_frame(&app, "flags", &frame)
+            {
+                performance.emitted_flags += 1;
+            }
+            let rejoin_interval = if frame.rejoin_warning.active {
+                ACTIVE_REJOIN_INTERVAL
+            } else {
+                IDLE_WARNING_INTERVAL
+            };
+            if interval_due(&mut last_rejoin, now, rejoin_interval)
+                && super::overlay_is_active(&app, "rejoin")
+                && super::emit_overlay_frame(&app, "rejoin", &frame)
+            {
+                performance.emitted_rejoin += 1;
+            }
+            if interval_due(&mut last_control, now, CONTROL_INTERVAL) {
+                let _ = app.emit_to("control", "telemetry://frame", &frame);
+            }
+            let emission_elapsed = emission_started.elapsed();
+
+            let logging_started = Instant::now();
+            analysis_logger.record(&frame);
+            let logging_elapsed = logging_started.elapsed();
+            let work_elapsed = cycle_started.elapsed();
+
+            performance.cycles += 1;
+            performance.source_micros += source_elapsed.as_micros();
+            if standings_due {
+                performance.standings_due_cycles += 1;
+            }
+            if relative_due {
+                performance.relative_due_cycles += 1;
+            }
+            if standings_requested {
+                performance.standings_requested_cycles += 1;
+                performance.source_with_standings_cycles += 1;
+                performance.source_with_standings_micros += source_elapsed.as_micros();
+            } else {
+                performance.source_without_standings_cycles += 1;
+                performance.source_without_standings_micros += source_elapsed.as_micros();
+            }
+            performance.logging_micros += logging_elapsed.as_micros();
+            performance.visibility_micros += visibility_elapsed.as_micros();
+            performance.emission_micros += emission_elapsed.as_micros();
+            performance.work_micros += work_elapsed.as_micros();
+            performance.max_work_micros = performance.max_work_micros.max(work_elapsed.as_micros());
+            performance.max_standings_rows = performance.max_standings_rows.max(standings_rows);
+            if work_elapsed < SOURCE_INTERVAL {
+                thread::sleep(SOURCE_INTERVAL - work_elapsed);
+            } else {
+                performance.overruns += 1;
+            }
+            performance.report_if_due();
+        }
+    });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{configure_logging, set_telemetry_logging, AnalysisLogger, TelemetryFrame};
+    use std::fs;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    #[test]
+    fn overlay_visibility_tracks_focus_garage_and_session_state() {
+        let mut frame = TelemetryFrame::waiting_for_lmu(true);
+        assert!(frame.should_hide_overlays(false));
+
+        frame.player_active = true;
+        frame.game_in_foreground = true;
+        frame.game_in_realtime = true;
+        assert!(!frame.should_hide_overlays(false));
+
+        frame.game_phase = 9;
+        assert!(frame.should_hide_overlays(false));
+        frame.game_phase = 5;
+
+        frame.game_in_realtime = false;
+        assert!(frame.should_hide_overlays(false));
+        frame.game_in_realtime = true;
+
+        frame.game_in_foreground = false;
+        assert!(frame.should_hide_overlays(false));
+        assert!(!frame.should_hide_overlays(true));
+
+        frame.player_in_garage = true;
+        assert!(frame.should_hide_overlays(true));
+    }
+
+    #[test]
+    fn analysis_logging_can_be_enabled_written_and_disabled() {
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let app_data = std::env::temp_dir().join(format!(
+            "lmu-overlay-analysis-log-{}-{unique}",
+            std::process::id()
+        ));
+        configure_logging(&app_data);
+        set_telemetry_logging(true).unwrap();
+
+        let mut logger = AnalysisLogger::new();
+        let mut frame = TelemetryFrame::waiting_for_lmu(true);
+        frame.player_active = true;
+        frame.lap_number = 7;
+        frame.virtual_energy_raw = 0.625;
+        logger.record(&frame);
+
+        set_telemetry_logging(false).unwrap();
+        logger.sync();
+
+        let log_directory = app_data.join("telemetry-logs");
+        let log_path = fs::read_dir(&log_directory)
+            .unwrap()
+            .next()
+            .unwrap()
+            .unwrap()
+            .path();
+        let contents = fs::read_to_string(log_path).unwrap();
+        let entry = contents
+            .lines()
+            .filter_map(|line| serde_json::from_str::<serde_json::Value>(line).ok())
+            .find(|entry| entry.get("frame").is_some())
+            .expect("el log debe contener una entrada de telemetría");
+        assert_eq!(entry["frame"]["lap_number"], 7);
+        assert_eq!(entry["frame"]["virtual_energy_raw"], 0.625);
+        assert!(entry["frame"].get("standings").is_none());
+
+        let _ = fs::remove_dir_all(app_data);
+    }
+}

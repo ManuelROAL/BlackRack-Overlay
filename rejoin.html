@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LMU · Rejoin</title>
+  </head>
+  <body class="rejoin-body">
+    <main id="rejoin-card" class="rejoin-card" data-active="false" data-safety="safe" data-tauri-drag-region>
+      <header data-tauri-drag-region>
+        <span id="rejoin-reason">REJOIN</span>
+        <strong id="rejoin-status">SEGURO</strong>
+      </header>
+      <section data-tauri-drag-region>
+        <strong id="rejoin-distance">-- m</strong>
+        <div>
+          <span id="rejoin-eta">-- s</span>
+          <span id="rejoin-car">P-- · --</span>
+        </div>
+      </section>
+    </main>
+    <script type="module" src="/src/rejoin.ts"></script>
+  </body>
+</html>

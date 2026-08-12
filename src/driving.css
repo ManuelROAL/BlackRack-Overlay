@@ -1,0 +1,103 @@
+.driving-body {
+  padding: 0;
+}
+
+.driving-shell {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  width: 440px;
+  height: 120px;
+  padding: 16px 12px 14px;
+  border: 1px solid rgb(255 255 255 / 9%);
+  border-radius: 13px;
+  background: linear-gradient(145deg, rgb(12 16 21 / var(--overlay-background-opacity)), rgb(4 7 10 / var(--overlay-background-opacity)));
+  box-shadow: 0 14px 35px rgb(0 0 0 / 45%);
+}
+
+.trailing-panel {
+  width: 185px;
+}
+
+#trailing-canvas {
+  display: block;
+  width: 175px;
+  height: 72px;
+  border: 1px solid rgb(255 255 255 / 9%);
+  background: rgb(0 0 0 / 14%);
+}
+
+.trailing-legend {
+  display: flex;
+  gap: 6px;
+  margin-top: 3px;
+  color: #6d7782;
+  font-size: 7px;
+  font-weight: 800;
+  letter-spacing: .08em;
+}
+
+.trailing-legend span { display: flex; align-items: center; gap: 3px; }
+.trailing-legend i { width: 8px; height: 2px; display: inline-block; }
+.throttle-mark { background: #55ef93; }
+.brake-mark { background: #ff5367; }
+.clutch-mark { background: #62cce9; }
+.trailing-legend .tc-mark,
+.trailing-legend .abs-mark { width: 4px; height: 4px; border-radius: 50%; }
+.tc-mark { background: #ffd24a; }
+.abs-mark { background: #f4f7fa; }
+
+.pedal-panel {
+  display: flex;
+  gap: 8px;
+  width: 82px;
+  padding: 0 8px;
+  border-left: 1px solid rgb(255 255 255 / 8%);
+  border-right: 1px solid rgb(255 255 255 / 8%);
+}
+
+.pedal-column {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  min-width: 13px;
+  color: #6d7782;
+  font-size: 7px;
+  font-weight: 800;
+}
+
+.pedal-column b { height: 12px; color: #d6dde4; font-size: 9px; }
+.pedal-column span { margin-top: 5px; }
+.pedal-column-track { position: relative; flex: 1; width: 13px; overflow: hidden; border-radius: 7px; background: rgb(255 255 255 / 8%); }
+.pedal-column-track i { position: absolute; right: 0; bottom: 0; left: 0; height: 0; border-radius: inherit; background: #55ef93; transition: height 45ms linear; }
+.brake-column .pedal-column-track i { background: #ff5367; }
+.clutch-column .pedal-column-track i { background: #62cce9; }
+
+.driving-readout { width: 92px; padding: 0 9px; }
+.driving-primary { display: flex; align-items: flex-start; }
+.driving-primary > strong { width: 31px; color: #f3f6f8; font-size: 42px; line-height: .9; }
+.speed-readout { display: flex; flex-direction: column; margin: 3px 0 0 5px; }
+.speed-readout b { color: #f3f6f8; font-size: 20px; line-height: 1; }
+.speed-readout span,
+.ffb-readout > span { color: #7d8792; font-size: 7px; font-weight: 800; }
+.ffb-readout { display: flex; align-items: center; gap: 5px; margin-top: 24px; }
+.ffb-track { position: relative; width: 55px; height: 5px; overflow: hidden; border-radius: 3px; background: rgb(255 255 255 / 8%); }
+.ffb-track i { position: absolute; top: 0; bottom: 0; left: 50%; width: 0; background: #d8ff3e; transition: left 45ms linear, width 45ms linear; }
+.ffb-track em { position: absolute; top: 0; bottom: 0; left: calc(50% - .5px); width: 1px; background: rgb(255 255 255 / 35%); }
+
+.steering-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 55px;
+  border-left: 1px solid rgb(255 255 255 / 8%);
+}
+.steering-wheel { width: 43px; height: 43px; margin-top: 10px; transition: transform 45ms linear; }
+.steering-wheel svg { width: 100%; height: 100%; fill: none; stroke: #cbd2d8; stroke-linecap: round; stroke-linejoin: round; stroke-width: 8px; }
+.steering-wheel svg circle:nth-child(2) { fill: #cbd2d8; stroke: none; }
+.steering-panel b { margin-top: 8px; color: #8c969f; font-size: 9px; line-height: 1; }
+
+.click-through .driving-shell { border-color: transparent; }
+.resize-handle { position: absolute; right: 1px; bottom: 1px; width: 13px; height: 13px; cursor: nwse-resize; }
+.click-through .resize-handle { display: none; }

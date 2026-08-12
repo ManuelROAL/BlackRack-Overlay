@@ -1,0 +1,15 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "instructions": [
+    "instructions.md"
+  ],
+  "permission": {
+    "bash": {
+      "*": "ask",
+      "rg *": "allow",
+      "cargo fmt *": "allow",
+      "cargo test *": "allow",
+      "npm.cmd run build": "allow"
+    }
+  }
+}

@@ -1,0 +1,248 @@
+@import "./fonts.css";
+@import "./styles.css";
+
+body.tires-body {
+  min-width: 164px;
+  min-height: 132px;
+  padding: 4px;
+}
+
+.tires-shell {
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255 / 9%);
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 50% 43%, rgb(31 39 49 / calc(var(--overlay-background-opacity) * .62)), transparent 54%),
+    rgb(5 8 12 / var(--overlay-background-opacity));
+  box-shadow: 0 8px 20px rgb(0 0 0 / 35%);
+  color: #dce2e8;
+  font-family: "Roboto Condensed", sans-serif;
+  font-variant-numeric: tabular-nums;
+  user-select: none;
+}
+
+.vehicle-layout {
+  position: relative;
+  width: 226px;
+  height: 178px;
+  margin: auto;
+}
+
+.wheel {
+  --tire-color: #55d89a;
+  --brake-color: #69737d;
+  --suspension-color: #8995a2;
+  position: absolute;
+  z-index: 2;
+  display: grid;
+  align-items: stretch;
+  width: 72px;
+  height: 76px;
+  overflow: visible;
+  border: 1px solid rgb(255 255 255 / 8%);
+  border-radius: 5px;
+  background: linear-gradient(145deg, rgb(21 27 35 / 82%), rgb(9 13 18 / 78%));
+  box-shadow: 0 3px 8px rgb(0 0 0 / 27%);
+}
+
+.wheel-fl,
+.wheel-rl { left: 0; grid-template-columns: 56px 16px; }
+.wheel-fr,
+.wheel-rr { right: 0; grid-template-columns: 16px 56px; }
+.wheel-fl,
+.wheel-fr { top: 2px; }
+.wheel-rl,
+.wheel-rr { bottom: 2px; }
+
+.wheel-data {
+  display: grid;
+  grid-template-rows: 12px 18px repeat(4, 10px);
+  box-sizing: border-box;
+  padding: 3px 4px 2px;
+  min-width: 0;
+}
+
+.wheel-data header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #7f8a96;
+  font-size: 7px;
+  font-weight: 900;
+  letter-spacing: .09em;
+  line-height: 1;
+}
+
+.wheel-data header img {
+  width: 11px;
+  height: 11px;
+}
+
+.wheel-wear {
+  color: #f1f4f7;
+  font-size: 15px;
+  font-weight: 900;
+  line-height: 18px;
+  text-align: right;
+  text-shadow: 0 1px 2px #000;
+}
+
+.metric {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  min-width: 0;
+  color: #c9d1da;
+  font-size: 8px;
+  font-weight: 800;
+  line-height: 10px;
+  white-space: nowrap;
+}
+
+.metric i {
+  color: #697582;
+  font-size: 6px;
+  font-style: normal;
+  font-weight: 900;
+  letter-spacing: .04em;
+}
+
+.metric b { font-weight: 800; }
+.metric-tire b { color: var(--tire-color); }
+.metric-brake b { color: var(--brake-color); }
+.wheel-suspension[data-state="warning"] { color: #ebc13c; }
+.wheel-suspension[data-state="heavy"] { color: #f05a42; }
+.wheel-suspension[data-state="critical"] { color: #ff244f; }
+
+.wheel-visual {
+  position: relative;
+  align-self: center;
+  width: 16px;
+  height: 55px;
+}
+
+.wheel-tread,
+.brake-disc,
+.suspension-arm {
+  position: absolute;
+  top: 9px;
+  height: 37px;
+  mask-position: center;
+  mask-repeat: no-repeat;
+  mask-size: contain;
+}
+
+.wheel-tread {
+  z-index: 3;
+  width: 9px;
+  background: var(--tire-color);
+  filter: drop-shadow(0 0 3px color-mix(in srgb, var(--tire-color), transparent 45%));
+}
+.wheel-fl .wheel-tread,
+.wheel-rl .wheel-tread { left: 0; mask-image: url("./assets/lmu-icons/damage/tire-left.svg"); }
+.wheel-fr .wheel-tread,
+.wheel-rr .wheel-tread { right: 0; mask-image: url("./assets/lmu-icons/damage/tire-right.svg"); }
+
+.brake-disc {
+  z-index: 2;
+  width: 7px;
+  background: var(--brake-color);
+  filter: drop-shadow(0 0 2px color-mix(in srgb, var(--brake-color), transparent 45%));
+  mask-image: url("./assets/lmu-icons/damage/brake.svg");
+}
+.wheel-fl .brake-disc,
+.wheel-rl .brake-disc { left: 7px; }
+.wheel-fr .brake-disc,
+.wheel-rr .brake-disc { right: 7px; }
+
+.suspension-arm {
+  z-index: 1;
+  width: 12px;
+  background: var(--suspension-color);
+}
+.wheel-fl .suspension-arm,
+.wheel-rl .suspension-arm {
+  left: 11px;
+  mask-image: url("./assets/lmu-icons/damage/suspension-left.svg");
+}
+.wheel-fr .suspension-arm,
+.wheel-rr .suspension-arm {
+  right: 11px;
+  mask-image: url("./assets/lmu-icons/damage/suspension-right.svg");
+}
+
+.wheel.critical {
+  border-color: rgb(255 36 79 / 48%);
+  box-shadow: 0 0 8px rgb(255 36 79 / 22%);
+}
+.wheel.critical .wheel-wear { color: #ff5367; }
+
+.chassis {
+  position: absolute;
+  z-index: 1;
+  top: 2px;
+  left: 75px;
+  width: 76px;
+  height: 174px;
+}
+
+.chassis-map {
+  display: block;
+  width: 76px;
+  height: 153px;
+  overflow: visible;
+  filter: drop-shadow(0 3px 5px rgb(0 0 0 / 45%));
+}
+
+.chassis-outline {
+  fill: #090e14;
+  stroke: #65717e;
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+.chassis-part {
+  fill: #707c89;
+  stroke: #111821;
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+  transition: fill 90ms linear;
+}
+.chassis-part[data-severity="1"] { fill: #ebc13c; }
+.chassis-part[data-severity="2"] { fill: #f05a42; }
+.chassis-part[data-severity="3"],
+.chassis-part[data-severity="critical"] {
+  fill: #ff244f;
+  filter: drop-shadow(0 0 3px rgb(255 36 79 / 72%));
+}
+
+.cockpit,
+.windscreen {
+  fill: #0b1118;
+  stroke: #53606e;
+  stroke-width: 1.5;
+}
+.windscreen { fill: #14202b; stroke: #344353; }
+
+.damage-summary {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 4px;
+  width: 62px;
+  margin: 0 auto;
+  padding-top: 3px;
+  border-top: 1px solid rgb(255 255 255 / 12%);
+  color: #697482;
+  font-size: 7px;
+  font-weight: 800;
+  letter-spacing: .12em;
+}
+.damage-summary strong { color: #dce2e8; font-size: 11px; letter-spacing: 0; }
+.damage-summary[data-state="warning"] strong { color: #ebcf38; }
+.damage-summary[data-state="critical"] strong { color: #ff5367; }
+
+.click-through .tires-shell { border-color: transparent; }

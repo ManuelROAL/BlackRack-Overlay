@@ -1,0 +1,2562 @@
+{
+  "info": {
+    "_postman_id": "12819455-48ed-4b61-b21e-fc5271472615",
+    "name": "LMU - Inventario completo RaceOS",
+    "description": "Colección generada desde las rutas referenciadas por el cliente web de Le Mans Ultimate. No es documentación oficial de RaceOS. Las mutaciones están bloqueadas por defecto.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "const method = pm.request.method.toUpperCase();",
+          "const url = pm.request.url.toString();",
+          "const isAuthentication = url.endsWith('/authenticate') || url.endsWith('/authenticate/steam');",
+          "const mutatesData = method !== 'GET' && !isAuthentication;",
+          "const allowed = String(pm.environment.get('allow_mutations')).toLowerCase() === 'true';",
+          "if (mutatesData && !allowed) {",
+          "  console.warn('Petición bloqueada. Establece allow_mutations=true conscientemente para ejecutarla.');",
+          "  if (pm.execution && pm.execution.skipRequest) pm.execution.skipRequest();",
+          "  else throw new Error('Petición bloqueada: allow_mutations=false');",
+          "}"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "0. Ticket local de LMU",
+      "item": [
+        {
+          "name": "0. Obtener ticket local de LMU",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('La API local responde correctamente', function () { pm.response.to.be.success; });",
+                  "const body = pm.response.json();",
+                  "pm.test('La respuesta contiene authSessionTicket', function () {",
+                  "  pm.expect(body.authSessionTicket).to.be.a('string').and.not.empty;",
+                  "});",
+                  "if (body.authSessionTicket) pm.environment.set('auth_session_ticket', body.authSessionTicket);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{lmu_local_base_url}}/rest/profile/getAuthSessionTicket",
+            "description": "Requiere Le Mans Ultimate abierto y Postman Desktop Agent. Guarda el ticket temporal en el entorno activo."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Autenticación y conexión",
+      "item": [
+        {
+          "name": "POST /authenticate",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('RaceOS autentica correctamente', function () { pm.response.to.be.success; });",
+                  "const body = pm.response.json();",
+                  "pm.test('La respuesta contiene accessToken', function () {",
+                  "  pm.expect(body.accessToken).to.be.a('string').and.not.empty;",
+                  "});",
+                  "if (body.accessToken) pm.environment.set('raceos_access_token', body.accessToken);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{auth_session_ticket}}\",\n  \"game\": \"lmu\",\n  \"platform\": \"steam\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{raceos_base_url}}/authenticate",
+            "description": "Ruta extraída del cliente web distribuido con Le Mans Ultimate."
+          }
+        },
+        {
+          "name": "POST /authenticate/steam",
+          "event": [],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{{steam_openid_json}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{raceos_base_url}}/authenticate/steam",
+            "description": "Ruta extraída del cliente web distribuido con Le Mans Ultimate."
+          }
+        },
+        {
+          "name": "POST /create-account",
+          "event": [],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{{request_body_json}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{raceos_base_url}}/create-account",
+            "description": "MODIFICA DATOS. Bloqueada mientras allow_mutations no sea true. Sustituye request_body_json por el cuerpo que espera esta operación."
+          }
+        },
+        {
+          "name": "WS /ws (referencia)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{raceos_websocket_url}}",
+            "description": "Referencia WebSocket. Créala como solicitud WebSocket en Postman y usa los subprotocolos access_token y el token actual; una colección HTTP v2.1 no puede representar correctamente esta conexión."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Jugador, perfil y estadísticas",
+      "item": [
+        {
+          "name": "GET /api/v1/player",
+          "event": [],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{raceos_base_url}}/api/v1/player",
+            "description": "Ruta extraída del cliente web distribuido con Le Mans Ultimate."
+          }
+        },
+        {
+          "name": "POST /api/v1/player",
+          "event": [],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{{request_body_json}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{raceos_base_url}}/api/v1/player",
+            "description": "MODIFICA DATOS. Bloqueada mientras allow_mutations no sea true. Sustituye request_body_json por el cuerpo que espera esta operación."
+          }
+        },
+        {
+          "name": "PATCH /api/v1/player/badge",
+          "event": [],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{{request_body_json}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{raceos_base_url}}/api/v1/player/badge",
+            "description": "MODIFICA DATOS. Bloqueada mientras allow_mutations no sea true. Sustituye request_body_json por el cuerpo que espera esta operación."
+          }
+        },
+        {
+          "name": "POST /api/v1/player/email-resend",
+          "event": [],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{{request_body_json}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{raceos_base_url}}/api/v1/player/email-resend",
+            "description": "MODIFICA DATOS. Bloqueada mientras allow_mutations no sea true. Sustituye request_body_json por el cuerpo que espera esta operación."
+          }
+        },
+        {
+          "name": "POST /api/v1/player/friends-list",
+          "event": [],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{{request_body_json}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{raceos_base_url}}/api/v1/player/friends-list",
+            "description": "MODIFICA DATOS. Bloqueada mientras allow_mutations no sea true. Sustituye request_body_json por el cuerpo que espera esta operación."
+          }
+        },
+        {
+          "name": "POST /api/v1/player/timezone",
+          "event": [],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{{request_body_json}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{raceos_base_url}}/api/v1/player/timezone",
+            "description": "MODIFICA DATOS. Bloqueada mientras allow_mutations no sea true. Sustituye request_body_json por el cuerpo que espera esta operación."
+          }
+        },
+        {
+          "name": "GET /api/v1/player/tos",
+          "event": [],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{raceos_base_url}}/api/v1/player/tos",
+            "description": "Ruta extraída del cliente web distribuido con Le Mans Ultimate."
+          }
+        },
+        {
+          "name": "POST /api/v1/players",
+          "event": [],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"usernames\": {{driver_usernames_json}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{raceos_base_url}}/api/v1/players",
+            "description": "MODIFICA DATOS. Bloqueada mientras allow_mutations no sea true. Sustituye request_body_json por el cuerpo que espera esta operación."
+          }
+        },
+        {
+          "name": "GET /api/v1/statistics",
+          "event": [],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{raceos_base_url}}/api/v1/statistics",
+            "description": "Ruta extraída del cliente web distribuido con Le Mans Ultimate."
+          }
+        },
+        {
+          "name": "GET /api/v1/statistics/overall",
+          "event": [],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"playerIds\": {{player_ids_json}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{raceos_base_url}}/api/v1/statistics/overall",
+            "description": "Ruta extraída del cliente web distribuido con Le Mans Ultimate."
+          }
+        },
+        {
+          "name": "POST /api/v1/statistics/overall",
+          "event": [],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{{request_body_json}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{raceos_base_url}}/api/v1/statistics/overall",
+            "description": "MODIFICA DATOS. Bloqueada mientras allow_mutations no sea true. Sustituye request_body_json por el cuerpo que espera esta operación."
+          }
+        },
+        {
+          "name": "GET /api/v1/subscription",
+          "event": [],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{raceos_base_url}}/api/v1/subscription",
+            "description": "Ruta extraída del cliente web distribuido con Le Mans Ultimate."
+          }
+        },
+        {
+          "name": "POST /api/v1/profanity/check",
+          "event": [],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{{request_body_json}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{raceos_base_url}}/api/v1/profanity/check",
+            "description": "MODIFICA DATOS. Bloqueada mientras allow_mutations no sea true. Sustituye request_body_json por el cuerpo que espera esta operación."
+          }
+        },
+        {
+          "name": "POST /api/v1/protest",
+          "event": [],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{{request_body_json}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{raceos_base_url}}/api/v1/protest",
+            "description": "MODIFICA DATOS. Bloqueada mientras allow_mutations no sea true. Sustituye request_body_json por el cuerpo que espera esta operación."
+          }
+        },
+        {
+          "name": "GET /api/v1/steam/app-info/{appId}",
+          "event": [],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{raceos_base_url}}/api/v1/steam/app-info/{{appId}}",
+            "description": "Ruta extraída del cliente web distribuido con Le Mans Ultimate."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Eventos y resultados",
+      "item": [
+        {
+          "name": "GET /api/v1/daily/list/{eventType}?take={take}",
+          "event": [],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{raceos_base_url}}/api/v1/daily/list/{{eventType}}?take={{take}}",
+            "description": "Ruta extraída del cliente web distribuido con Le Mans Ultimate."
+          }
+        },
+        {
+          "name": "GET /api/v1/daily/schedule",
+          "event": [],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{raceos_base_url}}/api/v1/daily/schedule",
+            "description": "Ruta extraída del cliente web distribuido con Le Mans Ultimate."
+          }
+        },
+        {
+          "name": "GET /api/v1/event/entries/{eventType}/{eventId}?page={page}&take={take}&class={class}",
+          "event": [],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{raceos_base_url}}/api/v1/event/entries/{{eventType}}/{{eventId}}?page={{page}}&take={{take}}&class={{class}}",
+            "description": "Ruta extraída del cliente web distribuido con Le Mans Ultimate."
+          }
+        },
+        {
+          "name": "GET /api/v1/event/my-split/{eventType}/{eventId}",
+          "event": [],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{raceos_base_url}}/api/v1/event/my-split/{{eventType}}/{{eventId}}",
+            "description": "Ruta extraída del cliente web distribuido con Le Mans Ultimate."
+          }
+        },
+        {
+          "name": "POST /api/v1/event/overview",
+          "event": [],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{{request_body_json}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{raceos_base_url}}/api/v1/event/overview",
+            "description": "MODIFICA DATOS. Bloqueada mientras allow_mutations no sea true. Sustituye request_body_json por el cuerpo que espera esta operación."
+          }
+        },
+        {
+          "name": "POST /api/v1/event/register",
+          "event": [],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{{request_body_json}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{raceos_base_url}}/api/v1/event/register",
+            "description": "MODIFICA DATOS. Bloqueada mientras allow_mutations no sea true. Sustituye request_body_json por el cuerpo que espera esta operación."
+          }
+        },
+        {
+          "name": "POST /api/v1/event/register/engineer",
+          "event": [],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{{request_body_json}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{raceos_base_url}}/api/v1/event/register/engineer",
+            "description": "MODIFICA DATOS. Bloqueada mientras allow_mutations no sea true. Sustituye request_body_json por el cuerpo que espera esta operación."
+          }
+        },
+        {
+          "name": "DELETE /api/v1/event/unregister",
+          "event": [],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{{request_body_json}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{raceos_base_url}}/api/v1/event/unregister",
+            "description": "MODIFICA DATOS. Bloqueada mientras allow_mutations no sea true. Sustituye request_body_json por el cuerpo que espera esta operación."
+          }
+        },
+        {
+          "name": "DELETE /api/v1/event/unregister/engineer",
+          "event": [],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{{request_body_json}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{raceos_base_url}}/api/v1/event/unregister/engineer",
+            "description": "MODIFICA DATOS. Bloqueada mientras allow_mutations no sea true. Sustituye request_body_json por el cuerpo que espera esta operación."
+          }
+        },
+        {
+          "name": "GET /api/v1/event-joker/restrictions",
+          "event": [],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{raceos_base_url}}/api/v1/event-joker/restrictions",
+            "description": "Ruta extraída del cliente web distribuido con Le Mans Ultimate."
+          }
+        },
+        {
+          "name": "POST /api/v1/event-joker/play",
+          "event": [],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{{request_body_json}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{raceos_base_url}}/api/v1/event-joker/play",
+            "description": "MODIFICA DATOS. Bloqueada mientras allow_mutations no sea true. Sustituye request_body_json por el cuerpo que espera esta operación."
+          }
+        },
+        {
+          "name": "GET /api/v1/result?{query}",
+          "event": [],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{raceos_base_url}}/api/v1/result?{{query}}",
+            "description": "Ruta extraída del cliente web distribuido con Le Mans Ultimate."
+          }
+        },
+        {
+          "name": "GET /api/v1/results?{query}",
+          "event": [],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{raceos_base_url}}/api/v1/results?{{query}}",
+            "description": "Ruta extraída del cliente web distribuido con Le Mans Ultimate."
+          }
+        },
+        {
+          "name": "GET /api/v1/special-events/{eventType}",
+          "event": [],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{raceos_base_url}}/api/v1/special-events/{{eventType}}",
+            "description": "Ruta extraída del cliente web distribuido con Le Mans Ultimate."
+          }
+        },
+        {
+          "name": "GET /api/v1/practice/servers/{type}/{tier}?eventTitle={eventTitle}",
+          "event": [],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{raceos_base_url}}/api/v1/practice/servers/{{type}}/{{tier}}?eventTitle={{eventTitle}}",
+            "description": "Ruta extraída del cliente web distribuido con Le Mans Ultimate."
+          }
+        },
+        {
+          "name": "GET /api/v1/practice/pro/servers/{type}/{tier}?eventTitle={eventTitle}",
+          "event": [],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{raceos_base_url}}/api/v1/practice/pro/servers/{{type}}/{{tier}}?eventTitle={{eventTitle}}",
+            "description": "Ruta extraída del cliente web distribuido con Le Mans Ultimate."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Campeonatos",
+      "item": [
+        {
+          "name": "GET /api/v1/championship/{championshipId}",
+          "event": [],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{raceos_base_url}}/api/v1/championship/{{championshipId}}",
+            "description": "Ruta extraída del cliente web distribuido con Le Mans Ultimate."
+          }
+        },
+        {
+          "name": "GET /api/v1/championships/{championshipId}/practice/{week}",
+          "event": [],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{raceos_base_url}}/api/v1/championships/{{championshipId}}/practice/{{week}}",
+            "description": "Ruta extraída del cliente web distribuido con Le Mans Ultimate."
+          }
+        },
+        {
+          "name": "GET /api/v1/championships/active?esports={boolean}",
+          "event": [],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{raceos_base_url}}/api/v1/championships/active?esports={{boolean}}",
+            "description": "Ruta extraída del cliente web distribuido con Le Mans Ultimate."
+          }
+        },
+        {
+          "name": "GET /api/v1/championships/completed?page={page}&take={take}",
+          "event": [],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{raceos_base_url}}/api/v1/championships/completed?page={{page}}&take={{take}}",
+            "description": "Ruta extraída del cliente web distribuido con Le Mans Ultimate."
+          }
+        },
+        {
+          "name": "GET /api/v1/championships/summary/{championshipId}",
+          "event": [],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{raceos_base_url}}/api/v1/championships/summary/{{championshipId}}",
+            "description": "Ruta extraída del cliente web distribuido con Le Mans Ultimate."
+          }
+        },
+        {
+          "name": "GET /api/v1/championships/upcoming?esports={boolean}",
+          "event": [],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{raceos_base_url}}/api/v1/championships/upcoming?esports={{boolean}}",
+            "description": "Ruta extraída del cliente web distribuido con Le Mans Ultimate."
+          }
+        },
+        {
+          "name": "POST /api/v1/championships/register",
+          "event": [],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{{request_body_json}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{raceos_base_url}}/api/v1/championships/register",
+            "description": "MODIFICA DATOS. Bloqueada mientras allow_mutations no sea true. Sustituye request_body_json por el cuerpo que espera esta operación."
+          }
+        },
+        {
+          "name": "POST /api/v1/championships/unregister",
+          "event": [],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{{request_body_json}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{raceos_base_url}}/api/v1/championships/unregister",
+            "description": "MODIFICA DATOS. Bloqueada mientras allow_mutations no sea true. Sustituye request_body_json por el cuerpo que espera esta operación."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Clasificaciones",
+      "item": [
+        {
+          "name": "GET /api/v1/leaderboards/{name}?page={page}&take={take}",
+          "event": [],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{raceos_base_url}}/api/v1/leaderboards/{{name}}?page={{page}}&take={{take}}",
+            "description": "Ruta extraída del cliente web distribuido con Le Mans Ultimate."
+          }
+        },
+        {
+          "name": "GET /api/v1/leaderboards/around-me/{name}?take={take}",
+          "event": [],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{raceos_base_url}}/api/v1/leaderboards/around-me/{{name}}?take={{take}}",
+            "description": "Ruta extraída del cliente web distribuido con Le Mans Ultimate."
+          }
+        },
+        {
+          "name": "GET /api/v1/leaderboards/friends/{name}?type={type}&page={page}&take={take}",
+          "event": [],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{raceos_base_url}}/api/v1/leaderboards/friends/{{name}}?type={{type}}&page={{page}}&take={{take}}",
+            "description": "Ruta extraída del cliente web distribuido con Le Mans Ultimate."
+          }
+        },
+        {
+          "name": "POST /api/v1/leaderboards/results-for-users",
+          "event": [],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{{request_body_json}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{raceos_base_url}}/api/v1/leaderboards/results-for-users",
+            "description": "MODIFICA DATOS. Bloqueada mientras allow_mutations no sea true. Sustituye request_body_json por el cuerpo que espera esta operación."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Cooperativo",
+      "item": [
+        {
+          "name": "PUT /api/v1/coop",
+          "event": [],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{{request_body_json}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{raceos_base_url}}/api/v1/coop",
+            "description": "MODIFICA DATOS. Bloqueada mientras allow_mutations no sea true. Sustituye request_body_json por el cuerpo que espera esta operación."
+          }
+        },
+        {
+          "name": "GET /api/v1/coop/{sessionId}",
+          "event": [],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{raceos_base_url}}/api/v1/coop/{{sessionId}}",
+            "description": "Ruta extraída del cliente web distribuido con Le Mans Ultimate."
+          }
+        },
+        {
+          "name": "DELETE /api/v1/coop/{sessionId}",
+          "event": [],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{{request_body_json}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{raceos_base_url}}/api/v1/coop/{{sessionId}}",
+            "description": "MODIFICA DATOS. Bloqueada mientras allow_mutations no sea true. Sustituye request_body_json por el cuerpo que espera esta operación."
+          }
+        },
+        {
+          "name": "GET /api/v1/coop/{sessionId}/active-driver",
+          "event": [],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{raceos_base_url}}/api/v1/coop/{{sessionId}}/active-driver",
+            "description": "Ruta extraída del cliente web distribuido con Le Mans Ultimate."
+          }
+        },
+        {
+          "name": "PUT /api/v1/coop/{sessionId}/active-driver",
+          "event": [],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{{request_body_json}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{raceos_base_url}}/api/v1/coop/{{sessionId}}/active-driver",
+            "description": "MODIFICA DATOS. Bloqueada mientras allow_mutations no sea true. Sustituye request_body_json por el cuerpo que espera esta operación."
+          }
+        },
+        {
+          "name": "DELETE /api/v1/coop/{sessionId}/active-driver",
+          "event": [],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{{request_body_json}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{raceos_base_url}}/api/v1/coop/{{sessionId}}/active-driver",
+            "description": "MODIFICA DATOS. Bloqueada mientras allow_mutations no sea true. Sustituye request_body_json por el cuerpo que espera esta operación."
+          }
+        },
+        {
+          "name": "PATCH /api/v1/coop/{sessionId}/chat",
+          "event": [],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{{request_body_json}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{raceos_base_url}}/api/v1/coop/{{sessionId}}/chat",
+            "description": "MODIFICA DATOS. Bloqueada mientras allow_mutations no sea true. Sustituye request_body_json por el cuerpo que espera esta operación."
+          }
+        },
+        {
+          "name": "POST /api/v1/coop/create-rc-event",
+          "event": [],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{{request_body_json}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{raceos_base_url}}/api/v1/coop/create-rc-event",
+            "description": "MODIFICA DATOS. Bloqueada mientras allow_mutations no sea true. Sustituye request_body_json por el cuerpo que espera esta operación."
+          }
+        },
+        {
+          "name": "GET /api/v1/coop/event/{id}",
+          "event": [],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{raceos_base_url}}/api/v1/coop/event/{{id}}",
+            "description": "Ruta extraída del cliente web distribuido con Le Mans Ultimate."
+          }
+        },
+        {
+          "name": "GET /api/v1/coop/event/active?page=1&take=5",
+          "event": [],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{raceos_base_url}}/api/v1/coop/event/active?page=1&take=5",
+            "description": "Ruta extraída del cliente web distribuido con Le Mans Ultimate."
+          }
+        },
+        {
+          "name": "POST /api/v1/coop/event/check-ownership",
+          "event": [],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{{request_body_json}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{raceos_base_url}}/api/v1/coop/event/check-ownership",
+            "description": "MODIFICA DATOS. Bloqueada mientras allow_mutations no sea true. Sustituye request_body_json por el cuerpo que espera esta operación."
+          }
+        },
+        {
+          "name": "GET /api/v1/coop/event/leaderboard/around-us?eventName={eventName}&sessionId={sessionId}&take={take}",
+          "event": [],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{raceos_base_url}}/api/v1/coop/event/leaderboard/around-us?eventName={{eventName}}&sessionId={{sessionId}}&take={{take}}",
+            "description": "Ruta extraída del cliente web distribuido con Le Mans Ultimate."
+          }
+        },
+        {
+          "name": "GET /api/v1/coop/event/leaderboard/list?eventName={eventName}&page={page}&take={take}",
+          "event": [],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{raceos_base_url}}/api/v1/coop/event/leaderboard/list?eventName={{eventName}}&page={{page}}&take={{take}}",
+            "description": "Ruta extraída del cliente web distribuido con Le Mans Ultimate."
+          }
+        },
+        {
+          "name": "GET /api/v1/coop/historic?page=1&take=15&type={type}",
+          "event": [],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{raceos_base_url}}/api/v1/coop/historic?page=1&take=15&type={{type}}",
+            "description": "Ruta extraída del cliente web distribuido con Le Mans Ultimate."
+          }
+        },
+        {
+          "name": "GET /api/v1/coop/invites",
+          "event": [],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{raceos_base_url}}/api/v1/coop/invites",
+            "description": "Ruta extraída del cliente web distribuido con Le Mans Ultimate."
+          }
+        },
+        {
+          "name": "POST /api/v1/coop/invites/accept",
+          "event": [],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{{request_body_json}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{raceos_base_url}}/api/v1/coop/invites/accept",
+            "description": "MODIFICA DATOS. Bloqueada mientras allow_mutations no sea true. Sustituye request_body_json por el cuerpo que espera esta operación."
+          }
+        },
+        {
+          "name": "POST /api/v1/coop/invites/decline",
+          "event": [],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{{request_body_json}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{raceos_base_url}}/api/v1/coop/invites/decline",
+            "description": "MODIFICA DATOS. Bloqueada mientras allow_mutations no sea true. Sustituye request_body_json por el cuerpo que espera esta operación."
+          }
+        },
+        {
+          "name": "POST /api/v1/coop/join",
+          "event": [],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{{request_body_json}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{raceos_base_url}}/api/v1/coop/join",
+            "description": "MODIFICA DATOS. Bloqueada mientras allow_mutations no sea true. Sustituye request_body_json por el cuerpo que espera esta operación."
+          }
+        },
+        {
+          "name": "POST /api/v1/coop/leave",
+          "event": [],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{{request_body_json}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{raceos_base_url}}/api/v1/coop/leave",
+            "description": "MODIFICA DATOS. Bloqueada mientras allow_mutations no sea true. Sustituye request_body_json por el cuerpo que espera esta operación."
+          }
+        },
+        {
+          "name": "GET /api/v1/coop/list?page=1&take=4&type={type}",
+          "event": [],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{raceos_base_url}}/api/v1/coop/list?page=1&take=4&type={{type}}",
+            "description": "Ruta extraída del cliente web distribuido con Le Mans Ultimate."
+          }
+        },
+        {
+          "name": "POST /api/v1/coop/status/{sessionId}/{status}",
+          "event": [],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{{request_body_json}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{raceos_base_url}}/api/v1/coop/status/{{sessionId}}/{{status}}",
+            "description": "MODIFICA DATOS. Bloqueada mientras allow_mutations no sea true. Sustituye request_body_json por el cuerpo que espera esta operación."
+          }
+        },
+        {
+          "name": "POST /api/v1/coop/upload",
+          "event": [],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{{request_body_json}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{raceos_base_url}}/api/v1/coop/upload",
+            "description": "MODIFICA DATOS. Bloqueada mientras allow_mutations no sea true. Sustituye request_body_json por el cuerpo que espera esta operación."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Servidores alojados",
+      "item": [
+        {
+          "name": "GET /api/v1/hosted",
+          "event": [],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{raceos_base_url}}/api/v1/hosted",
+            "description": "Ruta extraída del cliente web distribuido con Le Mans Ultimate."
+          }
+        },
+        {
+          "name": "GET /api/v1/hosted/auth-token/{taskArn}",
+          "event": [],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{raceos_base_url}}/api/v1/hosted/auth-token/{{taskArn}}",
+            "description": "Ruta extraída del cliente web distribuido con Le Mans Ultimate."
+          }
+        },
+        {
+          "name": "GET /api/v1/hosted/extended/{taskArn}",
+          "event": [],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{raceos_base_url}}/api/v1/hosted/extended/{{taskArn}}",
+            "description": "Ruta extraída del cliente web distribuido con Le Mans Ultimate."
+          }
+        },
+        {
+          "name": "GET /api/v1/hosted/lobby-code/{lobbyCode}",
+          "event": [],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{raceos_base_url}}/api/v1/hosted/lobby-code/{{lobbyCode}}",
+            "description": "Ruta extraída del cliente web distribuido con Le Mans Ultimate."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Equipos y liveries",
+      "item": [
+        {
+          "name": "POST /api/v1/team",
+          "event": [],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{{request_body_json}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{raceos_base_url}}/api/v1/team",
+            "description": "MODIFICA DATOS. Bloqueada mientras allow_mutations no sea true. Sustituye request_body_json por el cuerpo que espera esta operación."
+          }
+        },
+        {
+          "name": "GET /api/v1/team/{teamId}",
+          "event": [],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{raceos_base_url}}/api/v1/team/{{teamId}}",
+            "description": "Ruta extraída del cliente web distribuido con Le Mans Ultimate."
+          }
+        },
+        {
+          "name": "PUT /api/v1/team/{teamId}",
+          "event": [],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{{request_body_json}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{raceos_base_url}}/api/v1/team/{{teamId}}",
+            "description": "MODIFICA DATOS. Bloqueada mientras allow_mutations no sea true. Sustituye request_body_json por el cuerpo que espera esta operación."
+          }
+        },
+        {
+          "name": "GET /api/v1/team/events/{teamId}",
+          "event": [],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{raceos_base_url}}/api/v1/team/events/{{teamId}}",
+            "description": "Ruta extraída del cliente web distribuido con Le Mans Ultimate."
+          }
+        },
+        {
+          "name": "POST /api/v1/team/invite",
+          "event": [],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{{request_body_json}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{raceos_base_url}}/api/v1/team/invite",
+            "description": "MODIFICA DATOS. Bloqueada mientras allow_mutations no sea true. Sustituye request_body_json por el cuerpo que espera esta operación."
+          }
+        },
+        {
+          "name": "PUT /api/v1/team/invite",
+          "event": [],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{{request_body_json}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{raceos_base_url}}/api/v1/team/invite",
+            "description": "MODIFICA DATOS. Bloqueada mientras allow_mutations no sea true. Sustituye request_body_json por el cuerpo que espera esta operación."
+          }
+        },
+        {
+          "name": "DELETE /api/v1/team/invite",
+          "event": [],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{{request_body_json}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{raceos_base_url}}/api/v1/team/invite",
+            "description": "MODIFICA DATOS. Bloqueada mientras allow_mutations no sea true. Sustituye request_body_json por el cuerpo que espera esta operación."
+          }
+        },
+        {
+          "name": "GET /api/v1/team/invites",
+          "event": [],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{raceos_base_url}}/api/v1/team/invites",
+            "description": "Ruta extraída del cliente web distribuido con Le Mans Ultimate."
+          }
+        },
+        {
+          "name": "POST /api/v1/team/kick",
+          "event": [],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{{request_body_json}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{raceos_base_url}}/api/v1/team/kick",
+            "description": "MODIFICA DATOS. Bloqueada mientras allow_mutations no sea true. Sustituye request_body_json por el cuerpo que espera esta operación."
+          }
+        },
+        {
+          "name": "POST /api/v1/team/leave",
+          "event": [],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{{request_body_json}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{raceos_base_url}}/api/v1/team/leave",
+            "description": "MODIFICA DATOS. Bloqueada mientras allow_mutations no sea true. Sustituye request_body_json por el cuerpo que espera esta operación."
+          }
+        },
+        {
+          "name": "POST /api/v1/team/lineup",
+          "event": [],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{{request_body_json}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{raceos_base_url}}/api/v1/team/lineup",
+            "description": "MODIFICA DATOS. Bloqueada mientras allow_mutations no sea true. Sustituye request_body_json por el cuerpo que espera esta operación."
+          }
+        },
+        {
+          "name": "PUT /api/v1/team/lineup",
+          "event": [],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{{request_body_json}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{raceos_base_url}}/api/v1/team/lineup",
+            "description": "MODIFICA DATOS. Bloqueada mientras allow_mutations no sea true. Sustituye request_body_json por el cuerpo que espera esta operación."
+          }
+        },
+        {
+          "name": "POST /api/v1/team/lineup/driver",
+          "event": [],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{{request_body_json}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{raceos_base_url}}/api/v1/team/lineup/driver",
+            "description": "MODIFICA DATOS. Bloqueada mientras allow_mutations no sea true. Sustituye request_body_json por el cuerpo que espera esta operación."
+          }
+        },
+        {
+          "name": "DELETE /api/v1/team/lineup/driver",
+          "event": [],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{{request_body_json}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{raceos_base_url}}/api/v1/team/lineup/driver",
+            "description": "MODIFICA DATOS. Bloqueada mientras allow_mutations no sea true. Sustituye request_body_json por el cuerpo que espera esta operación."
+          }
+        },
+        {
+          "name": "GET /api/v1/team/lineups/namecheck/{lineupName}",
+          "event": [],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{raceos_base_url}}/api/v1/team/lineups/namecheck/{{lineupName}}",
+            "description": "Ruta extraída del cliente web distribuido con Le Mans Ultimate."
+          }
+        },
+        {
+          "name": "GET /api/v1/team/livery/{teamId}",
+          "event": [],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{raceos_base_url}}/api/v1/team/livery/{{teamId}}",
+            "description": "Ruta extraída del cliente web distribuido con Le Mans Ultimate."
+          }
+        },
+        {
+          "name": "DELETE /api/v1/team/livery",
+          "event": [],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{{request_body_json}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{raceos_base_url}}/api/v1/team/livery",
+            "description": "MODIFICA DATOS. Bloqueada mientras allow_mutations no sea true. Sustituye request_body_json por el cuerpo que espera esta operación."
+          }
+        },
+        {
+          "name": "POST /api/v1/team/livery/copy",
+          "event": [],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{{request_body_json}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{raceos_base_url}}/api/v1/team/livery/copy",
+            "description": "MODIFICA DATOS. Bloqueada mientras allow_mutations no sea true. Sustituye request_body_json por el cuerpo que espera esta operación."
+          }
+        },
+        {
+          "name": "GET /api/v1/team/livery/lineup/{teamId}/{lineupId}",
+          "event": [],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{raceos_base_url}}/api/v1/team/livery/lineup/{{teamId}}/{{lineupId}}",
+            "description": "Ruta extraída del cliente web distribuido con Le Mans Ultimate."
+          }
+        },
+        {
+          "name": "GET /api/v1/team/livery/player",
+          "event": [],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{raceos_base_url}}/api/v1/team/livery/player",
+            "description": "Ruta extraída del cliente web distribuido con Le Mans Ultimate."
+          }
+        },
+        {
+          "name": "POST /api/v1/team/member/roles",
+          "event": [],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{{request_body_json}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{raceos_base_url}}/api/v1/team/member/roles",
+            "description": "MODIFICA DATOS. Bloqueada mientras allow_mutations no sea true. Sustituye request_body_json por el cuerpo que espera esta operación."
+          }
+        },
+        {
+          "name": "DELETE /api/v1/team/member/roles",
+          "event": [],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{{request_body_json}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{raceos_base_url}}/api/v1/team/member/roles",
+            "description": "MODIFICA DATOS. Bloqueada mientras allow_mutations no sea true. Sustituye request_body_json por el cuerpo que espera esta operación."
+          }
+        },
+        {
+          "name": "GET /api/v1/team/mine",
+          "event": [],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{raceos_base_url}}/api/v1/team/mine",
+            "description": "Ruta extraída del cliente web distribuido con Le Mans Ultimate."
+          }
+        },
+        {
+          "name": "GET /api/v1/team/namecheck/{teamName}",
+          "event": [],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{raceos_base_url}}/api/v1/team/namecheck/{{teamName}}",
+            "description": "Ruta extraída del cliente web distribuido con Le Mans Ultimate."
+          }
+        },
+        {
+          "name": "GET /api/v1/team/results/{teamId}?lineupId={lineupId}&eventType={eventType}&page={page}&take={take}",
+          "event": [],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{raceos_base_url}}/api/v1/team/results/{{teamId}}?lineupId={{lineupId}}&eventType={{eventType}}&page={{page}}&take={{take}}",
+            "description": "Ruta extraída del cliente web distribuido con Le Mans Ultimate."
+          }
+        },
+        {
+          "name": "GET /api/v1/team/stats/{teamId}",
+          "event": [],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{raceos_base_url}}/api/v1/team/stats/{{teamId}}",
+            "description": "Ruta extraída del cliente web distribuido con Le Mans Ultimate."
+          }
+        },
+        {
+          "name": "POST /api/v1/team/token/image",
+          "event": [],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{{request_body_json}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{raceos_base_url}}/api/v1/team/token/image",
+            "description": "MODIFICA DATOS. Bloqueada mientras allow_mutations no sea true. Sustituye request_body_json por el cuerpo que espera esta operación."
+          }
+        },
+        {
+          "name": "POST /api/v1/team/token/paint",
+          "event": [],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{{request_body_json}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{raceos_base_url}}/api/v1/team/token/paint",
+            "description": "MODIFICA DATOS. Bloqueada mientras allow_mutations no sea true. Sustituye request_body_json por el cuerpo que espera esta operación."
+          }
+        },
+        {
+          "name": "POST /api/v1/team/transfer",
+          "event": [],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{{request_body_json}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{raceos_base_url}}/api/v1/team/transfer",
+            "description": "MODIFICA DATOS. Bloqueada mientras allow_mutations no sea true. Sustituye request_body_json por el cuerpo que espera esta operación."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Notificaciones y servicio",
+      "item": [
+        {
+          "name": "DELETE /api/v1/notification",
+          "event": [],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{{request_body_json}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{raceos_base_url}}/api/v1/notification",
+            "description": "MODIFICA DATOS. Bloqueada mientras allow_mutations no sea true. Sustituye request_body_json por el cuerpo que espera esta operación."
+          }
+        },
+        {
+          "name": "PATCH /api/v1/notification/read/{id}",
+          "event": [],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{{request_body_json}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{raceos_base_url}}/api/v1/notification/read/{{id}}",
+            "description": "MODIFICA DATOS. Bloqueada mientras allow_mutations no sea true. Sustituye request_body_json por el cuerpo que espera esta operación."
+          }
+        },
+        {
+          "name": "GET /api/v1/notifications/global",
+          "event": [],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{raceos_base_url}}/api/v1/notifications/global",
+            "description": "Ruta extraída del cliente web distribuido con Le Mans Ultimate."
+          }
+        },
+        {
+          "name": "GET /api/v1/maintenance",
+          "event": [],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{raceos_access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{raceos_base_url}}/api/v1/maintenance",
+            "description": "Ruta extraída del cliente web distribuido con Le Mans Ultimate."
+          }
+        }
+      ]
+    }
+  ],
+  "protocolProfileBehavior": {
+    "disableBodyPruning": true
+  }
+}

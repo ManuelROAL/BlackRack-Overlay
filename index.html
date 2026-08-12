@@ -1,0 +1,392 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#090d13" />
+    <title>LMU Overlay · Panel de control</title>
+  </head>
+  <body>
+    <main class="control-panel">
+      <header class="control-header">
+        <div class="control-brand">
+          <span class="control-mark">LMU</span>
+          <div>
+            <strong>OVERLAY</strong>
+            <span>PANEL DE CONTROL</span>
+          </div>
+        </div>
+        <div id="game-status" class="game-status" data-state="offline">
+          <i></i><span>ESPERANDO LMU</span>
+        </div>
+      </header>
+
+      <nav class="control-navigation" aria-label="Secciones de configuración">
+        <button class="active" type="button" data-control-view="overlays" aria-current="page">
+          <span>OVERLAYS</span>
+          <small>Visibilidad y ajustes</small>
+        </button>
+        <button type="button" data-control-view="general">
+          <span>GENERAL</span>
+          <small>Pantalla y atajos</small>
+        </button>
+        <button type="button" data-control-view="integrations">
+          <span>INTEGRACIONES</span>
+          <small>OBS y diagnóstico</small>
+        </button>
+      </nav>
+
+      <section class="control-intro" data-view-section="overlays">
+        <div>
+          <p>VENTANAS ACTIVAS</p>
+          <h1>Elige qué quieres ver en pista</h1>
+        </div>
+        <div class="bulk-actions">
+          <button id="show-all" type="button">Abrir todas</button>
+          <button id="hide-all" type="button">Ocultar todas</button>
+        </div>
+      </section>
+
+      <section class="overlay-toolbar" data-view-section="overlays" aria-label="Buscar y filtrar overlays">
+        <label class="overlay-search">
+          <span aria-hidden="true">⌕</span>
+          <input id="overlay-search" type="search" placeholder="Buscar overlay..." autocomplete="off" />
+        </label>
+        <div class="overlay-filters" role="group" aria-label="Filtrar por tipo">
+          <button class="active" type="button" data-overlay-filter="all" aria-pressed="true">TODOS</button>
+          <button type="button" data-overlay-filter="race" aria-pressed="false">CARRERA</button>
+          <button type="button" data-overlay-filter="car" aria-pressed="false">COCHE</button>
+          <button type="button" data-overlay-filter="alerts" aria-pressed="false">AVISOS</button>
+        </div>
+        <p id="overlay-filter-empty" class="overlay-filter-empty" hidden>No hay overlays que coincidan.</p>
+      </section>
+
+      <section class="global-overlay-settings" data-view-section="general" aria-label="Configuración general de overlays">
+        <div class="global-setting-group">
+          <div class="global-setting-copy">
+            <span>TRANSPARENCIA</span>
+            <strong>General o por overlay</strong>
+          </div>
+          <label class="select-field">
+            <span>APLICAR</span>
+            <select id="transparency-mode" aria-label="Modo de transparencia">
+              <option value="individual">Por overlay</option>
+              <option value="global">General</option>
+            </select>
+          </label>
+          <label id="global-transparency-control" class="global-transparency-control">
+            <span>VALOR GENERAL</span>
+            <input id="global-transparency" type="range" min="0" max="100" step="5" />
+            <output id="global-transparency-output">5%</output>
+          </label>
+        </div>
+        <div class="global-setting-group">
+          <div class="global-setting-copy">
+            <span>MONITOR</span>
+            <strong>General o por overlay</strong>
+          </div>
+          <label class="select-field">
+            <span>APLICAR</span>
+            <select id="monitor-mode" aria-label="Modo de selección de monitor">
+              <option value="individual">Por overlay</option>
+              <option value="global">General</option>
+            </select>
+          </label>
+          <label class="select-field global-monitor-control" hidden>
+            <span>MONITOR GENERAL</span>
+            <select id="global-monitor" aria-label="Monitor general"></select>
+          </label>
+        </div>
+      </section>
+      
+      <details class="shortcut-settings-section" data-view-section="general" open>
+        <summary>
+          <span>ATAJOS GLOBALES</span>
+          <strong>Configurar combinaciones de teclado</strong>
+        </summary>
+        <div class="shortcut-settings-list">
+          <label class="shortcut-setting">
+            <span>
+              <b>Modo juego / edición</b>
+              <small>Activa o desactiva la interacción con los overlays.</small>
+            </span>
+            <input id="shortcut-interaction-mode" type="text" readonly
+              aria-label="Atajo para cambiar el modo de interacción" />
+          </label>
+          <label class="shortcut-setting">
+            <span>
+              <b>Mostrar panel</b>
+              <small>Recupera esta ventana cuando está oculta.</small>
+            </span>
+            <input id="shortcut-show-panel" type="text" readonly
+              aria-label="Atajo para mostrar el panel" />
+          </label>
+           <p id="shortcut-message" class="shortcut-message">
+             Haz clic en un campo y pulsa la nueva combinación.
+           </p>
+           <button id="toggle-interaction-mode" class="mode-action" type="button">
+             CAMBIAR A MODO EDICIÓN
+           </button>
+        </div>
+      </details>
+
+      <section class="overlay-list" data-view-section="overlays" aria-label="Overlays disponibles">
+      
+      <article class="overlay-option" data-overlay-card="standings" data-overlay-category="race">
+          <div class="overlay-icon">P</div>
+          <div class="overlay-copy">
+            <strong>Clasificación</strong>
+            <span>Posiciones, intervalos, clase y estado en boxes.</span>
+          </div>
+          <label class="switch">
+            <input type="checkbox" data-overlay="standings" aria-label="Mostrar Clasificación" />
+            <span></span>
+          </label>
+        </article>
+        
+        <details class="standings-settings-section" data-settings-for="standings">
+          <summary>
+            <span>CONFIGURACIÓN DE CLASIFICACIÓN</span>
+            <strong>Contenido y columnas</strong>
+          </summary>
+          <div class="standings-content-settings">
+            <label class="standings-setting-toggle">
+              <input id="standings-show-other-classes" type="checkbox" />
+              <span></span>
+              <b>Mostrar otras categorías</b>
+            </label>
+            <label class="standings-row-setting">
+              <span>COCHES · TU CATEGORÍA</span>
+              <input id="standings-own-class-rows" type="number" min="3" max="30" step="1" />
+            </label>
+            <label class="standings-row-setting">
+              <span>COCHES · OTRAS</span>
+              <input id="standings-other-class-rows" type="number" min="1" max="15" step="1" />
+            </label>
+          </div>
+          <div class="settings-subtitle">CABECERA</div>
+          <div id="standings-header-options" class="standings-columns header-options" aria-label="Datos de cabecera de clasificación"></div>
+          <div class="settings-subtitle">COLUMNAS</div>
+          <div id="standings-columns" class="standings-columns" aria-label="Columnas de clasificación"></div>
+          <div class="settings-subtitle">ORDEN DE COLUMNAS</div>
+          <div id="standings-column-order" class="column-order-list" aria-label="Orden de columnas de clasificación"></div>
+        </details>
+
+        <article class="overlay-option" data-overlay-card="relative" data-overlay-category="race">
+          <div class="overlay-icon">R</div>
+          <div class="overlay-copy">
+            <strong>Relative</strong>
+            <span>Coches cercanos delante y detrás con distancia y estado.</span>
+          </div>
+          <label class="switch">
+            <input type="checkbox" data-overlay="relative" aria-label="Mostrar Relative" />
+            <span></span>
+          </label>
+        </article>
+
+        <details class="standings-settings-section" data-settings-for="relative">
+          <summary>
+            <span>CONFIGURACIÓN DE RELATIVE</span>
+            <strong>Contenido y columnas</strong>
+          </summary>
+          <div class="standings-content-settings relative-content-settings">
+            <label class="standings-row-setting">
+              <span>COCHES · DELANTE</span>
+              <input id="relative-ahead-rows" type="number" min="1" max="10" step="1" />
+            </label>
+            <label class="standings-row-setting">
+              <span>COCHES · DETRÁS</span>
+              <input id="relative-behind-rows" type="number" min="1" max="10" step="1" />
+            </label>
+          </div>
+          <div class="settings-subtitle">CABECERA</div>
+          <div id="relative-header-options" class="standings-columns header-options" aria-label="Datos de cabecera del relative"></div>
+          <div class="settings-subtitle">COLUMNAS</div>
+          <div id="relative-columns" class="standings-columns" aria-label="Columnas del relative"></div>
+          <div class="settings-subtitle">ORDEN DE COLUMNAS</div>
+          <div id="relative-column-order" class="column-order-list" aria-label="Orden de columnas del relative"></div>
+        </details>
+
+        <article class="overlay-option" data-overlay-card="fuel" data-overlay-category="race">
+          <div class="overlay-icon">F</div>
+          <div class="overlay-copy">
+            <strong>Energía y combustible</strong>
+            <span>NRG por stint, autonomía y combustible para el resto de clases.</span>
+          </div>
+          <label class="switch">
+            <input type="checkbox" data-overlay="fuel" aria-label="Mostrar Combustible" />
+            <span></span>
+          </label>
+        </article>
+
+        <article class="overlay-option" data-overlay-card="driving" data-overlay-category="car">
+          <div class="overlay-icon">T</div>
+          <div class="overlay-copy">
+            <strong>Trailing + Pedal</strong>
+            <span>Historial de entradas, pedales actuales, velocidad y marcha.</span>
+          </div>
+          <label class="switch">
+            <input type="checkbox" data-overlay="driving" aria-label="Mostrar Trailing y Pedal" />
+            <span></span>
+          </label>
+        </article>
+
+        <article class="overlay-option" data-overlay-card="tires" data-overlay-category="car">
+          <div class="overlay-icon">N</div>
+          <div class="overlay-copy">
+            <strong>Daños y neumáticos</strong>
+            <span>Temperatura, desgaste, compuesto y daños del coche.</span>
+          </div>
+          <label class="switch">
+            <input type="checkbox" data-overlay="tires" aria-label="Mostrar daños y neumáticos" />
+            <span></span>
+          </label>
+        </article>
+
+        <article class="overlay-option" data-overlay-card="damage" data-overlay-category="car">
+          <div class="overlay-icon">D</div>
+          <div class="overlay-copy">
+            <strong>Daños detallados</strong>
+            <span>Daño aerodinámico, suspensión y carrocería.</span>
+          </div>
+          <label class="switch">
+            <input type="checkbox" data-overlay="damage" aria-label="Mostrar daños detallados" />
+            <span></span>
+          </label>
+        </article>
+
+        <article class="overlay-option" data-overlay-card="pitstop" data-overlay-category="race">
+          <div class="overlay-icon">P</div>
+          <div class="overlay-copy">
+            <strong>Parada estimada</strong>
+            <span>Desglose y tiempo total del próximo servicio en boxes.</span>
+          </div>
+          <label class="switch">
+            <input type="checkbox" data-overlay="pitstop" aria-label="Mostrar parada estimada" />
+            <span></span>
+          </label>
+        </article>
+
+        <article class="overlay-option" data-overlay-card="flags" data-overlay-category="alerts">
+          <div class="overlay-icon">Y</div>
+          <div class="overlay-copy">
+            <strong>Banderas</strong>
+            <span>Avisos amarillo y azul con distancia, posición y categoría.</span>
+          </div>
+          <label class="switch">
+            <input type="checkbox" data-overlay="flags" aria-label="Mostrar Banderas" />
+            <span></span>
+          </label>
+        </article>
+
+        <article class="overlay-option" data-overlay-card="rejoin" data-overlay-category="alerts">
+          <div class="overlay-icon">R</div>
+          <div class="overlay-copy">
+            <strong>Rejoin y salida de boxes</strong>
+            <span>Distancia del coche trasero y aviso de entrada segura.</span>
+          </div>
+          <label class="switch">
+            <input type="checkbox" data-overlay="rejoin" aria-label="Mostrar Rejoin" />
+            <span></span>
+          </label>
+        </article>
+        
+        <article class="overlay-option" data-overlay-card="dashboard" data-overlay-category="car">
+          <div class="overlay-icon">D</div>
+          <div class="overlay-copy">
+            <strong>Dashboard</strong>
+            <span>Velocidad, marcha, pedales, tiempos y combustible.</span>
+          </div>
+          <label class="switch">
+            <input type="checkbox" data-overlay="dashboard" aria-label="Mostrar Dashboard" />
+            <span></span>
+          </label>
+        </article>
+
+        <article class="overlay-option" data-overlay-card="trackmap" data-overlay-category="race">
+          <div class="overlay-icon">M</div>
+          <div class="overlay-copy">
+            <strong>Mapa del circuito</strong>
+            <span>Posición de todos los coches y categorías en tiempo real.</span>
+          </div>
+          <label class="switch">
+            <input type="checkbox" data-overlay="trackmap" aria-label="Mostrar mapa del circuito" />
+            <span></span>
+          </label>
+        </article>
+      </section>
+
+      <details id="browser-source-section" class="browser-source-section" data-view-section="integrations" open>
+        <summary>
+          <span>OBS / NAVEGADOR LOCAL</span>
+          <strong>Captura directa de los overlays</strong>
+        </summary>
+        <div class="browser-source-content">
+          <article id="browser-source-card" class="overlay-option browser-source-option">
+            <div class="overlay-icon">OBS</div>
+            <div class="overlay-copy">
+              <strong>Fuente de navegador local</strong>
+              <span id="browser-source-description">Servidor apagado, sin consumo adicional.</span>
+              <small id="browser-source-status">DESACTIVADO</small>
+            </div>
+            <label class="switch">
+              <input id="browser-source-enabled" type="checkbox"
+                aria-label="Activar fuente de navegador local" />
+              <span></span>
+            </label>
+          </article>
+          <div id="browser-source-urls" class="browser-source-urls" hidden>
+            <p>Añade una URL como fuente de navegador en OBS:</p>
+            <div data-browser-overlay="standings"><code></code><button type="button">COPIAR</button></div>
+            <div data-browser-overlay="relative"><code></code><button type="button">COPIAR</button></div>
+            <div data-browser-overlay="fuel"><code></code><button type="button">COPIAR</button></div>
+            <div data-browser-overlay="pitstop"><code></code><button type="button">COPIAR</button></div>
+            <div data-browser-overlay="flags"><code></code><button type="button">COPIAR</button></div>
+            <div data-browser-overlay="rejoin"><code></code><button type="button">COPIAR</button></div>
+            <div data-browser-overlay="dashboard"><code></code><button type="button">COPIAR</button></div>
+            <div data-browser-overlay="driving"><code></code><button type="button">COPIAR</button></div>
+            <div data-browser-overlay="tires"><code></code><button type="button">COPIAR</button></div>
+            <div data-browser-overlay="damage"><code></code><button type="button">COPIAR</button></div>
+            <div data-browser-overlay="trackmap"><code></code><button type="button">COPIAR</button></div>
+          </div>
+        </div>
+      </details>
+      
+      <section class="logging-section" data-view-section="integrations" aria-label="Registro de telemetría">
+        <article id="logging-card" class="overlay-option logging-option">
+          <div class="overlay-icon logging-icon">REC</div>
+          <div class="overlay-copy">
+            <strong>Registro para análisis</strong>
+            <span id="logging-description">Guarda sesión, estrategia y consultas DR/SR.</span>
+            <small id="logging-path">DESACTIVADO</small>
+          </div>
+          <label class="switch">
+            <input id="telemetry-logging" type="checkbox" aria-label="Activar registro de telemetría" />
+            <span></span>
+          </label>
+        </article>
+      </section>
+
+      <footer class="control-footer">
+        <div><kbd id="footer-interaction-shortcut">Ctrl+Shift+O</kbd> Modo juego</div>
+        <div><kbd id="footer-panel-shortcut">Ctrl+Shift+M</kbd> Mostrar panel</div>
+        <span id="interaction-status">MODO JUEGO</span>
+      </footer>
+    </main>
+    <dialog id="reset-confirmation" class="reset-confirmation" aria-labelledby="reset-confirmation-title">
+      <form method="dialog">
+        <div class="reset-confirmation-mark" aria-hidden="true">!</div>
+        <div class="reset-confirmation-copy">
+          <span>RESTABLECER OVERLAY</span>
+          <strong id="reset-confirmation-title">Confirmar restablecimiento</strong>
+          <p id="reset-confirmation-message"></p>
+        </div>
+        <div class="reset-confirmation-actions">
+          <button type="submit" value="cancel">CANCELAR</button>
+          <button class="primary" type="submit" value="confirm">RESTABLECER</button>
+        </div>
+      </form>
+    </dialog>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

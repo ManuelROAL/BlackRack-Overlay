@@ -1,0 +1,243 @@
+{
+  "info": {
+    "_postman_id": "a31fc019-e0a7-4aaf-82dc-d198446afca2",
+    "name": "LMUOverlay - RaceControl",
+    "description": "Peticiones HTTP utilizadas por LMUOverlay para obtener el ticket local de Le Mans Ultimate, autenticarse en RaceControl, consultar DR/SR y consultar el split. Ejecuta las peticiones en el orden indicado.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Autenticación",
+      "item": [
+        {
+          "name": "1.1 Obtener ticket local de LMU",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('La API local responde correctamente', function () {",
+                  "  pm.response.to.be.success;",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "pm.test('La respuesta contiene authSessionTicket', function () {",
+                  "  pm.expect(body.authSessionTicket).to.be.a('string').and.not.empty;",
+                  "});",
+                  "",
+                  "if (body.authSessionTicket) {",
+                  "  pm.environment.set('auth_session_ticket', body.authSessionTicket);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{lmu_local_base_url}}/rest/profile/getAuthSessionTicket",
+              "host": ["{{lmu_local_base_url}}"],
+              "path": ["rest", "profile", "getAuthSessionTicket"]
+            },
+            "description": "Requiere que Le Mans Ultimate esté abierto y que su API local esté disponible. El script guarda el ticket temporal en auth_session_ticket."
+          },
+          "response": []
+        },
+        {
+          "name": "1.2 Autenticar en RaceControl",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get('auth_session_ticket')) {",
+                  "  console.warn('Ejecuta primero: 1.1 Obtener ticket local de LMU');",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('RaceControl autentica correctamente', function () {",
+                  "  pm.response.to.be.success;",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "pm.test('La respuesta contiene accessToken', function () {",
+                  "  pm.expect(body.accessToken).to.be.a('string').and.not.empty;",
+                  "});",
+                  "",
+                  "if (body.accessToken) {",
+                  "  pm.environment.set('racecontrol_access_token', body.accessToken);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{auth_session_ticket}}\",\n  \"game\": \"lmu\",\n  \"platform\": \"steam\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{racecontrol_base_url}}/authenticate",
+              "host": ["{{racecontrol_base_url}}"],
+              "path": ["authenticate"]
+            },
+            "description": "Intercambia el ticket temporal de LMU por un accessToken y lo guarda en racecontrol_access_token."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "2. Datos",
+      "item": [
+        {
+          "name": "2.1 Consultar perfiles DR/SR",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get('racecontrol_access_token')) {",
+                  "  console.warn('Ejecuta primero la carpeta 1. Autenticación');",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('La consulta de perfiles responde correctamente', function () {",
+                  "  pm.response.to.be.success;",
+                  "});",
+                  "pm.test('La respuesta es JSON', function () {",
+                  "  pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{racecontrol_access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"usernames\": {{driver_usernames_json}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{racecontrol_base_url}}/api/v1/players",
+              "host": ["{{racecontrol_base_url}}"],
+              "path": ["api", "v1", "players"]
+            },
+            "description": "Consulta en bloque los perfiles de los nombres indicados en driver_usernames_json. Ejemplo: [\"Piloto Uno\",\"Piloto Dos\"]"
+          },
+          "response": []
+        },
+        {
+          "name": "2.2 Consultar split del evento",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get('racecontrol_access_token')) {",
+                  "  console.warn('Ejecuta primero la carpeta 1. Autenticación');",
+                  "}",
+                  "if (!pm.environment.get('event_id')) {",
+                  "  console.warn('Introduce el UUID del evento en la variable event_id');",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('La consulta del split responde correctamente', function () {",
+                  "  pm.response.to.be.success;",
+                  "});",
+                  "pm.test('La respuesta es JSON', function () {",
+                  "  pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Game-Authorization",
+                "value": "Bearer {{racecontrol_access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "[{\n  \"game\": \"lmu\",\n  \"eventType\": \"daily\",\n  \"eventId\": \"{{event_id}}\"\n}]",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{racecontrol_base_url}}/api/v1/event/overview",
+              "host": ["{{racecontrol_base_url}}"],
+              "path": ["api", "v1", "event", "overview"]
+            },
+            "description": "Devuelve el resumen del evento, incluido el split del usuario autenticado y el total de splits. Reproduce el flujo observado en Dox; event_id es el UUID del evento online actual."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

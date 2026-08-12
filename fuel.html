@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LMU · Estrategia de resistencia</title>
+  </head>
+  <body class="fuel-body">
+    <main class="overlay-shell fuel-shell" data-resource-mode="energy" data-tauri-drag-region>
+      <section class="strategy-summary">
+        <div class="summary-stat accent-stat">
+          <span id="resource-label">NRG</span>
+          <strong id="resource-current">--</strong><small id="resource-unit">%</small>
+        </div>
+        <div class="summary-stat">
+          <span>V REST.</span><strong id="race-laps">--</strong>
+        </div>
+        <div class="summary-stat">
+          <span>V TOTAL</span><strong id="race-total-laps">--</strong>
+        </div>
+        <div class="summary-stat">
+          <span>AUTON.</span><strong id="strategy-autonomy">--</strong>
+        </div>
+        <div class="summary-stat wide-stat">
+          <span>VENTANA PIT</span><strong id="pit-window">--</strong>
+        </div>
+        <div id="pit-status" class="pit-status">PIT</div>
+       <div class="strategy-level"><i id="resource-level"></i></div>
+      </section>
+
+      <section class="endurance-plan" aria-label="Plan de resistencia">
+        <div><span>PLAN</span><strong id="stop-plan">--</strong></div>
+        <div class="strategy-target"><span id="target-label">OBJ/V</span><strong id="target-consumption">--</strong></div>
+        <div><span>AHORRO</span><strong id="saving-required">--</strong></div>
+        <div><span>DELTA</span><strong id="stint-delta">--</strong></div>
+        <div><span>CARGA</span><strong id="next-fill">--</strong></div>
+      </section>
+
+      <section class="strategy-context" aria-label="Contexto del cálculo">
+         <span id="limiting-resource">LIMITA --</span>
+         <span id="autonomy-range">RANGO --</span>
+         <span id="strategy-confidence">CONF. --</span>
+         <span id="pit-cycle-cost">PIT Δ --</span>
+        <span class="icon-value"><img src="/src/assets/lmu-icons/tires.svg" width="12" height="12" alt="" aria-hidden="true" /><span id="pit-service-time">PIT --</span></span>
+      </section>
+
+       <section class="strategy-table energy-strategy-table" aria-label="Escenarios de energía">
+         <header class="strategy-columns" aria-hidden="true">
+           <span id="active-table-label">NRG</span><span>CONSUMO</span><span>AUTON.</span><span>CARGAR</span><span>FINAL</span>
+         </header>
+         <div class="strategy-row estimated-row">
+           <span>ESTIMADO</span><strong id="energy-estimated-consumption">--</strong><strong id="energy-estimated-autonomy">--</strong><strong id="energy-estimated-required">--</strong><strong id="energy-estimated-at-end">--</strong>
+         </div>
+         <div class="strategy-row average-row">
+           <span>PROMEDIO</span><strong id="energy-average-consumption">--</strong><strong id="energy-average-autonomy">--</strong><strong id="energy-average-required">--</strong><strong id="energy-average-at-end">--</strong>
+         </div>
+         <div class="strategy-row qualify-row">
+           <span>QUALY</span><strong id="energy-qualifying-consumption">--</strong><strong id="energy-qualifying-autonomy">--</strong><strong id="energy-qualifying-required">--</strong><strong id="energy-qualifying-at-end">--</strong>
+         </div>
+         <div class="strategy-row last-row">
+           <span>ÚLTIMA</span><strong id="energy-last-consumption">--</strong><strong id="energy-last-autonomy">--</strong><strong id="energy-last-required">--</strong><strong id="energy-last-at-end">--</strong>
+         </div>
+       </section>
+
+       <section class="fuel-compact-card" aria-label="Estrategia de gasolina">
+         <header><b class="icon-value"><img src="/src/assets/lmu-icons/fuel.svg" width="12" height="12" alt="" aria-hidden="true" /></header>
+         <div class="fuel-compact-values">
+           <div><span>ACTUAL</span><strong id="fuel-current">--</strong></div>
+           <div><span>CONSUMO</span><strong id="fuel-consumption">--</strong></div>
+           <div><span>AUTON.</span><strong id="fuel-autonomy">--</strong></div>
+           <div><span>CARGAR</span><strong id="fuel-required">--</strong></div>
+           <div><span>PIT</span><strong id="fuel-stops">--</strong></div>
+         </div>
+       </section>
+    </main>
+    <script type="module" src="/src/fuel.ts"></script>
+  </body>
+</html>

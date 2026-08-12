@@ -1,0 +1,59 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "LMU Overlay",
+  "version": "0.2.0",
+  "identifier": "dev.lmuoverlay.desktop",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "security": {
+      "csp": "default-src 'self'; connect-src ipc: http://ipc.localhost ws://localhost:6398; img-src 'self' asset: data:; style-src 'self'"
+    },
+    "windows": [
+      {
+        "label": "control",
+        "title": "LMU Overlay · Panel de control",
+        "width": 590,
+        "height": 910,
+        "minWidth": 560,
+        "minHeight": 880,
+        "transparent": false,
+        "decorations": true,
+        "shadow": true,
+        "alwaysOnTop": false,
+        "skipTaskbar": false,
+        "resizable": false,
+        "center": true
+      }
+    ]
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis"],
+    "resources": {
+      "../dist/": "web/"
+    },
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.ico"
+    ],
+    "shortDescription": "Overlays de telemetría para Le Mans Ultimate",
+    "longDescription": "Dashboard, standings, estrategia de combustible y energía, banderas y avisos para Le Mans Ultimate.",
+    "windows": {
+      "webviewInstallMode": {
+        "type": "embedBootstrapper"
+      },
+      "nsis": {
+        "installMode": "currentUser",
+        "languages": ["Spanish", "English"],
+        "displayLanguageSelector": true
+      }
+    }
+  }
+}

@@ -1,0 +1,87 @@
+.flags-body {
+  padding: 8px;
+  font-family: "Roboto Condensed", sans-serif;
+  text-rendering: optimizeLegibility;
+}
+
+.flag-card {
+  position: relative;
+  display: grid;
+  width: 344px;
+  height: 104px;
+  overflow: hidden;
+  place-items: center;
+  border: 1px solid rgb(255 255 255 / 30%);
+  border-radius: 8px;
+  cursor: move;
+  opacity: 1;
+  box-shadow: 0 9px 28px rgb(0 0 0 / 45%), inset 0 0 24px rgb(0 0 0 / 12%);
+  transition: opacity 100ms linear;
+}
+
+.flag-card[data-state="green"] {
+  opacity: 0;
+}
+
+.flag-card[data-state="yellow"] {
+  color: #111307;
+  background: rgb(245 213 0 / var(--overlay-background-opacity));
+  border-color: #fff071;
+}
+
+.flag-card[data-state="blue"] {
+  color: #fff;
+  background: rgb(18 100 232 / var(--overlay-background-opacity));
+  border-color: #70a7ff;
+}
+
+.flag-card[data-state="checkered"] {
+  color: #fff;
+  border-color: rgb(255 255 255 / 75%);
+  background:
+    conic-gradient(
+      rgb(244 244 244 / var(--overlay-background-opacity)) 25%,
+      rgb(17 17 17 / var(--overlay-background-opacity)) 0 50%,
+      rgb(244 244 244 / var(--overlay-background-opacity)) 0 75%,
+      rgb(17 17 17 / var(--overlay-background-opacity)) 0
+    ) 0 0 / 32px 32px;
+}
+
+.flag-card[data-state="checkered"] .flag-content,
+.flag-card[data-state="checkered"] .flag-fold {
+  display: none;
+}
+
+.flag-fold {
+  position: absolute;
+  inset: -30% -8%;
+  pointer-events: none;
+  background:
+    linear-gradient(112deg, transparent 15%, rgb(255 255 255 / 14%) 34%, transparent 52%),
+    linear-gradient(72deg, transparent 48%, rgb(0 0 0 / 10%) 64%, transparent 82%);
+  transform: skewX(-8deg);
+}
+
+.flag-content {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  line-height: 1;
+  text-align: center;
+  text-shadow: 0 1px 0 rgb(255 255 255 / 18%);
+}
+
+.flag-content strong {
+  font-size: 36px;
+  font-weight: 900;
+  letter-spacing: -0.035em;
+  font-variant-numeric: tabular-nums;
+}
+
+.flag-content span {
+  margin-top: 9px;
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: 0.035em;
+}
