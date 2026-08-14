@@ -64,12 +64,14 @@ math belongs in Rust. `fuel.ts` only formats serialized plans.
 
 - Present current resource, autonomy, pit window/load and the clean-average,
   qualifying and last-lap scenarios as a compact endurance strategy tool.
-- Use a `356 x 188` design surface. Migrate the former default `560 x 230` and
-  intermediate `470 x 188`, `390 x 188` and `356 x 202` placements to the
-  compact size so deliberately resized user layouts keep their chosen scale.
+- Use a `252 x 188` design surface. Migrate the former default `560 x 230` and
+  intermediate `470 x 188`, `390 x 188`, `356 x 202` and `356 x 188` placements
+  to the compact size so deliberately resized user layouts keep their chosen
+  scale.
 - Let the scenario table define the panel width: its label column and three
   numeric columns fill the complete usable surface without empty side gutters.
-- Use a tight 2 px horizontal gap between plan and scenario columns.
+- Use fixed content-sized tracks and a tight 2 px horizontal gap between plan
+  and scenario columns; do not distribute them across surplus panel width.
 - Keep the summary focused on current resource, lap autonomy, pit window and PIT
   status. Do not show the redundant projected remaining/total race laps or
   autonomy minutes.
