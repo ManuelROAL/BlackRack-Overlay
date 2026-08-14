@@ -25,6 +25,8 @@ duplicate selection or timing semantics.
 - Order classes by performance: Hypercar/GTP, LMP2, LMP3, LMGT3, then other.
 - Preserve LMU-compatible category colors: Hypercar red, LMP2 blue, LMP3 purple
   and LMGT3 green.
+- Normalize LMU's abbreviated `Hyper` class label to the `HYPERCAR` heading and
+  Hypercar red tone, consistently with longer Hypercar names and GTP aliases.
 - Columns are position, assigned number, manufacturer, badge, driver, DR/SR,
   GAP, INT, best, last, AVG 5, NRG, damage, track-limit steps, pit, tyre and
   signals. Position and driver are mandatory; signals stays fixed at the far

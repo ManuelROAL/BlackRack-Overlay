@@ -105,7 +105,7 @@ pub(crate) fn set_overlay_view_settings(mut settings: OverlayViewSettings) {
 
 fn class_priority(vehicle_class: &str) -> u8 {
     let normalized = vehicle_class.trim().to_ascii_uppercase();
-    if normalized.contains("HYPERCAR") || normalized.contains("GTP") {
+    if normalized.contains("HYPER") || normalized.contains("GTP") {
         0
     } else if normalized.contains("LMP2") {
         1
@@ -120,7 +120,7 @@ fn class_priority(vehicle_class: &str) -> u8 {
 
 fn display_class(vehicle_class: &str) -> String {
     let normalized = vehicle_class.trim().to_ascii_uppercase();
-    if normalized.contains("HYPERCAR") || normalized.contains("GTP") {
+    if normalized.contains("HYPER") || normalized.contains("GTP") {
         "HYPERCAR".into()
     } else if normalized.contains("LMP2") {
         "LMP2".into()
@@ -444,6 +444,18 @@ mod tests {
         );
         assert_eq!(own.groups.len(), 1);
         assert_eq!(own.groups[0].vehicle_class, "Hypercar");
+    }
+
+    #[test]
+    fn abbreviated_hyper_class_uses_hypercar_header() {
+        let model = prepare_standings(
+            &[entry(1, 1, "Hyper", true)],
+            StandingsModelSettings::default(),
+            10,
+        );
+
+        assert_eq!(model.groups[0].display_class, "HYPERCAR");
+        assert_eq!(model.groups[0].class_tone, "hypercar");
     }
 
     #[test]
