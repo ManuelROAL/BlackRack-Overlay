@@ -40,12 +40,12 @@ body[data-overlay-fit="true"].fuel-body .fuel-shell {
 
 .strategy-summary {
   display: grid;
-  flex: 0 0 39px;
-  grid-template-columns: 60px 50px 50px 76px minmax(80px, 1fr) 30px;
-  grid-template-rows: 29px 3px;
+  flex: 0 0 56px;
+  grid-template-columns: repeat(4, 1fr);
+  grid-template-rows: 29px 20px 3px;
   align-items: center;
   column-gap: 5px;
-  padding: 3px 5px 4px;
+  padding: 2px 5px;
 }
 
 .summary-stat {
@@ -96,14 +96,22 @@ body[data-overlay-fit="true"].fuel-body .fuel-shell {
 }
 
 .wide-stat {
-  text-align: center;
+  grid-column: 1 / 4;
+  text-align: left;
+}
+
+.strategy-summary .wide-stat > span {
+  display: inline;
+  margin: 0 5px 0 0;
 }
 
 .pit-status {
   display: grid;
+  grid-column: 4;
   align-self: center;
+  justify-self: end;
   width: 28px;
-  height: 20px;
+  height: 18px;
   place-items: center;
   border: 1px solid rgb(255 255 255 / 11%);
   border-radius: 4px;
@@ -245,7 +253,7 @@ body[data-overlay-fit="true"].fuel-body .fuel-shell {
   display: grid;
   flex: 1 1 auto;
   min-height: 0;
-  grid-template-rows: 14px repeat(4, 1fr);
+  grid-template-rows: 12px repeat(4, 1fr);
 }
 
 .fuel-shell[data-resource-mode="energy"] .energy-strategy-table {
@@ -310,10 +318,9 @@ body[data-overlay-fit="true"].fuel-body .fuel-shell {
 .strategy-columns,
 .strategy-row {
   display: grid;
-  grid-template-columns: 70px repeat(4, 62px);
+  grid-template-columns: 70px repeat(4, 1fr);
   align-items: center;
   column-gap: 5px;
-  justify-content: center;
   padding: 0 5px;
 }
 
