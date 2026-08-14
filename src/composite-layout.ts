@@ -76,15 +76,19 @@ const migrateCompactPanels = (placement: OverlayPlacement): OverlayPlacement => 
   }
   if (placement.overlay === "fuel"
     && placement.width === 560 && placement.height === 230) {
-    return { ...placement, width: 356, height: 202 };
+    return { ...placement, width: 356, height: 188 };
   }
   if (placement.overlay === "fuel"
     && placement.width === 470 && placement.height === 188) {
-    return { ...placement, width: 356, height: 202 };
+    return { ...placement, width: 356, height: 188 };
   }
   if (placement.overlay === "fuel"
     && placement.width === 390 && placement.height === 188) {
-    return { ...placement, width: 356, height: 202 };
+    return { ...placement, width: 356, height: 188 };
+  }
+  if (placement.overlay === "fuel"
+    && placement.width === 356 && placement.height === 202) {
+    return { ...placement, width: 356, height: 188 };
   }
   return placement;
 };

@@ -40,12 +40,12 @@ body[data-overlay-fit="true"].fuel-body .fuel-shell {
 
 .strategy-summary {
   display: grid;
-  flex: 0 0 56px;
-  grid-template-columns: repeat(4, 1fr);
-  grid-template-rows: 29px 20px 3px;
+  flex: 0 0 39px;
+  grid-template-columns: 44px 44px 48px 42px minmax(72px, 1fr) 28px;
+  grid-template-rows: 29px 3px;
   align-items: center;
-  column-gap: 5px;
-  padding: 2px 5px;
+  column-gap: 2px;
+  padding: 3px 5px 4px;
 }
 
 .summary-stat {
@@ -96,18 +96,16 @@ body[data-overlay-fit="true"].fuel-body .fuel-shell {
 }
 
 .wide-stat {
-  grid-column: 1 / 4;
-  text-align: left;
+  text-align: center;
 }
 
 .strategy-summary .wide-stat > span {
-  display: inline;
-  margin: 0 5px 0 0;
+  display: block;
+  margin: 0 0 3px;
 }
 
 .pit-status {
   display: grid;
-  grid-column: 4;
   align-self: center;
   justify-self: end;
   width: 28px;
