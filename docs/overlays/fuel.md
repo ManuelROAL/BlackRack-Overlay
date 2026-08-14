@@ -77,6 +77,7 @@ math belongs in Rust. `fuel.ts` only formats serialized plans.
 - Color the average scenario cyan as the prominent baseline, qualifying as an
   aggressive high-consumption reference and the last lap as the freshest live
   sample.
+- Keep the shared 2 px translucent lime accent along the shell's left edge.
 - Keep the summary focused on current resource, lap autonomy, pit window and PIT
   status. Do not show the redundant projected remaining/total race laps or
   autonomy minutes.

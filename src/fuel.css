@@ -3,6 +3,7 @@
 }
 
 .fuel-body .fuel-shell {
+  position: relative;
   display: flex;
   flex-direction: column;
   height: calc(100vh - 6px);
@@ -19,6 +20,17 @@
   font-weight: 850;
   line-height: 1;
   text-rendering: optimizeLegibility;
+}
+
+.fuel-body .fuel-shell::before {
+  position: absolute;
+  z-index: 2;
+  inset: 0 auto auto 0;
+  width: 2px;
+  height: 100%;
+  background: #d8ff3e;
+  content: "";
+  opacity: 0.82;
 }
 
 body[data-overlay-fit="true"].fuel-body .fuel-shell {
