@@ -8,6 +8,11 @@ and green; slower is positive and red. The bar grows right for gains and left fo
 losses, with its configured range clamped visually while the numeric value remains
 unclamped.
 
+The presentation uses a compact horizontal timing rail: the zero marker remains
+fixed in the centre, the coloured bar grows away from it and the signed delta is
+centred immediately below. Mode, mini-sector and reference-lap details remain as
+low-emphasis edge metadata so they do not compete with the live comparison.
+
 ## Files and ownership
 
 - `delta.html`, `src/delta.ts`, `src/delta.css`: presentation.
