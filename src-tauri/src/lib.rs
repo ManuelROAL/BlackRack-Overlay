@@ -4,9 +4,7 @@ mod startup_log;
 mod telemetry;
 
 use serde::{Deserialize, Serialize};
-#[cfg(windows)]
-use std::collections::HashMap;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -414,26 +412,136 @@ fn sorted_monitors(app: &AppHandle) -> Result<Vec<tauri::Monitor>, String> {
     Ok(monitors)
 }
 
+#[cfg(windows)]
+fn utf16_display_name(value: &[u16]) -> String {
+    let length = value
+        .iter()
+        .position(|character| *character == 0)
+        .unwrap_or(value.len());
+    String::from_utf16_lossy(&value[..length])
+}
+
+#[cfg(windows)]
+fn windows_monitor_friendly_names() -> HashMap<String, String> {
+    use std::mem::size_of;
+    use windows_sys::Win32::Devices::Display::{
+        DisplayConfigGetDeviceInfo, GetDisplayConfigBufferSizes, QueryDisplayConfig,
+        DISPLAYCONFIG_DEVICE_INFO_GET_SOURCE_NAME, DISPLAYCONFIG_DEVICE_INFO_GET_TARGET_NAME,
+        DISPLAYCONFIG_DEVICE_INFO_HEADER, DISPLAYCONFIG_MODE_INFO, DISPLAYCONFIG_PATH_INFO,
+        DISPLAYCONFIG_SOURCE_DEVICE_NAME, DISPLAYCONFIG_TARGET_DEVICE_NAME, QDC_ONLY_ACTIVE_PATHS,
+    };
+    use windows_sys::Win32::Foundation::{ERROR_INSUFFICIENT_BUFFER, ERROR_SUCCESS};
+
+    for _ in 0..3 {
+        let mut path_count = 0;
+        let mut mode_count = 0;
+        if unsafe {
+            GetDisplayConfigBufferSizes(QDC_ONLY_ACTIVE_PATHS, &mut path_count, &mut mode_count)
+        } != ERROR_SUCCESS
+        {
+            return HashMap::new();
+        }
+
+        let mut paths = vec![DISPLAYCONFIG_PATH_INFO::default(); path_count as usize];
+        let mut modes = vec![DISPLAYCONFIG_MODE_INFO::default(); mode_count as usize];
+        let result = unsafe {
+            QueryDisplayConfig(
+                QDC_ONLY_ACTIVE_PATHS,
+                &mut path_count,
+                paths.as_mut_ptr(),
+                &mut mode_count,
+                modes.as_mut_ptr(),
+                std::ptr::null_mut(),
+            )
+        };
+        if result == ERROR_INSUFFICIENT_BUFFER {
+            continue;
+        }
+        if result != ERROR_SUCCESS {
+            return HashMap::new();
+        }
+
+        paths.truncate(path_count as usize);
+        let mut names = HashMap::new();
+        for path in paths {
+            let mut source = DISPLAYCONFIG_SOURCE_DEVICE_NAME {
+                header: DISPLAYCONFIG_DEVICE_INFO_HEADER {
+                    r#type: DISPLAYCONFIG_DEVICE_INFO_GET_SOURCE_NAME,
+                    size: size_of::<DISPLAYCONFIG_SOURCE_DEVICE_NAME>() as u32,
+                    adapterId: path.sourceInfo.adapterId,
+                    id: path.sourceInfo.id,
+                },
+                ..Default::default()
+            };
+            let mut target = DISPLAYCONFIG_TARGET_DEVICE_NAME {
+                header: DISPLAYCONFIG_DEVICE_INFO_HEADER {
+                    r#type: DISPLAYCONFIG_DEVICE_INFO_GET_TARGET_NAME,
+                    size: size_of::<DISPLAYCONFIG_TARGET_DEVICE_NAME>() as u32,
+                    adapterId: path.targetInfo.adapterId,
+                    id: path.targetInfo.id,
+                },
+                ..Default::default()
+            };
+            if unsafe { DisplayConfigGetDeviceInfo(&mut source.header) } != 0
+                || unsafe { DisplayConfigGetDeviceInfo(&mut target.header) } != 0
+            {
+                continue;
+            }
+
+            let gdi_name = utf16_display_name(&source.viewGdiDeviceName);
+            let friendly_name = utf16_display_name(&target.monitorFriendlyDeviceName);
+            if !gdi_name.is_empty() && !friendly_name.is_empty() {
+                names.insert(gdi_name, friendly_name);
+            }
+        }
+        return names;
+    }
+
+    HashMap::new()
+}
+
+#[cfg(not(windows))]
+fn windows_monitor_friendly_names() -> HashMap<String, String> {
+    HashMap::new()
+}
+
 fn overlay_displays(app: &AppHandle) -> Result<Vec<OverlayDisplay>, String> {
     sorted_monitors(app).map(|monitors| {
+        let friendly_names = windows_monitor_friendly_names();
         monitors
             .into_iter()
             .enumerate()
-            .map(|(index, monitor)| OverlayDisplay {
-                index,
-                label: format!("{OVERLAY_HOST_PREFIX}{index}"),
-                name: monitor
+            .map(|(index, monitor)| {
+                let native_name = monitor
                     .name()
                     .cloned()
-                    .unwrap_or_else(|| format!("Monitor {}", index + 1)),
-                x: monitor.position().x,
-                y: monitor.position().y,
-                width: monitor.size().width,
-                height: monitor.size().height,
-                scale_factor: monitor.scale_factor(),
+                    .unwrap_or_else(|| format!("Monitor {}", index + 1));
+                OverlayDisplay {
+                    index,
+                    label: format!("{OVERLAY_HOST_PREFIX}{index}"),
+                    name: friendly_names
+                        .get(&native_name)
+                        .cloned()
+                        .unwrap_or(native_name),
+                    x: monitor.position().x,
+                    y: monitor.position().y,
+                    width: monitor.size().width,
+                    height: monitor.size().height,
+                    scale_factor: monitor.scale_factor(),
+                }
             })
             .collect()
     })
+}
+
+#[cfg(all(test, windows))]
+mod display_name_tests {
+    use super::utf16_display_name;
+
+    #[test]
+    fn reads_a_null_terminated_display_name() {
+        assert_eq!(utf16_display_name(&[65, 79, 67, 0, 88]), "AOC");
+    }
 }
 
 fn create_overlay_hosts(app: &AppHandle) -> Result<(), String> {

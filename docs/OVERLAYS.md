@@ -49,6 +49,10 @@ telemetry semantics and file ownership live under `docs/overlays/`; use
   reset and content options live in that overlay's single settings disclosure.
 - General and per-overlay modes for monitor assignment and transparency remain
   independent. General mode must preserve saved individual values.
+- Monitor selectors use the Windows-reported friendly model name and resolution;
+  they do not expose an app ordinal as though it were the unrelated number shown
+  by the Windows Settings Identify action. Fall back to the native display name
+  when Windows does not provide a friendly name.
 - Configuration reset affects only the selected panel's defaults. Position reset
   affects only its geometry on its assigned monitor. Neither reset changes
   visibility or another overlay; confirmation uses the styled in-panel dialog.
