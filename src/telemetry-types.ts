@@ -69,6 +69,18 @@ export interface TrackMapViewModel {
   pit_prediction_lap_distance: number | null;
 }
 
+export interface DeltaViewModel {
+  available: boolean;
+  seconds: number;
+  mode: import("./delta-settings").DeltaMode;
+  reference_seconds: number;
+  current_lap_valid: boolean;
+  frozen: boolean;
+  sector_index: number;
+  sector_count: number;
+  reference_generation: number;
+}
+
 export interface TelemetryFrame {
   source: string;
   connected: boolean;
@@ -86,6 +98,7 @@ export interface TelemetryFrame {
   session_split_number: number;
   session_split_count: number;
   track_name: string;
+  player_vehicle_name: string;
   rest_weather_available: boolean;
   ambient_temperature_c: number;
   track_temperature_c: number;
@@ -181,6 +194,7 @@ export interface TelemetryFrame {
   last_lap_seconds: number;
   best_lap_seconds: number;
   lap_delta_seconds: number;
+  delta_model: DeltaViewModel;
   flag_warning: FlagWarning;
   rejoin_warning: RejoinWarning;
   standings: StandingEntry[];

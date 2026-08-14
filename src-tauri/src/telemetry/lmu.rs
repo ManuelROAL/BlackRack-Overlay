@@ -2789,6 +2789,7 @@ impl TelemetrySource for LmuTelemetrySource {
             session_split_number: session_split.number,
             session_split_count: session_split.count,
             track_name,
+            player_vehicle_name: vehicle_name,
             rest_weather_available: snapshot.ambient_temperature_c.is_finite()
                 && snapshot.track_temperature_c.is_finite(),
             ambient_temperature_c: snapshot.ambient_temperature_c,
@@ -2934,6 +2935,7 @@ impl TelemetrySource for LmuTelemetrySource {
             last_lap_seconds: snapshot.last_lap_seconds.max(0.0),
             best_lap_seconds: snapshot.best_lap_seconds.max(0.0),
             lap_delta_seconds: snapshot.lap_delta_seconds,
+            delta_model: Default::default(),
             flag_warning,
             rejoin_warning,
             standings,

@@ -337,6 +337,41 @@
           </label>
         </article>
 
+        <article class="overlay-option" data-overlay-card="delta" data-overlay-category="car">
+          <div class="overlay-icon">Δ</div>
+          <div class="overlay-copy">
+            <strong>Delta</strong>
+            <span>Mejor vuelta, óptima, sesión, stint y última vuelta.</span>
+          </div>
+          <label class="switch">
+            <input type="checkbox" data-overlay="delta" aria-label="Mostrar Delta" />
+            <span></span>
+          </label>
+        </article>
+
+        <section class="standings-settings-section" data-settings-for="delta">
+          <header class="settings-section-heading">
+            <span>CONFIGURACIÓN DE DELTA</span>
+            <strong>Referencia y escala visual</strong>
+          </header>
+          <div class="standings-content-settings">
+            <label class="standings-name-format-setting">
+              <span>REFERENCIA</span>
+              <select id="delta-mode"></select>
+            </label>
+            <label class="standings-name-format-setting">
+              <span>RANGO DE LA BARRA</span>
+              <select id="delta-display-range">
+                <option value="0.5">±0,5 s</option>
+                <option value="1">±1 s</option>
+                <option value="2">±2 s</option>
+                <option value="5">±5 s</option>
+              </select>
+            </label>
+          </div>
+          <p class="settings-note">Las referencias globales y el historial se guardan localmente por coche y circuito.</p>
+        </section>
+
         <article class="overlay-option" data-overlay-card="trackmap" data-overlay-category="race">
           <div class="overlay-icon">M</div>
           <div class="overlay-copy">
@@ -378,6 +413,7 @@
             <div data-browser-overlay="flags"><code></code><button type="button">COPIAR</button></div>
             <div data-browser-overlay="rejoin"><code></code><button type="button">COPIAR</button></div>
             <div data-browser-overlay="dashboard"><code></code><button type="button">COPIAR</button></div>
+            <div data-browser-overlay="delta"><code></code><button type="button">COPIAR</button></div>
             <div data-browser-overlay="driving"><code></code><button type="button">COPIAR</button></div>
             <div data-browser-overlay="tires"><code></code><button type="button">COPIAR</button></div>
             <div data-browser-overlay="damage"><code></code><button type="button">COPIAR</button></div>

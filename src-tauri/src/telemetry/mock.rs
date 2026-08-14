@@ -107,6 +107,7 @@ impl TelemetrySource for MockTelemetrySource {
             session_split_number: 2,
             session_split_count: 12,
             track_name: "Circuit de la Sarthe".into(),
+            player_vehicle_name: "Mock Hypercar".into(),
             rest_weather_available: true,
             ambient_temperature_c: 19.4,
             track_temperature_c: 27.8,
@@ -234,9 +235,10 @@ impl TelemetrySource for MockTelemetrySource {
             track_map_model: Default::default(),
             consumption_profile_samples: 5,
             current_lap_seconds,
-            last_lap_seconds: 209.021,
+            last_lap_seconds: 215.0,
             best_lap_seconds: 208.412,
             lap_delta_seconds: (elapsed * 0.31).sin() * 0.72,
+            delta_model: Default::default(),
             flag_warning: if (elapsed as u64 / 8) % 2 == 0 {
                 FlagWarning {
                     kind: "yellow",

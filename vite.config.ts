@@ -26,6 +26,7 @@ export default defineConfig({
         control: "index.html",
         composite: "composite.html",
         dashboard: "dashboard.html",
+        delta: "delta.html",
         driving: "driving.html",
         tires: "tires.html",
         damage: "damage.html",
