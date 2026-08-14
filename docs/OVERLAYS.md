@@ -71,8 +71,15 @@ telemetry semantics and file ownership live under `docs/overlays/`; use
 ## Adding or changing an overlay
 
 1. Read this file and the overlay's document under `docs/overlays/`.
-2. Keep its entry HTML, renderer, stylesheet, composite registration, settings,
+2. For a new overlay, create `docs/overlays/<overlay-id>.md` in the same change
+   and register it in `docs/overlays/README.md` with its entry HTML, OBS route and
+   normal cadence. At minimum, document scope/files, sources and cadence,
+   behavior/invariants, and verification focus.
+3. Treat that file as the overlay's living source of truth. Record there every
+   rule or decision that arises in its dedicated task/chat; keep central documents
+   limited to genuinely shared contracts.
+4. Keep its entry HTML, renderer, stylesheet, composite registration, settings,
    serialized fields and OBS route synchronized as applicable.
-3. Update the overlay document when behavior, sources, cadence or architecture
+5. Update the overlay document when behavior, sources, cadence or architecture
    changes. Do not duplicate those details in `AGENTS.md`.
-4. Run the verification listed in `AGENTS.md` and any overlay-specific checks.
+6. Run the verification listed in `AGENTS.md` and any overlay-specific checks.

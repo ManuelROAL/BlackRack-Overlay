@@ -28,6 +28,13 @@ stale. Update the owning overlay document whenever its behavior changes. Update 
 central document only for a genuinely shared contract; do not copy an overlay rule
 back into this file.
 
+When creating a new overlay, create `docs/overlays/<overlay-id>.md` in the same
+change and add it to `docs/overlays/README.md`. That file becomes the authoritative
+record for the overlay's files, sources, cadence, behavior, invariants and focused
+verification. Keep adding the rules and decisions that arise in the overlay's
+dedicated task/chat to that file instead of growing `AGENTS.md` or a central
+document.
+
 ## Common engineering rules
 
 - Preserve unrelated user changes; the working tree may be dirty.
