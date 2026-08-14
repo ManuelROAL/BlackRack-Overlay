@@ -31,8 +31,10 @@ duplicate selection or timing semantics.
   GAP, INT, best, last, AVG 5, NRG, damage, track-limit steps, pit, tyre and
   signals. Position and driver are mandatory; signals stays fixed at the far
   right. Other columns are independently visible and reorderable.
-- Use the session-assigned number and shorten the name to first name plus one
-  surname. Prefer bundled manufacturer, nationality, badge and tyre assets.
+- Use the session-assigned number. Driver-name presentation is independently
+  configurable as full name, initial plus surname, name plus surname initial,
+  surname only, name only or surname plus name initial. Prefer bundled
+  manufacturer, nationality, badge and tyre assets.
 - A uniform tyre set uses the bundled compound SVG; mixed sets use four compact
   colored circles.
 

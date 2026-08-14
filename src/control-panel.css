@@ -658,7 +658,7 @@ select {
 }
 
 .relative-content-settings {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .relative-content-settings .standings-row-setting input {
@@ -731,6 +731,31 @@ select {
 .standings-row-setting input:focus {
   border-color: rgb(216 255 62 / 55%);
   outline: none;
+}
+
+.standings-name-format-setting {
+  display: grid;
+  gap: 5px;
+  color: #687482;
+  font-size: 7px;
+  font-weight: 900;
+  letter-spacing: 0.07em;
+}
+
+.standings-name-format-setting select {
+  width: 132px;
+  padding: 6px 7px;
+  border: 1px solid rgb(255 255 255 / 12%);
+  border-radius: 5px;
+  color: #eef2f5;
+  background: #111720;
+  font-size: 10px;
+  font-weight: 900;
+  outline: none;
+}
+
+.standings-name-format-setting select:focus {
+  border-color: rgb(216 255 62 / 55%);
 }
 
 .standings-columns {

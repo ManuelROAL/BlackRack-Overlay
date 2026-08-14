@@ -4,6 +4,11 @@ import { open, save } from "@tauri-apps/plugin-dialog";
 import "./control-panel.css";
 import type { InteractionMode, TelemetryFrame } from "./telemetry-types";
 import {
+  DRIVER_NAME_FORMATS,
+  isDriverNameFormat,
+  type DriverNameFormat
+} from "./driver-name-format";
+import {
   defaultStandingsSettings,
   readStandingsSettings,
   STANDINGS_COLUMNS,
@@ -749,7 +754,8 @@ const parseOverlayConfiguration = (contents: string): OverlayConfigurationExport
     || Number(standings.ownClassRows) > 30
     || !Number.isInteger(standings.otherClassRows) || Number(standings.otherClassRows) < 1
     || Number(standings.otherClassRows) > 15
-    || typeof standings.showOtherClasses !== "boolean") {
+    || typeof standings.showOtherClasses !== "boolean"
+    || (standings.driverNameFormat !== undefined && !isDriverNameFormat(standings.driverNameFormat))) {
     throw new Error("La configuración de Standings está incompleta o dañada.");
   }
   const defaultRelative = defaultRelativeSettings();
@@ -760,7 +766,8 @@ const parseOverlayConfiguration = (contents: string): OverlayConfigurationExport
     || !Number.isInteger(relative.aheadRows) || Number(relative.aheadRows) < 1
     || Number(relative.aheadRows) > 10
     || !Number.isInteger(relative.behindRows) || Number(relative.behindRows) < 1
-    || Number(relative.behindRows) > 10) {
+    || Number(relative.behindRows) > 10
+    || (relative.driverNameFormat !== undefined && !isDriverNameFormat(relative.driverNameFormat))) {
     throw new Error("La configuración de Relative está incompleta o dañada.");
   }
   const defaultDriving = defaultDrivingSettings();
@@ -1151,6 +1158,27 @@ const bindRowCount = (
 bindRowCount(ownClassRows, "ownClassRows", 3, 30);
 bindRowCount(otherClassRows, "otherClassRows", 1, 15);
 
+const bindDriverNameFormat = (
+  id: string,
+  current: () => DriverNameFormat,
+  update: (format: DriverNameFormat) => void
+): void => {
+  const select = document.getElementById(id) as HTMLSelectElement | null;
+  if (!select) return;
+  for (const format of DRIVER_NAME_FORMATS) {
+    select.add(new Option(format.label, format.id));
+  }
+  select.value = current();
+  select.addEventListener("change", () => {
+    if (isDriverNameFormat(select.value)) update(select.value);
+  });
+};
+
+bindDriverNameFormat("standings-name-format", () => standingsSettings.driverNameFormat, (driverNameFormat) => {
+  standingsSettings = { ...standingsSettings, driverNameFormat };
+  persistStandingsSettings();
+});
+
 const appendRelativeOption = (
   container: HTMLElement | null,
   id: keyof RelativeSettings["options"],
@@ -1204,6 +1232,10 @@ const bindRelativeRowCount = (
 
 bindRelativeRowCount("relative-ahead-rows", "aheadRows");
 bindRelativeRowCount("relative-behind-rows", "behindRows");
+bindDriverNameFormat("relative-name-format", () => relativeSettings.driverNameFormat, (driverNameFormat) => {
+  relativeSettings = { ...relativeSettings, driverNameFormat };
+  persistRelativeSettings();
+});
 
 const appendDrivingPedalToggle = (
   container: HTMLElement | null,

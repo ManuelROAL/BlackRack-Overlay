@@ -1,3 +1,9 @@
+import {
+  DEFAULT_DRIVER_NAME_FORMAT,
+  isDriverNameFormat,
+  type DriverNameFormat
+} from "./driver-name-format";
+
 export type RelativeColumnId =
   | "position"
   | "number"
@@ -60,6 +66,7 @@ export interface RelativeSettings {
   columnOrder: RelativeColumnId[];
   aheadRows: number;
   behindRows: number;
+  driverNameFormat: DriverNameFormat;
 }
 
 export const RELATIVE_SETTINGS_KEY = "lmu-overlay.relative.v3";
@@ -155,7 +162,8 @@ export const defaultRelativeSettings = (): RelativeSettings => ({
   options: Object.fromEntries(RELATIVE_OPTIONS.map(({ id }) => [id, true])) as Record<RelativeOptionId, boolean>,
   columnOrder: RELATIVE_COLUMNS.map(({ id }) => id),
   aheadRows: 4,
-  behindRows: 4
+  behindRows: 4,
+  driverNameFormat: DEFAULT_DRIVER_NAME_FORMAT
 });
 
 const integerInRange = (value: unknown, fallback: number): number =>
@@ -169,6 +177,7 @@ export const readRelativeSettings = (): RelativeSettings => {
       columnOrder?: unknown[];
       aheadRows?: number;
       behindRows?: number;
+      driverNameFormat?: unknown;
     };
     for (const option of RELATIVE_OPTIONS) {
       if (typeof stored.options?.[option.id] === "boolean") {
@@ -191,6 +200,9 @@ export const readRelativeSettings = (): RelativeSettings => {
     }
     settings.aheadRows = integerInRange(stored.aheadRows, settings.aheadRows);
     settings.behindRows = integerInRange(stored.behindRows, settings.behindRows);
+    if (isDriverNameFormat(stored.driverNameFormat)) {
+      settings.driverNameFormat = stored.driverNameFormat;
+    }
   } catch {
     localStorage.removeItem(RELATIVE_SETTINGS_KEY);
   }

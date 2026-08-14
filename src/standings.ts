@@ -22,6 +22,7 @@ import {
   trackTemperatureIconUrl
 } from "./lmu-icons";
 import { applyTrackLimitTone, formatTrackLimitPoints } from "./track-limit-tone";
+import { formatDriverName } from "./driver-name-format";
 
 let settings = readStandingsSettings();
 const standingsBaseWidth = (): number => Math.max(
@@ -136,13 +137,6 @@ const columnLabel = (column: { id: StandingsColumnId; header: string }): HTMLEle
 
 const decimal = (value: number, digits = 2): string =>
   value.toFixed(digits).replace(".", ",");
-
-const shortDriverName = (value: string): string => {
-  const parts = value.trim().split(/\s+/).filter(Boolean);
-  if (parts.length <= 2) return parts.join(" ");
-  const surname = parts.slice(1).find((part) => part.replace(/\W/g, "").length > 1);
-  return surname ? `${parts[0]} ${surname}` : parts.slice(0, 2).join(" ");
-};
 
 const formatLapTime = (seconds: number): string => {
   if (!Number.isFinite(seconds) || seconds <= 0) return "--";
@@ -393,7 +387,7 @@ const cellSignature = (entry: StandingEntry, column: StandingsColumnId, trackLim
     case "position": return `${entry.position}|${entry.position_change}`;
     case "number": return liveCarNumbers.get(entry.vehicle_id) || entry.car_number || "--";
     case "badge": return entry.driver_badge;
-    case "driver": return `${entry.driver_name}|${entry.nationality}`;
+    case "driver": return `${entry.driver_name}|${entry.nationality}|${settings.driverNameFormat}`;
     case "manufacturer": return `${entry.team_name}|${entry.vehicle_name}`;
     case "ranks": return `${entry.driver_rank}|${Math.round(entry.driver_rank_progress)}|${Math.round(entry.estimated_driver_rank_gain)}|${entry.estimated_driver_rank_gain_available}|${entry.safety_rank}`;
     case "gap": return entry.position === 1 ? `V ${entry.total_laps}` : formatDifference(entry.laps_behind_leader, entry.time_behind_leader);
@@ -430,7 +424,7 @@ const createCell = (entry: StandingEntry, column: StandingsColumnId, trackLimit:
       const flag = countryFlag(entry.nationality);
       if (flag) cell.append(flag);
       const fullName = entry.driver_name || "—";
-      const name = node("b", "driver-name", shortDriverName(fullName));
+      const name = node("b", "driver-name", formatDriverName(fullName, settings.driverNameFormat));
       name.title = fullName;
       cell.append(name);
       return cell;

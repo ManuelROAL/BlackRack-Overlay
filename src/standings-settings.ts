@@ -1,3 +1,9 @@
+import {
+  DEFAULT_DRIVER_NAME_FORMAT,
+  isDriverNameFormat,
+  type DriverNameFormat
+} from "./driver-name-format";
+
 export type StandingsColumnId =
   | "position"
   | "number"
@@ -34,6 +40,7 @@ export interface StandingsSettings {
   ownClassRows: number;
   otherClassRows: number;
   showOtherClasses: boolean;
+  driverNameFormat: DriverNameFormat;
 }
 
 export type StandingsHeaderOptionId =
@@ -101,7 +108,8 @@ export const defaultStandingsSettings = (): StandingsSettings => {
     >,
     ownClassRows: 10,
     otherClassRows: 3,
-    showOtherClasses: true
+    showOtherClasses: true,
+    driverNameFormat: DEFAULT_DRIVER_NAME_FORMAT
   };
 };
 
@@ -119,6 +127,7 @@ export const readStandingsSettings = (): StandingsSettings => {
       ownClassRows?: number;
       otherClassRows?: number;
       showOtherClasses?: boolean;
+      driverNameFormat?: unknown;
     };
     for (const column of STANDINGS_COLUMNS) {
       if (column.configurable && typeof stored.columns?.[column.id] === "boolean") {
@@ -149,6 +158,9 @@ export const readStandingsSettings = (): StandingsSettings => {
     settings.otherClassRows = integerInRange(stored.otherClassRows, settings.otherClassRows, 1, 15);
     if (typeof stored.showOtherClasses === "boolean") {
       settings.showOtherClasses = stored.showOtherClasses;
+    }
+    if (isDriverNameFormat(stored.driverNameFormat)) {
+      settings.driverNameFormat = stored.driverNameFormat;
     }
   } catch {
     localStorage.removeItem(STANDINGS_SETTINGS_KEY);
