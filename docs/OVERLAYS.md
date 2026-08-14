@@ -45,8 +45,6 @@ telemetry semantics and file ownership live under `docs/overlays/`; use
   reset and content options live in that overlay's single settings disclosure.
 - General and per-overlay modes for monitor assignment and transparency remain
   independent. General mode must preserve saved individual values.
-- Monitor selectors show the Windows display number from `\\.\DISPLAYn`; the
-  positional host index remains internal so existing assignments stay valid.
 - Configuration reset affects only the selected panel's defaults. Position reset
   affects only its geometry on its assigned monitor. Neither reset changes
   visibility or another overlay; confirmation uses the styled in-panel dialog.

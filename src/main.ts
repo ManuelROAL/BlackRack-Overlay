@@ -662,7 +662,7 @@ const bindMonitorSelectors = async (): Promise<void> => {
     for (const display of displays) {
       const option = document.createElement("option");
       option.value = String(display.index);
-      option.textContent = `${display.systemNumber} · ${display.name}`;
+      option.textContent = `${display.index + 1} · ${display.name}`;
       select.append(option);
     }
   };
