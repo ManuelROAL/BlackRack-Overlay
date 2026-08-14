@@ -74,8 +74,9 @@ math belongs in Rust. `fuel.ts` only formats serialized plans.
   and scenario columns; do not distribute them across surplus panel width.
 - Center each scenario value horizontally under its numeric column heading while
   keeping the scenario names left-aligned.
-- Color the average scenario as a neutral baseline, qualifying as an aggressive
-  high-consumption reference and the last lap as the freshest live sample.
+- Color the average scenario cyan as the prominent baseline, qualifying as an
+  aggressive high-consumption reference and the last lap as the freshest live
+  sample.
 - Keep the summary focused on current resource, lap autonomy, pit window and PIT
   status. Do not show the redundant projected remaining/total race laps or
   autonomy minutes.
