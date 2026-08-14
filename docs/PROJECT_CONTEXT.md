@@ -50,7 +50,14 @@ remove enrichment such as DR/SR or split data, but must not stop the overlays.
   `src-tauri/tauri.conf.json`; keep all three synchronized.
 - Windows distribution uses a current-user NSIS installer and embeds the WebView2
   bootstrapper.
-- Web assets, icons, logos, flags, badges and Roboto Condensed are bundled.
+- Web assets, icons, logos, flags, badges and Roboto Condensed are embedded in
+  the executable through Tauri's `frontendDist`; the installer does not deploy a
+  separate `web/` directory.
+- Production JavaScript is minified with Terser using moderate top-level name
+  mangling, no source maps and no comments. DevTools are disabled in the control
+  panel and every dynamically created overlay host.
+- Rust release builds use fat LTO, one code-generation unit and strip symbols
+  from the final binaries. Debug and development profiles remain unchanged.
 - Users do not need to copy a project DLL into LMU. The application expects LMU's
   own `Plugins/LMU_SharedMemoryMapPlugin64.dll` and reports whether it was found.
 - Release artifacts and checksums live under `release/<version>/`.
@@ -84,6 +91,7 @@ src-tauri/src/lib.rs           Tauri windows, commands, shortcuts and lifecycle
 src-tauri/src/browser_source.rs Local HTTP/SSE source for OBS
 src-tauri/src/telemetry/       Telemetry, REST, ranks and calculations
 src-tauri/src/telemetry/lmu_bridge.cpp Official shared-memory adapter
+docs/overlays/                 Per-overlay behavior, telemetry and ownership
 postman/                       Local LMU and RaceOS request collections
 tools/performance/             LMUOverlay/TinyPedal comparison tooling
 release/                       Generated release artifacts

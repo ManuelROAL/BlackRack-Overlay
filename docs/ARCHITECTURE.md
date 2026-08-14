@@ -25,7 +25,6 @@ lmu_bridge.cpp -> LmuSnapshot -> LmuTelemetrySource <- async/cached enrichments
 - `src-tauri/src/lib.rs`
   - Creates one borderless transparent overlay host for each detected monitor.
   - Migrates former window-state geometry into the composite layout seed.
-  - Tracks desired panel visibility separately from automatic host hiding.
   - Forces both the native window and WebView backgrounds to transparent RGBA;
     this is explicit because release WebView2 builds must not fall back to an
     opaque black surface.
@@ -35,9 +34,14 @@ lmu_bridge.cpp -> LmuSnapshot -> LmuTelemetrySource <- async/cached enrichments
     already occupied.
   - Exposes Tauri commands for overlays, logging, shortcuts, dependencies and the
     browser source.
+  - Emits telemetry to the monitor hosts as filtered `telemetry://batch` events.
+    Each batch serializes one frame once and carries the overlay IDs that consume
+    that payload variant.
 - `src-tauri/src/telemetry/mod.rs`
   - Defines `TelemetryFrame`, `StandingEntry`, warnings and `TelemetrySource`.
-  - Owns the 50 Hz scheduler and per-overlay emission rates.
+  - Owns the 50 Hz scheduler, per-overlay emission rates and payload grouping.
+    Standings/Relative share one batch when due, Track Map uses its stripped batch,
+    and the remaining active overlays share the base-frame batch.
   - Owns JSONL analysis logging and top-level performance samples.
 - `src-tauri/src/telemetry/lmu_bridge.cpp`
   - Opens the official `LMU_Data` mapping read-only.
@@ -47,29 +51,27 @@ lmu_bridge.cpp -> LmuSnapshot -> LmuTelemetrySource <- async/cached enrichments
   - Converts the snapshot to stable application semantics.
   - Maintains session, vehicle identity, lap, pit, standings and warning state.
   - Calculates resource usage, total-lap estimates and DR gain estimates.
-- `consumption_profile.rs`
-  - Learns persistent clean-lap and pit-in/pit-out consumption profiles by car
-    and circuit.
 - `lmu_rest.rs`
   - Polls local REST on background threads and exposes only fresh cached values.
 - `driver_ranks.rs`, `event_split.rs`, `racecontrol.rs`
   - Authenticate and enrich online sessions without blocking the hot loop.
 - `browser_source.rs`
   - Optional localhost-only HTTP/SSE server at `127.0.0.1:47636`.
+  - Serves OBS pages through Tauri's embedded `frontendDist` asset resolver; it
+    does not read an installed `web/` directory.
   - Starts only when enabled and serializes frames only with connected clients.
 
 ## Frontend ownership
 
 - `src/main.ts`: control panel and persisted settings.
 - `src/composite.ts`: per-monitor host, iframe lifecycle, drag/resize chrome and
-  routing between Tauri events and embedded overlay documents.
+  routing between Tauri events and embedded overlay documents. Each host listens
+  to the single native telemetry batch and forwards frames only to locally mounted
+  overlay documents named in that batch. Before the same-origin `postMessage`, it
+  projects the shared native frame onto a reused overlay-specific object containing
+  only the fields consumed by that renderer, reducing structured-clone work.
 - `src/composite-layout.ts`: persisted position, size and monitor assignment.
 - `src/telemetry-types.ts`: TypeScript mirror of serialized Rust types.
-- `src/standings.ts`: grouping, row selection, cached rendering and formatting.
-- `src/fuel.ts` and `src/fuel-strategy.ts`: presentation and pure strategy math.
-- `src/dashboard.ts`, `src/flags.ts`, `src/rejoin.ts`: overlay renderers.
-- `src/trackmap.ts`: learned circuit geometry, lightweight vehicle markers and
-  per-track browser storage.
 - `src/runtime-events.ts`: Tauri, composite-frame messaging or browser-source SSE
   abstraction.
 - `src/overlay-fit.ts`: scales the complete design when a window is resized.
@@ -79,6 +81,15 @@ lmu_bridge.cpp -> LmuSnapshot -> LmuTelemetrySource <- async/cached enrichments
 
 Every overlay has a separate CSS file. `src/styles.css` contains only genuinely
 shared overlay primitives; the control panel uses `src/control-panel.css`.
+Overlay-specific frontend and backend ownership is indexed in
+`docs/overlays/README.md` and documented in each overlay file.
+
+## Release compilation
+
+The Cargo release profile enables fat link-time optimization with one codegen
+unit and strips symbols from release binaries. This applies to production/Tauri
+release builds only; development builds keep their normal fast incremental
+profile and diagnostics.
 
 ## Scheduling and freshness
 
@@ -88,7 +99,7 @@ shared overlay primitives; the control panel uses `src/control-panel.css`.
   panel or a connected browser-source client.
 - Relative: 50 ms (20 Hz) while its panel is active. Cycles coinciding
   with Standings reuse the same constructed roster.
-- Track Map: 50 ms (20 Hz) with a lightweight coordinate-only roster; it does
+- Track Map: 33 ms (approximately 30 Hz) with a lightweight coordinate-only roster; it does
   not request the enriched Standings construction.
 - Detailed damage and pit-stop estimate: 50 ms (20 Hz).
 - Active Rejoin warning: 50 ms; inactive flag/rejoin warning: 250 ms.
@@ -123,3 +134,18 @@ WebView's `localStorage` automatically.
 `cfg(lmu_sdk)` and compiles the C++ bridge when found. Otherwise Rust selects the
 mock source. Do not assume that a successful build necessarily includes live LMU
 telemetry; inspect the Cargo warning.
+
+Tauri embeds `../dist` once through `build.frontendDist`. Do not duplicate that
+directory in `bundle.resources`; both the app protocol and the optional OBS
+server resolve the same executable-embedded assets.
+
+Vite production builds use Terser with two compression passes and top-level name
+mangling, but do not mangle object properties because telemetry and persisted
+settings depend on stable field names. Source maps and emitted comments remain
+disabled. Tauri DevTools are explicitly disabled for configured and dynamic
+WebViews, and the capability denies the internal DevTools toggle command.
+
+On MSVC release builds, `build.rs` wraps the Tauri 2.6.x static-VCRuntime COFF
+placeholder in a valid `.lib` archive. This preserves static CRT linking with
+MSVC 14.44, whose linker rejects the upstream object when it only has a `.lib`
+extension.
