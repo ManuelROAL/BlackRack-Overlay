@@ -156,7 +156,7 @@ const formatDifference = (laps: number, seconds: number): string => {
 };
 
 const formatClock = (seconds: number): string => {
-  if (!Number.isFinite(seconds) || seconds <= 0) return "--:--";
+  if (!Number.isFinite(seconds) || seconds < 0) return "--:--";
   const total = Math.ceil(seconds);
   const hours = Math.floor(total / 3600);
   const minutes = Math.floor((total % 3600) / 60);

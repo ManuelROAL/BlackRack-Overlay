@@ -77,6 +77,9 @@ duplicate selection or timing semantics.
 - Keep complete header visibility separate from each header datum. The header may
   show session, split, remaining/total time, current/estimated laps, air/track
   temperature, brake bias, track-limit steps/threshold and local time.
+- Remaining time is the live countdown and displays `00:00` once exhausted. The
+  compact total duration (`h m`) is derived from shared-memory elapsed plus
+  remaining time; the composite host must forward both fields to Standings.
 - Category headers show current/initial counts and DNF/DQ difference outside
   practice. Recover initial counts from history when opened late.
 - The pit column normally shows completed stops. From pit entry through the end of
