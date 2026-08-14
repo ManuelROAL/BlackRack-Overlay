@@ -2660,6 +2660,7 @@ impl TelemetrySource for LmuTelemetrySource {
             session_max_laps: snapshot.max_laps,
             session_time_remaining: snapshot.session_time_remaining.max(0.0),
             session_elapsed_seconds: snapshot.session_elapsed_seconds.max(0.0),
+            session_max_time_seconds: self.local_rest.session_max_time_seconds(),
             leader_total_laps: snapshot.leader_total_laps,
             session_split_number: session_split.number,
             session_split_count: session_split.count,

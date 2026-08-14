@@ -579,10 +579,9 @@ const sessionHeader = (frame: TelemetryFrame): HTMLElement => {
   }
   if (settings.header.remainingTime) {
     const clock = node("b", "standings-session-clock");
-    const totalSessionSeconds = frame.session_elapsed_seconds + frame.session_time_remaining;
     clock.append(
       icon(timingIconUrl, "standings-session-timing-icon"),
-      `${formatClock(frame.session_time_remaining)} / ${formatSessionDuration(totalSessionSeconds)}`
+      `${formatClock(frame.session_time_remaining)} / ${formatSessionDuration(frame.session_max_time_seconds)}`
     );
     sessionGroup.append(clock);
   }
@@ -699,7 +698,7 @@ const cachedSessionHeaderFor = (frame: TelemetryFrame): HTMLElement => {
     settings.header,
     frame.session_type,
     Math.ceil(frame.session_time_remaining),
-    Math.round((frame.session_elapsed_seconds + frame.session_time_remaining) / 60),
+    Math.round(frame.session_max_time_seconds / 60),
     frame.session_max_laps,
     frame.player_total_laps,
     frame.session_split_number,
@@ -879,6 +878,7 @@ if (import.meta.env.DEV && new URLSearchParams(window.location.search).has("prev
   render({
     session_type: 1,
     session_time_remaining: 3_220,
+    session_max_time_seconds: 8_400,
     session_max_laps: 0,
     leader_total_laps: 7,
     session_split_number: 2,

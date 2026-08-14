@@ -74,6 +74,12 @@ pub(super) struct RestPitStopEstimate {
     pub ve: f64,
 }
 
+#[derive(Clone, Copy, Debug, Default, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+struct RestSessionInfo {
+    max_time: f64,
+}
+
 #[derive(Clone, Copy, Debug, Default)]
 pub(super) struct RestVehicleDamage {
     pub aero: f64,
@@ -103,6 +109,7 @@ struct RestBodyWear {
 struct SupplementUpdate {
     pit_stop: Option<RestPitStopEstimate>,
     vehicle_damage: Option<RestVehicleDamage>,
+    session_info: Option<RestSessionInfo>,
 }
 
 #[derive(Default)]
@@ -121,6 +128,7 @@ pub(super) struct LocalRestResolver {
     standings_received_at: Option<Instant>,
     pit_stop: RestPitStopEstimate,
     vehicle_damage: RestVehicleDamage,
+    session_max_time_seconds: f64,
     supplement_received_at: Option<Instant>,
     vehicle_damage_received_at: Option<Instant>,
     enabled: Arc<AtomicBool>,
@@ -189,6 +197,7 @@ impl LocalRestResolver {
                         aero: response.wearables.body.aero,
                         suspension: response.wearables.suspension,
                     }),
+                    session_info: fetch_json(&client, "/rest/watch/sessionInfo").ok(),
                 };
                 if supplement_sender.send(update).is_err() {
                     break;
@@ -207,6 +216,7 @@ impl LocalRestResolver {
             standings_received_at: None,
             pit_stop: RestPitStopEstimate::default(),
             vehicle_damage: RestVehicleDamage::default(),
+            session_max_time_seconds: 0.0,
             supplement_received_at: None,
             vehicle_damage_received_at: None,
             enabled,
@@ -225,6 +235,7 @@ impl LocalRestResolver {
             standings_received_at: None,
             pit_stop: RestPitStopEstimate::default(),
             vehicle_damage: RestVehicleDamage::default(),
+            session_max_time_seconds: 0.0,
             supplement_received_at: None,
             vehicle_damage_received_at: None,
             enabled: Arc::new(AtomicBool::new(false)),
@@ -257,20 +268,26 @@ impl LocalRestResolver {
             self.standings_received_at = Some(Instant::now());
         }
 
-        if let Some(receiver) = self.supplement_receiver.as_ref() {
-            while let Ok(update) = receiver.try_recv() {
-                let mut received = false;
-                if let Some(pit_stop) = update.pit_stop {
-                    self.pit_stop = pit_stop;
-                    received = true;
-                }
-                if let Some(vehicle_damage) = update.vehicle_damage {
-                    self.vehicle_damage = vehicle_damage;
-                    self.vehicle_damage_received_at = Some(Instant::now());
-                }
-                if received {
-                    self.supplement_received_at = Some(Instant::now());
-                }
+        let supplement_updates = self
+            .supplement_receiver
+            .as_ref()
+            .map(|receiver| receiver.try_iter().collect::<Vec<_>>())
+            .unwrap_or_default();
+        for update in supplement_updates {
+            let mut received = false;
+            if let Some(pit_stop) = update.pit_stop {
+                self.pit_stop = pit_stop;
+                received = true;
+            }
+            if let Some(vehicle_damage) = update.vehicle_damage {
+                self.vehicle_damage = vehicle_damage;
+                self.vehicle_damage_received_at = Some(Instant::now());
+            }
+            if let Some(session_info) = update.session_info {
+                self.latch_session_max_time(session_info.max_time);
+            }
+            if received {
+                self.supplement_received_at = Some(Instant::now());
             }
         }
     }
@@ -322,6 +339,17 @@ impl LocalRestResolver {
     pub(super) fn reset_session_history(&mut self) {
         self.history_by_slot.clear();
         self.history_by_name.clear();
+        self.session_max_time_seconds = 0.0;
+    }
+
+    fn latch_session_max_time(&mut self, seconds: f64) {
+        if self.session_max_time_seconds <= 0.0
+            && seconds.is_finite()
+            && seconds > 0.0
+            && seconds < u32::MAX as f64
+        {
+            self.session_max_time_seconds = seconds;
+        }
     }
 
     pub(super) fn history(
@@ -400,6 +428,10 @@ impl LocalRestResolver {
     pub(super) fn vehicle_damage(&self) -> Option<RestVehicleDamage> {
         is_fresh(self.vehicle_damage_received_at, SUPPLEMENT_MAX_AGE).then_some(self.vehicle_damage)
     }
+
+    pub(super) fn session_max_time_seconds(&self) -> f64 {
+        self.session_max_time_seconds
+    }
 }
 
 #[cfg(not(test))]
@@ -462,8 +494,8 @@ fn normalized_class(value: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::{
-        normalized_name, LocalRestResolver, RestPitStopEstimate, RestRepairAndRefuel, RestStanding,
-        RestStandingHistory,
+        normalized_name, LocalRestResolver, RestPitStopEstimate, RestRepairAndRefuel,
+        RestSessionInfo, RestStanding, RestStandingHistory,
     };
     use std::collections::HashMap;
 
@@ -489,6 +521,24 @@ mod tests {
         let pit: RestPitStopEstimate =
             serde_json::from_str(r#"{"fuel":5.0,"tires":12.0,"total":17.0,"ve":3.0}"#).unwrap();
         assert_eq!(pit.total, 17.0);
+    }
+
+    #[test]
+    fn parses_official_session_max_time() {
+        let session: RestSessionInfo = serde_json::from_str(r#"{"maxTime":14400}"#).unwrap();
+        assert_eq!(session.max_time, 14_400.0);
+    }
+
+    #[test]
+    fn session_max_time_is_latched_until_session_reset() {
+        let mut resolver = LocalRestResolver::empty();
+        resolver.latch_session_max_time(14_400.0);
+        resolver.latch_session_max_time(14_399.0);
+        assert_eq!(resolver.session_max_time_seconds(), 14_400.0);
+
+        resolver.reset_session_history();
+        resolver.latch_session_max_time(7_200.0);
+        assert_eq!(resolver.session_max_time_seconds(), 7_200.0);
     }
 
     #[test]

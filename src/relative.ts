@@ -720,6 +720,7 @@ if (import.meta.env.DEV && new URLSearchParams(window.location.search).has("prev
     session_type: 1,
     session_time_remaining: 3_220,
     session_elapsed_seconds: 5_179,
+    session_max_time_seconds: 8_400,
     session_max_laps: 0,
     leader_total_laps: 7,
     session_split_number: 2,

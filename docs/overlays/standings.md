@@ -82,8 +82,9 @@ duplicate selection or timing semantics.
   show session, split, remaining/total time, current/estimated laps, air/track
   temperature, brake bias, track-limit steps/threshold and local time.
 - Remaining time is the live countdown and displays `00:00` once exhausted. The
-  compact total duration (`h m`) is derived from shared-memory elapsed plus
-  remaining time; the composite host must forward both fields to Standings.
+  compact total duration (`h m`) uses the official, fixed `maxTime` from local
+  `/rest/watch/sessionInfo`; it is latched once per session and never reconstructed
+  from elapsed plus remaining clocks.
 - Category headers show current/initial counts and DNF/DQ difference outside
   practice. Recover initial counts from history when opened late.
 - The pit column normally shows completed stops. From pit entry through the end of
