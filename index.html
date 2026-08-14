@@ -372,6 +372,36 @@
           <p class="settings-note">Las referencias globales y el historial se guardan localmente por coche y circuito.</p>
         </section>
 
+        <article class="overlay-option" data-overlay-card="timing" data-overlay-category="car">
+          <div class="overlay-icon">T</div>
+          <div class="overlay-copy">
+            <strong>Timing compacto</strong>
+            <span>Delta, tiempos, tres sectores e historial en un solo panel.</span>
+          </div>
+          <label class="switch">
+            <input type="checkbox" data-overlay="timing" aria-label="Mostrar Timing compacto" />
+            <span></span>
+          </label>
+        </article>
+
+        <section class="standings-settings-section" data-settings-for="timing">
+          <header class="settings-section-heading">
+            <span>CONFIGURACIÓN DE TIMING COMPACTO</span>
+            <strong>Historial reciente</strong>
+          </header>
+          <div class="standings-content-settings">
+            <label class="standings-name-format-setting">
+              <span>ÚLTIMAS VUELTAS</span>
+              <select id="timing-history-laps">
+                <option value="0">Oculto</option>
+                <option value="3">3 vueltas</option>
+                <option value="5">5 vueltas</option>
+              </select>
+            </label>
+          </div>
+          <p class="settings-note">Verde indica mejora de sesión; morado, el mejor sector absoluto guardado.</p>
+        </section>
+
         <article class="overlay-option" data-overlay-card="trackmap" data-overlay-category="race">
           <div class="overlay-icon">M</div>
           <div class="overlay-copy">
@@ -414,6 +444,7 @@
             <div data-browser-overlay="rejoin"><code></code><button type="button">COPIAR</button></div>
             <div data-browser-overlay="dashboard"><code></code><button type="button">COPIAR</button></div>
             <div data-browser-overlay="delta"><code></code><button type="button">COPIAR</button></div>
+            <div data-browser-overlay="timing"><code></code><button type="button">COPIAR</button></div>
             <div data-browser-overlay="driving"><code></code><button type="button">COPIAR</button></div>
             <div data-browser-overlay="tires"><code></code><button type="button">COPIAR</button></div>
             <div data-browser-overlay="damage"><code></code><button type="button">COPIAR</button></div>

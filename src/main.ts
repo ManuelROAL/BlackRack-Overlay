@@ -42,6 +42,12 @@ import {
   type DeltaSettings
 } from "./delta-settings";
 import {
+  defaultTimingSettings,
+  readTimingSettings,
+  TIMING_SETTINGS_KEY,
+  type TimingSettings
+} from "./timing-settings";
+import {
   DEFAULT_OVERLAY_TRANSPARENCY,
   effectiveOverlayTransparency,
   OVERLAY_TRANSPARENCY_KEY,
@@ -102,7 +108,7 @@ interface BrowserSourceStatus {
 
 interface OverlayConfigurationExport {
   format: "lmu-overlay-configuration";
-  schemaVersion: 3;
+  schemaVersion: 4;
   exportedAt: string;
   overlays: {
     visibility: Record<OverlayId, boolean>;
@@ -116,6 +122,7 @@ interface OverlayConfigurationExport {
     relative: RelativeSettings;
     driving: DrivingSettings;
     delta: DeltaSettings;
+    timing: TimingSettings;
   };
 }
 
@@ -123,13 +130,14 @@ type ShortcutAction = "interaction_mode" | "show_panel";
 
 let lmuDependencyStatus: LmuDependencyStatus | null = null;
 
-const overlayIds: OverlayId[] = ["dashboard", "delta", "driving", "tires", "damage", "standings", "relative", "fuel", "pitstop", "flags", "rejoin", "trackmap"];
+const overlayIds: OverlayId[] = ["dashboard", "delta", "timing", "driving", "tires", "damage", "standings", "relative", "fuel", "pitstop", "flags", "rejoin", "trackmap"];
 const storageKey = "lmu-overlay.visible-windows.v1";
 
 const readPreferences = (): Record<OverlayId, boolean> => {
   const defaults: Record<OverlayId, boolean> = {
     dashboard: true,
     delta: false,
+    timing: false,
     driving: false,
     tires: false,
     damage: false,
@@ -215,6 +223,7 @@ let standingsSettings: StandingsSettings = readStandingsSettings();
 let relativeSettings: RelativeSettings = readRelativeSettings();
 let drivingSettings: DrivingSettings = readDrivingSettings();
 let deltaSettings: DeltaSettings = readDeltaSettings();
+let timingSettings: TimingSettings = readTimingSettings();
 const overlayTransparency = readOverlayTransparency();
 let overlayTransparencyScope: OverlayTransparencyScope = readOverlayTransparencyScope();
 
@@ -238,6 +247,7 @@ const syncBrowserSourcePreferences = (): void => {
       relative: relativeSettings,
       driving: drivingSettings,
       delta: deltaSettings,
+      timing: timingSettings,
       transparency: effectiveOverlayTransparency(overlayTransparency, overlayTransparencyScope)
     }
   }).catch(() => undefined);
@@ -364,6 +374,12 @@ const persistDeltaSettings = (): void => {
   syncBrowserSourcePreferences();
 };
 
+const persistTimingSettings = (): void => {
+  localStorage.setItem(TIMING_SETTINGS_KEY, JSON.stringify(timingSettings));
+  void emit("timing://settings", timingSettings);
+  syncBrowserSourcePreferences();
+};
+
 const deltaModeSelect = document.getElementById("delta-mode") as HTMLSelectElement | null;
 const deltaRangeSelect = document.getElementById("delta-display-range") as HTMLSelectElement | null;
 if (deltaModeSelect) {
@@ -387,6 +403,16 @@ if (deltaRangeSelect) {
     if (![0.5, 1, 2, 5].includes(displayRange)) return;
     deltaSettings = { ...deltaSettings, displayRange };
     persistDeltaSettings();
+  });
+}
+const timingHistorySelect = document.getElementById("timing-history-laps") as HTMLSelectElement | null;
+if (timingHistorySelect) {
+  timingHistorySelect.value = String(timingSettings.historyLaps);
+  timingHistorySelect.addEventListener("change", () => {
+    const historyLaps = Number(timingHistorySelect.value);
+    if (historyLaps !== 0 && historyLaps !== 3 && historyLaps !== 5) return;
+    timingSettings = { historyLaps } as TimingSettings;
+    persistTimingSettings();
   });
 }
 
@@ -500,6 +526,10 @@ const resetOverlayConfiguration = async (id: OverlayId): Promise<void> => {
     deltaSettings = defaultDeltaSettings();
     localStorage.setItem(DELTA_SETTINGS_KEY, JSON.stringify(deltaSettings));
     events.push(emit("delta://settings", deltaSettings));
+  } else if (id === "timing") {
+    timingSettings = defaultTimingSettings();
+    localStorage.setItem(TIMING_SETTINGS_KEY, JSON.stringify(timingSettings));
+    events.push(emit("timing://settings", timingSettings));
   }
 
   const effective = effectiveOverlayTransparency(overlayTransparency, overlayTransparencyScope);
@@ -764,13 +794,14 @@ const parseOverlayConfiguration = (contents: string): OverlayConfigurationExport
   const relative = configurationObject(overlays?.relative);
   const driving = configurationObject(overlays?.driving);
   const delta = configurationObject(overlays?.delta);
+  const timing = configurationObject(overlays?.timing);
   const schemaVersion = root?.schemaVersion;
   if (root?.format !== "lmu-overlay-configuration"
-    || (schemaVersion !== 1 && schemaVersion !== 2 && schemaVersion !== 3) || !overlays
+    || (schemaVersion !== 1 && schemaVersion !== 2 && schemaVersion !== 3 && schemaVersion !== 4) || !overlays
     || !visibility || !transparency || !transparencyScope || !transparencyValues
     || !monitorSelection || !individualMonitors || !layout
     || !standings || !relative || (Number(schemaVersion) >= 2 && !driving)
-    || (schemaVersion === 3 && !delta)) {
+    || (Number(schemaVersion) >= 3 && !delta) || (schemaVersion === 4 && !timing)) {
     throw new Error("El archivo no es una configuración compatible de LMUOverlay.");
   }
   if (transparencyScope.mode !== "global" && transparencyScope.mode !== "individual") {
@@ -797,6 +828,19 @@ const parseOverlayConfiguration = (contents: string): OverlayConfigurationExport
       y: 20,
       width: 420,
       height: 72
+    };
+  }
+  if (Number(schemaVersion) < 4) {
+    visibility.timing = false;
+    transparencyValues.timing = 5;
+    individualMonitors.timing = monitorSelection.globalMonitor;
+    layout.timing = {
+      overlay: "timing",
+      monitor: monitorSelection.globalMonitor,
+      x: 610,
+      y: 110,
+      width: 366,
+      height: 210
     };
   }
   const completeBooleanRecord = (value: unknown, keys: string[]): boolean => {
@@ -850,6 +894,12 @@ const parseOverlayConfiguration = (contents: string): OverlayConfigurationExport
     || ![0.5, 1, 2, 5].includes(normalizedDelta.displayRange)) {
     throw new Error("La configuración de Delta está incompleta o dañada.");
   }
+  const normalizedTiming = timing ?? defaultTimingSettings();
+  if (normalizedTiming.historyLaps !== 0
+    && normalizedTiming.historyLaps !== 3
+    && normalizedTiming.historyLaps !== 5) {
+    throw new Error("La configuración de Timing compacto está incompleta o dañada.");
+  }
   for (const id of overlayIds) {
     const placement = configurationObject(layout[id]);
     if (typeof visibility[id] !== "boolean" || !percentageIsValid(transparencyValues[id])
@@ -869,11 +919,12 @@ const parseOverlayConfiguration = (contents: string): OverlayConfigurationExport
   const normalized = parsed as OverlayConfigurationExport;
   return {
     ...normalized,
-    schemaVersion: 3,
+    schemaVersion: 4,
     overlays: {
       ...normalized.overlays,
       driving: driving ? driving as unknown as DrivingSettings : defaultDriving,
-      delta: normalizedDelta as unknown as DeltaSettings
+      delta: normalizedDelta as unknown as DeltaSettings,
+      timing: normalizedTiming as unknown as TimingSettings
     }
   };
 };
@@ -918,7 +969,8 @@ const applyImportedConfiguration = (configuration: OverlayConfigurationExport): 
     [STANDINGS_SETTINGS_KEY, configuration.overlays.standings],
     [RELATIVE_SETTINGS_KEY, configuration.overlays.relative],
     [DRIVING_SETTINGS_KEY, configuration.overlays.driving],
-    [DELTA_SETTINGS_KEY, configuration.overlays.delta]
+    [DELTA_SETTINGS_KEY, configuration.overlays.delta],
+    [TIMING_SETTINGS_KEY, configuration.overlays.timing]
   ];
   const previous = entries.map(([key]) => [key, localStorage.getItem(key)] as const);
   try {
@@ -945,7 +997,7 @@ exportConfigurationButton?.addEventListener("click", () => {
     const layout = readCompositeLayout() ?? await ensureCompositeLayout();
     const configuration: OverlayConfigurationExport = {
       format: "lmu-overlay-configuration",
-      schemaVersion: 3,
+      schemaVersion: 4,
       exportedAt: now.toISOString(),
       overlays: {
         visibility: { ...preferences },
@@ -958,7 +1010,8 @@ exportConfigurationButton?.addEventListener("click", () => {
         standings: standingsSettings,
         relative: relativeSettings,
         driving: drivingSettings,
-        delta: deltaSettings
+        delta: deltaSettings,
+        timing: timingSettings
       }
     };
     const timestamp = now.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");

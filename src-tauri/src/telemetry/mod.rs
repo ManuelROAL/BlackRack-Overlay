@@ -275,6 +275,7 @@ struct PerformanceMonitor {
     overruns: u64,
     emitted_dashboard: u64,
     emitted_delta: u64,
+    emitted_timing: u64,
     emitted_driving: u64,
     emitted_tires: u64,
     emitted_damage: u64,
@@ -308,6 +309,7 @@ impl PerformanceMonitor {
             overruns: 0,
             emitted_dashboard: 0,
             emitted_delta: 0,
+            emitted_timing: 0,
             emitted_driving: 0,
             emitted_tires: 0,
             emitted_damage: 0,
@@ -352,6 +354,7 @@ impl PerformanceMonitor {
             "emitted": {
                 "dashboard": self.emitted_dashboard,
                 "delta": self.emitted_delta,
+                "timing": self.emitted_timing,
                 "driving": self.emitted_driving,
                 "tires": self.emitted_tires,
                 "damage": self.emitted_damage,
@@ -471,6 +474,7 @@ pub struct TelemetryFrame {
     track_wetness_min_percent: f64,
     track_wetness_max_percent: f64,
     lap_number: i32,
+    player_sector: i32,
     player_total_laps: i32,
     player_lap_valid: bool,
     player_in_pits: bool,
@@ -559,6 +563,7 @@ pub struct TelemetryFrame {
     best_lap_seconds: f64,
     lap_delta_seconds: f64,
     delta_model: delta_records::DeltaViewModel,
+    timing_model: delta_records::TimingViewModel,
     flag_warning: FlagWarning,
     rejoin_warning: RejoinWarning,
     standings: Vec<StandingEntry>,
@@ -653,6 +658,7 @@ impl TelemetryFrame {
             track_wetness_min_percent: 0.0,
             track_wetness_max_percent: 0.0,
             lap_number: 0,
+            player_sector: 0,
             player_total_laps: 0,
             player_lap_valid: false,
             player_in_pits: false,
@@ -741,6 +747,7 @@ impl TelemetryFrame {
             best_lap_seconds: 0.0,
             lap_delta_seconds: 0.0,
             delta_model: delta_records::DeltaViewModel::default(),
+            timing_model: delta_records::TimingViewModel::default(),
             flag_warning: FlagWarning::default(),
             rejoin_warning: RejoinWarning::default(),
             standings: Vec::new(),
@@ -861,6 +868,7 @@ pub fn spawn_source(app: AppHandle) {
             let driving_due = interval_due(&mut last_dashboard, now, SOURCE_INTERVAL);
             let emit_dashboard = driving_due && super::overlay_is_active(&app, "dashboard");
             let emit_delta = driving_due && super::overlay_is_active(&app, "delta");
+            let emit_timing = driving_due && super::overlay_is_active(&app, "timing");
             let emit_driving = driving_due && super::overlay_is_active(&app, "driving");
             let emit_tires = driving_due && super::overlay_is_active(&app, "tires");
             let emit_damage = interval_due(&mut last_damage, now, DAMAGE_INTERVAL)
@@ -887,6 +895,7 @@ pub fn spawn_source(app: AppHandle) {
             let base_emissions = [
                 ("dashboard", emit_dashboard),
                 ("delta", emit_delta),
+                ("timing", emit_timing),
                 ("driving", emit_driving),
                 ("tires", emit_tires),
                 ("damage", emit_damage),
@@ -895,7 +904,7 @@ pub fn spawn_source(app: AppHandle) {
                 ("flags", emit_flags),
                 ("rejoin", emit_rejoin),
             ];
-            let mut base_targets = [""; 9];
+            let mut base_targets = [""; 10];
             let mut base_target_count = 0;
             for (label, should_emit) in base_emissions {
                 if should_emit {
@@ -906,6 +915,7 @@ pub fn spawn_source(app: AppHandle) {
             if super::emit_overlay_frames(&app, &base_targets[..base_target_count], &frame) {
                 performance.emitted_dashboard += u64::from(emit_dashboard);
                 performance.emitted_delta += u64::from(emit_delta);
+                performance.emitted_timing += u64::from(emit_timing);
                 performance.emitted_driving += u64::from(emit_driving);
                 performance.emitted_tires += u64::from(emit_tires);
                 performance.emitted_damage += u64::from(emit_damage);

@@ -116,6 +116,13 @@ impl TelemetrySource for MockTelemetrySource {
             track_wetness_min_percent: 4.0,
             track_wetness_max_percent: 22.0,
             lap_number: (elapsed / 215.0).floor() as i32 + 1,
+            player_sector: if lap_progress < 1.0 / 3.0 {
+                1
+            } else if lap_progress < 2.0 / 3.0 {
+                2
+            } else {
+                0
+            },
             player_total_laps: completed_laps,
             player_lap_valid: true,
             player_in_pits: false,
@@ -239,6 +246,7 @@ impl TelemetrySource for MockTelemetrySource {
             best_lap_seconds: 208.412,
             lap_delta_seconds: (elapsed * 0.31).sin() * 0.72,
             delta_model: Default::default(),
+            timing_model: Default::default(),
             flag_warning: if (elapsed as u64 / 8) % 2 == 0 {
                 FlagWarning {
                     kind: "yellow",

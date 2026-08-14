@@ -98,7 +98,8 @@ profile and diagnostics.
 
 ## Scheduling and freshness
 
-- Base source cycle, Dashboard, Delta, Trailing + Pedal and tyres: 20 ms (50 Hz).
+- Base source cycle, Dashboard, Delta, Timing compacto, Trailing + Pedal and tyres:
+  20 ms (50 Hz).
 - Fuel overlay and active flags: 20 ms (50 Hz).
 - Full standings: 100 ms (10 Hz), and only when requested by an active Standings
   panel or a connected browser-source client.

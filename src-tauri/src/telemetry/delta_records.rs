@@ -14,6 +14,7 @@ const MIN_SECTORS: usize = 12;
 const MAX_SECTORS: usize = 40;
 const DELTA_SMOOTHING_SECONDS: f64 = 0.10;
 const FINISH_FREEZE: Duration = Duration::from_secs(3);
+const SECTOR_FREEZE: Duration = Duration::from_secs(2);
 const STORE_VERSION: u32 = 1;
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, Eq)]
@@ -93,6 +94,60 @@ pub(crate) struct DeltaViewModel {
     reference_generation: u64,
 }
 
+#[derive(Clone, Debug, Serialize)]
+pub(crate) struct TimingSectorView {
+    seconds: f64,
+    state: &'static str,
+}
+
+impl Default for TimingSectorView {
+    fn default() -> Self {
+        Self {
+            seconds: 0.0,
+            state: "pending",
+        }
+    }
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub(crate) struct TimingLapView {
+    number: i32,
+    seconds: f64,
+    valid: bool,
+    state: &'static str,
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub(crate) struct TimingViewModel {
+    available: bool,
+    current_seconds: f64,
+    last_seconds: f64,
+    best_seconds: f64,
+    delta_available: bool,
+    delta_seconds: f64,
+    delta_frozen: bool,
+    active_sector: usize,
+    sectors: [TimingSectorView; 3],
+    history: Vec<TimingLapView>,
+}
+
+impl Default for TimingViewModel {
+    fn default() -> Self {
+        Self {
+            available: false,
+            current_seconds: 0.0,
+            last_seconds: 0.0,
+            best_seconds: 0.0,
+            delta_available: false,
+            delta_seconds: 0.0,
+            delta_frozen: false,
+            active_sector: 0,
+            sectors: std::array::from_fn(|_| TimingSectorView::default()),
+            history: Vec::new(),
+        }
+    }
+}
+
 impl Default for DeltaViewModel {
     fn default() -> Self {
         Self {
@@ -120,6 +175,8 @@ struct LapTrace {
     lap_time: f64,
     track_length: f64,
     points: Vec<TracePoint>,
+    #[serde(default)]
+    official_sector_ends: [Option<f64>; 2],
 }
 
 impl LapTrace {
@@ -257,6 +314,8 @@ impl ReferenceSet {
 struct PersistentReferences {
     version: u32,
     overall: ReferenceSet,
+    #[serde(default)]
+    timing_sectors: [Option<f64>; 3],
 }
 
 #[derive(Clone, Debug)]
@@ -292,6 +351,8 @@ struct CurrentLap {
     visited_pits: bool,
     formation: bool,
     points: Vec<TracePoint>,
+    official_sector_ends: [Option<f64>; 2],
+    previous_sector: i32,
     last_recorded_distance: f64,
     start_fuel: f64,
     start_energy: f64,
@@ -317,6 +378,8 @@ impl CurrentLap {
                 Vec::new()
             },
             last_recorded_distance: if started_at_line { 0.0 } else { distance },
+            official_sector_ends: [None; 2],
+            previous_sector: frame.player_sector,
             start_fuel: frame.fuel_liters,
             start_energy: frame.virtual_energy_percent,
             start_tire: frame.player_tire_remaining_percent,
@@ -328,6 +391,22 @@ impl CurrentLap {
         self.valid &= frame.player_lap_valid && !frame.player_in_pits && frame.game_phase == 5;
         self.visited_pits |= frame.player_in_pits;
         self.formation |= frame.game_phase == 3;
+        if frame.player_sector != self.previous_sector {
+            let boundary = match frame.player_sector {
+                2 => Some(0),
+                0 => Some(1),
+                _ => None,
+            };
+            if let Some(index) = boundary {
+                if self.official_sector_ends[index].is_none()
+                    && frame.current_lap_seconds.is_finite()
+                    && frame.current_lap_seconds > 0.0
+                {
+                    self.official_sector_ends[index] = Some(frame.current_lap_seconds);
+                }
+            }
+            self.previous_sector = frame.player_sector;
+        }
         if distance + 200.0 < self.last_recorded_distance {
             self.valid = false;
         }
@@ -380,6 +459,7 @@ impl CurrentLap {
                 lap_time,
                 track_length,
                 points: self.points,
+                official_sector_ends: self.official_sector_ends,
             },
             fuel_used: (self.start_fuel - frame.fuel_liters).max(0.0),
             energy_used: (self.start_energy - frame.virtual_energy_percent).max(0.0),
@@ -538,6 +618,13 @@ pub(crate) struct DeltaEngine {
     last_lap_number: i32,
     generation: u64,
     frozen: Option<(Instant, f64)>,
+    timing_sector_freeze: Option<(Instant, f64)>,
+    timing_results_until: Option<Instant>,
+    timing_sectors: [Option<f64>; 3],
+    timing_sector_states: [&'static str; 3],
+    overall_timing_sectors: [Option<f64>; 3],
+    session_timing_sectors: [Option<f64>; 3],
+    timing_history: Vec<TimingLapView>,
     smoothed_delta: f64,
     last_delta_update: Instant,
 }
@@ -560,6 +647,13 @@ impl DeltaEngine {
             last_lap_number: -1,
             generation: 0,
             frozen: None,
+            timing_sector_freeze: None,
+            timing_results_until: None,
+            timing_sectors: [None; 3],
+            timing_sector_states: ["pending"; 3],
+            overall_timing_sectors: [None; 3],
+            session_timing_sectors: [None; 3],
+            timing_history: Vec::new(),
             smoothed_delta: 0.0,
             last_delta_update: Instant::now(),
         }
@@ -574,6 +668,7 @@ impl DeltaEngine {
                 ..DeltaViewModel::default()
             };
             self.current_lap = None;
+            frame.timing_model = TimingViewModel::default();
             return;
         }
 
@@ -582,6 +677,7 @@ impl DeltaEngine {
                 mode,
                 ..DeltaViewModel::default()
             };
+            frame.timing_model = TimingViewModel::default();
             return;
         };
         if self.identity.as_ref().map(|item| item.key.as_str()) != Some(identity.key.as_str()) {
@@ -614,6 +710,7 @@ impl DeltaEngine {
         }
 
         frame.delta_model = self.view_model(frame, mode);
+        frame.timing_model = self.timing_view_model(frame);
     }
 
     fn select_identity(&mut self, identity: Identity) {
@@ -624,6 +721,9 @@ impl DeltaEngine {
         self.stint_best = None;
         self.last_lap = None;
         self.current_lap = None;
+        self.timing_sectors = [None; 3];
+        self.timing_sector_states = ["pending"; 3];
+        self.overall_timing_sectors = [None; 3];
         self.generation = self.generation.wrapping_add(1);
         self.last_session_type = -1;
         self.last_session_elapsed = 0.0;
@@ -637,6 +737,7 @@ impl DeltaEngine {
             .and_then(|receiver| receiver.try_recv().ok());
         if let Some(loaded) = loaded {
             if loaded.version == STORE_VERSION {
+                self.overall_timing_sectors = loaded.timing_sectors;
                 if self.overall.merge(&loaded.overall) {
                     self.generation = self.generation.wrapping_add(1);
                 }
@@ -659,6 +760,12 @@ impl DeltaEngine {
         self.current_lap = None;
         self.stint = None;
         self.frozen = None;
+        self.timing_sector_freeze = None;
+        self.timing_results_until = None;
+        self.timing_sectors = [None; 3];
+        self.timing_sector_states = ["pending"; 3];
+        self.session_timing_sectors = [None; 3];
+        self.timing_history.clear();
         self.smoothed_delta = 0.0;
         self.session_id = format!("{}-{}", unix_millis(), self.generation);
         if let Some(identity) = self.identity.clone() {
@@ -704,8 +811,68 @@ impl DeltaEngine {
             return;
         };
 
+        let coarse_sectors = three_sector_times(&completed.trace);
+        self.timing_results_until = Some(Instant::now() + FINISH_FREEZE);
+        if let Some(sectors) = coarse_sectors {
+            let mut states = ["neutral"; 3];
+            for index in 0..3 {
+                states[index] = if self.overall_timing_sectors[index]
+                    .is_none_or(|best| sectors[index] + 0.000_5 < best)
+                {
+                    "overall"
+                } else if self.session_timing_sectors[index]
+                    .is_none_or(|best| sectors[index] + 0.000_5 < best)
+                {
+                    "personal"
+                } else {
+                    "neutral"
+                };
+                if completed.eligible {
+                    if states[index] == "overall" {
+                        self.overall_timing_sectors[index] = Some(sectors[index]);
+                    }
+                    if states[index] != "neutral" {
+                        self.session_timing_sectors[index] = Some(sectors[index]);
+                    }
+                }
+            }
+            self.timing_sectors = sectors.map(Some);
+            self.timing_sector_states = if completed.eligible {
+                states
+            } else {
+                ["invalid"; 3]
+            };
+        }
+        let history_state = if !completed.eligible {
+            "invalid"
+        } else if self
+            .session
+            .best
+            .as_ref()
+            .is_none_or(|best| completed.trace.lap_time < best.lap_time)
+        {
+            "best"
+        } else {
+            "normal"
+        };
+        self.timing_history.insert(
+            0,
+            TimingLapView {
+                number: completed.number,
+                seconds: completed.trace.lap_time,
+                valid: completed.eligible,
+                state: history_state,
+            },
+        );
+        self.timing_history.truncate(5);
+
         if let Some((delta, _)) = self.reference_delta_for_trace(&completed.trace, active_mode()) {
             self.frozen = Some((Instant::now() + FINISH_FREEZE, delta));
+        }
+        if let Some((delta, _)) =
+            self.reference_delta_for_trace(&completed.trace, DeltaMode::OverallBest)
+        {
+            self.timing_sector_freeze = Some((Instant::now() + FINISH_FREEZE, delta));
         }
 
         if let Some(stint) = self.stint.as_mut() {
@@ -756,8 +923,106 @@ impl DeltaEngine {
                 references: PersistentReferences {
                     version: STORE_VERSION,
                     overall: self.overall.clone(),
+                    timing_sectors: self.overall_timing_sectors,
                 },
             });
+        }
+    }
+
+    fn timing_view_model(&mut self, frame: &TelemetryFrame) -> TimingViewModel {
+        if self
+            .timing_results_until
+            .is_some_and(|until| Instant::now() >= until)
+        {
+            self.timing_results_until = None;
+            self.timing_sectors = [None; 3];
+            self.timing_sector_states = ["pending"; 3];
+        }
+        // LMU/rFactor codifica 0=S3, 1=S1 y 2=S2.
+        let active_sector = match frame.player_sector {
+            2 => 1,
+            0 => 2,
+            _ => 0,
+        };
+        if let Some(lap) = self.current_lap.as_ref() {
+            for index in 0..active_sector {
+                if self.timing_sectors[index].is_some() {
+                    continue;
+                }
+                let end_time = lap.official_sector_ends[index];
+                let start_time = if index == 0 {
+                    Some(0.0)
+                } else {
+                    lap.official_sector_ends[index - 1]
+                };
+                if let (Some(end_time), Some(start_time)) = (end_time, start_time) {
+                    let seconds = end_time - start_time;
+                    let state = if self.overall_timing_sectors[index]
+                        .is_none_or(|best| seconds + 0.000_5 < best)
+                    {
+                        "overall"
+                    } else if self.session_timing_sectors[index]
+                        .is_none_or(|best| seconds + 0.000_5 < best)
+                    {
+                        "personal"
+                    } else {
+                        "neutral"
+                    };
+                    self.timing_sectors[index] = Some(seconds);
+                    self.timing_sector_states[index] = if lap.valid { state } else { "invalid" };
+                    let boundary_distance = frame.lap_progress * frame.track_length_meters;
+                    if let Some((reference_at, _)) =
+                        trace_reference(self.overall.best.as_ref(), boundary_distance)
+                    {
+                        self.timing_sector_freeze =
+                            Some((Instant::now() + SECTOR_FREEZE, end_time - reference_at));
+                    }
+                }
+            }
+        }
+
+        let live_delta = self
+            .reference_at(
+                DeltaMode::OverallBest,
+                frame.lap_progress * frame.track_length_meters,
+                frame.track_length_meters,
+            )
+            .map(|(reference, _)| frame.current_lap_seconds - reference);
+        let (delta_seconds, delta_frozen) = if let Some((until, value)) = self.timing_sector_freeze
+        {
+            if Instant::now() < until {
+                (Some(value), true)
+            } else {
+                self.timing_sector_freeze = None;
+                (live_delta, false)
+            }
+        } else {
+            (live_delta, false)
+        };
+        TimingViewModel {
+            available: true,
+            current_seconds: frame.current_lap_seconds,
+            last_seconds: frame.last_lap_seconds,
+            best_seconds: self
+                .session
+                .best
+                .as_ref()
+                .map_or(frame.best_lap_seconds, |lap| lap.lap_time),
+            delta_available: delta_seconds.is_some(),
+            delta_seconds: delta_seconds.unwrap_or(0.0),
+            delta_frozen,
+            active_sector,
+            sectors: std::array::from_fn(|index| TimingSectorView {
+                seconds: self.timing_sectors[index].unwrap_or(0.0),
+                state: if self.timing_sectors[index].is_some()
+                    && self.current_lap.as_ref().is_some_and(|lap| !lap.valid)
+                {
+                    "invalid"
+                } else {
+                    self.timing_sector_states[index]
+                },
+            }),
+            history: self.timing_history.clone(),
         }
     }
 
@@ -942,6 +1207,14 @@ fn build_sectors(trace: &LapTrace) -> Vec<SectorTrace> {
             })
         })
         .collect()
+}
+
+fn three_sector_times(trace: &LapTrace) -> Option<[f64; 3]> {
+    let first =
+        trace.official_sector_ends[0].or_else(|| trace.time_at(trace.track_length / 3.0))?;
+    let second =
+        trace.official_sector_ends[1].or_else(|| trace.time_at(trace.track_length * 2.0 / 3.0))?;
+    Some([first, second - first, trace.lap_time - second])
 }
 
 fn interpolate(points: &[TracePoint], distance: f64) -> Option<f64> {
@@ -1173,8 +1446,8 @@ mod tests {
 
     use super::{
         build_sectors, handle_storage_command, initialize_database, interpolate, sector_count,
-        Identity, LapTrace, PersistentReferences, ReferenceSet, SectorBank, StorageCommand,
-        TracePoint, STORE_VERSION,
+        three_sector_times, Identity, LapTrace, PersistentReferences, ReferenceSet, SectorBank,
+        StorageCommand, TracePoint, STORE_VERSION,
     };
 
     fn linear_lap(seconds: f64, length: f64) -> LapTrace {
@@ -1187,6 +1460,7 @@ mod tests {
                     seconds: seconds * index as f64 / 100.0,
                 })
                 .collect(),
+            official_sector_ends: [None; 2],
         }
     }
 
@@ -1210,6 +1484,20 @@ mod tests {
         assert_eq!(sector_count(1_000.0), 12);
         assert_eq!(sector_count(5_000.0), 20);
         assert_eq!(sector_count(14_000.0), 40);
+    }
+
+    #[test]
+    fn three_timing_sectors_cover_the_complete_lap() {
+        let sectors = three_sector_times(&linear_lap(90.0, 4_500.0)).unwrap();
+        assert!(sectors.iter().all(|sector| (*sector - 30.0).abs() < 0.001));
+        assert!((sectors.iter().sum::<f64>() - 90.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn three_timing_sectors_prefer_official_crossings() {
+        let mut lap = linear_lap(90.0, 4_500.0);
+        lap.official_sector_ends = [Some(28.0), Some(61.0)];
+        assert_eq!(three_sector_times(&lap), Some([28.0, 33.0, 29.0]));
     }
 
     #[test]
@@ -1254,6 +1542,7 @@ mod tests {
                         best: Some(lap),
                         optimal,
                     },
+                    timing_sectors: [None; 3],
                 },
             },
         )

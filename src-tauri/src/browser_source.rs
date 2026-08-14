@@ -13,7 +13,7 @@ use crate::telemetry::TelemetryFrame;
 
 const ADDRESS: &str = "127.0.0.1:47636";
 const BASE_URL: &str = "http://127.0.0.1:47636";
-const BROWSER_OVERLAYS: [(&str, &str, &str); 12] = [
+const BROWSER_OVERLAYS: [(&str, &str, &str); 13] = [
     ("standings", "standings.html", "Standings"),
     ("relative", "relative.html", "Relative"),
     ("fuel", "fuel.html", "Combustible / energía"),
@@ -22,6 +22,7 @@ const BROWSER_OVERLAYS: [(&str, &str, &str); 12] = [
     ("rejoin", "rejoin.html", "Rejoin"),
     ("dashboard", "dashboard.html", "Dashboard"),
     ("delta", "delta.html", "Delta"),
+    ("timing", "timing.html", "Timing compacto"),
     ("driving", "driving.html", "Trailing + Pedal"),
     ("tires", "tires.html", "Daños + neumáticos"),
     ("damage", "damage.html", "Daño detallado"),
@@ -324,7 +325,7 @@ fn serve_request(stream: &mut TcpStream, request_path: &str, app: &AppHandle) {
             .unwrap_or_else(|| serde_json::json!({}));
         let json = serde_json::to_string(&settings).unwrap_or_else(|_| "{}".into());
         let script = format!(
-            "(()=>{{const p={json};if(p.standings)localStorage.setItem('lmu-overlay.standings.v1',JSON.stringify(p.standings));if(p.relative)localStorage.setItem('lmu-overlay.relative.v1',JSON.stringify(p.relative));if(p.driving)localStorage.setItem('lmu-overlay.driving.v1',JSON.stringify(p.driving));if(p.delta)localStorage.setItem('lmu-overlay.delta.v1',JSON.stringify(p.delta));if(p.transparency)localStorage.setItem('lmu-overlay.background-transparency.v1',JSON.stringify(p.transparency));if(p.fuel)localStorage.setItem('lmu-overlay.fuel-strategy.v1',JSON.stringify(p.fuel));document.documentElement.dataset.browserSource='true';}})();"
+            "(()=>{{const p={json};if(p.standings)localStorage.setItem('lmu-overlay.standings.v1',JSON.stringify(p.standings));if(p.relative)localStorage.setItem('lmu-overlay.relative.v1',JSON.stringify(p.relative));if(p.driving)localStorage.setItem('lmu-overlay.driving.v1',JSON.stringify(p.driving));if(p.delta)localStorage.setItem('lmu-overlay.delta.v1',JSON.stringify(p.delta));if(p.timing)localStorage.setItem('lmu-overlay.timing.v1',JSON.stringify(p.timing));if(p.transparency)localStorage.setItem('lmu-overlay.background-transparency.v1',JSON.stringify(p.transparency));if(p.fuel)localStorage.setItem('lmu-overlay.fuel-strategy.v1',JSON.stringify(p.fuel));document.documentElement.dataset.browserSource='true';}})();"
         );
         write_response(
             stream,

@@ -22,9 +22,9 @@ Network and REST work runs outside `next_frame()`.
 The source snapshot runs at 50 Hz. Rust schedules each consumer according to its
 documented cadence in `docs/overlays/README.md`:
 
-- Base overlays, including Delta, share one serialized frame per cycle. Delta's
-  distance interpolation and reference selection are calculated in Rust before
-  delivery.
+- Base overlays, including Delta and Timing compacto, share one serialized frame
+  per cycle. Distance interpolation, reference selection and the player's
+  official scoring-sector transitions are calculated in Rust before delivery.
 - Standings and Relative share an enriched roster batch when due; coincident
   cycles reuse the constructed roster.
 - Track Map receives a stripped coordinate-only batch and never requests enriched

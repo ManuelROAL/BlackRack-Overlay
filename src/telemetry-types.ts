@@ -81,6 +81,21 @@ export interface DeltaViewModel {
   reference_generation: number;
 }
 
+export interface TimingSectorView { seconds: number; state: "pending" | "neutral" | "personal" | "overall" | "invalid"; }
+export interface TimingLapView { number: number; seconds: number; valid: boolean; state: "normal" | "best" | "invalid"; }
+export interface TimingViewModel {
+  available: boolean;
+  current_seconds: number;
+  last_seconds: number;
+  best_seconds: number;
+  delta_available: boolean;
+  delta_seconds: number;
+  delta_frozen: boolean;
+  active_sector: number;
+  sectors: TimingSectorView[];
+  history: TimingLapView[];
+}
+
 export interface TelemetryFrame {
   source: string;
   connected: boolean;
@@ -107,6 +122,7 @@ export interface TelemetryFrame {
   track_wetness_min_percent: number;
   track_wetness_max_percent: number;
   lap_number: number;
+  player_sector: number;
   player_total_laps: number;
   player_lap_valid: boolean;
   player_in_pits: boolean;
@@ -195,6 +211,7 @@ export interface TelemetryFrame {
   best_lap_seconds: number;
   lap_delta_seconds: number;
   delta_model: DeltaViewModel;
+  timing_model: TimingViewModel;
   flag_warning: FlagWarning;
   rejoin_warning: RejoinWarning;
   standings: StandingEntry[];
