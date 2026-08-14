@@ -50,6 +50,7 @@ struct LmuStandingEntry {
     in_pits: u32,
     in_garage: u32,
     lap_valid: u32,
+    lap_invalidated: u32,
     flag: u32,
     pit_state: u32,
     pit_stops: u32,
@@ -131,6 +132,7 @@ impl Default for LmuStandingEntry {
             in_pits: 0,
             in_garage: 0,
             lap_valid: 0,
+            lap_invalidated: 0,
             flag: 0,
             pit_state: 0,
             pit_stops: 0,
@@ -381,6 +383,8 @@ struct CarHistory {
     last_lap_valid: bool,
     last_lap_seconds: f64,
     last_lap_start_elapsed_seconds: Option<f64>,
+    current_lap_invalid: bool,
+    last_lap_boundary_elapsed_seconds: Option<f64>,
     was_in_pits: bool,
     out_lap: bool,
     out_lap_started_at: Option<i32>,
@@ -439,7 +443,6 @@ impl CarHistory {
         let in_pits = entry.in_pits != 0;
         let in_garage = entry.in_garage != 0;
         let first_sample = self.last_total_laps.is_none();
-        self.last_lap_valid = entry.last_lap_seconds > 0.0;
         self.update_lap_timing(entry);
         if entry.best_lap_seconds.is_finite() && entry.best_lap_seconds > 0.0 {
             self.best_lap_seconds = entry.best_lap_seconds;
@@ -522,38 +525,80 @@ impl CarHistory {
     fn update_lap_timing(&mut self, entry: &LmuStandingEntry) {
         let lap_start = entry.lap_start_elapsed_seconds;
         let current_lap_seconds = entry.elapsed_seconds - lap_start;
-        if !lap_start.is_finite()
-            || lap_start <= 0.0
-            || !current_lap_seconds.is_finite()
-            || current_lap_seconds <= 1.0
-        {
-            return;
+        let official_last_lap = Self::normalize_official_lap(entry.last_lap_seconds);
+        let official_last_lap_invalid = Self::official_lap_is_invalid(entry.last_lap_seconds);
+        let stable_lap_start = lap_start.is_finite()
+            && lap_start > 0.0
+            && current_lap_seconds.is_finite()
+            && current_lap_seconds > 1.0;
+
+        if stable_lap_start {
+            match self.last_lap_start_elapsed_seconds {
+                None => {
+                    self.last_lap_start_elapsed_seconds = Some(lap_start);
+                    self.last_lap_seconds = official_last_lap;
+                    self.last_lap_valid = !official_last_lap_invalid;
+                    self.current_lap_invalid = entry.in_garage == 0 && entry.lap_invalidated != 0;
+                }
+                Some(previous_start) if previous_start != lap_start => {
+                    if previous_start > 0.0 && previous_start < lap_start {
+                        let reconstructed = lap_start - previous_start;
+                        self.last_lap_seconds = if Self::valid_lap_time(official_last_lap) {
+                            official_last_lap
+                        } else if Self::plausible_reconstructed_lap(entry, reconstructed) {
+                            reconstructed
+                        } else {
+                            0.0
+                        };
+                        self.last_lap_valid = !(self.current_lap_invalid
+                            || official_last_lap_invalid
+                            || (entry.in_garage == 0 && entry.lap_invalidated != 0));
+                        Self::push_recent(&mut self.recent_lap_times, self.last_lap_seconds);
+                        self.last_lap_boundary_elapsed_seconds = Some(entry.elapsed_seconds);
+                        self.current_lap_invalid = false;
+                    } else {
+                        self.recent_lap_times.clear();
+                        self.last_lap_seconds = 0.0;
+                        self.last_lap_valid = true;
+                        self.current_lap_invalid = false;
+                        self.last_lap_boundary_elapsed_seconds = None;
+                    }
+                    self.last_lap_start_elapsed_seconds = Some(lap_start);
+                }
+                Some(_) => {}
+            }
         }
 
-        match self.last_lap_start_elapsed_seconds {
-            None => {
-                self.last_lap_start_elapsed_seconds = Some(lap_start);
-                self.last_lap_seconds = entry.last_lap_seconds.max(0.0);
-            }
-            Some(previous_start) if previous_start != lap_start => {
-                if previous_start > 0.0 && previous_start < lap_start {
-                    let reconstructed = lap_start - previous_start;
-                    self.last_lap_seconds = if self.last_lap_valid {
-                        entry.last_lap_seconds
-                    } else if Self::plausible_reconstructed_lap(entry, reconstructed) {
-                        reconstructed
-                    } else {
-                        0.0
-                    };
-                    Self::push_recent(&mut self.recent_lap_times, self.last_lap_seconds);
-                } else {
-                    self.recent_lap_times.clear();
-                    self.last_lap_seconds = 0.0;
-                }
-                self.last_lap_start_elapsed_seconds = Some(lap_start);
-            }
-            Some(_) => {}
+        if official_last_lap_invalid && Self::valid_lap_time(official_last_lap) {
+            self.last_lap_seconds = official_last_lap;
+            self.last_lap_valid = false;
         }
+
+        let within_boundary_holdoff =
+            self.last_lap_boundary_elapsed_seconds
+                .is_some_and(|boundary| {
+                    entry.elapsed_seconds.is_finite()
+                        && entry.elapsed_seconds >= boundary
+                        && entry.elapsed_seconds - boundary <= 2.0
+                });
+        if entry.in_garage == 0 && entry.lap_invalidated != 0 && !within_boundary_holdoff {
+            self.current_lap_invalid = true;
+        }
+    }
+
+    fn valid_lap_time(lap_time: f64) -> bool {
+        lap_time.is_finite() && lap_time > 20.0 && lap_time < 900.0
+    }
+
+    fn normalize_official_lap(lap_time: f64) -> f64 {
+        let normalized = lap_time.abs();
+        Self::valid_lap_time(normalized)
+            .then_some(normalized)
+            .unwrap_or(0.0)
+    }
+
+    fn official_lap_is_invalid(lap_time: f64) -> bool {
+        lap_time.is_finite() && lap_time > -900.0 && lap_time < -20.0
     }
 
     fn plausible_reconstructed_lap(entry: &LmuStandingEntry, lap_time: f64) -> bool {
@@ -608,8 +653,9 @@ impl CarHistory {
     }
 
     fn last_lap_seconds(&self, official_last_lap_seconds: f64) -> f64 {
-        if official_last_lap_seconds.is_finite() && official_last_lap_seconds > 0.0 {
-            official_last_lap_seconds
+        let official = Self::normalize_official_lap(official_last_lap_seconds);
+        if official > 0.0 {
+            official
         } else {
             self.last_lap_seconds
         }
@@ -3197,16 +3243,16 @@ mod tests {
         assert!(history.is_last_lap_valid());
         assert_eq!(history.last_lap_seconds(entry.last_lap_seconds), 95.0);
 
-        entry.lap_valid = 0;
+        entry.lap_invalidated = 1;
         history.update(&entry, 59.0);
         entry.total_laps = 5;
-        entry.lap_valid = 1;
+        entry.lap_invalidated = 0;
         entry.last_lap_seconds = 0.0;
         entry.lap_start_elapsed_seconds = 418.58;
         entry.elapsed_seconds = 419.0;
         history.update(&entry, 58.0);
 
-        assert!(!history.is_last_lap_valid());
+        assert!(history.is_last_lap_valid());
         assert_eq!(history.last_lap_seconds(entry.last_lap_seconds), 95.0);
 
         entry.lap_start_elapsed_seconds = 500.25;
@@ -3220,6 +3266,67 @@ mod tests {
         assert!(!history.is_last_lap_valid());
         assert!((history.last_lap_seconds(entry.last_lap_seconds) - 100.25).abs() < 0.001);
         assert!((history.average_lap_time() - 100.25).abs() < 0.001);
+    }
+
+    #[test]
+    fn standings_history_uses_negative_official_time_as_invalid_confirmation() {
+        let mut history = CarHistory::default();
+        let mut entry = LmuStandingEntry {
+            total_laps: 4,
+            lap_valid: 1,
+            last_lap_seconds: 95.0,
+            best_lap_seconds: 95.0,
+            lap_start_elapsed_seconds: 400.0,
+            elapsed_seconds: 402.0,
+            ..LmuStandingEntry::default()
+        };
+
+        history.update(&entry, 60.0);
+        entry.total_laps = 5;
+        entry.last_lap_seconds = -100.25;
+        entry.lap_start_elapsed_seconds = 500.25;
+        entry.elapsed_seconds = 500.8;
+        history.update(&entry, 59.0);
+
+        assert!(!history.is_last_lap_valid());
+        assert!((history.last_lap_seconds(entry.last_lap_seconds) - 100.25).abs() < 0.001);
+    }
+
+    #[test]
+    fn standings_history_ignores_residual_invalid_flag_after_lap_boundary() {
+        let mut history = CarHistory::default();
+        let mut entry = LmuStandingEntry {
+            total_laps: 4,
+            lap_valid: 1,
+            last_lap_seconds: 95.0,
+            best_lap_seconds: 95.0,
+            lap_start_elapsed_seconds: 400.0,
+            elapsed_seconds: 402.0,
+            ..LmuStandingEntry::default()
+        };
+
+        history.update(&entry, 60.0);
+        entry.total_laps = 5;
+        entry.last_lap_seconds = 100.0;
+        entry.lap_start_elapsed_seconds = 500.0;
+        entry.elapsed_seconds = 501.5;
+        history.update(&entry, 59.0);
+        assert!(history.is_last_lap_valid());
+
+        entry.lap_invalidated = 1;
+        entry.elapsed_seconds = 502.0;
+        history.update(&entry, 58.5);
+        entry.lap_invalidated = 0;
+        entry.elapsed_seconds = 504.0;
+        history.update(&entry, 58.0);
+
+        entry.total_laps = 6;
+        entry.last_lap_seconds = 100.0;
+        entry.lap_start_elapsed_seconds = 600.0;
+        entry.elapsed_seconds = 601.5;
+        history.update(&entry, 57.0);
+
+        assert!(history.is_last_lap_valid());
     }
 
     #[test]
@@ -3243,7 +3350,7 @@ mod tests {
         entry.elapsed_seconds = 411.0;
         history.update(&entry, 59.0);
 
-        assert!(!history.is_last_lap_valid());
+        assert!(history.is_last_lap_valid());
         assert_eq!(history.last_lap_seconds(entry.last_lap_seconds), 0.0);
         assert!(history.recent_lap_times.is_empty());
     }

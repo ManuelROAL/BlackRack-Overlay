@@ -20,6 +20,7 @@ struct LmuStandingEntry {
     uint32_t in_pits;
     uint32_t in_garage;
     uint32_t lap_valid;
+    uint32_t lap_invalidated;
     uint32_t flag;
     uint32_t pit_state;
     uint32_t pit_stops;
@@ -296,6 +297,7 @@ extern "C" int lmu_read_snapshot(LmuSnapshot* output) {
             destination.world_y = -vehicle_telemetry->mPos.z;
             destination.lap_start_elapsed_seconds = vehicle_telemetry->mLapStartET;
             destination.elapsed_seconds = vehicle_telemetry->mElapsedTime;
+            destination.lap_invalidated = vehicle_telemetry->mLapInvalidated ? 1u : 0u;
             destination.track_limits_steps = static_cast<uint32_t>(vehicle_telemetry->mTrackLimitsSteps);
             destination.track_limits_available = 1u;
             destination.virtual_energy = static_cast<double>(vehicle_telemetry->mVirtualEnergy);
