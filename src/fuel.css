@@ -1,12 +1,12 @@
 .fuel-body {
-  padding: 4px;
+  padding: 3px;
 }
 
 .fuel-body .fuel-shell {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 8px);
-  border-radius: 6px;
+  height: calc(100vh - 6px);
+  border-radius: 5px;
   background: linear-gradient(
     145deg,
     rgb(10 14 19 / var(--overlay-background-opacity)),
@@ -15,14 +15,14 @@
   box-shadow: 0 7px 24px rgb(0 0 0 / 38%);
   cursor: move;
   font-family: "Roboto Condensed", sans-serif;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 850;
   line-height: 1;
   text-rendering: optimizeLegibility;
 }
 
 body[data-overlay-fit="true"].fuel-body .fuel-shell {
-  height: calc(var(--overlay-base-height) - 8px);
+  height: calc(var(--overlay-base-height) - 6px);
 }
 
 .fuel-shell *,
@@ -40,12 +40,12 @@ body[data-overlay-fit="true"].fuel-body .fuel-shell {
 
 .strategy-summary {
   display: grid;
-  flex: 0 0 46px;
-  grid-template-columns: 70px 58px 58px 92px minmax(92px, 1fr) 34px;
-  grid-template-rows: 35px 4px;
+  flex: 0 0 39px;
+  grid-template-columns: 60px 50px 50px 76px minmax(80px, 1fr) 30px;
+  grid-template-rows: 29px 3px;
   align-items: center;
-  column-gap: 7px;
-  padding: 3px 6px 4px;
+  column-gap: 5px;
+  padding: 3px 5px 4px;
 }
 
 .summary-stat {
@@ -56,7 +56,7 @@ body[data-overlay-fit="true"].fuel-body .fuel-shell {
 
 .summary-stat > span {
   display: block;
-  margin-bottom: 4px;
+  margin-bottom: 3px;
   color: #8995a2;
   font-weight: 900;
   letter-spacing: 0.045em;
@@ -65,12 +65,12 @@ body[data-overlay-fit="true"].fuel-body .fuel-shell {
 .icon-value {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
 }
 
 .icon-value img {
-  width: 12px;
-  height: 12px;
+  width: 11px;
+  height: 11px;
   flex: 0 0 auto;
   object-fit: contain;
   opacity: 0.78;
@@ -102,8 +102,8 @@ body[data-overlay-fit="true"].fuel-body .fuel-shell {
 .pit-status {
   display: grid;
   align-self: center;
-  width: 32px;
-  height: 24px;
+  width: 28px;
+  height: 20px;
   place-items: center;
   border: 1px solid rgb(255 255 255 / 11%);
   border-radius: 4px;
@@ -140,7 +140,7 @@ body[data-overlay-fit="true"].fuel-body .fuel-shell {
   position: relative;
   grid-column: 1 / -1;
   overflow: hidden;
-  height: 4px;
+  height: 3px;
   border-radius: 2px;
   background: rgb(255 255 255 / 8%);
 }
@@ -169,11 +169,11 @@ body[data-overlay-fit="true"].fuel-body .fuel-shell {
 
 .endurance-plan {
   display: grid;
-  flex: 0 0 37px;
-  grid-template-columns: 70px repeat(4, 1fr);
+  flex: 0 0 31px;
+  grid-template-columns: 60px repeat(4, 1fr);
   align-items: center;
-  gap: 7px;
-  padding: 3px 6px;
+  gap: 5px;
+  padding: 2px 5px;
   border-top: 1px solid rgb(255 255 255 / 8%);
   border-bottom: 1px solid rgb(255 255 255 / 8%);
   background: rgb(255 255 255 / 2%);
@@ -191,7 +191,7 @@ body[data-overlay-fit="true"].fuel-body .fuel-shell {
 
 .endurance-plan span {
   display: block;
-  margin-bottom: 4px;
+  margin-bottom: 3px;
   color: #7f8a96;
   font-weight: 900;
   letter-spacing: 0.045em;
@@ -217,11 +217,11 @@ body[data-overlay-fit="true"].fuel-body .fuel-shell {
 
 .strategy-context {
   display: grid;
-  flex: 0 0 22px;
+  flex: 0 0 18px;
   grid-template-columns: 1.2fr 1.2fr 0.9fr 1fr 1fr;
   align-items: center;
-  gap: 6px;
-  padding: 0 6px;
+  gap: 4px;
+  padding: 0 5px;
   color: #929daa;
   border-bottom: 1px solid rgb(255 255 255 / 7%);
   font-weight: 900;
@@ -236,7 +236,7 @@ body[data-overlay-fit="true"].fuel-body .fuel-shell {
   display: grid;
   flex: 1 1 auto;
   min-height: 0;
-  grid-template-rows: 18px repeat(4, 1fr);
+  grid-template-rows: 14px repeat(4, 1fr);
 }
 
 .fuel-shell[data-resource-mode="energy"] .energy-strategy-table {
@@ -246,8 +246,8 @@ body[data-overlay-fit="true"].fuel-body .fuel-shell {
 
 .fuel-compact-card {
   display: none;
-  flex: 0 0 32px;
-  padding: 3px 6px;
+  flex: 0 0 26px;
+  padding: 2px 5px;
   border-top: 1px solid rgb(255 255 255 / 8%);
   border-bottom: 1px solid rgb(255 255 255 / 8%);
   background: rgb(255 173 67 / 5%);
@@ -260,9 +260,9 @@ body[data-overlay-fit="true"].fuel-body .fuel-shell {
 .fuel-compact-card header,
 .fuel-compact-values {
   display: grid;
-  grid-template-columns: 86px repeat(5, 1fr);
+  grid-template-columns: 70px repeat(5, 1fr);
   align-items: center;
-  gap: 8px;
+  gap: 5px;
 }
 
 .fuel-compact-card header {
@@ -284,7 +284,7 @@ body[data-overlay-fit="true"].fuel-body .fuel-shell {
 
 .fuel-compact-values span {
   color: #7f8a96;
-  margin-right: 3px;
+  margin-right: 2px;
 }
 
 .fuel-compact-values strong {
@@ -294,10 +294,10 @@ body[data-overlay-fit="true"].fuel-body .fuel-shell {
 .strategy-columns,
 .strategy-row {
   display: grid;
-  grid-template-columns: 86px repeat(4, 1fr);
+  grid-template-columns: 70px repeat(4, 1fr);
   align-items: center;
-  column-gap: 8px;
-  padding: 0 6px;
+  column-gap: 5px;
+  padding: 0 5px;
 }
 
 .strategy-columns {

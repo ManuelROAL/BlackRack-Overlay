@@ -60,7 +60,7 @@ const validPlacement = (value: unknown, overlay: OverlayId): value is OverlayPla
       .every((number) => typeof number === "number" && Number.isFinite(number));
 };
 
-const migrateCompactDamagePanels = (placement: OverlayPlacement): OverlayPlacement => {
+const migrateCompactPanels = (placement: OverlayPlacement): OverlayPlacement => {
   if (placement.overlay === "tires"
     && ((placement.width === 260 && placement.height === 260)
       || (placement.width === 190 && placement.height === 180)
@@ -73,6 +73,10 @@ const migrateCompactDamagePanels = (placement: OverlayPlacement): OverlayPlaceme
     && (placement.width === 180 || placement.width === 160 || placement.width === 130 || placement.width === 108)
     && (placement.height === 112 || placement.height === 94)) {
     return { ...placement, width: 94, height: 94 };
+  }
+  if (placement.overlay === "fuel"
+    && placement.width === 560 && placement.height === 230) {
+    return { ...placement, width: 470, height: 188 };
   }
   return placement;
 };
@@ -88,7 +92,7 @@ const readStoredLayout = (): Partial<CompositeLayout> | null => {
     if (!entries.every(([overlay, placement]) => validPlacement(placement, overlay))) return null;
     return Object.fromEntries(entries.map(([overlay, placement]) => [
       overlay,
-      migrateCompactDamagePanels(placement as OverlayPlacement)
+      migrateCompactPanels(placement as OverlayPlacement)
     ])) as Partial<CompositeLayout>;
   } catch {
     return null;
