@@ -56,6 +56,10 @@ duplicate selection or timing semantics.
   state rather than best-lap coloring.
 - The TinyPedal-style remaining-lap display estimate is separate from the
   leader-aware finish-line crossing count used by fuel strategy.
+- Estimated total laps in the header follow Dox's multiclass projection: the
+  overall leader determines when the checkered flag begins, while the player's
+  class leader supplies the completed laps, lap phase and pace used to project
+  that category's maximum lap count.
 
 ## Identity, roster and enrichment
 

@@ -2253,8 +2253,35 @@ impl LmuTelemetrySource {
         Some(1.0 + crossings_after_next)
     }
 
+    fn player_class_leader(snapshot: &LmuSnapshot) -> Option<&LmuStandingEntry> {
+        let count = (snapshot.standings_count as usize).min(MAX_VEHICLES);
+        let standings = &snapshot.standings[..count];
+        let player = standings.iter().find(|entry| entry.is_player != 0)?;
+        standings
+            .iter()
+            .filter(|entry| entry.position > 0 && entry.vehicle_class == player.vehicle_class)
+            .min_by_key(|entry| entry.position)
+    }
+
+    fn standing_reference_lap(entry: &LmuStandingEntry) -> Option<f64> {
+        [
+            entry.estimated_lap_time,
+            entry.last_lap_seconds,
+            entry.best_lap_seconds,
+        ]
+        .into_iter()
+        .find(|value| value.is_finite() && *value > 0.0)
+    }
+
     fn total_laps_estimated(snapshot: &LmuSnapshot) -> f64 {
         if snapshot.game_phase >= 8 {
+            if let Some(class_leader) = Self::player_class_leader(snapshot) {
+                return if class_leader.finish_status != 0 {
+                    class_leader.total_laps.max(0) as f64
+                } else {
+                    class_leader.total_laps.saturating_add(1).max(0) as f64
+                };
+            }
             return if Self::player_finished(snapshot) {
                 snapshot.player_total_laps.max(0) as f64
             } else {
@@ -2268,24 +2295,42 @@ impl LmuTelemetrySource {
         let Some(finish_delay) = Self::leader_finish_delay(snapshot) else {
             return 0.0;
         };
-        if finish_delay <= 0.0 || snapshot.leader_total_laps < 0 {
+        if finish_delay <= 0.0 {
             return 0.0;
         }
 
-        let Some(next_crossing) =
-            Self::time_to_next_crossing(snapshot.leader_lap_time, snapshot.leader_time_into_lap)
-        else {
+        let (completed_laps, lap_time, time_into_lap) =
+            if let Some(class_leader) = Self::player_class_leader(snapshot) {
+                if class_leader.finish_status != 0 {
+                    return class_leader.total_laps.max(0) as f64;
+                }
+                let Some(lap_time) = Self::standing_reference_lap(class_leader) else {
+                    return 0.0;
+                };
+                (
+                    class_leader.total_laps,
+                    lap_time,
+                    class_leader.time_into_lap,
+                )
+            } else {
+                (
+                    snapshot.leader_total_laps,
+                    snapshot.leader_lap_time,
+                    snapshot.leader_time_into_lap,
+                )
+            };
+        let Some(next_crossing) = Self::time_to_next_crossing(lap_time, time_into_lap) else {
             return 0.0;
         };
         let crossings = if finish_delay <= next_crossing {
             1.0
         } else {
-            1.0 + ((finish_delay - next_crossing - 0.001) / snapshot.leader_lap_time)
+            1.0 + ((finish_delay - next_crossing - 0.001) / lap_time)
                 .ceil()
                 .max(0.0)
         };
 
-        snapshot.leader_total_laps as f64 + crossings
+        completed_laps.max(0) as f64 + crossings
     }
 
     fn laps_remaining(snapshot: &LmuSnapshot) -> f64 {
@@ -3837,7 +3882,7 @@ mod tests {
     }
 
     #[test]
-    fn timed_race_projects_player_crossings_from_the_leader_flag() {
+    fn timed_race_total_laps_falls_back_to_the_overall_leader_without_a_roster() {
         let snapshot = LmuSnapshot {
             max_laps: 10_000,
             session_time_remaining: 100.0,
@@ -3857,6 +3902,55 @@ mod tests {
         );
         assert_eq!(LmuTelemetrySource::laps_remaining(&snapshot), 3.0);
         assert_eq!(LmuTelemetrySource::total_laps_estimated(&snapshot), 44.0);
+    }
+
+    #[test]
+    fn multiclass_total_laps_uses_the_player_class_leader() {
+        let mut snapshot = LmuSnapshot {
+            max_laps: 10_000,
+            session_time_remaining: 600.0,
+            leader_total_laps: 25,
+            leader_lap_time: 90.0,
+            leader_time_into_lap: 45.0,
+            standings_count: 3,
+            ..LmuSnapshot::default()
+        };
+        snapshot.standings[0] = LmuStandingEntry {
+            vehicle_id: 1,
+            position: 1,
+            total_laps: 25,
+            estimated_lap_time: 90.0,
+            time_into_lap: 45.0,
+            ..LmuStandingEntry::default()
+        };
+        set_chars(&mut snapshot.standings[0].vehicle_class, "Hypercar");
+        snapshot.standings[1] = LmuStandingEntry {
+            vehicle_id: 2,
+            position: 8,
+            total_laps: 20,
+            estimated_lap_time: 120.0,
+            time_into_lap: 60.0,
+            ..LmuStandingEntry::default()
+        };
+        set_chars(&mut snapshot.standings[1].vehicle_class, "LMGT3");
+        snapshot.standings[2] = LmuStandingEntry {
+            vehicle_id: 3,
+            position: 10,
+            total_laps: 20,
+            is_player: 1,
+            estimated_lap_time: 122.0,
+            time_into_lap: 50.0,
+            ..LmuStandingEntry::default()
+        };
+        set_chars(&mut snapshot.standings[2].vehicle_class, "LMGT3");
+
+        // El Hypercar inicia la bandera en t=675, pero las vueltas máximas
+        // mostradas pertenecen al líder de LMGT3.
+        assert_eq!(
+            LmuTelemetrySource::leader_finish_delay(&snapshot),
+            Some(675.0)
+        );
+        assert_eq!(LmuTelemetrySource::total_laps_estimated(&snapshot), 27.0);
     }
 
     #[test]
