@@ -8,10 +8,10 @@ and green; slower is positive and red. The bar grows right for gains and left fo
 losses, with its configured range clamped visually while the numeric value remains
 unclamped.
 
-The presentation uses a compact horizontal timing rail: the zero marker remains
-fixed in the centre, the coloured bar grows away from it and the signed delta is
-centred immediately below. Mode, mini-sector and reference-lap details remain as
-low-emphasis edge metadata so they do not compete with the live comparison.
+The presentation contains only a transparent horizontal timing rail and the
+signed delta centred immediately below it. The zero marker remains fixed in the
+centre and the coloured bar grows away from it. Mode, mini-sector and reference
+details remain configuration/backend concerns and are not rendered.
 
 ## Files and ownership
 

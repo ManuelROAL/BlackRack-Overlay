@@ -9,55 +9,14 @@
   height: 60px;
   box-sizing: border-box;
   overflow: hidden;
-  border: 1px solid rgb(255 255 255 / 12%);
-  border-radius: 3px;
-  background: linear-gradient(
-    180deg,
-    rgb(20 24 29 / calc(var(--overlay-background-opacity) * 0.92)),
-    rgb(5 8 11 / calc(var(--overlay-background-opacity) * 0.96))
-  );
-  box-shadow: 0 6px 18px rgb(0 0 0 / 42%);
+  background: transparent;
   font-variant-numeric: tabular-nums;
-}
-
-.delta-card header {
-  position: absolute;
-  z-index: 3;
-  top: 4px;
-  right: 9px;
-  left: 9px;
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: center;
-  color: #7d8793;
-  font-size: 8px;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  line-height: 10px;
-  text-transform: uppercase;
-}
-
-.delta-card header span:first-child {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.delta-card header b {
-  color: #aab2bc;
-  text-align: center;
-}
-
-.delta-card header span:last-child {
-  color: #aab2bc;
-  letter-spacing: 0;
-  text-align: right;
 }
 
 .delta-track {
   position: absolute;
   z-index: 1;
-  top: 19px;
+  top: 8px;
   right: 9px;
   left: 9px;
   height: 8px;
@@ -115,7 +74,7 @@
 .delta-card > strong {
   position: absolute;
   z-index: 2;
-  top: 29px;
+  top: 21px;
   right: 0;
   left: 0;
   color: #61e98a;
@@ -141,7 +100,7 @@
 }
 
 .delta-card[data-state="invalid"] {
-  border-color: rgb(255 187 58 / 42%);
+  opacity: 0.9;
 }
 
 .delta-card.frozen > strong {
