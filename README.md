@@ -1,14 +1,5 @@
 # LMU Overlay
 
-## Contexto para OpenCode
-
-El repositorio incluye `AGENTS.md`, `opencode.json` y documentación modular en
-`docs/` para conservar la arquitectura, las decisiones funcionales y el estado
-del trabajo entre sesiones. Abre OpenCode desde la raíz del proyecto y ejecuta
-`/context` para revisar el punto de partida. También están disponibles `/verify`
-para validar Rust y frontend, y `/performance` para analizar la siguiente captura
-de rendimiento.
-
 Overlay de telemetría para **Le Mans Ultimate**, pensado para Windows y Linux. La aplicación usa Tauri 2, una interfaz TypeScript sin framework y un núcleo Rust. En Windows lee la interfaz oficial de memoria compartida `LMU_Data`; si el SDK del juego no está disponible al compilar, mantiene una fuente simulada para desarrollo.
 
 ## Estado actual
