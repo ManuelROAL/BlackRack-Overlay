@@ -322,6 +322,6 @@ body[data-overlay-fit="true"].fuel-body .fuel-shell {
   font-weight: 950;
 }
 
-.average-row > span { color: #7fa9ff; }
-.qualify-row > span { color: #ed86e5; }
-.last-row > span { color: #e7cf62; }
+.average-row > span { color: #b7c0c9; }
+.qualify-row > span { color: #ff6b5f; }
+.last-row > span { color: #69d58a; }
