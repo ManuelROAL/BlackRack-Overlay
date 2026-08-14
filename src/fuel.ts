@@ -171,9 +171,10 @@ const render = (frame: TelemetryFrame): void => {
     );
     text("stop-plan", strategy.stops > 0 ? `${strategy.stops}→${strategy.target_stops}` : "0");
 
+    const retainsStops = strategy.target_stops >= strategy.stops;
     const fullAllowed = qualifying > 0 && strategy.target_consumption >= qualifying;
     const displayedTarget = fullAllowed ? qualifying : strategy.target_consumption;
-    text("target-label", fullAllowed ? "FULL" : "OBJ/V");
+    text("target-label", fullAllowed ? "FULL" : retainsStops ? "MANTÉN" : "OBJ/V");
     text("target-consumption", format(displayedTarget));
     text("saving-required", fullAllowed ? "0,0%" : `−${format(strategy.saving_percent, 1)}%`);
     tone("saving-required", fullAllowed || strategy.saving_percent <= 2 ? "good" : strategy.saving_percent <= 7 ? "warn" : "bad");

@@ -5,6 +5,7 @@ pub(super) struct ResourceStrategyInput {
     pub current: f64,
     pub capacity: f64,
     pub consumption: f64,
+    pub supported_minimum_consumption: f64,
     pub laps_remaining: f64,
     pub lap_progress: f64,
     pub completed_laps: i32,
@@ -151,12 +152,17 @@ pub(super) fn calculate_resource_strategy(
     }
 
     let stops = stops_required(input).max(minimum_stops);
-    let target_stops = if input.pit_out_lap {
-        stops
+    let reduced_stops = stops.saturating_sub(1).max(minimum_stops);
+    let reduced_consumption = consumption_for_stops(input, reduced_stops);
+    let reduction_is_supported = !input.pit_out_lap
+        && reduced_stops < stops
+        && valid_positive(input.supported_minimum_consumption)
+        && reduced_consumption + 1e-6 >= input.supported_minimum_consumption;
+    let (target_stops, target_consumption) = if reduction_is_supported {
+        (reduced_stops, reduced_consumption)
     } else {
-        stops.saturating_sub(1)
+        (stops, input.consumption)
     };
-    let target_consumption = consumption_for_stops(input, target_stops);
     let saving_percent =
         ((input.consumption - target_consumption) / input.consumption * 100.0).max(0.0);
     let autonomy = input.current.max(0.0) / input.consumption;
@@ -221,6 +227,7 @@ mod tests {
             current: 35.0,
             capacity: 100.0,
             consumption: 10.0,
+            supported_minimum_consumption: 7.0,
             laps_remaining: 18.5,
             lap_progress: 0.4,
             completed_laps: 12,
@@ -243,10 +250,10 @@ mod tests {
     }
 
     #[test]
-    fn parallel_resource_can_enforce_a_minimum_stop_count() {
+    fn parallel_resource_floor_cannot_be_removed_by_the_target() {
         let strategy = calculate_resource_strategy(input(), 120.0, 3).unwrap();
         assert_eq!(strategy.stops, 3);
-        assert_eq!(strategy.target_stops, 2);
+        assert_eq!(strategy.target_stops, 3);
     }
 
     #[test]
@@ -270,6 +277,7 @@ mod tests {
                 current: 2.968,
                 capacity: 75.0,
                 consumption: 2.872,
+                supported_minimum_consumption: 2.5,
                 laps_remaining: 12.0,
                 lap_progress: 0.0,
                 completed_laps: 0,
@@ -298,6 +306,39 @@ mod tests {
             0,
         )
         .is_none());
+    }
+
+    #[test]
+    fn keeps_current_stops_when_reduced_plan_is_below_supported_consumption() {
+        let strategy = calculate_resource_strategy(
+            ResourceStrategyInput {
+                supported_minimum_consumption: 8.0,
+                ..input()
+            },
+            120.0,
+            0,
+        )
+        .unwrap();
+
+        assert_eq!(strategy.stops, 2);
+        assert_eq!(strategy.target_stops, 2);
+        assert_eq!(strategy.target_consumption, 10.0);
+        assert_eq!(strategy.saving_percent, 0.0);
+    }
+
+    #[test]
+    fn does_not_claim_a_stop_reduction_without_clean_lap_support() {
+        let strategy = calculate_resource_strategy(
+            ResourceStrategyInput {
+                supported_minimum_consumption: 0.0,
+                ..input()
+            },
+            120.0,
+            0,
+        )
+        .unwrap();
+
+        assert_eq!(strategy.target_stops, strategy.stops);
     }
 
     #[test]

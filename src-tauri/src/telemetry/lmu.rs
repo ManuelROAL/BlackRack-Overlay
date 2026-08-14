@@ -2508,7 +2508,7 @@ impl TelemetrySource for LmuTelemetrySource {
             &track_name,
             snapshot.lap_number,
             lap_progress,
-            snapshot.player_lap_valid != 0,
+            snapshot.player_lap_valid != 0 && snapshot.game_phase == 5,
             in_pits,
             formation,
             fuel_used_current_lap,
@@ -2568,22 +2568,26 @@ impl TelemetrySource for LmuTelemetrySource {
         .find(|value| value.is_finite() && *value > 0.0)
         .unwrap_or(0.0);
         let strategy_input =
-            |current, capacity, consumption, pit_cycle, pit_out| ResourceStrategyInput {
-                current,
-                capacity,
-                consumption,
-                laps_remaining: session_lap_equivalents_remaining,
-                lap_progress,
-                completed_laps: snapshot.player_total_laps,
-                pit_cycle_consumption: pit_cycle,
-                pit_out_consumption: pit_out,
-                pit_out_lap: profile_estimate.current_lap_started_in_pits,
+            |current, capacity, consumption, supported_minimum_consumption, pit_cycle, pit_out| {
+                ResourceStrategyInput {
+                    current,
+                    capacity,
+                    consumption,
+                    supported_minimum_consumption,
+                    laps_remaining: session_lap_equivalents_remaining,
+                    lap_progress,
+                    completed_laps: snapshot.player_total_laps,
+                    pit_cycle_consumption: pit_cycle,
+                    pit_out_consumption: pit_out,
+                    pit_out_lap: profile_estimate.current_lap_started_in_pits,
+                }
             };
         let fuel_input = |consumption| {
             strategy_input(
                 snapshot.fuel_liters,
                 snapshot.fuel_capacity_liters,
                 consumption,
+                profile_estimate.fuel_supported_minimum,
                 profile_estimate.fuel_pit_cycle_consumption,
                 profile_estimate.fuel_pit_out_consumption,
             )
@@ -2593,6 +2597,7 @@ impl TelemetrySource for LmuTelemetrySource {
                 virtual_energy_percent,
                 100.0,
                 consumption,
+                profile_estimate.energy_supported_minimum,
                 profile_estimate.energy_pit_cycle_consumption,
                 profile_estimate.energy_pit_out_consumption,
             )
