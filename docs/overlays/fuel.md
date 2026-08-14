@@ -72,6 +72,8 @@ math belongs in Rust. `fuel.ts` only formats serialized plans.
   numeric columns fill the complete usable surface without empty side gutters.
 - Use fixed content-sized tracks and a tight 2 px horizontal gap between plan
   and scenario columns; do not distribute them across surplus panel width.
+- Center each scenario value horizontally under its numeric column heading while
+  keeping the scenario names left-aligned.
 - Keep the summary focused on current resource, lap autonomy, pit window and PIT
   status. Do not show the redundant projected remaining/total race laps or
   autonomy minutes.

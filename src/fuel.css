@@ -304,7 +304,7 @@ body[data-overlay-fit="true"].fuel-body .fuel-shell {
 
 .strategy-columns span:not(:first-child),
 .strategy-row strong {
-  text-align: right;
+  text-align: center;
 }
 
 .strategy-row {
