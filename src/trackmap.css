@@ -112,42 +112,37 @@
 
 .vehicle-disc {
   position: absolute;
-  top: -10px;
-  left: -10px;
+  top: -12px;
+  left: -12px;
   display: grid;
-  width: 20px;
-  height: 20px;
+  width: 24px;
+  height: 24px;
   place-items: center;
   border: 2px solid rgb(8 11 15 / 92%);
   border-radius: 50%;
 }
 
 .vehicle-label {
-  color: #fff;
+  color: #0b1015;
   font-size: 13px;
   font-weight: 900;
   line-height: 1;
-  text-shadow:
-    -1px -1px 0 rgb(0 0 0 / 75%),
-    1px -1px 0 rgb(0 0 0 / 75%),
-    -1px 1px 0 rgb(0 0 0 / 75%),
-    1px 1px 0 rgb(0 0 0 / 75%);
 }
 
 .vehicle-marker.is-player .vehicle-disc {
-  top: -12px;
-  left: -12px;
-  width: 24px;
-  height: 24px;
+  top: -14px;
+  left: -14px;
+  width: 28px;
+  height: 28px;
   border: 2.5px solid #f4fff6;
 }
 
 .player-halo {
   position: absolute;
-  top: -17px;
-  left: -17px;
-  width: 34px;
-  height: 34px;
+  top: -20px;
+  left: -20px;
+  width: 40px;
+  height: 40px;
   border: 4px solid #54ff79;
   border-radius: 50%;
   animation: none;

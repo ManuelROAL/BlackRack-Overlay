@@ -53,8 +53,9 @@ TypeScript fetches static geometry, interpolates and renders it.
   it. Update transforms directly at telemetry cadence.
 - Do not add continuous CSS transitions, a permanent animation loop or per-marker
   SVG filters; these keep the WebView2 GPU process awake.
-- Vehicles use class colors and class position; pit cars remain at reduced opacity.
-- The player keeps its normal class-position marker, grows slightly and has a
+- Vehicles use 24 px class-colored circles with their class position in black;
+  pit cars remain at reduced opacity.
+- The player keeps its class-position label in a 28 px circle and has a larger
   pulsing lime halo advanced by telemetry events. Never replace its label with `P`.
 - Only the overall leader receives a static gold star. Keep the complete leader
   marker above all others and distinct from the player's halo; class leaders have
