@@ -294,9 +294,10 @@ body[data-overlay-fit="true"].fuel-body .fuel-shell {
 .strategy-columns,
 .strategy-row {
   display: grid;
-  grid-template-columns: 70px repeat(4, 1fr);
+  grid-template-columns: 70px repeat(4, 76px);
   align-items: center;
   column-gap: 5px;
+  justify-content: center;
   padding: 0 5px;
 }
 

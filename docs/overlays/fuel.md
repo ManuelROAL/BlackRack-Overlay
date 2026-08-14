@@ -68,6 +68,8 @@ presentation-specific stint delta.
 - Use a `470 x 188` design surface. Migrate only the former default `560 x 230`
   placement to the compact size so deliberately resized user layouts keep their
   chosen scale.
+- Keep the scenario table as a centered compact block with fixed-width numeric
+  columns; do not stretch those columns across the full panel width.
 - Label scenario-wide replenishment as `TOTAL +`; it is the sum still required
   over the remaining race, not necessarily the next pit load. The summary's
   `CARGA` value remains the next-stop load.
