@@ -4,6 +4,7 @@ import type { OverlayId } from "./overlay-appearance";
 
 export interface OverlayDisplay {
   index: number;
+  systemNumber: number;
   label: string;
   name: string;
   x: number;

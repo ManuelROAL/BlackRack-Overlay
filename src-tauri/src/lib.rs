@@ -103,6 +103,7 @@ struct OverlayWindowState {
 #[serde(rename_all = "camelCase")]
 struct OverlayDisplay {
     index: usize,
+    system_number: usize,
     label: String,
     name: String,
     x: i32,
@@ -110,6 +111,29 @@ struct OverlayDisplay {
     width: u32,
     height: u32,
     scale_factor: f64,
+}
+
+fn system_display_number(name: Option<&str>, fallback: usize) -> usize {
+    name.and_then(|name| name.strip_prefix(r"\\.\DISPLAY"))
+        .and_then(|number| number.parse::<usize>().ok())
+        .filter(|number| *number > 0)
+        .unwrap_or(fallback)
+}
+
+#[cfg(test)]
+mod display_number_tests {
+    use super::system_display_number;
+
+    #[test]
+    fn uses_the_number_from_the_windows_display_device_name() {
+        assert_eq!(system_display_number(Some(r"\\.\DISPLAY3"), 1), 3);
+    }
+
+    #[test]
+    fn falls_back_for_missing_or_unrecognized_names() {
+        assert_eq!(system_display_number(None, 2), 2);
+        assert_eq!(system_display_number(Some("HDMI-A-1"), 2), 2);
+    }
 }
 
 #[derive(Serialize)]
@@ -148,18 +172,19 @@ fn overlay_displays(app: &AppHandle) -> Result<Vec<OverlayDisplay>, String> {
         monitors
             .into_iter()
             .enumerate()
-            .map(|(index, monitor)| OverlayDisplay {
-                index,
-                label: format!("{OVERLAY_HOST_PREFIX}{index}"),
-                name: monitor
-                    .name()
-                    .cloned()
-                    .unwrap_or_else(|| format!("Monitor {}", index + 1)),
-                x: monitor.position().x,
-                y: monitor.position().y,
-                width: monitor.size().width,
-                height: monitor.size().height,
-                scale_factor: monitor.scale_factor(),
+            .map(|(index, monitor)| {
+                let name = monitor.name().cloned();
+                OverlayDisplay {
+                    index,
+                    system_number: system_display_number(name.as_deref(), index + 1),
+                    label: format!("{OVERLAY_HOST_PREFIX}{index}"),
+                    name: name.unwrap_or_else(|| format!("Monitor {}", index + 1)),
+                    x: monitor.position().x,
+                    y: monitor.position().y,
+                    width: monitor.size().width,
+                    height: monitor.size().height,
+                    scale_factor: monitor.scale_factor(),
+                }
             })
             .collect()
     })
