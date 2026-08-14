@@ -107,6 +107,10 @@ duplicate selection or timing semantics.
 
 ## Visual and performance rules
 
+- Keep the general session header visually anchored with the same restrained
+  2 px lime left edge used by the Trailing + Pedal overlay. Category headers
+  retain their own class-colored edge.
+
 - Group each class in an outlined card with an angled filled category tab and
   separated row surfaces. Keep category accents/gradients aligned with Relative.
 - Player tint is translucent lime with lime edge markers over the category layer;
