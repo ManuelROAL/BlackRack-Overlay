@@ -10,8 +10,7 @@
 - Cadence: 50 Hz base telemetry
 
 All stop, target-consumption, pit-window, refill and parallel-resource strategy
-math belongs in Rust. `fuel.ts` formats serialized plans and may track only the
-presentation-specific stint delta.
+math belongs in Rust. `fuel.ts` only formats serialized plans.
 
 ## Resource and strategy semantics
 
@@ -63,18 +62,21 @@ presentation-specific stint delta.
 
 ## Presentation
 
-- Present current resource, race projection, pit window/load and all scenarios as
-  a compact endurance strategy tool.
+- Present current resource, autonomy, pit window/load and the clean-average,
+  qualifying and last-lap scenarios as a compact endurance strategy tool.
 - Use a `356 x 188` design surface. Migrate the former default `560 x 230` and
   intermediate `470 x 188`, `390 x 188` and `356 x 202` placements to the
   compact size so deliberately resized user layouts keep their chosen scale.
-- Let the scenario table define the panel width: its label column and four
+- Let the scenario table define the panel width: its label column and three
   numeric columns fill the complete usable surface without empty side gutters.
-- Keep the complete summary on one row with tight, content-sized columns and a
-  2 px gap; resource, race values, pit window and PIT status must all fit without
-  widening the scenario table.
-- Wrap the strategy context into two rows so its values remain legible on the
-  narrower surface.
+- Keep the summary focused on current resource, lap autonomy, pit window and PIT
+  status. Do not show the redundant projected remaining/total race laps or
+  autonomy minutes.
+- Keep the race plan focused on stops, target consumption, required saving and
+  next-stop load. Do not show the presentation-only live stint delta.
+- Omit diagnostic context (confidence, pit-cycle delta, qualifying gain and
+  pit-service estimate) from the driving overlay; those values are not needed for
+  the immediate stop/save decision.
 - In energy mode, wrap the auxiliary fuel values across two rows beside the fuel
   icon instead of shrinking or clipping them.
 - Label scenario-wide replenishment as `TOTAL +`; it is the sum still required
@@ -84,9 +86,8 @@ presentation-specific stint delta.
   one stop, use the larger of the active and qualifying next-fill calculations
   and label it `CARGA Q`. This follows the conservative final-stint behavior of
   planning for full-power running without adding an arbitrary reserve.
-- Replace the formerly exact-but-usually-zero scenario `FINAL` column with
-  `Δ QUALY`, since there is no authoritative selected pit-menu load from which to
-  predict a meaningful user-specific finish reserve.
+- Keep `TOTAL +` in the scenario table, but omit `Δ QUALY` and the redundant
+  `ESTIMADO` row. The visible rows are `PROMEDIO`, `QUALY` and `ÚLTIMA`.
 - Hybrid cars show energy scenarios plus a compact fuel card while the global pit
   plan accounts for both resources.
 - The PIT indicator is neutral above three laps of autonomy and changes as the
