@@ -69,6 +69,7 @@ math belongs in Rust. `fuel.ts` only formats serialized plans.
   compact size so deliberately resized user layouts keep their chosen scale.
 - Let the scenario table define the panel width: its label column and three
   numeric columns fill the complete usable surface without empty side gutters.
+- Use a tight 2 px horizontal gap between plan and scenario columns.
 - Keep the summary focused on current resource, lap autonomy, pit window and PIT
   status. Do not show the redundant projected remaining/total race laps or
   autonomy minutes.

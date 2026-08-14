@@ -178,7 +178,7 @@ body[data-overlay-fit="true"].fuel-body .fuel-shell {
   flex: 0 0 31px;
   grid-template-columns: 60px repeat(3, 1fr);
   align-items: center;
-  gap: 5px;
+  gap: 2px;
   padding: 2px 5px;
   border-top: 1px solid rgb(255 255 255 / 8%);
   border-bottom: 1px solid rgb(255 255 255 / 8%);
@@ -292,7 +292,7 @@ body[data-overlay-fit="true"].fuel-body .fuel-shell {
   display: grid;
   grid-template-columns: 70px repeat(3, 1fr);
   align-items: center;
-  column-gap: 5px;
+  column-gap: 2px;
   padding: 0 5px;
 }
 
