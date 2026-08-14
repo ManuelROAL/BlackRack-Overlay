@@ -4,11 +4,17 @@ mod startup_log;
 mod telemetry;
 
 use serde::{Deserialize, Serialize};
+#[cfg(windows)]
+use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fs;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
+#[cfg(windows)]
+use std::sync::OnceLock;
+#[cfg(windows)]
+use std::time::Duration;
 use tauri::{
     window::Color, AppHandle, Emitter, EventTarget, Manager, PhysicalPosition, PhysicalSize,
     Position, Size, State, WebviewUrl, WebviewWindow, WebviewWindowBuilder,
@@ -84,6 +90,271 @@ struct ShortcutSettingsStatus {
 #[derive(Clone, Serialize)]
 struct InteractionMode {
     click_through: bool,
+}
+
+#[derive(Clone, Deserialize)]
+struct OverlayInteractionRegion {
+    x: f64,
+    y: f64,
+    width: f64,
+    height: f64,
+}
+
+#[cfg(windows)]
+#[derive(Default)]
+struct NativeOverlayInputState {
+    click_through: bool,
+    regions_by_window: HashMap<isize, Vec<(i32, i32, i32, i32)>>,
+}
+
+#[cfg(windows)]
+static NATIVE_OVERLAY_INPUT: OnceLock<Mutex<NativeOverlayInputState>> = OnceLock::new();
+#[cfg(windows)]
+static NATIVE_OVERLAY_INPUT_THREAD: OnceLock<std::thread::Thread> = OnceLock::new();
+
+#[cfg(windows)]
+fn native_overlay_input() -> &'static Mutex<NativeOverlayInputState> {
+    NATIVE_OVERLAY_INPUT.get_or_init(|| {
+        Mutex::new(NativeOverlayInputState {
+            click_through: DEFAULT_CLICK_THROUGH,
+            regions_by_window: HashMap::new(),
+        })
+    })
+}
+
+#[cfg(windows)]
+fn refresh_native_overlay_input() {
+    use windows_sys::Win32::Foundation::{HWND, POINT};
+    use windows_sys::Win32::UI::WindowsAndMessaging::{
+        GetCursorPos, GetWindowLongPtrW, SetWindowLongPtrW, SetWindowPos, GWL_EXSTYLE,
+        SWP_FRAMECHANGED, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER, WS_EX_LAYERED,
+        WS_EX_TRANSPARENT,
+    };
+
+    let mut cursor = POINT { x: 0, y: 0 };
+    if unsafe { GetCursorPos(&mut cursor) } == 0 {
+        return;
+    }
+    let input = native_overlay_input()
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    for (&raw_hwnd, regions) in &input.regions_by_window {
+        let hwnd = raw_hwnd as HWND;
+        let should_ignore = input.click_through
+            || !regions.iter().any(|&(left, top, right, bottom)| {
+                cursor.x >= left && cursor.x < right && cursor.y >= top && cursor.y < bottom
+            });
+        let current_style = unsafe { GetWindowLongPtrW(hwnd, GWL_EXSTYLE) };
+        let transparent_style = WS_EX_TRANSPARENT as isize;
+        let layered_style = WS_EX_LAYERED as isize;
+        let next_style = if should_ignore {
+            current_style | transparent_style | layered_style
+        } else {
+            (current_style & !transparent_style) | layered_style
+        };
+        if next_style != current_style {
+            unsafe {
+                SetWindowLongPtrW(hwnd, GWL_EXSTYLE, next_style);
+                let _ = SetWindowPos(
+                    hwnd,
+                    std::ptr::null_mut(),
+                    0,
+                    0,
+                    0,
+                    0,
+                    SWP_NOZORDER | SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_FRAMECHANGED,
+                );
+            }
+        }
+    }
+}
+
+#[cfg(windows)]
+fn register_native_overlay_host(window: &WebviewWindow) -> Result<(), String> {
+    let hwnd = window.hwnd().map_err(|error| error.to_string())?;
+    native_overlay_input()
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .regions_by_window
+        .entry(hwnd.0 as isize)
+        .or_default();
+    Ok(())
+}
+
+#[cfg(windows)]
+fn start_native_overlay_input_tracker() -> Result<(), String> {
+    let tracker = std::thread::Builder::new()
+        .name("overlay-input-hit-test".into())
+        .spawn(|| loop {
+            refresh_native_overlay_input();
+            let click_through = native_overlay_input()
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner())
+                .click_through;
+            if click_through {
+                std::thread::park();
+            } else {
+                std::thread::park_timeout(Duration::from_millis(4));
+            }
+        })
+        .map_err(|error| format!("No se pudo iniciar el hit-test de overlays: {error}"))?;
+    NATIVE_OVERLAY_INPUT_THREAD
+        .set(tracker.thread().clone())
+        .map_err(|_| "El hit-test nativo ya estaba iniciado".to_string())?;
+    Ok(())
+}
+
+#[cfg(windows)]
+fn set_native_overlay_click_through(click_through: bool) {
+    native_overlay_input()
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .click_through = click_through;
+    refresh_native_overlay_input();
+    NATIVE_OVERLAY_INPUT_THREAD
+        .get()
+        .map(std::thread::Thread::unpark);
+}
+
+fn physical_interaction_region(
+    region: &OverlayInteractionRegion,
+    scale_factor: f64,
+    window_width: i32,
+    window_height: i32,
+) -> Option<(i32, i32, i32, i32)> {
+    if !region.x.is_finite()
+        || !region.y.is_finite()
+        || !region.width.is_finite()
+        || !region.height.is_finite()
+        || region.width <= 0.0
+        || region.height <= 0.0
+        || !scale_factor.is_finite()
+        || scale_factor <= 0.0
+    {
+        return None;
+    }
+
+    let left = (region.x * scale_factor).floor() as i32;
+    let top = (region.y * scale_factor).floor() as i32;
+    let right = ((region.x + region.width) * scale_factor).ceil() as i32;
+    let bottom = ((region.y + region.height) * scale_factor).ceil() as i32;
+    let left = left.clamp(0, window_width);
+    let top = top.clamp(0, window_height);
+    let right = right.clamp(0, window_width);
+    let bottom = bottom.clamp(0, window_height);
+    (right > left && bottom > top).then_some((left, top, right, bottom))
+}
+
+#[cfg(test)]
+mod interaction_region_tests {
+    use super::{physical_interaction_region, OverlayInteractionRegion};
+
+    #[test]
+    fn scales_outward_to_cover_fractional_panel_edges() {
+        let region = OverlayInteractionRegion {
+            x: 10.25,
+            y: 20.5,
+            width: 100.25,
+            height: 50.25,
+        };
+
+        assert_eq!(
+            physical_interaction_region(&region, 1.5, 1920, 1080),
+            Some((15, 30, 166, 107))
+        );
+    }
+
+    #[test]
+    fn clips_partially_offscreen_panels_to_the_host() {
+        let region = OverlayInteractionRegion {
+            x: -80.0,
+            y: 40.0,
+            width: 120.0,
+            height: 90.0,
+        };
+
+        assert_eq!(
+            physical_interaction_region(&region, 1.0, 800, 600),
+            Some((0, 40, 40, 130))
+        );
+    }
+
+    #[test]
+    fn rejects_empty_invalid_and_fully_offscreen_regions() {
+        let empty = OverlayInteractionRegion {
+            x: 10.0,
+            y: 10.0,
+            width: 0.0,
+            height: 50.0,
+        };
+        let invalid = OverlayInteractionRegion {
+            x: f64::NAN,
+            y: 10.0,
+            width: 50.0,
+            height: 50.0,
+        };
+        let outside = OverlayInteractionRegion {
+            x: 900.0,
+            y: 10.0,
+            width: 50.0,
+            height: 50.0,
+        };
+
+        assert_eq!(physical_interaction_region(&empty, 1.0, 800, 600), None);
+        assert_eq!(physical_interaction_region(&invalid, 1.0, 800, 600), None);
+        assert_eq!(physical_interaction_region(&outside, 1.0, 800, 600), None);
+    }
+}
+
+#[tauri::command]
+fn set_overlay_interaction_regions(
+    window: WebviewWindow,
+    regions: Vec<OverlayInteractionRegion>,
+) -> Result<(), String> {
+    if !window.label().starts_with(OVERLAY_HOST_PREFIX) {
+        return Err("La región de interacción solo puede aplicarse a un host de overlays".into());
+    }
+
+    #[cfg(windows)]
+    {
+        let size = window.inner_size().map_err(|error| error.to_string())?;
+        let scale_factor = window.scale_factor().map_err(|error| error.to_string())?;
+        let hwnd = window.hwnd().map_err(|error| error.to_string())?;
+        let client_origin = window.inner_position().map_err(|error| error.to_string())?;
+        let physical_regions = regions
+            .iter()
+            .filter_map(|region| {
+                physical_interaction_region(
+                    region,
+                    scale_factor,
+                    size.width.min(i32::MAX as u32) as i32,
+                    size.height.min(i32::MAX as u32) as i32,
+                )
+            })
+            .map(|(left, top, right, bottom)| {
+                (
+                    client_origin.x.saturating_add(left),
+                    client_origin.y.saturating_add(top),
+                    client_origin.x.saturating_add(right),
+                    client_origin.y.saturating_add(bottom),
+                )
+            })
+            .collect();
+        native_overlay_input()
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .regions_by_window
+            .insert(hwnd.0 as isize, physical_regions);
+        refresh_native_overlay_input();
+        NATIVE_OVERLAY_INPUT_THREAD
+            .get()
+            .map(std::thread::Thread::unpark);
+    }
+
+    #[cfg(not(windows))]
+    let _ = regions;
+
+    Ok(())
 }
 
 #[tauri::command]
@@ -202,7 +473,11 @@ fn create_overlay_hosts(app: &AppHandle) -> Result<(), String> {
         window
             .set_ignore_cursor_events(DEFAULT_CLICK_THROUGH)
             .map_err(|error| error.to_string())?;
+        #[cfg(windows)]
+        register_native_overlay_host(&window)?;
     }
+    #[cfg(windows)]
+    start_native_overlay_input_tracker()?;
     Ok(())
 }
 
@@ -624,6 +899,9 @@ fn toggle_interaction_mode(app: &AppHandle) {
     let next = !control.click_through.load(Ordering::Relaxed);
     control.click_through.store(next, Ordering::Relaxed);
 
+    #[cfg(windows)]
+    set_native_overlay_click_through(next);
+
     for_each_overlay_host(app, |window| {
         let _ = window.set_ignore_cursor_events(next);
         let _ = window.set_always_on_top(true);
@@ -827,6 +1105,7 @@ pub fn run() {
             get_composite_layout_seed,
             get_default_overlay_placement,
             get_interaction_mode,
+            set_overlay_interaction_regions,
             toggle_interaction_mode_command,
             get_telemetry_logging,
             set_telemetry_logging,

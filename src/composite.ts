@@ -33,6 +33,13 @@ interface OverlayDesignSize {
   height: number;
 }
 
+interface OverlayInteractionRegion {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 interface TelemetryBatch {
   targets: OverlayId[];
   frame: TelemetryFrame;
@@ -127,6 +134,35 @@ const projectedFrames = new Map<OverlayId, TelemetryFrame>();
 const designSizes = new Map<OverlayId, OverlayDesignSize>();
 const visible = new Set<OverlayId>();
 let clickThrough = false;
+let interactionRegionFrame: number | undefined;
+let interactionRegionSyncing = false;
+let interactionRegionDirty = false;
+
+const synchronizeInteractionRegions = (): void => {
+  interactionRegionFrame = undefined;
+  if (interactionRegionSyncing) return;
+  interactionRegionDirty = false;
+  const regions: OverlayInteractionRegion[] = Array.from(panels.values(), (panel) => {
+    const bounds = panel.getBoundingClientRect();
+    return { x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height };
+  });
+  interactionRegionSyncing = true;
+  void invoke("set_overlay_interaction_regions", { regions })
+    .catch(() => undefined)
+    .finally(() => {
+      interactionRegionSyncing = false;
+      if (interactionRegionDirty) {
+        interactionRegionFrame = requestAnimationFrame(synchronizeInteractionRegions);
+      }
+    });
+};
+
+const scheduleInteractionRegionSync = (): void => {
+  interactionRegionDirty = true;
+  if (interactionRegionFrame === undefined && !interactionRegionSyncing) {
+    interactionRegionFrame = requestAnimationFrame(synchronizeInteractionRegions);
+  }
+};
 
 const suppressBrowserInteraction = (event: Event): void => {
   event.preventDefault();
@@ -258,6 +294,7 @@ const bindPointerMove = (
         };
     layout[overlay] = placement;
     applyPlacement(panel, placement);
+    scheduleInteractionRegionSync();
   };
   const finish = (): void => {
     target.removeEventListener("pointermove", move);
@@ -334,6 +371,7 @@ const synchronizePanels = async (): Promise<void> => {
     else removePanel(overlay);
   }
   if (normalized) localStorage.setItem(COMPOSITE_LAYOUT_KEY, JSON.stringify(layout));
+  scheduleInteractionRegionSync();
 };
 
 const applyInteractionMode = (mode: InteractionMode): void => {
@@ -377,6 +415,7 @@ void listen<InteractionMode>("overlay://interaction-mode", ({ payload }) => appl
 window.addEventListener("storage", (event) => {
   if (event.key === COMPOSITE_LAYOUT_KEY) void synchronizePanels();
 });
+window.addEventListener("resize", scheduleInteractionRegionSync);
 
 window.addEventListener("message", (event: MessageEvent<RuntimeMessage>) => {
   if (event.origin !== window.location.origin || event.data?.source !== "lmu-overlay-composite") return;
@@ -406,6 +445,7 @@ window.addEventListener("message", (event: MessageEvent<RuntimeMessage>) => {
     if (changed) {
       layout[overlay] = fitted;
       applyPlacement(panel, fitted);
+      scheduleInteractionRegionSync();
       void saveOverlayPlacement(fitted);
     }
     return;

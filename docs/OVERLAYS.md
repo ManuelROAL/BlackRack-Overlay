@@ -27,6 +27,10 @@ telemetry semantics and file ownership live under `docs/overlays/`; use
   visibility hides or shows the host without rebuilding active panels.
 - Every run starts in click-through game mode. Edit mode is entered explicitly
   from the control panel or global shortcut.
+- On Windows, edit-mode hit testing follows the global cursor independently on
+  every monitor. A host accepts input only while the cursor is over one of its
+  visible panel rectangles; transparent gaps pass input to the application
+  underneath, including applications owned by another process.
 - Embedded panel content is inert: no clicks, focus, selection, native dragging or
   context menu. Edit-mode pointer input moves panels or operates resize handles.
 - A panel may cross monitor edges for deliberate cropping, but movement retains a
