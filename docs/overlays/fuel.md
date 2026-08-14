@@ -65,11 +65,15 @@ presentation-specific stint delta.
 
 - Present current resource, race projection, pit window/load and all scenarios as
   a compact endurance strategy tool.
-- Use a `470 x 188` design surface. Migrate only the former default `560 x 230`
-  placement to the compact size so deliberately resized user layouts keep their
-  chosen scale.
+- Use a `390 x 188` design surface. Migrate the former default `560 x 230` and
+  intermediate `470 x 188` placements to the compact size so deliberately
+  resized user layouts keep their chosen scale.
 - Keep the scenario table as a centered compact block with fixed-width numeric
   columns; do not stretch those columns across the full panel width.
+- Wrap the strategy context into two rows so its values remain legible on the
+  narrower surface.
+- In energy mode, wrap the auxiliary fuel values across two rows beside the fuel
+  icon instead of shrinking or clipping them.
 - Label scenario-wide replenishment as `TOTAL +`; it is the sum still required
   over the remaining race, not necessarily the next pit load. The summary's
   `CARGA` value remains the next-stop load.

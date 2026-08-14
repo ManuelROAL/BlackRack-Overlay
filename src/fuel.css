@@ -217,8 +217,9 @@ body[data-overlay-fit="true"].fuel-body .fuel-shell {
 
 .strategy-context {
   display: grid;
-  flex: 0 0 18px;
-  grid-template-columns: 1.2fr 1.2fr 0.9fr 1fr 1fr;
+  flex: 0 0 26px;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(2, 1fr);
   align-items: center;
   gap: 4px;
   padding: 0 5px;
@@ -230,6 +231,14 @@ body[data-overlay-fit="true"].fuel-body .fuel-shell {
 
 .strategy-context span:not(:first-child) {
   text-align: right;
+}
+
+.strategy-context > span:first-child {
+  grid-column: 1 / 3;
+}
+
+.strategy-context > span:nth-child(2) {
+  grid-column: 3;
 }
 
 .strategy-table {
@@ -246,7 +255,10 @@ body[data-overlay-fit="true"].fuel-body .fuel-shell {
 
 .fuel-compact-card {
   display: none;
-  flex: 0 0 26px;
+  flex: 0 0 30px;
+  grid-template-columns: 16px 1fr;
+  align-items: center;
+  column-gap: 4px;
   padding: 2px 5px;
   border-top: 1px solid rgb(255 255 255 / 8%);
   border-bottom: 1px solid rgb(255 255 255 / 8%);
@@ -254,15 +266,12 @@ body[data-overlay-fit="true"].fuel-body .fuel-shell {
 }
 
 .fuel-shell[data-resource-mode="energy"] .fuel-compact-card {
-  display: block;
+  display: grid;
 }
 
-.fuel-compact-card header,
-.fuel-compact-values {
-  display: grid;
-  grid-template-columns: 70px repeat(5, 1fr);
+.fuel-compact-card header {
+  display: flex;
   align-items: center;
-  gap: 5px;
 }
 
 .fuel-compact-card header {
@@ -271,9 +280,16 @@ body[data-overlay-fit="true"].fuel-body .fuel-shell {
 }
 
 .fuel-compact-card header span {
-  grid-column: 2 / -1;
   color: #7f8a96;
   text-align: right;
+}
+
+.fuel-compact-values {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+  align-items: center;
+  gap: 2px 4px;
 }
 
 .fuel-compact-values > div {
@@ -294,7 +310,7 @@ body[data-overlay-fit="true"].fuel-body .fuel-shell {
 .strategy-columns,
 .strategy-row {
   display: grid;
-  grid-template-columns: 70px repeat(4, 76px);
+  grid-template-columns: 70px repeat(4, 62px);
   align-items: center;
   column-gap: 5px;
   justify-content: center;

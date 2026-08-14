@@ -7,7 +7,7 @@ import { bindOverlayTransparency } from "./overlay-appearance";
 import type { ResourceStrategy, TelemetryFrame } from "./telemetry-types";
 import { listenTelemetry } from "./runtime-events";
 
-fitOverlay({ width: 470, height: 188 });
+fitOverlay({ width: 390, height: 188 });
 bindOverlayTransparency("fuel");
 const renderPerformance = createOverlayPerformanceTracker("fuel");
 
