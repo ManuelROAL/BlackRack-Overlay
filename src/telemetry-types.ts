@@ -198,6 +198,7 @@ export interface ResourceStrategy {
   next_fill: number;
   total_additional: number;
   end_remaining: number;
+  autonomy_delta: number;
 }
 
 export interface FuelStrategies {
@@ -207,6 +208,8 @@ export interface FuelStrategies {
   average: ResourceStrategy | null;
   qualifying: ResourceStrategy | null;
   last: ResourceStrategy | null;
+  conservative_next_fill: number;
+  conservative_fill_active: boolean;
 }
 
 export interface StrengthOfFieldModel {

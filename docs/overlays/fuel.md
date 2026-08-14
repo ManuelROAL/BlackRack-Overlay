@@ -33,6 +33,9 @@ presentation-specific stint delta.
 - Show estimated, clean average, qualifying and last-lap scenarios. The qualifying
   reference is the consumption associated with the fastest valid official
   qualifying lap.
+- Compare every scenario's fractional autonomy with qualifying in Rust. The UI
+  presents that delta as potential laps gained or lost at the current resource
+  level; it is not a claim that a full lap has already been banked.
 - Average and last reset for a new session. Qualifying survives qualifying phases
   into the race and clears for a new practice/event.
 - Formation, invalid, neutralized and pit laps affect real balance but do not
@@ -56,6 +59,16 @@ presentation-specific stint delta.
 
 - Present current resource, race projection, pit window/load and all scenarios as
   a compact endurance strategy tool.
+- Label scenario-wide replenishment as `TOTAL +`; it is the sum still required
+  over the remaining race, not necessarily the next pit load. The summary's
+  `CARGA` value remains the next-stop load.
+- When exactly one stop remains and the qualifying scenario can also finish with
+  one stop, use the larger of the active and qualifying next-fill calculations
+  and label it `CARGA Q`. This follows the conservative final-stint behavior of
+  planning for full-power running without adding an arbitrary reserve.
+- Replace the formerly exact-but-usually-zero scenario `FINAL` column with
+  `Δ QUALY`, since there is no authoritative selected pit-menu load from which to
+  predict a meaningful user-specific finish reserve.
 - Hybrid cars show energy scenarios plus a compact fuel card while the global pit
   plan accounts for both resources.
 - The PIT indicator is neutral above three laps of autonomy and changes as the

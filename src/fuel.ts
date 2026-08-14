@@ -101,7 +101,7 @@ const renderProfile = (
   text(`${id}-consumption`, plan ? format(consumption) : "--");
   text(`${id}-autonomy`, plan ? format(plan.autonomy) : "--");
   text(`${id}-required`, plan ? format(plan.total_additional) : "--");
-  text(`${id}-at-end`, plan ? format(plan.end_remaining) : "--");
+  text(`${id}-delta`, plan ? `${signed(plan.autonomy_delta, 1)}V` : "--");
 };
 
 const renderStatus = (frame: TelemetryFrame): void => {
@@ -177,7 +177,11 @@ const render = (frame: TelemetryFrame): void => {
     text("target-consumption", format(displayedTarget));
     text("saving-required", fullAllowed ? "0,0%" : `−${format(strategy.saving_percent, 1)}%`);
     tone("saving-required", fullAllowed || strategy.saving_percent <= 2 ? "good" : strategy.saving_percent <= 7 ? "warn" : "bad");
-    text("next-fill", strategy.stops > 0 ? `${format(strategy.next_fill, 1)}${unit}` : "--");
+    const nextFill = frame.fuel_strategies.conservative_next_fill > 0
+      ? frame.fuel_strategies.conservative_next_fill
+      : strategy.next_fill;
+    text("next-fill-label", frame.fuel_strategies.conservative_fill_active ? "CARGA Q" : "CARGA");
+    text("next-fill", strategy.stops > 0 ? `${format(nextFill, 1)}${unit}` : "--");
 
     const delta = updateStintDelta(frame, mode, current, displayedTarget);
     text("stint-delta", delta === undefined ? "--" : `${signed(delta)}${unit}`);
@@ -192,18 +196,20 @@ const render = (frame: TelemetryFrame): void => {
       ["next-fill", "--"]
     ]) text(id, value);
     text("target-label", "OBJ/V");
+    text("next-fill-label", "CARGA");
     const pit = document.getElementById("pit-status");
     if (pit) pit.dataset.level = "unknown";
   }
 
-  const scenarioValues = [projected, average, qualifying, last].filter((value) => value > 0);
-  if (scenarioValues.length > 0) {
-    const lowest = Math.min(...scenarioValues);
-    const highest = Math.max(...scenarioValues);
-    text("autonomy-range", `RANGO ${format(current / highest, 1)}–${format(current / lowest, 1)}V`);
-  } else {
-    text("autonomy-range", "RANGO --");
-  }
+  const lastStrategy = frame.fuel_strategies.last;
+  text(
+    "autonomy-gain",
+    lastStrategy ? `GANANCIA ${signed(lastStrategy.autonomy_delta, 1)}V` : "GANANCIA --"
+  );
+  tone(
+    "autonomy-gain",
+    !lastStrategy ? "neutral" : lastStrategy.autonomy_delta >= 0.05 ? "good" : lastStrategy.autonomy_delta <= -0.05 ? "bad" : "neutral"
+  );
   const confidence = frame.consumption_profile_samples >= 5
     ? "ALTA"
     : frame.consumption_profile_samples >= 2 ? "MEDIA" : "BAJA";

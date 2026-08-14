@@ -2645,7 +2645,9 @@ impl TelemetrySource for LmuTelemetrySource {
             } else {
                 self.fuel_last_lap.unwrap_or(0.0)
             }),
-        };
+            ..FuelStrategies::default()
+        }
+        .with_qualifying_guidance();
         let fuel_needed_liters = fuel_strategy
             .map(|strategy| {
                 snapshot.fuel_liters + strategy.total_additional - strategy.end_remaining

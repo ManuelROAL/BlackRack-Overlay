@@ -85,7 +85,9 @@ impl TelemetrySource for MockTelemetrySource {
             average: energy_strategy(virtual_energy_per_lap),
             qualifying: energy_strategy(8.8),
             last: energy_strategy(8.55),
-        };
+            ..FuelStrategies::default()
+        }
+        .with_qualifying_guidance();
 
         let mut frame = TelemetryFrame {
             source: "mock",

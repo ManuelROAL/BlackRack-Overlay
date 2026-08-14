@@ -26,6 +26,7 @@ pub(crate) struct ResourceStrategy {
     pub next_fill: f64,
     pub total_additional: f64,
     pub end_remaining: f64,
+    pub autonomy_delta: f64,
 }
 
 #[derive(Clone, Debug, Default, Serialize)]
@@ -36,6 +37,38 @@ pub(crate) struct FuelStrategies {
     pub average: Option<ResourceStrategy>,
     pub qualifying: Option<ResourceStrategy>,
     pub last: Option<ResourceStrategy>,
+    pub conservative_next_fill: f64,
+    pub conservative_fill_active: bool,
+}
+
+impl FuelStrategies {
+    pub(super) fn with_qualifying_guidance(mut self) -> Self {
+        self.conservative_next_fill = self.active.map_or(0.0, |strategy| strategy.next_fill);
+
+        let Some(qualifying) = self.qualifying else {
+            return self;
+        };
+        for strategy in [
+            &mut self.active,
+            &mut self.estimated,
+            &mut self.average,
+            &mut self.qualifying,
+            &mut self.last,
+        ]
+        .into_iter()
+        .flatten()
+        {
+            strategy.autonomy_delta = strategy.autonomy - qualifying.autonomy;
+        }
+
+        if let Some(active) = self.active {
+            self.conservative_fill_active = active.stops == 1 && qualifying.stops == 1;
+            if self.conservative_fill_active {
+                self.conservative_next_fill = active.next_fill.max(qualifying.next_fill);
+            }
+        }
+        self
+    }
 }
 
 fn valid_positive(value: f64) -> bool {
@@ -175,6 +208,7 @@ pub(super) fn calculate_resource_strategy(
         next_fill,
         total_additional,
         end_remaining,
+        autonomy_delta: 0.0,
     })
 }
 
@@ -264,5 +298,71 @@ mod tests {
             0,
         )
         .is_none());
+    }
+
+    #[test]
+    fn scenario_autonomy_is_compared_with_the_qualifying_reference() {
+        let qualifying = calculate_resource_strategy(input(), 120.0, 0).unwrap();
+        let last = calculate_resource_strategy(
+            ResourceStrategyInput {
+                consumption: 8.0,
+                ..input()
+            },
+            120.0,
+            0,
+        )
+        .unwrap();
+        let strategies = FuelStrategies {
+            active: Some(last),
+            qualifying: Some(qualifying),
+            last: Some(last),
+            ..FuelStrategies::default()
+        }
+        .with_qualifying_guidance();
+
+        assert!((strategies.qualifying.unwrap().autonomy_delta).abs() < 1e-9);
+        assert!((strategies.last.unwrap().autonomy_delta - 0.875).abs() < 1e-9);
+    }
+
+    #[test]
+    fn final_stop_uses_the_more_conservative_qualifying_fill() {
+        let final_stint_input = ResourceStrategyInput {
+            current: 35.0,
+            capacity: 100.0,
+            laps_remaining: 8.0,
+            pit_cycle_consumption: 0.0,
+            pit_out_consumption: 0.0,
+            ..input()
+        };
+        let active = calculate_resource_strategy(
+            ResourceStrategyInput {
+                consumption: 8.0,
+                ..final_stint_input
+            },
+            120.0,
+            0,
+        )
+        .unwrap();
+        let qualifying = calculate_resource_strategy(
+            ResourceStrategyInput {
+                consumption: 10.0,
+                ..final_stint_input
+            },
+            120.0,
+            0,
+        )
+        .unwrap();
+        let strategies = FuelStrategies {
+            active: Some(active),
+            qualifying: Some(qualifying),
+            ..FuelStrategies::default()
+        }
+        .with_qualifying_guidance();
+
+        assert_eq!(active.stops, 1);
+        assert_eq!(qualifying.stops, 1);
+        assert!(strategies.conservative_fill_active);
+        assert_eq!(strategies.conservative_next_fill, qualifying.next_fill);
+        assert!(strategies.conservative_next_fill > active.next_fill);
     }
 }
