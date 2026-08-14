@@ -103,6 +103,57 @@ For frontend-only changes, run `npm.cmd run build`. For performance work, also
 collect a comparable race/replay sample as described in `docs/PERFORMANCE.md`;
 successful compilation alone is not performance evidence.
 
+## GitFlow
+
+Use `master` and `develop` as the two permanent branches:
+
+- `master` contains only the latest production-ready version. Do not develop or
+  commit routine changes directly on it.
+- `develop` contains the latest integrated development state. Do not implement a
+  feature directly on it; use a support branch and merge the completed work back.
+
+Before starting work, inspect the current branch and working tree. Preserve
+unrelated changes, and never move them into a new branch, commit or merge without
+the user's authorization. Use lowercase, short, descriptive branch names with
+hyphen-separated words.
+
+### Feature branches
+
+- Create `feature/<name>` from an up-to-date `develop` branch.
+- Keep the branch limited to one feature, fix, documentation change or other
+  coherent unit of work.
+- Complete the implementation, documentation and proportional verification on
+  the feature branch and commit the finished logical change there.
+- Merge the completed branch into `develop`. Never merge a feature branch
+  directly into `master`.
+
+### Release branches
+
+- Create `release/<version>` from `develop` when the integrated state is ready to
+  become a release.
+- Restrict the branch to version synchronization, release notes, packaging and
+  release-blocking fixes; do not add unrelated features.
+- Keep the version in `package.json`, `src-tauri/Cargo.toml` and
+  `src-tauri/tauri.conf.json` synchronized and run the full release verification.
+- Merge the completed release into both `master` and `develop`, then tag the
+  release commit on `master` as `v<version>`.
+- Build a Windows installer or other release artifact only when the user has
+  explicitly requested it.
+
+### Hotfix branches
+
+- Create `hotfix/<name>` from `master` only for an urgent production correction.
+- Make the smallest complete change, update the patch version and release notes
+  when applicable, and run verification proportional to the affected behavior.
+- Merge the completed hotfix into both `master` and `develop`, resolving the
+  latter carefully if an active release already contains related changes.
+- Tag a published hotfix on `master` as `v<version>`.
+
+Use explicit, non-interactive Git commands. Before each merge, confirm that the
+target branch is correct and the working tree contains no uncommitted changes
+belonging to the operation. Do not rewrite published history, force-push, or
+delete an unmerged support branch unless the user explicitly requests it.
+
 ## Completion and commits
 
 - A change is complete only after its implementation, proportional verification
