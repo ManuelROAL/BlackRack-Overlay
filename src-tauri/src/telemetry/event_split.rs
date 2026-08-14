@@ -1,4 +1,5 @@
 use serde_json::Value;
+use std::collections::HashMap;
 use std::fs::{self, File};
 use std::io::{Read, Seek, SeekFrom};
 use std::path::Path;
@@ -19,6 +20,14 @@ pub(super) struct SessionSplit {
     pub count: u32,
     pub event_id: String,
     pub driver_rank_settings: DriverRankSettings,
+    profiles: HashMap<String, EventDriverProfile>,
+    profiles_checked: bool,
+}
+
+#[derive(Clone, Debug, Default, PartialEq)]
+pub(super) struct EventDriverProfile {
+    pub nationality: String,
+    pub badge: String,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -126,12 +135,23 @@ impl SessionSplitResolver {
     }
 }
 
+impl SessionSplit {
+    pub(super) fn profile(&self, driver_name: &str) -> Option<&EventDriverProfile> {
+        self.profiles
+            .get(&super::driver_ranks::normalized_name(driver_name))
+    }
+}
+
 fn fetch_session_split(current: SessionSplit) -> Result<SessionSplit, String> {
     let event_id = latest_online_event_id().unwrap_or_default();
     if event_id.is_empty() {
         return Ok(SessionSplit::default());
     }
-    if current.event_id.eq_ignore_ascii_case(&event_id) && current.number > 0 && current.count > 0 {
+    if current.event_id.eq_ignore_ascii_case(&event_id)
+        && current.number > 0
+        && current.count > 0
+        && current.profiles_checked
+    {
         return Ok(current);
     }
 
@@ -173,10 +193,7 @@ fn fetch_session_split(current: SessionSplit) -> Result<SessionSplit, String> {
     if split.count == 0 {
         split.count = cached.count;
     }
-    if split.number == 0 {
-        return fetch_direct_split(&client, &access_token, &event_id, split);
-    }
-    Ok(split)
+    fetch_direct_split(&client, &access_token, &event_id, split)
 }
 
 fn fetch_direct_split(
@@ -211,10 +228,60 @@ fn fetch_direct_split(
         fallback.count = direct.count;
     }
     fallback.event_id = event_id.to_owned();
+    fallback.profiles = parse_event_profiles(&json);
+    fallback.profiles_checked = true;
     if find_object_key(&json, "drSettings").is_some() {
         fallback.driver_rank_settings = direct.driver_rank_settings;
     }
     Ok(fallback)
+}
+
+fn parse_event_profiles(value: &Value) -> HashMap<String, EventDriverProfile> {
+    fn visit(value: &Value, profiles: &mut HashMap<String, EventDriverProfile>) {
+        match value {
+            Value::Object(object) => {
+                if let Some(drivers) = object
+                    .iter()
+                    .find(|(key, _)| key.eq_ignore_ascii_case("drivers"))
+                    .and_then(|(_, value)| value.as_array())
+                {
+                    for registration in drivers {
+                        let driver = registration.get("driver").unwrap_or(registration);
+                        let nationality = super::driver_ranks::profile_nationality(driver);
+                        let badge = super::driver_ranks::profile_badge(driver);
+                        if nationality.is_empty() && badge.is_empty() {
+                            continue;
+                        }
+                        let profile = EventDriverProfile { nationality, badge };
+                        for name in ["name", "username"]
+                            .into_iter()
+                            .filter_map(|key| driver.get(key).and_then(Value::as_str))
+                            .map(str::trim)
+                            .filter(|name| !name.is_empty())
+                        {
+                            profiles.insert(
+                                super::driver_ranks::normalized_name(name),
+                                profile.clone(),
+                            );
+                        }
+                    }
+                }
+                for child in object.values() {
+                    visit(child, profiles);
+                }
+            }
+            Value::Array(items) => {
+                for child in items {
+                    visit(child, profiles);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    let mut profiles = HashMap::new();
+    visit(value, &mut profiles);
+    profiles
 }
 
 fn event_overview_request(event_id: &str) -> Value {
@@ -259,6 +326,8 @@ fn parse_event_split(value: &Value, event_id: &str) -> SessionSplit {
         count,
         event_id: event_id.to_owned(),
         driver_rank_settings: parse_driver_rank_settings(overview),
+        profiles: HashMap::new(),
+        profiles_checked: false,
     }
 }
 
@@ -520,8 +589,8 @@ fn is_guid(value: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::{
-        event_id_from_text, event_overview_request, parse_cached_event_split, parse_event_split,
-        DriverRankSettings, SessionSplit, SessionSplitResolver,
+        event_id_from_text, event_overview_request, parse_cached_event_split, parse_event_profiles,
+        parse_event_split, DriverRankSettings, SessionSplit, SessionSplitResolver,
     };
 
     #[test]
@@ -532,6 +601,7 @@ mod tests {
             count: 8,
             event_id: "event-id".into(),
             driver_rank_settings: DriverRankSettings::default(),
+            ..SessionSplit::default()
         };
 
         resolver.refresh();
@@ -548,6 +618,7 @@ mod tests {
             count: 0,
             event_id: "event-id".into(),
             driver_rank_settings: DriverRankSettings::default(),
+            ..SessionSplit::default()
         };
 
         resolver.refresh();
@@ -615,6 +686,7 @@ mod tests {
                 count: 3,
                 event_id: "event-id".into(),
                 driver_rank_settings: DriverRankSettings::default(),
+                ..SessionSplit::default()
             }
         );
     }
@@ -651,6 +723,7 @@ mod tests {
                 count: 12,
                 event_id: "event-id".into(),
                 driver_rank_settings: DriverRankSettings::default(),
+                ..SessionSplit::default()
             }
         );
     }
@@ -698,8 +771,28 @@ mod tests {
                 count: 12,
                 event_id: "event-id".into(),
                 driver_rank_settings: DriverRankSettings::default(),
+                ..SessionSplit::default()
             }
         );
+    }
+
+    #[test]
+    fn parses_driver_profiles_from_direct_split_roster() {
+        let response = serde_json::json!({
+            "drivers": [{
+                "driver": {
+                    "name": "Charles-Antoine Wipf",
+                    "username": "dark_revan",
+                    "profile": { "nationality": "fr", "badge": "sr-clean" }
+                }
+            }]
+        });
+
+        let profiles = parse_event_profiles(&response);
+        for key in ["charles-antoine wipf", "dark_revan"] {
+            assert_eq!(profiles[key].nationality, "FR");
+            assert_eq!(profiles[key].badge, "sr-clean");
+        }
     }
 
     #[test]

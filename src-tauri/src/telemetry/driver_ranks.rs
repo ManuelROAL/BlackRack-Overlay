@@ -354,7 +354,7 @@ fn rank_elo(value: &Value) -> Option<f64> {
     (elo.is_finite() && elo > 0.0).then_some(elo)
 }
 
-fn profile_badge(value: &Value) -> String {
+pub(super) fn profile_badge(value: &Value) -> String {
     fn badge_field(value: &Value) -> Option<&str> {
         value
             .get("badge")
@@ -392,7 +392,7 @@ fn profile_badge(value: &Value) -> String {
     String::new()
 }
 
-fn profile_nationality(value: &Value) -> String {
+pub(super) fn profile_nationality(value: &Value) -> String {
     fn nationality_field(value: &Value) -> Option<&str> {
         ["nationality", "countryCode", "country_code", "country"]
             .into_iter()
@@ -455,7 +455,7 @@ fn rank_progress(value: &Value) -> Option<f64> {
     })
 }
 
-fn normalized_name(value: &str) -> String {
+pub(super) fn normalized_name(value: &str) -> String {
     value.trim().to_lowercase()
 }
 

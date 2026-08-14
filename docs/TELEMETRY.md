@@ -94,6 +94,12 @@ they appear. During qualifying/race, an empty, failed or partial startup respons
 must leave unresolved identities retryable; do not mark the roster refresh
 complete until a successful non-empty result covers it.
 
+For registered events, load the complete `event/my-split` roster once per event
+and retain only its non-sensitive driver profile enrichment. Its nationality and
+badge may fill empty or `XX` data from `POST /players`, but never replace a valid
+profile value. Server details and the full response remain neither logged nor
+persisted.
+
 ## Logging and safety
 
 - Optional JSONL analysis may record derived diagnostic fields and performance

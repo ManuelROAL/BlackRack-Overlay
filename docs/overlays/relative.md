@@ -36,6 +36,7 @@ the prepared vehicle IDs and formats them; it must not repeat domain selection.
   player track-limit counter/threshold and local clock toggles.
 - Apply the same asset, NRG, damage, tyre, pit, DR/SR and track-limit semantics as
   Standings; do not create divergent formatting rules for shared cells.
+- Reuse Standings' event-roster fallback for missing/`XX` nationality and badges.
 
 ## Visual and sizing rules
 

@@ -1606,10 +1606,18 @@ impl LmuTelemetrySource {
 
             let virtual_energy_active = matches!(entry.vehicle_class_id, 0 | 6);
             let fastest_lap = fastest_by_class.get(&vehicle_class).copied().unwrap_or(0.0);
-            let ranks = self
+            let mut ranks = self
                 .driver_ranks
                 .lookup(&identity.driver_name)
                 .unwrap_or_default();
+            if let Some(event_profile) = self.session_split.value().profile(&identity.driver_name) {
+                if ranks.nationality.is_empty() || ranks.nationality == "XX" {
+                    ranks.nationality = event_profile.nationality.clone();
+                }
+                if ranks.badge.is_empty() {
+                    ranks.badge = event_profile.badge.clone();
+                }
+            }
             if let Some(score) = Self::driver_rank_score(&ranks.driver, ranks.driver_progress) {
                 driver_rank_scores.insert(entry.vehicle_id, score);
             }

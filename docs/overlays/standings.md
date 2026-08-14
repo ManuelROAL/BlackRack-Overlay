@@ -69,6 +69,8 @@ duplicate selection or timing semantics.
 - RaceControl supplies DR, progress, ELO when available, SR, nationality and badge.
   In qualifying/race, complete the one-per-roster refresh only after a successful
   non-empty result; failed, empty and partial results remain retryable.
+- In registered events, the one-time `event/my-split` roster supplements missing
+  or `XX` nationality and missing badges without replacing valid `/players` data.
 - The DR estimate is same-class and event-parameter aware. Convert it back from
   the three-times internal rating scale before serializing visible progress.
 - SOF uses resolved continuous DR and reports partial coverage. Do not calculate or
