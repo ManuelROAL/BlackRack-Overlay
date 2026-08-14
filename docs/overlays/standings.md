@@ -96,8 +96,9 @@ duplicate selection or timing semantics.
 - Category headers show current/initial counts and DNF/DQ difference outside
   practice. Recover initial counts from history when opened late.
 - The pit column normally shows completed stops. From pit entry through the end of
-  the out lap, show elapsed pit-cycle seconds. Do not invent elapsed time when the
-  app starts during a partial stop. A pit request is green when no timer is shown.
+  the out lap, show elapsed pit-cycle seconds rounded to the nearest whole second.
+  Do not invent elapsed time when the app starts during a partial stop. A pit
+  request is green when no timer is shown.
 - Opponent track-limit steps come from the matched all-vehicle telemetry slot.
   Unmatched means unavailable (`--`), not zero. Four raw SDK steps equal one game
   point. Warning thresholds are 60% and 80% of the session penalty threshold.

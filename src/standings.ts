@@ -386,7 +386,7 @@ interface CachedRow {
 
 const rowCache = new Map<string, CachedRow>();
 
-const pitTimeLabel = (seconds: number): string => Math.floor(Math.max(0, seconds)).toString();
+const pitTimeLabel = (seconds: number): string => Math.round(Math.max(0, seconds)).toString();
 
 const cellSignature = (entry: StandingEntry, column: StandingsColumnId, trackLimit: number): string => {
   switch (column) {
