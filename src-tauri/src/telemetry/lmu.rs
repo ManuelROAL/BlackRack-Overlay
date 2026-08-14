@@ -387,9 +387,12 @@ struct CarHistory {
     last_lap_boundary_elapsed_seconds: Option<f64>,
     was_in_pits: bool,
     out_lap: bool,
-    out_lap_started_at: Option<i32>,
     pit_stop_started_at: Option<Instant>,
     pit_stop_elapsed: Option<Duration>,
+    pit_stops_at_entry: Option<u32>,
+    pit_stop_confirmed: bool,
+    pit_exit_total_laps: Option<i32>,
+    last_observed_pit_stops: Option<u32>,
     rest_history_last_lap: Option<i32>,
 }
 
@@ -443,6 +446,7 @@ impl CarHistory {
         let in_pits = entry.in_pits != 0;
         let in_garage = entry.in_garage != 0;
         let first_sample = self.last_total_laps.is_none();
+        let previous_pit_stops = self.last_observed_pit_stops.unwrap_or(entry.pit_stops);
         self.update_lap_timing(entry);
         if entry.best_lap_seconds.is_finite() && entry.best_lap_seconds > 0.0 {
             self.best_lap_seconds = entry.best_lap_seconds;
@@ -451,9 +455,15 @@ impl CarHistory {
         if in_garage {
             self.pit_stop_started_at = None;
             self.pit_stop_elapsed = None;
+            self.pit_stops_at_entry = None;
+            self.pit_stop_confirmed = false;
+            self.pit_exit_total_laps = None;
         } else if !first_sample && !self.was_in_pits && in_pits {
             self.pit_stop_started_at = Some(now);
             self.pit_stop_elapsed = Some(Duration::ZERO);
+            self.pit_stops_at_entry = Some(previous_pit_stops);
+            self.pit_stop_confirmed = entry.pit_stops > previous_pit_stops;
+            self.pit_exit_total_laps = None;
         } else if in_pits {
             if let Some(started) = self.pit_stop_started_at {
                 self.pit_stop_elapsed = Some(now.saturating_duration_since(started));
@@ -464,22 +474,37 @@ impl CarHistory {
             }
         }
 
-        if self.was_in_pits && !in_pits && entry.in_garage == 0 {
-            self.out_lap = true;
-            self.out_lap_started_at = Some(entry.total_laps);
+        if self
+            .pit_stops_at_entry
+            .is_some_and(|pit_stops| entry.pit_stops > pit_stops)
+        {
+            self.pit_stop_confirmed = true;
         }
-        if self.out_lap
+
+        if self.was_in_pits && !in_pits && entry.in_garage == 0 {
+            self.pit_exit_total_laps = Some(entry.total_laps);
+            self.out_lap = self.pit_stop_confirmed;
+        } else if !in_pits
+            && self.pit_stop_confirmed
+            && !self.out_lap
             && self
-                .out_lap_started_at
-                .is_some_and(|started| entry.total_laps > started)
+                .pit_exit_total_laps
+                .is_some_and(|pit_exit_lap| entry.total_laps == pit_exit_lap)
+        {
+            self.out_lap = true;
+        }
+        if self
+            .pit_exit_total_laps
+            .is_some_and(|pit_exit_lap| entry.total_laps > pit_exit_lap)
         {
             self.out_lap = false;
-            self.out_lap_started_at = None;
             self.pit_stop_elapsed = None;
+            self.pit_stops_at_entry = None;
+            self.pit_stop_confirmed = false;
+            self.pit_exit_total_laps = None;
         }
         if entry.in_garage != 0 {
             self.out_lap = false;
-            self.out_lap_started_at = None;
             self.pit_stop_elapsed = None;
         }
         if in_pits {
@@ -519,6 +544,7 @@ impl CarHistory {
             }
         }
         self.energy_previous_sample = (current_energy > 0.0).then_some(current_energy);
+        self.last_observed_pit_stops = Some(entry.pit_stops);
         self.was_in_pits = in_pits;
     }
 
@@ -3134,10 +3160,12 @@ mod tests {
         let mut history = CarHistory::default();
         let mut entry = LmuStandingEntry {
             total_laps: 3,
-            in_pits: 1,
             ..LmuStandingEntry::default()
         };
 
+        history.update(&entry, 50.0);
+        entry.in_pits = 1;
+        entry.pit_stops = 1;
         history.update(&entry, 50.0);
         entry.in_pits = 0;
         history.update(&entry, 49.0);
@@ -3163,6 +3191,7 @@ mod tests {
         history.update_at(&entry, 78.0, started + Duration::from_secs(14));
         assert_eq!(history.pit_stop_time_seconds(), Some(12.0));
 
+        entry.pit_stops = 1;
         entry.in_pits = 0;
         history.update_at(&entry, 77.0, started + Duration::from_secs(20));
         assert!(history.is_out_lap());
@@ -3175,6 +3204,49 @@ mod tests {
         history.update_at(&entry, 75.0, started + Duration::from_secs(31));
         assert!(!history.is_out_lap());
         assert_eq!(history.pit_stop_time_seconds(), None);
+    }
+
+    #[test]
+    fn pit_timer_is_discarded_after_an_uncounted_pit_lane_passage() {
+        let started = Instant::now();
+        let mut history = CarHistory::default();
+        let mut entry = LmuStandingEntry {
+            total_laps: 5,
+            ..LmuStandingEntry::default()
+        };
+
+        history.update_at(&entry, 80.0, started);
+        entry.in_pits = 1;
+        history.update_at(&entry, 79.0, started + Duration::from_secs(2));
+        history.update_at(&entry, 78.0, started + Duration::from_secs(14));
+        assert_eq!(history.pit_stop_time_seconds(), Some(12.0));
+
+        entry.in_pits = 0;
+        history.update_at(&entry, 77.0, started + Duration::from_secs(20));
+        assert!(!history.is_out_lap());
+        assert_eq!(history.pit_stop_time_seconds(), None);
+    }
+
+    #[test]
+    fn pit_timer_accepts_a_counter_increase_after_pit_exit() {
+        let started = Instant::now();
+        let mut history = CarHistory::default();
+        let mut entry = LmuStandingEntry {
+            total_laps: 5,
+            ..LmuStandingEntry::default()
+        };
+
+        history.update_at(&entry, 80.0, started);
+        entry.in_pits = 1;
+        history.update_at(&entry, 79.0, started + Duration::from_secs(2));
+        entry.in_pits = 0;
+        history.update_at(&entry, 78.0, started + Duration::from_secs(14));
+        assert_eq!(history.pit_stop_time_seconds(), None);
+
+        entry.pit_stops = 1;
+        history.update_at(&entry, 77.0, started + Duration::from_secs(15));
+        assert!(history.is_out_lap());
+        assert_eq!(history.pit_stop_time_seconds(), Some(12.0));
     }
 
     #[test]
