@@ -37,6 +37,9 @@ the prepared vehicle IDs and formats them; it must not repeat domain selection.
 - Apply the same asset, NRG, damage, tyre, pit, DR/SR and track-limit semantics as
   Standings; do not create divergent formatting rules for shared cells.
 - Reuse Standings' event-roster fallback for missing/`XX` nationality and badges.
+- If a resolved country asset fails to load, replace it with the bundled `XX`
+  marker; remove the image if that fallback also fails instead of leaving a
+  broken-image glyph in the row.
 
 ## Visual and sizing rules
 

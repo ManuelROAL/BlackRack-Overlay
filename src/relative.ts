@@ -195,10 +195,23 @@ const countryFlag = (nationality: string): HTMLImageElement | undefined => {
   const source = countryFlagModules[`./assets/countries/${code}.svg`]
     ?? countryFlagModules[`./assets/countries/${code}.png`];
   if (!code || !source) return undefined;
+  const fallbackSource = countryFlagModules["./assets/countries/XX.svg"]
+    ?? countryFlagModules["./assets/countries/XX.png"];
   const flag = node("img", "country-flag");
   flag.src = source;
   flag.alt = code;
   flag.title = nationality;
+  let fallbackActive = false;
+  flag.addEventListener("error", () => {
+    if (!fallbackActive && fallbackSource && source !== fallbackSource) {
+      fallbackActive = true;
+      flag.src = fallbackSource;
+      flag.alt = "XX";
+      flag.title = `${nationality} (bandera no disponible)`;
+      return;
+    }
+    flag.remove();
+  });
   return flag;
 };
 
