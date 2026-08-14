@@ -162,14 +162,17 @@ export const saveMonitorSelection = (settings: MonitorSelectionSettings): void =
 };
 
 export const saveOverlayPlacement = async (placement: OverlayPlacement): Promise<void> => {
-  const layout = await ensureCompositeLayout();
-  layout[placement.overlay] = placement;
-  localStorage.setItem(COMPOSITE_LAYOUT_KEY, JSON.stringify(layout));
+  const initializedLayout = await ensureCompositeLayout();
+  const currentLayout = readCompositeLayout() ?? initializedLayout;
+  currentLayout[placement.overlay] = placement;
+  initializedLayout[placement.overlay] = placement;
+  localStorage.setItem(COMPOSITE_LAYOUT_KEY, JSON.stringify(currentLayout));
   await emit("overlay://layout", placement);
 };
 
 export const resetOverlayPlacement = async (overlay: OverlayId): Promise<OverlayPlacement> => {
-  const layout = await ensureCompositeLayout();
+  const initializedLayout = await ensureCompositeLayout();
+  const layout = readCompositeLayout() ?? initializedLayout;
   const defaults = await invoke<OverlayPlacement>("get_default_overlay_placement", { label: overlay });
   const placement = { ...defaults, monitor: layout[overlay].monitor };
   await saveOverlayPlacement(placement);
@@ -180,9 +183,13 @@ export const moveOverlayToMonitor = async (
   overlay: OverlayId,
   monitor: number
 ): Promise<void> => {
-  const [layout, displays] = await Promise.all([ensureCompositeLayout(), getOverlayDisplays()]);
+  const [initializedLayout, displays] = await Promise.all([
+    ensureCompositeLayout(),
+    getOverlayDisplays()
+  ]);
   const display = displays.find((candidate) => candidate.index === monitor);
   if (!display) return;
+  const layout = readCompositeLayout() ?? initializedLayout;
   const current = layout[overlay];
   const logicalWidth = display.width / Math.max(display.scaleFactor, 0.1);
   const logicalHeight = display.height / Math.max(display.scaleFactor, 0.1);
