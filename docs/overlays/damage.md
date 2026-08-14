@@ -26,6 +26,8 @@ brake and tyre SVGs belong only to Damage + Tyres (`tires.md`).
 
 ## Presentation
 
+- Use the same restrained 2 px lime left-edge accent as Trailing + Pedal. Keep it
+  visible in click-through mode as the product mark without changing panel width.
 - Show percentages only.
 - Keep label and value columns narrow and fixed. Reserve only enough value width
   for `100%`, align it right and leave no padding after the values.

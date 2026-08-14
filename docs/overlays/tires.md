@@ -50,6 +50,8 @@ Detailed Damage (`damage.md`).
 
 ## Presentation and hot path
 
+- Use the same restrained 2 px lime left-edge accent as Trailing + Pedal. Keep it
+  visible in click-through mode as the product mark without changing panel width.
 - Each label-free corner stack has fixed order: tyre temperature, remaining tread,
   flat spot and disc temperature. Give all four readings the same large, heavy
   numeric treatment.
