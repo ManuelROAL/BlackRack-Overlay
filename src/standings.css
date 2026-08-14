@@ -799,9 +799,9 @@ body[data-overlay-fit="true"].standings-body .standings-shell {
 }
 
 .standing-pit-stops.timing {
-  color: #e8f8ff;
-  background: rgb(17 112 168 / 88%);
-  box-shadow: 0 0 7px rgb(49 181 255 / 32%);
+  color: #fff4e5;
+  background: rgb(184 104 22 / 88%);
+  box-shadow: 0 0 7px rgb(255 173 67 / 34%);
 }
 
 .tire-compound {

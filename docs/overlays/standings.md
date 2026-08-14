@@ -123,7 +123,8 @@ duplicate selection or timing semantics.
 - Player tint is translucent lime with lime edge markers over the category layer;
   pit state remains distinguishable. Stop the player background before signals.
 - Compact NRG, damage, track-limit and pit cells are neutral until a meaningful
-  warning or active state applies.
+  warning or active state applies. The pit request uses green; an active pit
+  timer uses the same amber/orange semantic family as PIT and OUT.
 - Cache row/header nodes and replace only changed cells/signatures.
 - Grow the design from its 450 px height minimum for configured rows. Scale the
   complete table without clipping.
