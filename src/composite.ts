@@ -20,7 +20,7 @@ interface OverlayState {
 
 interface RuntimeMessage {
   source: "lmu-overlay-composite";
-  kind: "event" | "invoke";
+  kind: "event" | "invoke" | "fit";
   event?: string;
   payload?: unknown;
   command?: string;
@@ -28,10 +28,78 @@ interface RuntimeMessage {
   requestId?: string;
 }
 
+interface OverlayDesignSize {
+  width: number;
+  height: number;
+}
+
+interface TelemetryBatch {
+  targets: OverlayId[];
+  frame: TelemetryFrame;
+}
+
 const overlayIds: OverlayId[] = [
   "dashboard", "driving", "tires", "damage", "standings",
   "relative", "fuel", "pitstop", "flags", "rejoin", "trackmap"
 ];
+const telemetryFields: Record<OverlayId, readonly (keyof TelemetryFrame)[]> = {
+  dashboard: [
+    "source", "connected", "player_active", "speed_kph", "gear", "rpm", "max_rpm",
+    "throttle", "brake", "fuel_liters", "fuel_capacity_liters", "estimated_fuel_laps",
+    "virtual_energy_active", "virtual_energy_percent", "estimated_virtual_energy_laps",
+    "current_lap_seconds", "best_lap_seconds", "lap_delta_seconds"
+  ],
+  driving: [
+    "speed_kph", "gear", "throttle", "brake", "tc_active", "abs_active",
+    "steering_angle_degrees", "force_feedback"
+  ],
+  tires: [
+    "player_damage_percent", "player_aero_damage_percent", "player_damage_severity",
+    "player_part_detached", "player_rear_wing_detached", "player_tire_temperature_c",
+    "player_brake_temperature_c", "player_tire_remaining_by_wheel_percent",
+    "player_tire_flat_spot_percent", "player_tire_compounds", "player_tire_flat",
+    "player_tire_detached", "player_suspension_damage_by_wheel_percent"
+  ],
+  damage: [
+    "player_aero_damage_percent", "player_body_damage_percent",
+    "player_suspension_damage_percent", "player_tire_remaining_by_wheel_percent"
+  ],
+  standings: [
+    "session_type", "session_max_laps", "session_time_remaining", "session_split_number",
+    "session_split_count", "rest_weather_available", "ambient_temperature_c",
+    "track_temperature_c", "player_total_laps", "brake_bias_percent", "track_limits_steps",
+    "track_limits_steps_per_penalty", "session_total_laps_estimated", "standings_model",
+    "standings"
+  ],
+  relative: [
+    "rest_weather_available", "ambient_temperature_c", "track_temperature_c",
+    "brake_bias_percent", "track_limits_steps", "track_limits_steps_per_penalty",
+    "relative_model", "standings"
+  ],
+  fuel: [
+    "connected", "player_active", "session_type", "track_name", "player_total_laps",
+    "fuel_liters", "fuel_capacity_liters", "fuel_per_lap", "fuel_last_lap",
+    "fuel_qualifying_lap", "fuel_reference_per_lap", "fuel_projected_lap",
+    "fuel_pit_cycle_consumption", "fuel_pit_out_consumption", "session_laps_remaining",
+    "session_total_laps_estimated", "virtual_energy_active", "virtual_energy_percent",
+    "virtual_energy_per_lap", "virtual_energy_last_lap", "virtual_energy_qualifying_lap",
+    "virtual_energy_reference_per_lap", "virtual_energy_projected_lap",
+    "virtual_energy_pit_cycle_consumption", "virtual_energy_pit_out_consumption",
+    "fuel_strategies", "player_tire_remaining_percent", "player_stint",
+    "pit_stop_estimate_available", "pit_stop_estimate_seconds", "pit_stop_fuel_seconds",
+    "pit_stop_energy_seconds", "pit_stop_tire_seconds", "pit_stop_damage_seconds",
+    "pit_stop_penalty_seconds", "pit_stop_driver_swap_seconds", "lap_progress",
+    "consumption_profile_samples"
+  ],
+  pitstop: [
+    "virtual_energy_active", "pit_stop_estimate_available", "pit_stop_estimate_seconds",
+    "pit_stop_fuel_seconds", "pit_stop_energy_seconds", "pit_stop_tire_seconds",
+    "pit_stop_damage_seconds", "pit_stop_penalty_seconds", "pit_stop_driver_swap_seconds"
+  ],
+  flags: ["flag_warning"],
+  rejoin: ["rejoin_warning"],
+  trackmap: ["track_name", "track_length_meters", "track_map_vehicles", "track_map_model"]
+};
 const overlayTitles: Record<OverlayId, string> = {
   dashboard: "DASHBOARD",
   driving: "TRAILING + PEDAL",
@@ -51,6 +119,8 @@ const monitorIndex = Number(getCurrentWindow().label.replace("overlay-monitor-",
 const panels = new Map<OverlayId, HTMLElement>();
 const frames = new Map<OverlayId, HTMLIFrameElement>();
 const latestFrames = new Map<OverlayId, TelemetryFrame>();
+const projectedFrames = new Map<OverlayId, TelemetryFrame>();
+const designSizes = new Map<OverlayId, OverlayDesignSize>();
 const visible = new Set<OverlayId>();
 let clickThrough = false;
 
@@ -72,6 +142,18 @@ const postEvent = (overlay: OverlayId, event: string, payload: unknown): void =>
   } satisfies RuntimeMessage, window.location.origin);
 };
 
+const projectTelemetryFrame = (overlay: OverlayId, frame: TelemetryFrame): TelemetryFrame => {
+  let projected = projectedFrames.get(overlay);
+  if (!projected) {
+    projected = {} as TelemetryFrame;
+    projectedFrames.set(overlay, projected);
+  }
+  const target = projected as unknown as Record<string, unknown>;
+  const source = frame as unknown as Record<string, unknown>;
+  for (const field of telemetryFields[overlay]) target[field] = source[field];
+  return projected;
+};
+
 const applyPlacement = (panel: HTMLElement, placement: OverlayPlacement): void => {
   panel.style.left = `${placement.x}px`;
   panel.style.top = `${placement.y}px`;
@@ -81,8 +163,30 @@ const applyPlacement = (panel: HTMLElement, placement: OverlayPlacement): void =
 
 const fitPlacementToMonitor = (placement: OverlayPlacement): OverlayPlacement => {
   const minimumWidth = placement.overlay === "damage" ? 90 : 120;
-  const width = Math.max(minimumWidth, Math.min(placement.width, window.innerWidth));
-  const height = Math.max(72, Math.min(placement.height, window.innerHeight));
+  const designSize = designSizes.get(placement.overlay);
+  let width = Math.max(minimumWidth, placement.width);
+  let height = Math.max(72, placement.height);
+  if (designSize) {
+    const requestedScale = Math.min(
+      width / designSize.width,
+      height / designSize.height
+    );
+    const minimumScale = Math.max(
+      minimumWidth / designSize.width,
+      72 / designSize.height,
+      0.1
+    );
+    const maximumScale = Math.min(
+      window.innerWidth / designSize.width,
+      window.innerHeight / designSize.height
+    );
+    const scale = Math.min(maximumScale, Math.max(minimumScale, requestedScale));
+    width = designSize.width * scale;
+    height = designSize.height * scale;
+  } else {
+    width = Math.min(width, window.innerWidth);
+    height = Math.min(height, window.innerHeight);
+  }
   return {
     ...placement,
     width,
@@ -106,6 +210,10 @@ const bindPointerMove = (
   const layout = readCompositeLayout();
   if (!panel || !layout) return;
   const initial = { ...layout[overlay] };
+  const designSize = designSizes.get(overlay) ?? {
+    width: initial.width,
+    height: initial.height
+  };
   const startX = event.clientX;
   const startY = event.clientY;
 
@@ -120,8 +228,29 @@ const bindPointerMove = (
         }
       : {
           ...initial,
-          width: Math.max(120, Math.min(initial.width + dx, window.innerWidth - initial.x)),
-          height: Math.max(72, Math.min(initial.height + dy, window.innerHeight - initial.y))
+          ...(() => {
+            const widthScale = (initial.width + dx) / designSize.width;
+            const heightScale = (initial.height + dy) / designSize.height;
+            const initialScale = initial.width / designSize.width;
+            const requestedScale = Math.abs(widthScale - initialScale)
+              >= Math.abs(heightScale - initialScale)
+              ? widthScale
+              : heightScale;
+            const minimumScale = Math.max(
+              (overlay === "damage" ? 90 : 120) / designSize.width,
+              72 / designSize.height,
+              0.1
+            );
+            const maximumScale = Math.max(minimumScale, Math.min(
+              (window.innerWidth - initial.x) / designSize.width,
+              (window.innerHeight - initial.y) / designSize.height
+            ));
+            const scale = Math.max(minimumScale, Math.min(requestedScale, maximumScale));
+            return {
+              width: designSize.width * scale,
+              height: designSize.height * scale
+            };
+          })()
         };
     layout[overlay] = placement;
     applyPlacement(panel, placement);
@@ -211,16 +340,19 @@ const applyInteractionMode = (mode: InteractionMode): void => {
   }
 };
 
-for (const overlay of overlayIds) {
-  void listen<TelemetryFrame>(`telemetry://${overlay}`, ({ payload }) => {
-    latestFrames.set(overlay, payload);
-    postEvent(overlay, "telemetry://frame", payload);
-  });
-}
+void listen<TelemetryBatch>("telemetry://batch", ({ payload }) => {
+  for (const overlay of payload.targets) {
+    if (!frames.has(overlay)) continue;
+    const frame = projectTelemetryFrame(overlay, payload.frame);
+    latestFrames.set(overlay, frame);
+    postEvent(overlay, "telemetry://frame", frame);
+  }
+});
 
 for (const event of [
   "standings://settings",
   "relative://settings",
+  "driving://settings",
   "overlay://background-transparency",
   "performance://logging"
 ]) {
@@ -243,6 +375,36 @@ window.addEventListener("storage", (event) => {
 
 window.addEventListener("message", (event: MessageEvent<RuntimeMessage>) => {
   if (event.origin !== window.location.origin || event.data?.source !== "lmu-overlay-composite") return;
+  if (event.data.kind === "fit") {
+    const overlay = Array.from(frames.entries())
+      .find(([, frame]) => frame.contentWindow === event.source)?.[0];
+    const size = event.data.payload as Partial<OverlayDesignSize> | undefined;
+    if (!overlay || !size || !Number.isFinite(size.width) || !Number.isFinite(size.height)
+      || Number(size.width) <= 0 || Number(size.height) <= 0) return;
+    const nextSize = { width: Number(size.width), height: Number(size.height) };
+    const previousSize = designSizes.get(overlay);
+    designSizes.set(overlay, nextSize);
+    const layout = readCompositeLayout();
+    const panel = panels.get(overlay);
+    if (!layout || !panel) return;
+    const current = layout[overlay];
+    const scale = previousSize
+      ? Math.min(current.width / previousSize.width, current.height / previousSize.height)
+      : Math.min(current.width / nextSize.width, current.height / nextSize.height);
+    const fitted = fitPlacementToMonitor({
+      ...current,
+      width: nextSize.width * scale,
+      height: nextSize.height * scale
+    });
+    const changed = Math.abs(fitted.width - current.width) > 0.5
+      || Math.abs(fitted.height - current.height) > 0.5;
+    if (changed) {
+      layout[overlay] = fitted;
+      applyPlacement(panel, fitted);
+      void saveOverlayPlacement(fitted);
+    }
+    return;
+  }
   if (event.data.kind !== "invoke" || !event.data.command || !event.data.requestId) return;
   const source = event.source as WindowProxy | null;
   void invoke(event.data.command, event.data.args)

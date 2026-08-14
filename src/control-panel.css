@@ -216,6 +216,73 @@ select {
   padding: 0 28px 14px;
 }
 
+.configuration-export {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px 18px;
+  margin: 0 28px 14px;
+  padding: 14px;
+  border: 1px solid rgb(255 255 255 / 8%);
+  border-radius: 9px;
+  background: rgb(255 255 255 / 2.5%);
+}
+
+.configuration-export > div:first-child {
+  display: grid;
+  gap: 3px;
+}
+
+.configuration-transfer-actions {
+  display: flex;
+  gap: 7px;
+}
+
+.configuration-export span {
+  color: #d8ff3e;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .14em;
+}
+
+.configuration-export strong {
+  font-size: 11px;
+}
+
+.configuration-export small,
+.configuration-export p {
+  color: #697582;
+  font-size: 8px;
+}
+
+.configuration-export button {
+  padding: 9px 12px;
+  border: 1px solid rgb(216 255 62 / 32%);
+  border-radius: 5px;
+  color: #d8ff3e;
+  background: rgb(216 255 62 / 7%);
+  cursor: pointer;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .07em;
+}
+
+.configuration-export button:hover:not(:disabled) {
+  border-color: rgb(216 255 62 / 60%);
+  background: rgb(216 255 62 / 11%);
+}
+
+.configuration-export button:disabled {
+  cursor: wait;
+  opacity: .55;
+}
+
+.configuration-export p {
+  grid-column: 1 / -1;
+  margin: 0;
+  letter-spacing: .05em;
+}
+
 .overlay-toolbar {
   display: grid;
   gap: 10px;
@@ -564,26 +631,20 @@ select {
   background: rgb(255 255 255 / 2.5%);
 }
 
-.standings-settings-section summary {
+.settings-section-heading {
   display: grid;
   gap: 4px;
   padding: 13px 16px;
-  cursor: pointer;
-  list-style: none;
 }
 
-.standings-settings-section summary::-webkit-details-marker {
-  display: none;
-}
-
-.standings-settings-section summary span {
+.settings-section-heading span {
   color: #d8ff3e;
   font-size: 8px;
   font-weight: 900;
   letter-spacing: 0.14em;
 }
 
-.standings-settings-section summary strong {
+.settings-section-heading strong {
   font-size: 12px;
 }
 
@@ -677,6 +738,11 @@ select {
   padding: 14px 16px 16px;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px 10px;
+}
+
+.driving-settings-grid {
+  padding-top: 10px;
+  padding-bottom: 14px;
 }
 
 .settings-subtitle {

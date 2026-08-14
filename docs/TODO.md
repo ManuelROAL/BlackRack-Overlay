@@ -2,8 +2,12 @@
 
 ## Immediate next step
 
-Validate the latest standings backend optimization and the new 50 Hz realtime
-overlay cadence in a comparable race or replay capture.
+The stationary all-overlay pass has validated the grouped native telemetry events:
+the subsequent per-overlay field projection measured 5.969% and 5.807% average
+CPU versus 10.298% for the immediately preceding installed 0.4.0 baseline. The
+next publication check is a comparable moving race or replay capture. Use a real
+Tauri production build with embedded `frontendDist`; a plain Cargo release build
+can retain the development URL and is not a valid WebView2 measurement.
 
 1. Build/run the current code.
 2. Enable analysis logging only for the internal diagnostic pass.
@@ -20,8 +24,8 @@ overlay cadence in a comparable race or replay capture.
 8. Validate Track Map's official type-0/type-1 geometry, lap-distance alignment
    and complete-pit-passage filter on at least one additional circuit.
 
-Do not perform another speculative optimization until this result identifies the
-largest remaining cost.
+Do not perform another speculative optimization until the moving capture identifies
+the largest remaining cost.
 
 ## Likely future optimization candidates
 
@@ -40,7 +44,8 @@ These are hypotheses, not approved changes; use measurements first.
 
 - Validate and implement live telemetry under Proton/Linux.
 - Add repeatable session capture/replay fixtures for development without LMU.
-- Expand automated frontend tests for standings row selection and formatting.
+- Expand Rust model tests for Standings/Relative selection and frontend tests for
+  presentation-only formatting.
 - Improve failure diagnostics and release automation/CI.
 - Continue refining yellow causation if LMU exposes a stable official signal.
 

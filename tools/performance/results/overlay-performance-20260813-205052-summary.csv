@@ -1,0 +1,3 @@
+﻿"application","samples","cpu_average_percent","cpu_median_percent","cpu_p95_percent","cpu_max_percent","private_memory_average_mb","private_memory_max_mb","gpu_average_percent","gpu_p95_percent","process_count_max"
+"LMU Overlay","60","6,267","6,378","7,4","8,281","941,74","1071,28","2,867","3","9"
+"TinyPedal","0","0","0","0","0","0","0","0","0","0"

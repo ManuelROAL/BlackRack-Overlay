@@ -5,19 +5,33 @@ import { bindOverlayInteractionMode } from "./overlay-interaction";
 import { bindOverlayTransparency } from "./overlay-appearance";
 import { createOverlayPerformanceTracker } from "./overlay-performance";
 import { isTauriRuntime, listenTelemetry } from "./runtime-events";
-import { compoundIconUrl } from "./lmu-icons";
 
 const wheels = Array.from(document.querySelectorAll<HTMLElement>("[data-wheel]"));
 const temperatures = wheels.map((wheel) => wheel.querySelector<HTMLElement>(".wheel-temperature")!);
 const brakeTemperatures = wheels.map((wheel) => wheel.querySelector<HTMLElement>(".wheel-brake-temperature")!);
 const wearValues = wheels.map((wheel) => wheel.querySelector<HTMLElement>(".wheel-wear")!);
 const flatSpotValues = wheels.map((wheel) => wheel.querySelector<HTMLElement>(".wheel-flatspot")!);
-const suspensionValues = wheels.map((wheel) => wheel.querySelector<HTMLElement>(".wheel-suspension")!);
-const compounds = wheels.map((wheel) => wheel.querySelector<HTMLImageElement>("[data-compound]")!);
 const damageParts = Array.from(document.querySelectorAll<SVGElement>("[data-damage-part]"));
+const aeroWing = document.querySelector<SVGElement>("[data-aero-wing]")!;
 const damageSummary = document.querySelector<HTMLElement>(".damage-summary")!;
 const damageValue = document.getElementById("damage-value")!;
 const renderPerformance = createOverlayPerformanceTracker("tires");
+
+const setText = (element: HTMLElement, value: string): void => {
+  if (element.textContent !== value) element.textContent = value;
+};
+
+const setStyleProperty = (element: HTMLElement, property: string, value: string): void => {
+  if (element.style.getPropertyValue(property) !== value) element.style.setProperty(property, value);
+};
+
+const setData = (element: HTMLElement | SVGElement, key: string, value: string): void => {
+  if (element.dataset[key] !== value) element.dataset[key] = value;
+};
+
+const setAttribute = (element: Element, name: string, value: string): void => {
+  if (element.getAttribute(name) !== value) element.setAttribute(name, value);
+};
 
 const tireColor = (temperature: number): string => {
   if (!Number.isFinite(temperature) || temperature < 0) return "#687481";
@@ -41,9 +55,10 @@ const brakeColor = (temperature: number): string => {
 const suspensionColor = (damage: number, detached: boolean): string => {
   if (detached) return "#ff244f";
   if (!Number.isFinite(damage) || damage < 0) return "#687481";
-  if (damage >= 75) return "#ff244f";
-  if (damage >= 50) return "#f05a42";
-  if (damage >= 15) return "#ebc13c";
+  if (damage >= 80) return "#ff244f";
+  if (damage >= 40) return "#f05a42";
+  if (damage >= 15) return "#f57835";
+  if (damage >= 2) return "#ebc13c";
   return "#8995a2";
 };
 
@@ -56,8 +71,8 @@ const readable = (value: number, digits: number, suffix: string): string =>
   Number.isFinite(value) && value >= 0 ? `${value.toFixed(digits)}${suffix}` : `--${digits ? ".-" : ""}${suffix}`;
 
 const damageNames = [
-  "frontal", "delantera derecha", "lateral derecha", "trasera derecha",
-  "trasera", "trasera izquierda", "lateral izquierda", "delantera izquierda"
+  "frontal central", "frontal izquierda", "lateral izquierda", "trasera izquierda",
+  "trasera central", "trasera derecha", "lateral derecha", "frontal derecha"
 ];
 
 const render = (frame: TelemetryFrame): void => {
@@ -68,51 +83,59 @@ const render = (frame: TelemetryFrame): void => {
     const flatSpot = frame.player_tire_flat_spot_percent[index];
     const suspension = frame.player_suspension_damage_by_wheel_percent[index];
     const detached = frame.player_tire_detached[index];
-    const critical = frame.player_tire_flat[index] || detached;
+    const flat = frame.player_tire_flat[index] && !detached;
 
-    temperatures[index].textContent = readable(temperature, 1, "°");
-    brakeTemperatures[index].textContent = readable(brakeTemperature, 0, "°");
-    wearValues[index].textContent = Number.isFinite(remaining) && remaining >= 0
+    setText(temperatures[index], readable(temperature, 1, "°"));
+    setText(brakeTemperatures[index], readable(brakeTemperature, 0, "°"));
+    setText(wearValues[index], Number.isFinite(remaining) && remaining >= 0
       ? `${Math.round(remaining)}%`
-      : "--%";
-    flatSpotValues[index].textContent = Number.isFinite(flatSpot) && flatSpot >= 0
+      : "--%");
+    setText(flatSpotValues[index], Number.isFinite(flatSpot) && flatSpot >= 0
       ? `${flatSpot.toFixed(2)}%`
-      : "--.--%";
-    suspensionValues[index].textContent = Number.isFinite(suspension) && suspension >= 0
-      ? `${Math.round(suspension)}%`
-      : "--%";
-
-    wheels[index].style.setProperty("--tire-color", critical ? "#e7314f" : tireColor(temperature));
-    wheels[index].style.setProperty("--brake-color", brakeColor(brakeTemperature));
-    wheels[index].style.setProperty("--suspension-color", suspensionColor(suspension, detached));
-    wheels[index].classList.toggle("critical", critical);
-    suspensionValues[index].dataset.state = detached || suspension >= 75
-      ? "critical"
-      : suspension >= 50 ? "heavy" : suspension >= 15 ? "warning" : "normal";
-
+      : "--.--%");
+    setStyleProperty(
+      wheels[index],
+      "--tire-color",
+      detached ? "#ff244f" : flat ? "#ff8a2b" : tireColor(temperature)
+    );
+    setStyleProperty(wheels[index], "--brake-color", brakeColor(brakeTemperature));
+    setStyleProperty(wheels[index], "--suspension-color", suspensionColor(suspension, detached));
+    wheels[index].classList.toggle("flat", flat);
+    wheels[index].classList.toggle("detached", detached);
     const compound = shortCompound(frame.player_tire_compounds[index] ?? "");
-    const iconUrl = compoundIconUrl(compound);
-    if (compounds[index].getAttribute("src") !== iconUrl) compounds[index].src = iconUrl;
-    compounds[index].title = `Compuesto ${compound === "–" ? "desconocido" : compound}`;
-    compounds[index].dataset.kind = compound.toLowerCase();
+    const compoundLabel = compound === "–" ? "desconocido" : compound;
 
-    wheels[index].title = critical
+    const title = flat || detached
       ? detached ? "Rueda desprendida" : "Neumático pinchado"
-      : `Neumático ${readable(temperature, 1, " °C")} · Disco ${readable(brakeTemperature, 0, " °C")} · ${readable(remaining, 1, "% restante")} · Plano ${readable(flatSpot, 2, "%")} · Suspensión ${readable(suspension, 0, "%")}`;
+      : `Neumático ${readable(temperature, 1, " °C")} · Disco ${readable(brakeTemperature, 0, " °C")} · ${readable(remaining, 1, "% restante")} · Plano ${readable(flatSpot, 2, "%")} · Suspensión ${readable(suspension, 0, "%")} · Compuesto ${compoundLabel}`;
+    if (wheels[index].title !== title) wheels[index].title = title;
   }
 
   for (const part of damageParts) {
     const partIndex = Number(part.dataset.damagePart);
     const severity = Math.min(frame.player_damage_severity[partIndex] ?? 0, 3);
-    part.dataset.severity = frame.player_part_detached && severity > 0 ? "critical" : String(severity);
-    part.setAttribute("aria-label", `Chasis ${damageNames[partIndex]}: nivel ${severity}`);
+    setData(part, "severity", String(severity));
+    setAttribute(part, "aria-label", `Chasis ${damageNames[partIndex]}: nivel ${severity}`);
   }
 
+  const aeroDamage = frame.player_aero_damage_percent;
+  const aeroAvailable = Number.isFinite(aeroDamage) && aeroDamage >= 0;
+  const normalizedAeroDamage = aeroAvailable ? Math.min(aeroDamage, 100) : -1;
+  const rearWingDetached = frame.player_rear_wing_detached;
+  setData(aeroWing, "state", rearWingDetached ? "detached" : "mounted");
+  const aeroLabel = rearWingDetached
+    ? "Alerón desprendido"
+    : aeroAvailable
+    ? `Daño aerodinámico global ${Math.round(normalizedAeroDamage)}%`
+    : "Daño aerodinámico global no disponible";
+  setAttribute(aeroWing, "aria-label", aeroLabel);
+  setAttribute(aeroWing, "title", aeroLabel);
+
   const aggregateDamage = Math.round(frame.player_damage_percent);
-  damageValue.textContent = `${aggregateDamage}%`;
-  damageSummary.dataset.state = frame.player_part_detached || aggregateDamage >= 50
+  setText(damageValue, `${aggregateDamage}%`);
+  setData(damageSummary, "state", frame.player_part_detached || aggregateDamage >= 50
     ? "critical"
-    : aggregateDamage > 0 ? "warning" : "normal";
+    : aggregateDamage > 0 ? "warning" : "normal");
 };
 
 const previewFrame = {
@@ -124,12 +147,14 @@ const previewFrame = {
   player_tire_compounds: ["M", "M", "M", "M"],
   player_tire_flat: [false, false, false, false],
   player_tire_detached: [false, false, false, false],
-  player_damage_percent: 12,
-  player_damage_severity: [1, 0, 0, 0, 0, 0, 0, 1],
-  player_part_detached: false
+  player_aero_damage_percent: 18,
+  player_damage_percent: 19,
+  player_damage_severity: [0, 2, 1, 0, 0, 0, 0, 0],
+  player_part_detached: false,
+  player_rear_wing_detached: false
 } as TelemetryFrame;
 
-fitOverlay({ width: 236, height: 188 });
+fitOverlay({ width: 174, height: 130 });
 bindOverlayTransparency("tires");
 bindOverlayInteractionMode();
 if (!isTauriRuntime()) render(previewFrame);

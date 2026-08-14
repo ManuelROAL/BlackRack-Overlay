@@ -63,8 +63,11 @@ const validPlacement = (value: unknown, overlay: OverlayId): value is OverlayPla
 const migrateCompactDamagePanels = (placement: OverlayPlacement): OverlayPlacement => {
   if (placement.overlay === "tires"
     && ((placement.width === 260 && placement.height === 260)
-      || (placement.width === 190 && placement.height === 180))) {
-    return { ...placement, width: 236, height: 188 };
+      || (placement.width === 190 && placement.height === 180)
+      || (placement.width === 236 && placement.height === 188)
+      || (placement.width === 184 && placement.height === 148)
+      || (placement.width === 174 && placement.height === 148))) {
+    return { ...placement, width: 174, height: 130 };
   }
   if (placement.overlay === "damage"
     && (placement.width === 180 || placement.width === 160 || placement.width === 130 || placement.width === 108)

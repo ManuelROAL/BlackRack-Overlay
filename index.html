@@ -98,6 +98,19 @@
           </label>
         </div>
       </section>
+
+      <section class="configuration-export" data-view-section="general" aria-label="Importar o exportar configuración">
+        <div>
+          <span>COPIA DE SEGURIDAD</span>
+          <strong>Configuración completa de overlays</strong>
+          <small>Guarda o restaura visibilidad, opciones, monitores, posición y tamaño con un único JSON.</small>
+        </div>
+        <div class="configuration-transfer-actions">
+          <button id="import-overlay-configuration" type="button">IMPORTAR</button>
+          <button id="export-overlay-configuration" type="button">EXPORTAR</button>
+        </div>
+        <p id="export-overlay-configuration-status" aria-live="polite">ELIGE EL ARCHIVO O LA CARPETA DE DESTINO</p>
+      </section>
       
       <details class="shortcut-settings-section" data-view-section="general" open>
         <summary>
@@ -144,11 +157,11 @@
           </label>
         </article>
         
-        <details class="standings-settings-section" data-settings-for="standings">
-          <summary>
+        <section class="standings-settings-section" data-settings-for="standings">
+          <header class="settings-section-heading">
             <span>CONFIGURACIÓN DE CLASIFICACIÓN</span>
             <strong>Contenido y columnas</strong>
-          </summary>
+          </header>
           <div class="standings-content-settings">
             <label class="standings-setting-toggle">
               <input id="standings-show-other-classes" type="checkbox" />
@@ -170,7 +183,7 @@
           <div id="standings-columns" class="standings-columns" aria-label="Columnas de clasificación"></div>
           <div class="settings-subtitle">ORDEN DE COLUMNAS</div>
           <div id="standings-column-order" class="column-order-list" aria-label="Orden de columnas de clasificación"></div>
-        </details>
+        </section>
 
         <article class="overlay-option" data-overlay-card="relative" data-overlay-category="race">
           <div class="overlay-icon">R</div>
@@ -184,11 +197,11 @@
           </label>
         </article>
 
-        <details class="standings-settings-section" data-settings-for="relative">
-          <summary>
+        <section class="standings-settings-section" data-settings-for="relative">
+          <header class="settings-section-heading">
             <span>CONFIGURACIÓN DE RELATIVE</span>
             <strong>Contenido y columnas</strong>
-          </summary>
+          </header>
           <div class="standings-content-settings relative-content-settings">
             <label class="standings-row-setting">
               <span>COCHES · DELANTE</span>
@@ -205,7 +218,7 @@
           <div id="relative-columns" class="standings-columns" aria-label="Columnas del relative"></div>
           <div class="settings-subtitle">ORDEN DE COLUMNAS</div>
           <div id="relative-column-order" class="column-order-list" aria-label="Orden de columnas del relative"></div>
-        </details>
+        </section>
 
         <article class="overlay-option" data-overlay-card="fuel" data-overlay-category="race">
           <div class="overlay-icon">F</div>
@@ -223,13 +236,26 @@
           <div class="overlay-icon">T</div>
           <div class="overlay-copy">
             <strong>Trailing + Pedal</strong>
-            <span>Historial de entradas, pedales actuales, velocidad y marcha.</span>
+            <span>Historial e inputs configurables, volante, FFB, velocidad y marcha.</span>
           </div>
           <label class="switch">
             <input type="checkbox" data-overlay="driving" aria-label="Mostrar Trailing y Pedal" />
             <span></span>
           </label>
         </article>
+
+        <section class="standings-settings-section" data-settings-for="driving">
+          <header class="settings-section-heading">
+            <span>CONFIGURACIÓN DE TRAILING + PEDAL</span>
+            <strong>Elementos visibles</strong>
+          </header>
+          <div class="settings-subtitle">PEDALES EN LA GRÁFICA</div>
+          <div id="driving-graph-pedals" class="standings-columns driving-settings-grid" aria-label="Pedales visibles en la gráfica"></div>
+          <div class="settings-subtitle">INPUTS ACTUALES</div>
+          <div id="driving-input-pedals" class="standings-columns driving-settings-grid" aria-label="Pedales visibles como inputs actuales"></div>
+          <div class="settings-subtitle">DATOS DE CONDUCCIÓN</div>
+          <div id="driving-readout-options" class="standings-columns driving-settings-grid" aria-label="Datos de conducción visibles"></div>
+        </section>
 
         <article class="overlay-option" data-overlay-card="tires" data-overlay-category="car">
           <div class="overlay-icon">N</div>

@@ -5,99 +5,292 @@
 .driving-shell {
   position: relative;
   display: flex;
-  align-items: stretch;
-  width: 440px;
+  width: 540px;
   height: 120px;
-  padding: 16px 12px 14px;
-  border: 1px solid rgb(255 255 255 / 9%);
-  border-radius: 13px;
-  background: linear-gradient(145deg, rgb(12 16 21 / var(--overlay-background-opacity)), rgb(4 7 10 / var(--overlay-background-opacity)));
-  box-shadow: 0 14px 35px rgb(0 0 0 / 45%);
+  padding: 6px;
+  align-items: stretch;
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255 / 15%);
+  border-radius: 7px;
+  background: rgb(5 8 12 / var(--overlay-background-opacity));
+  box-shadow: 0 8px 24px rgb(0 0 0 / 34%);
+  cursor: move;
+  font-variant-numeric: tabular-nums;
 }
 
+.driving-shell [hidden] { display: none; }
+
+.drive-dial,
+.pedal-panel,
+.driving-readout,
 .trailing-panel {
-  width: 185px;
+  position: relative;
+  overflow: hidden;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
-#trailing-canvas {
-  display: block;
-  width: 175px;
-  height: 72px;
-  border: 1px solid rgb(255 255 255 / 9%);
-  background: rgb(0 0 0 / 14%);
+.driving-shell::before {
+  position: absolute;
+  z-index: 2;
+  inset: 0 auto auto 0;
+  width: 2px;
+  height: 100%;
+  background: #d8ff3e;
+  content: "";
+  opacity: 0.82;
 }
 
-.trailing-legend {
-  display: flex;
-  gap: 6px;
-  margin-top: 3px;
-  color: #6d7782;
-  font-size: 7px;
-  font-weight: 800;
-  letter-spacing: .08em;
+.driving-shell > section:not([hidden]) ~ section:not([hidden]) {
+  border-left: 1px solid rgb(255 255 255 / 11%);
 }
 
-.trailing-legend span { display: flex; align-items: center; gap: 3px; }
-.trailing-legend i { width: 8px; height: 2px; display: inline-block; }
-.throttle-mark { background: #55ef93; }
-.brake-mark { background: #ff5367; }
-.clutch-mark { background: #62cce9; }
-.trailing-legend .tc-mark,
-.trailing-legend .abs-mark { width: 4px; height: 4px; border-radius: 50%; }
-.tc-mark { background: #ffd24a; }
-.abs-mark { background: #f4f7fa; }
+.drive-dial {
+  width: 88px;
+  flex: 0 0 88px;
+}
+
+.dial-face,
+.steering-indicator {
+  position: absolute;
+  top: 10px;
+  left: 3px;
+  width: 82px;
+  height: 82px;
+  border-radius: 50%;
+}
+
+.dial-face {
+  border: 3px solid rgb(0 0 0 / 82%);
+  background: rgb(8 11 15 / 88%);
+  box-shadow:
+    0 0 0 1px rgb(255 255 255 / 16%),
+    inset 0 0 0 2px rgb(255 255 255 / 3%);
+}
+
+.steering-indicator {
+  transform-origin: 50% 50%;
+  transition: none;
+}
+
+.steering-indicator svg {
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: #f4f7f9;
+  stroke-linecap: round;
+  stroke-width: 6px;
+}
+
+.dial-gear,
+.dial-speed {
+  position: absolute;
+  z-index: 1;
+  right: 0;
+  left: 0;
+  text-align: center;
+}
+
+.dial-gear {
+  top: 34px;
+  color: #f4f7f9;
+  font-size: 31px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.dial-speed {
+  top: 69px;
+  color: #aab8c8;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1;
+}
 
 .pedal-panel {
   display: flex;
-  gap: 8px;
-  width: 82px;
-  padding: 0 8px;
-  border-left: 1px solid rgb(255 255 255 / 8%);
-  border-right: 1px solid rgb(255 255 255 / 8%);
+  width: 88px;
+  flex: 0 0 auto;
+  padding: 6px 7px 5px 9px;
+  gap: 4px;
 }
 
 .pedal-column {
   display: flex;
-  flex: 1;
+  width: 21px;
+  flex: 0 0 21px;
   flex-direction: column;
   align-items: center;
-  min-width: 13px;
-  color: #6d7782;
+  color: #78838e;
   font-size: 7px;
-  font-weight: 800;
+  font-weight: 900;
+  letter-spacing: 0.04em;
 }
 
-.pedal-column b { height: 12px; color: #d6dde4; font-size: 9px; }
-.pedal-column span { margin-top: 5px; }
-.pedal-column-track { position: relative; flex: 1; width: 13px; overflow: hidden; border-radius: 7px; background: rgb(255 255 255 / 8%); }
-.pedal-column-track i { position: absolute; right: 0; bottom: 0; left: 0; height: 0; border-radius: inherit; background: #55ef93; transition: height 45ms linear; }
-.brake-column .pedal-column-track i { background: #ff5367; }
-.clutch-column .pedal-column-track i { background: #62cce9; }
+.pedal-column b {
+  height: 14px;
+  color: #f1f4f6;
+  font-size: 10px;
+  line-height: 1;
+}
 
-.driving-readout { width: 92px; padding: 0 9px; }
-.driving-primary { display: flex; align-items: flex-start; }
-.driving-primary > strong { width: 31px; color: #f3f6f8; font-size: 42px; line-height: .9; }
-.speed-readout { display: flex; flex-direction: column; margin: 3px 0 0 5px; }
-.speed-readout b { color: #f3f6f8; font-size: 20px; line-height: 1; }
-.speed-readout span,
-.ffb-readout > span { color: #7d8792; font-size: 7px; font-weight: 800; }
-.ffb-readout { display: flex; align-items: center; gap: 5px; margin-top: 24px; }
-.ffb-track { position: relative; width: 55px; height: 5px; overflow: hidden; border-radius: 3px; background: rgb(255 255 255 / 8%); }
-.ffb-track i { position: absolute; top: 0; bottom: 0; left: 50%; width: 0; background: #d8ff3e; transition: left 45ms linear, width 45ms linear; }
-.ffb-track em { position: absolute; top: 0; bottom: 0; left: calc(50% - .5px); width: 1px; background: rgb(255 255 255 / 35%); }
+.pedal-column span { margin-top: 4px; }
 
-.steering-panel {
+.pedal-column-track {
+  position: relative;
+  width: 21px;
+  flex: 1;
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255 / 8%);
+  border-radius: 3px;
+  background:
+    linear-gradient(to top, rgb(255 255 255 / 4%) 1px, transparent 1px) 0 0 / 100% 25%,
+    rgb(255 255 255 / 4%);
+}
+
+.pedal-column-track i {
+  position: absolute;
+  inset: auto 2px 2px;
+  height: 0;
+  border-radius: 2px;
+  background: #55ef93;
+  box-shadow: 0 0 8px rgb(85 239 147 / 22%);
+  transition: none;
+}
+
+.brake-column .pedal-column-track i {
+  background: #ff5367;
+  box-shadow: 0 0 8px rgb(255 83 103 / 22%);
+}
+
+.clutch-column .pedal-column-track i {
+  background: #62cce9;
+  box-shadow: 0 0 8px rgb(98 204 233 / 22%);
+}
+
+.driving-readout {
+  display: flex;
+  width: 72px;
+  flex: 0 0 72px;
+  padding: 10px 7px 8px 10px;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.ffb-readout > span {
+  color: #78838e;
+  font-size: 7px;
+  font-weight: 900;
+  letter-spacing: 0.07em;
+}
+
+.ffb-readout {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  width: 55px;
-  border-left: 1px solid rgb(255 255 255 / 8%);
+  gap: 5px;
 }
-.steering-wheel { width: 43px; height: 43px; margin-top: 10px; transition: transform 45ms linear; }
-.steering-wheel svg { width: 100%; height: 100%; fill: none; stroke: #cbd2d8; stroke-linecap: round; stroke-linejoin: round; stroke-width: 8px; }
-.steering-wheel svg circle:nth-child(2) { fill: #cbd2d8; stroke: none; }
-.steering-panel b { margin-top: 8px; color: #8c969f; font-size: 9px; line-height: 1; }
 
-.click-through .driving-shell { border-color: transparent; }
-.resize-handle { position: absolute; right: 1px; bottom: 1px; width: 13px; height: 13px; cursor: nwse-resize; }
+.ffb-track {
+  position: relative;
+  width: 53px;
+  height: 7px;
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255 / 7%);
+  border-radius: 2px;
+  background: rgb(255 255 255 / 5%);
+}
+
+.ffb-track i {
+  position: absolute;
+  inset: 1px auto 1px 50%;
+  width: 0;
+  background: #d8ff3e;
+  transition: none;
+}
+
+.ffb-track em {
+  position: absolute;
+  inset: 0 auto 0 calc(50% - 0.5px);
+  width: 1px;
+  background: rgb(255 255 255 / 42%);
+}
+
+.trailing-panel {
+  width: 278px;
+  flex: 0 0 278px;
+  padding: 6px 7px 5px 8px;
+}
+
+.trailing-header {
+  display: flex;
+  height: 14px;
+  align-items: flex-start;
+}
+
+.trailing-header > strong {
+  color: #d8ff3e;
+  font-size: 7px;
+  font-weight: 900;
+  letter-spacing: 0.09em;
+}
+
+.trailing-legend {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  color: #78838e;
+  font-size: 6px;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+}
+
+.trailing-legend span {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.trailing-legend i {
+  display: inline-block;
+  width: 7px;
+  height: 2px;
+}
+
+.throttle-mark { background: #55ef93; }
+.brake-mark { background: #ff5367; }
+.clutch-mark { background: #62cce9; }
+
+.trailing-legend .tc-mark,
+.trailing-legend .abs-mark {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+}
+
+.tc-mark { background: #ffd24a; }
+.abs-mark { background: #f4f7fa; }
+
+#trailing-canvas {
+  display: block;
+  width: 262px;
+  height: 82px;
+  border: 1px solid rgb(255 255 255 / 8%);
+  border-radius: 3px;
+  background: rgb(0 0 0 / 13%);
+}
+
+.resize-handle {
+  position: absolute;
+  z-index: 10;
+  right: 1px;
+  bottom: 1px;
+  width: 13px;
+  height: 13px;
+  cursor: nwse-resize;
+}
+
 .click-through .resize-handle { display: none; }

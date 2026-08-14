@@ -4,8 +4,7 @@ import { fitOverlay } from "./overlay-fit";
 import { bindOverlayInteractionMode } from "./overlay-interaction";
 import { createOverlayPerformanceTracker } from "./overlay-performance";
 import { bindOverlayTransparency } from "./overlay-appearance";
-import { calculateResourceStrategy, type ResourceStrategyInput } from "./fuel-strategy";
-import type { TelemetryFrame } from "./telemetry-types";
+import type { ResourceStrategy, TelemetryFrame } from "./telemetry-types";
 import { listenTelemetry } from "./runtime-events";
 
 fitOverlay({ width: 560, height: 230 });
@@ -56,25 +55,6 @@ const pitLevel = (playerActive: boolean, autonomy: number): PitLevel => {
   return "safe";
 };
 
-const resourceInput = (
-  frame: TelemetryFrame,
-  current: number,
-  capacity: number,
-  consumption: number,
-  pitCycleConsumption: number,
-  pitOutConsumption: number
-): ResourceStrategyInput => ({
-  current,
-  capacity,
-  consumption,
-  lapsRemaining: frame.session_lap_equivalents_remaining,
-  lapProgress: frame.lap_progress,
-  completedLaps: frame.player_total_laps,
-  pitCycleConsumption,
-  pitOutConsumption,
-  pitOutLap: frame.player_pit_out_lap,
-});
-
 const updateStintDelta = (
   frame: TelemetryFrame,
   mode: "energy" | "fuel",
@@ -114,25 +94,14 @@ const updateStintDelta = (
 const renderProfile = (
   resource: "energy" | "fuel",
   name: ProfileName,
-  frame: TelemetryFrame,
-  current: number,
-  capacity: number,
   consumption: number,
-  pitCycleConsumption: number,
-  pitOutConsumption: number,
-  lapSeconds: number,
-  minimumStops = 0
+  plan: ResourceStrategy | null
 ): void => {
-  const plan = calculateResourceStrategy(
-    resourceInput(frame, current, capacity, consumption, pitCycleConsumption, pitOutConsumption),
-    lapSeconds,
-    minimumStops
-  );
   const id = `${resource}-${name}`;
   text(`${id}-consumption`, plan ? format(consumption) : "--");
   text(`${id}-autonomy`, plan ? format(plan.autonomy) : "--");
-  text(`${id}-required`, plan ? format(plan.totalAdditional) : "--");
-  text(`${id}-at-end`, plan ? format(plan.endRemaining) : "--");
+  text(`${id}-required`, plan ? format(plan.total_additional) : "--");
+  text(`${id}-at-end`, plan ? format(plan.end_remaining) : "--");
 };
 
 const renderStatus = (frame: TelemetryFrame): void => {
@@ -171,13 +140,6 @@ const render = (frame: TelemetryFrame): void => {
     ? frame.virtual_energy_pit_out_consumption
     : frame.fuel_pit_out_consumption;
   const reference = consumptionReference(projected, average, last, profileReference, qualifying) ?? 0;
-  const player = frame.standings.find((entry) => entry.is_player);
-  const lapSeconds = consumptionReference(
-    player?.average_lap_seconds ?? 0,
-    player?.last_lap_seconds ?? 0,
-    frame.best_lap_seconds,
-    frame.current_lap_seconds
-  ) ?? 0;
   const fuelReference = consumptionReference(
     frame.fuel_projected_lap,
     frame.fuel_per_lap,
@@ -185,24 +147,8 @@ const render = (frame: TelemetryFrame): void => {
     frame.fuel_reference_per_lap,
     frame.fuel_qualifying_lap
   ) ?? 0;
-  const fuelStrategy = energyMode
-    ? calculateResourceStrategy(
-      resourceInput(
-        frame,
-        frame.fuel_liters,
-        frame.fuel_capacity_liters,
-        fuelReference,
-        frame.fuel_pit_cycle_consumption,
-        frame.fuel_pit_out_consumption
-      ),
-      lapSeconds
-    )
-    : undefined;
-  const strategy = calculateResourceStrategy(
-    resourceInput(frame, current, capacity, reference, pitCycleConsumption, pitOutConsumption),
-    lapSeconds,
-    fuelStrategy?.stops ?? 0
-  );
+  const fuelStrategy = frame.fuel_strategies.fuel;
+  const strategy = frame.fuel_strategies.active;
 
   const shell = document.querySelector<HTMLElement>(".fuel-shell");
   shell?.setAttribute("data-resource-mode", mode);
@@ -218,20 +164,20 @@ const render = (frame: TelemetryFrame): void => {
     text(
       "pit-window",
       strategy.stops > 0
-        ? strategy.earliestPitLap === strategy.latestPitLap
-          ? `V${strategy.latestPitLap}`
-          : `V${strategy.earliestPitLap}–${strategy.latestPitLap}`
+        ? strategy.earliest_pit_lap === strategy.latest_pit_lap
+          ? `V${strategy.latest_pit_lap}`
+          : `V${strategy.earliest_pit_lap}–${strategy.latest_pit_lap}`
         : "NO PIT"
     );
-    text("stop-plan", strategy.stops > 0 ? `${strategy.stops}→${strategy.targetStops}` : "0");
+    text("stop-plan", strategy.stops > 0 ? `${strategy.stops}→${strategy.target_stops}` : "0");
 
-    const fullAllowed = qualifying > 0 && strategy.targetConsumption >= qualifying;
-    const displayedTarget = fullAllowed ? qualifying : strategy.targetConsumption;
+    const fullAllowed = qualifying > 0 && strategy.target_consumption >= qualifying;
+    const displayedTarget = fullAllowed ? qualifying : strategy.target_consumption;
     text("target-label", fullAllowed ? "FULL" : "OBJ/V");
     text("target-consumption", format(displayedTarget));
-    text("saving-required", fullAllowed ? "0,0%" : `−${format(strategy.savingPercent, 1)}%`);
-    tone("saving-required", fullAllowed || strategy.savingPercent <= 2 ? "good" : strategy.savingPercent <= 7 ? "warn" : "bad");
-    text("next-fill", strategy.stops > 0 ? `${format(strategy.nextFill, 1)}${unit}` : "--");
+    text("saving-required", fullAllowed ? "0,0%" : `−${format(strategy.saving_percent, 1)}%`);
+    tone("saving-required", fullAllowed || strategy.saving_percent <= 2 ? "good" : strategy.saving_percent <= 7 ? "warn" : "bad");
+    text("next-fill", strategy.stops > 0 ? `${format(strategy.next_fill, 1)}${unit}` : "--");
 
     const delta = updateStintDelta(frame, mode, current, displayedTarget);
     text("stint-delta", delta === undefined ? "--" : `${signed(delta)}${unit}`);
@@ -304,13 +250,13 @@ const render = (frame: TelemetryFrame): void => {
   text("fuel-current", energyMode ? `${format(frame.fuel_liters, 1)}L` : "--");
   text("fuel-consumption", energyMode ? `${format(fuelReference)}L/V` : "--");
   text("fuel-autonomy", energyMode ? `${format(fuelAutonomy, 1)}V` : "--");
-  text("fuel-required", energyMode && fuelStrategy ? `+${format(fuelStrategy.totalAdditional, 1)}L` : "--");
+  text("fuel-required", energyMode && fuelStrategy ? `+${format(fuelStrategy.total_additional, 1)}L` : "--");
   text("fuel-stops", energyMode && fuelStrategy ? `${fuelStrategy.stops}` : "--");
 
-  renderProfile("energy", "estimated", frame, current, capacity, reference, pitCycleConsumption, pitOutConsumption, lapSeconds, strategy?.stops);
-  renderProfile("energy", "average", frame, current, capacity, average, pitCycleConsumption, pitOutConsumption, lapSeconds, strategy?.stops);
-  renderProfile("energy", "qualifying", frame, current, capacity, qualifying, pitCycleConsumption, pitOutConsumption, lapSeconds, strategy?.stops);
-  renderProfile("energy", "last", frame, current, capacity, last, pitCycleConsumption, pitOutConsumption, lapSeconds, strategy?.stops);
+  renderProfile("energy", "estimated", reference, frame.fuel_strategies.estimated);
+  renderProfile("energy", "average", average, frame.fuel_strategies.average);
+  renderProfile("energy", "qualifying", qualifying, frame.fuel_strategies.qualifying);
+  renderProfile("energy", "last", last, frame.fuel_strategies.last);
 
   const level = document.getElementById("resource-level");
   if (level) {

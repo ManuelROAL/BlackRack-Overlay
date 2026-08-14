@@ -1,3 +1,5 @@
+import { reportCompositeOverlaySize } from "./runtime-events";
+
 interface OverlaySize {
   width: number;
   height: number;
@@ -27,6 +29,7 @@ export const fitOverlay = (initialSize: OverlaySize): ((size: OverlaySize) => vo
     root.style.setProperty("--overlay-base-width", `${size.width}px`);
     root.style.setProperty("--overlay-base-height", `${size.height}px`);
     updateScale();
+    reportCompositeOverlaySize(size);
   };
 
   setSize(initialSize);

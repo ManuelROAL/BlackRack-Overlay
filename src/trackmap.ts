@@ -13,13 +13,6 @@ interface MapPoint {
   distance: number;
 }
 
-interface StoredMap {
-  version: 1;
-  trackName: string;
-  trackLength: number;
-  points: MapPoint[];
-}
-
 interface Transform {
   x: (worldX: number) => number;
   y: (worldY: number) => number;
@@ -31,7 +24,9 @@ interface GeometryPoint {
 }
 
 interface TrackMapGeometry {
-  mainPath: GeometryPoint[];
+  source: "official" | "learned";
+  mainPath: MapPoint[];
+  mainLength: number;
   pitPath: GeometryPoint[];
 }
 
@@ -46,33 +41,22 @@ interface CalibrationObservation {
   lapDistance: number;
 }
 
-interface PitTraversalStore {
-  version: 1;
-  samples: number[];
-}
-
-interface PitVehicleState {
+interface MarkerView {
+  root: HTMLDivElement;
+  disc: HTMLDivElement;
+  label: HTMLSpanElement;
+  halo: HTMLDivElement | null;
+  isPlayer: boolean;
+  transform: string;
+  color: string;
+  labelValue: string;
   inPits: boolean;
-  eligible: boolean;
-  lastDistance: number;
-  movingSeconds: number;
-  pendingSeconds: number;
-  pitStartProgress: number | null;
-  maxPitProgressDelta: number;
+  isRaceLeader: boolean;
 }
-
-type PitPredictionFrame = Pick<TelemetryFrame,
-  "pit_stop_estimate_available" | "pit_stop_estimate_seconds" |
-  "last_lap_seconds" | "best_lap_seconds" | "track_length_meters" |
-  "player_in_pits">;
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 const SIZE = 420;
 const MARGIN = 34;
-const MIN_SAMPLE_DISTANCE = 3;
-const STORAGE_PREFIX = "lmu-overlay.track-map.v1.";
-const PIT_STORAGE_PREFIX = "lmu-overlay.track-map.pit-traversal.v1.";
-const MAX_PIT_SAMPLES = 7;
 
 fitOverlay({ width: 436, height: 436 });
 bindOverlayTransparency("trackmap");
@@ -82,7 +66,7 @@ const renderPerformance = createOverlayPerformanceTracker("trackmap");
 const outline = document.querySelector<SVGPathElement>("#track-outline")!;
 const line = document.querySelector<SVGPathElement>("#track-line")!;
 const startLine = document.querySelector<SVGPathElement>("#start-line")!;
-const vehicleLayer = document.querySelector<SVGGElement>("#vehicle-layer")!;
+const vehicleLayer = document.querySelector<HTMLDivElement>("#vehicle-layer")!;
 const status = document.getElementById("map-status") as HTMLElement;
 
 let mapKey = "";
@@ -91,30 +75,45 @@ let officialGeometry: PreparedGeometry | null = null;
 let officialDistancePoints: MapPoint[] = [];
 let calibrationObservation: CalibrationObservation | null = null;
 let geometryRequestKey = "";
+let geometryLoadedKey = "";
 let geometryRetryAfter = 0;
+let geometryRevision = -1;
 let transform: Transform | null = null;
-let recordingLap: number | null = null;
-let recordingValid = true;
-let samples: MapPoint[] = [];
-let lastSampleDistance = -Infinity;
-const markers = new Map<number, SVGGElement>();
-const pitVehicleStates = new Map<number, PitVehicleState>();
-let pitTraversalSamples: number[] = [];
-let pitTraversalSeconds = 0;
-let previousPitSampleTime: number | null = null;
-let predictionMarker: SVGGElement | null = null;
+const markers = new Map<number, MarkerView>();
+let predictionMarker: HTMLDivElement | null = null;
+let predictionTransform = "";
 
-const safeKey = (trackName: string, trackLength: number): string =>
-  `${STORAGE_PREFIX}${trackName.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-")}.${Math.round(trackLength)}`;
-
-const pitStorageKey = (trackName: string, trackLength: number): string =>
-  `${PIT_STORAGE_PREFIX}${trackName.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-")}.${Math.round(trackLength)}`;
-
-const median = (values: number[]): number => {
-  if (!values.length) return 0;
-  const sorted = [...values].sort((a, b) => a - b);
-  const middle = Math.floor(sorted.length / 2);
-  return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
+const migrateLegacyLearning = (key: string, trackName: string, trackLength: number): void => {
+  if (!isTauriRuntime()) return;
+  const pitKey = key.replace(
+    "lmu-overlay.track-map.v1.",
+    "lmu-overlay.track-map.pit-traversal.v1."
+  );
+  let points: MapPoint[] = [];
+  let pitTraversalSamples: number[] = [];
+  try {
+    const map = JSON.parse(localStorage.getItem(key) ?? "null") as { version?: number; points?: MapPoint[] } | null;
+    const pit = JSON.parse(localStorage.getItem(pitKey) ?? "null") as { version?: number; samples?: number[] } | null;
+    if (map?.version === 1 && Array.isArray(map.points)) points = map.points;
+    if (pit?.version === 1 && Array.isArray(pit.samples)) pitTraversalSamples = pit.samples;
+  } catch {
+    localStorage.removeItem(key);
+    localStorage.removeItem(pitKey);
+    return;
+  }
+  if (!points.length && !pitTraversalSamples.length) return;
+  void invokeRuntime<boolean>("migrate_legacy_track_map_learning", {
+    cacheKey: key,
+    trackName,
+    trackLength,
+    points,
+    pitTraversalSamples
+  }).then((handled) => {
+    if (handled) {
+      localStorage.removeItem(key);
+      localStorage.removeItem(pitKey);
+    }
+  }).catch(() => undefined);
 };
 
 const normalizeDistance = (distance: number, length: number): number =>
@@ -125,27 +124,6 @@ const wrappedDelta = (next: number, previous: number, length: number): number =>
   if (length > 0 && delta > length / 2) delta -= length;
   if (length > 0 && delta < -length / 2) delta += length;
   return delta;
-};
-
-const prepareGeometry = (geometry: TrackMapGeometry): PreparedGeometry | null => {
-  if (geometry.mainPath.length < 40 || geometry.pitPath.length < 2) return null;
-  const mainPath: MapPoint[] = [];
-  let distance = 0;
-  for (let index = 0; index < geometry.mainPath.length; index += 1) {
-    const point = geometry.mainPath[index];
-    if (!Number.isFinite(point.x) || !Number.isFinite(point.y)) return null;
-    if (index) {
-      const previous = geometry.mainPath[index - 1];
-      distance += Math.hypot(point.x - previous.x, point.y - previous.y);
-    }
-    mainPath.push({ x: point.x, y: point.y, distance });
-  }
-  const first = mainPath[0];
-  const last = mainPath[mainPath.length - 1];
-  const mainLength = distance + Math.hypot(first.x - last.x, first.y - last.y);
-  if (!Number.isFinite(mainLength) || mainLength < 100) return null;
-  const pitPath = geometry.pitPath.filter((point) => Number.isFinite(point.x) && Number.isFinite(point.y));
-  return pitPath.length >= 2 ? { mainPath, mainLength, pitPath } : null;
 };
 
 const fetchOfficialGeometry = async (key: string): Promise<TrackMapGeometry> => {
@@ -161,17 +139,21 @@ const fetchOfficialGeometry = async (key: string): Promise<TrackMapGeometry> => 
 };
 
 const requestOfficialGeometry = (key: string): void => {
-  if (!key || geometryRequestKey === key || Date.now() < geometryRetryAfter) return;
+  if (!key || geometryLoadedKey === key || geometryRequestKey === key || Date.now() < geometryRetryAfter) return;
   geometryRequestKey = key;
   void fetchOfficialGeometry(key)
     .then((geometry) => {
       if (mapKey !== key) return;
-      const prepared = prepareGeometry(geometry);
-      if (!prepared) throw new Error("Geometria oficial incompleta");
-      officialGeometry = prepared;
+      if (geometry.mainPath.length < 40 || geometry.mainLength < 100) {
+        throw new Error("Geometria del circuito incompleta");
+      }
+      officialGeometry = geometry.source === "official"
+        ? { mainPath: geometry.mainPath, mainLength: geometry.mainLength, pitPath: geometry.pitPath }
+        : null;
+      learnedPoints = geometry.source === "learned" ? geometry.mainPath : [];
       officialDistancePoints = [];
       calibrationObservation = null;
-      pitVehicleStates.clear();
+      geometryLoadedKey = key;
       renderTrack();
     })
     .catch(() => {
@@ -180,39 +162,6 @@ const requestOfficialGeometry = (key: string): void => {
     .finally(() => {
       if (geometryRequestKey === key) geometryRequestKey = "";
     });
-};
-
-const loadPitTraversal = (trackName: string, trackLength: number): void => {
-  try {
-    const stored = JSON.parse(localStorage.getItem(pitStorageKey(trackName, trackLength)) ?? "null") as PitTraversalStore | null;
-    pitTraversalSamples = stored?.version === 1
-      ? stored.samples.filter((value) => Number.isFinite(value) && value >= 5 && value <= 180).slice(-MAX_PIT_SAMPLES)
-      : [];
-  } catch {
-    pitTraversalSamples = [];
-  }
-  pitTraversalSeconds = median(pitTraversalSamples);
-  pitVehicleStates.clear();
-  previousPitSampleTime = null;
-};
-
-const savePitTraversal = (trackName: string, trackLength: number, seconds: number): void => {
-  if (!Number.isFinite(seconds) || seconds < 5 || seconds > 180) return;
-  pitTraversalSamples.push(seconds);
-  pitTraversalSamples = pitTraversalSamples.slice(-MAX_PIT_SAMPLES);
-  pitTraversalSeconds = median(pitTraversalSamples);
-  const stored: PitTraversalStore = { version: 1, samples: pitTraversalSamples };
-  localStorage.setItem(pitStorageKey(trackName, trackLength), JSON.stringify(stored));
-};
-
-const loadMap = (key: string): MapPoint[] => {
-  try {
-    const value = JSON.parse(localStorage.getItem(key) ?? "null") as StoredMap | null;
-    return value?.version === 1 && value.points.length >= 40 ? value.points : [];
-  } catch {
-    localStorage.removeItem(key);
-    return [];
-  }
 };
 
 const makeTransform = (points: MapPoint[]): Transform => {
@@ -325,41 +274,6 @@ const calibrateOfficialDistances = (
   renderTrack();
 };
 
-const saveLearnedMap = (frame: TelemetryFrame): void => {
-  learnedPoints = samples.slice();
-  const stored: StoredMap = {
-    version: 1,
-    trackName: frame.track_name,
-    trackLength: frame.track_length_meters,
-    points: learnedPoints
-  };
-  localStorage.setItem(mapKey, JSON.stringify(stored));
-  renderTrack();
-};
-
-const updateRecorder = (frame: TelemetryFrame, player: TrackMapVehicle | undefined): void => {
-  if (!player || officialGeometry || learnedPoints.length || frame.track_length_meters <= 100) return;
-  if (recordingLap === null) recordingLap = player.total_laps;
-  if (player.total_laps !== recordingLap) {
-    const coverage = samples.length > 1
-      ? samples[samples.length - 1].distance - samples[0].distance
-      : 0;
-    if (recordingValid && frame.last_lap_seconds > 0
-      && samples.length >= 40 && coverage >= frame.track_length_meters * 0.88) {
-      saveLearnedMap(frame);
-    }
-    recordingLap = player.total_laps;
-    recordingValid = true;
-    samples = [];
-    lastSampleDistance = -Infinity;
-  }
-  recordingValid &&= frame.player_lap_valid && !player.in_pits;
-  if (player.lap_distance >= lastSampleDistance + MIN_SAMPLE_DISTANCE) {
-    samples.push({ x: player.world_x, y: player.world_y, distance: player.lap_distance });
-    lastSampleDistance = player.lap_distance;
-  }
-};
-
 const markerPosition = (vehicle: TrackMapVehicle, trackLength: number): [number, number] => {
   if (transform) return [transform.x(vehicle.world_x), transform.y(vehicle.world_y)];
   const progress = trackLength > 0 ? vehicle.lap_distance / trackLength : 0;
@@ -409,118 +323,12 @@ const positionAtLapDistance = (lapDistance: number, trackLength: number): [numbe
   return [transform.x(worldX), transform.y(worldY)];
 };
 
-const pitProgress = (vehicle: TrackMapVehicle): number | null => {
-  const path = officialGeometry?.pitPath;
-  if (!path || path.length < 2) return null;
-  let bestIndex = 0;
-  let bestSquared = Number.POSITIVE_INFINITY;
-  for (let index = 0; index < path.length; index += 1) {
-    const dx = vehicle.world_x - path[index].x;
-    const dy = vehicle.world_y - path[index].y;
-    const squared = dx * dx + dy * dy;
-    if (squared < bestSquared) {
-      bestSquared = squared;
-      bestIndex = index;
-    }
-  }
-  return bestSquared <= 30 * 30 ? bestIndex / (path.length - 1) : null;
-};
-
-const completedOfficialPitPassage = (
-  state: PitVehicleState,
-  exitProgress: number | null
-): boolean => {
-  if (!officialGeometry) return true;
-  if (state.pitStartProgress === null || exitProgress === null) return false;
-  const startNearEndpoint = Math.min(state.pitStartProgress, 1 - state.pitStartProgress) <= 0.25;
-  const exitNearEndpoint = Math.min(exitProgress, 1 - exitProgress) <= 0.25;
-  return startNearEndpoint && exitNearEndpoint
-    && Math.abs(exitProgress - state.pitStartProgress) >= 0.5
-    && state.maxPitProgressDelta >= 0.5;
-};
-
-const updatePitTraversal = (frame: TelemetryFrame): void => {
-  const now = frame.session_elapsed_seconds;
-  if (previousPitSampleTime !== null && now < previousPitSampleTime) pitVehicleStates.clear();
-  const deltaSeconds = previousPitSampleTime !== null && now >= previousPitSampleTime
-    ? Math.min(now - previousPitSampleTime, 0.25)
-    : 0;
-  previousPitSampleTime = now;
-  const active = new Set<number>();
-
-  for (const vehicle of frame.track_map_vehicles) {
-    active.add(vehicle.vehicle_id);
-    const previous = pitVehicleStates.get(vehicle.vehicle_id);
-    if (!previous) {
-      pitVehicleStates.set(vehicle.vehicle_id, {
-        inPits: vehicle.in_pits,
-        eligible: !vehicle.in_pits,
-        lastDistance: vehicle.lap_distance,
-        movingSeconds: 0,
-        pendingSeconds: 0,
-        pitStartProgress: null,
-        maxPitProgressDelta: 0
-      });
-      continue;
-    }
-
-    if (!previous.inPits && vehicle.in_pits) {
-      previous.eligible = true;
-      previous.movingSeconds = 0;
-      previous.pendingSeconds = 0;
-      previous.pitStartProgress = pitProgress(vehicle);
-      previous.maxPitProgressDelta = 0;
-    } else if (previous.inPits && vehicle.in_pits && previous.eligible && deltaSeconds > 0) {
-      const progress = pitProgress(vehicle);
-      if (previous.pitStartProgress !== null && progress !== null) {
-        previous.maxPitProgressDelta = Math.max(
-          previous.maxPitProgressDelta,
-          Math.abs(progress - previous.pitStartProgress)
-        );
-      }
-      previous.pendingSeconds = Math.min(previous.pendingSeconds + deltaSeconds, 0.5);
-      const rawDelta = vehicle.lap_distance - previous.lastDistance;
-      const distanceDelta = frame.track_length_meters > 0
-        ? ((rawDelta % frame.track_length_meters) + frame.track_length_meters) % frame.track_length_meters
-        : Math.max(rawDelta, 0);
-      if (distanceDelta >= 0.1 && distanceDelta <= 8) {
-        previous.movingSeconds += previous.pendingSeconds;
-        previous.pendingSeconds = 0;
-      }
-    } else if (previous.inPits && !vehicle.in_pits) {
-      if (previous.eligible && completedOfficialPitPassage(previous, pitProgress(vehicle))) {
-        savePitTraversal(
-          frame.track_name,
-          frame.track_length_meters,
-          previous.movingSeconds + Math.min(previous.pendingSeconds, 0.5)
-        );
-      }
-      previous.eligible = true;
-      previous.movingSeconds = 0;
-      previous.pendingSeconds = 0;
-      previous.pitStartProgress = null;
-      previous.maxPitProgressDelta = 0;
-    }
-    previous.inPits = vehicle.in_pits;
-    previous.lastDistance = vehicle.lap_distance;
-  }
-
-  for (const id of pitVehicleStates.keys()) {
-    if (!active.has(id)) pitVehicleStates.delete(id);
-  }
-};
-
-const ensurePredictionMarker = (): SVGGElement => {
+const ensurePredictionMarker = (): HTMLDivElement => {
   if (predictionMarker) return predictionMarker;
-  const group = document.createElementNS(SVG_NS, "g");
+  const group = document.createElement("div");
   group.classList.add("pit-prediction-marker");
-  const title = document.createElementNS(SVG_NS, "title");
-  title.textContent = "Salida estimada tras la parada";
-  group.appendChild(title);
-  const disc = document.createElementNS(SVG_NS, "circle");
-  disc.setAttribute("r", "9");
-  group.appendChild(disc);
-  const label = document.createElementNS(SVG_NS, "text");
+  group.title = "Salida estimada tras la parada";
+  const label = document.createElement("span");
   label.textContent = "P";
   group.appendChild(label);
   vehicleLayer.prepend(group);
@@ -528,26 +336,19 @@ const ensurePredictionMarker = (): SVGGElement => {
   return group;
 };
 
-const renderPitPrediction = (frame: PitPredictionFrame, player: TrackMapVehicle | undefined): void => {
-  const pace = frame.last_lap_seconds > 0 ? frame.last_lap_seconds : frame.best_lap_seconds;
-  const available = Boolean(player)
-    && !frame.player_in_pits
-    && frame.pit_stop_estimate_available
-    && frame.pit_stop_estimate_seconds >= 0
-    && pitTraversalSeconds > 0
-    && pace > 0
-    && frame.track_length_meters > 0;
-  if (!available || !player) {
+const renderPitPrediction = (lapDistance: number | null, trackLength: number): void => {
+  if (lapDistance === null || trackLength <= 0) {
     if (predictionMarker) predictionMarker.setAttribute("hidden", "");
     return;
   }
-  const totalSeconds = frame.pit_stop_estimate_seconds + pitTraversalSeconds;
-  const predictedDistance = player.lap_distance
-    - totalSeconds / pace * frame.track_length_meters;
-  const [x, y] = positionAtLapDistance(predictedDistance, frame.track_length_meters);
+  const [x, y] = positionAtLapDistance(lapDistance, trackLength);
   const marker = ensurePredictionMarker();
   marker.removeAttribute("hidden");
-  marker.style.transform = `translate(${x.toFixed(2)}px, ${y.toFixed(2)}px)`;
+  const nextTransform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0)`;
+  if (predictionTransform !== nextTransform) {
+    predictionTransform = nextTransform;
+    marker.style.transform = nextTransform;
+  }
 };
 
 const classColor = (vehicleClass: string): string => {
@@ -559,36 +360,59 @@ const classColor = (vehicleClass: string): string => {
   return "#d8dde2";
 };
 
-const createMarker = (vehicle: TrackMapVehicle): SVGGElement => {
-  const group = document.createElementNS(SVG_NS, "g");
+const setMarkerPosition = (marker: MarkerView, x: number, y: number): void => {
+  const nextTransform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0)`;
+  if (marker.transform === nextTransform) return;
+  marker.transform = nextTransform;
+  marker.root.style.transform = nextTransform;
+};
+
+const createMarker = (vehicle: TrackMapVehicle): MarkerView => {
+  const group = document.createElement("div");
   group.classList.add("vehicle-marker");
-  const leaderStar = document.createElementNS(SVG_NS, "path");
+  const leaderStar = document.createElementNS(SVG_NS, "svg");
   leaderStar.classList.add("race-leader-star");
-  leaderStar.setAttribute("d", "M0-25 1.9-20.9 6.4-20.4 3.1-17.2 4-12.8 0-15 -4-12.8 -3.1-17.2 -6.4-20.4 -1.9-20.9Z");
+  leaderStar.setAttribute("viewBox", "-7 -26 14 15");
+  const leaderStarPath = document.createElementNS(SVG_NS, "path");
+  leaderStarPath.setAttribute("d", "M0-25 1.9-20.9 6.4-20.4 3.1-17.2 4-12.8 0-15 -4-12.8 -3.1-17.2 -6.4-20.4 -1.9-20.9Z");
+  leaderStar.appendChild(leaderStarPath);
   group.appendChild(leaderStar);
+  let halo: HTMLDivElement | null = null;
   if (vehicle.is_player) {
     group.classList.add("is-player");
-    const halo = document.createElementNS(SVG_NS, "circle");
+    halo = document.createElement("div");
     halo.classList.add("player-halo");
-    halo.setAttribute("r", "17");
     group.appendChild(halo);
   }
-  const disc = document.createElementNS(SVG_NS, "circle");
+  const disc = document.createElement("div");
   disc.classList.add("vehicle-disc");
-  disc.setAttribute("r", vehicle.is_player ? "12" : "10");
-  group.appendChild(disc);
-  const label = document.createElementNS(SVG_NS, "text");
+  const label = document.createElement("span");
   label.classList.add("vehicle-label");
-  group.appendChild(label);
+  disc.appendChild(label);
+  group.appendChild(disc);
   vehicleLayer.appendChild(group);
-  markers.set(vehicle.vehicle_id, group);
-  return group;
+  const marker: MarkerView = {
+    root: group,
+    disc,
+    label,
+    halo,
+    isPlayer: vehicle.is_player,
+    transform: "",
+    color: "",
+    labelValue: "",
+    inPits: false,
+    isRaceLeader: false
+  };
+  markers.set(vehicle.vehicle_id, marker);
+  return marker;
 };
 
 const renderVehicles = (vehicles: TrackMapVehicle[], trackLength: number): void => {
   const active = new Set<number>();
   const classPositions = new Map<number, number>();
   const classCounts = new Map<string, number>();
+  const pulsePhase = performance.now() % 900 / 900 * Math.PI * 2;
+  const playerHaloOpacity = (0.65 - Math.cos(pulsePhase) * 0.35).toFixed(2);
   [...vehicles].sort((a, b) => a.overall_position - b.overall_position).forEach((vehicle) => {
     const key = vehicle.vehicle_class.toUpperCase();
     const position = (classCounts.get(key) ?? 0) + 1;
@@ -599,59 +423,71 @@ const renderVehicles = (vehicles: TrackMapVehicle[], trackLength: number): void 
     if (vehicle.in_garage) continue;
     active.add(vehicle.vehicle_id);
     let marker = markers.get(vehicle.vehicle_id);
-    if (marker && marker.classList.contains("is-player") !== vehicle.is_player) {
-      marker.remove();
+    if (marker && marker.isPlayer !== vehicle.is_player) {
+      marker.root.remove();
       markers.delete(vehicle.vehicle_id);
       marker = undefined;
     }
     marker ??= createMarker(vehicle);
     const classPosition = classPositions.get(vehicle.vehicle_id) ?? vehicle.overall_position;
-    marker.classList.toggle("is-race-leader", vehicle.overall_position === 1);
-    const pitState = vehicle.in_pits ? "1" : "0";
-    if (marker.dataset.pit !== pitState) {
-      marker.dataset.pit = pitState;
-      marker.classList.toggle("is-pit", vehicle.in_pits);
+    const isRaceLeader = vehicle.overall_position === 1;
+    if (marker.isRaceLeader !== isRaceLeader) {
+      marker.isRaceLeader = isRaceLeader;
+      marker.root.classList.toggle("is-race-leader", isRaceLeader);
     }
+    if (marker.inPits !== vehicle.in_pits) {
+      marker.inPits = vehicle.in_pits;
+      marker.root.classList.toggle("is-pit", vehicle.in_pits);
+    }
+    if (marker.halo) marker.halo.style.opacity = playerHaloOpacity;
     const [x, y] = markerPosition(vehicle, trackLength);
-    marker.style.transform = `translate(${x.toFixed(2)}px, ${y.toFixed(2)}px)`;
-    const disc = marker.querySelector<SVGCircleElement>(".vehicle-disc");
+    setMarkerPosition(marker, x, y);
     const color = classColor(vehicle.vehicle_class);
-    if (disc && disc.style.fill !== color) disc.style.fill = color;
-    const label = marker.querySelector<SVGTextElement>(".vehicle-label");
+    if (marker.color !== color) {
+      marker.color = color;
+      marker.disc.style.backgroundColor = color;
+    }
     const labelValue = String(classPosition);
-    if (label && label.textContent !== labelValue) label.textContent = labelValue;
+    if (marker.labelValue !== labelValue) {
+      marker.labelValue = labelValue;
+      marker.label.textContent = labelValue;
+    }
   }
   for (const [id, marker] of markers) {
     if (!active.has(id)) {
-      marker.remove();
+      marker.root.remove();
       markers.delete(id);
     }
   }
 };
 
 const render = (frame: TelemetryFrame): void => {
-  const nextKey = safeKey(frame.track_name, frame.track_length_meters);
+  const nextKey = frame.track_map_model.cache_key;
   if (nextKey !== mapKey) {
     mapKey = nextKey;
-    learnedPoints = loadMap(mapKey);
+    learnedPoints = [];
     officialGeometry = null;
     officialDistancePoints = [];
     calibrationObservation = null;
     geometryRetryAfter = 0;
-    loadPitTraversal(frame.track_name, frame.track_length_meters);
-    recordingLap = null;
-    recordingValid = true;
-    samples = [];
-    lastSampleDistance = -Infinity;
+    geometryLoadedKey = "";
+    geometryRevision = frame.track_map_model.geometry_revision;
+    migrateLegacyLearning(mapKey, frame.track_name, frame.track_length_meters);
     renderTrack();
+  } else if (frame.track_map_model.geometry_revision !== geometryRevision) {
+    geometryRevision = frame.track_map_model.geometry_revision;
+    geometryRetryAfter = 0;
+    geometryLoadedKey = "";
+    geometryRequestKey = "";
   }
   requestOfficialGeometry(mapKey);
   const player = frame.track_map_vehicles.find((vehicle) => vehicle.is_player);
   calibrateOfficialDistances(player, frame.track_length_meters);
-  updatePitTraversal(frame);
-  updateRecorder(frame, player);
   renderVehicles(frame.track_map_vehicles, frame.track_length_meters);
-  renderPitPrediction(frame, player);
+  renderPitPrediction(
+    frame.track_map_model.pit_prediction_lap_distance,
+    frame.track_length_meters
+  );
 };
 
 renderTrack();
@@ -686,13 +522,5 @@ if (import.meta.env.DEV && new URLSearchParams(window.location.search).has("prev
     };
   });
   renderVehicles(previewVehicles, 5_000);
-  pitTraversalSeconds = 29;
-  renderPitPrediction({
-    pit_stop_estimate_available: true,
-    pit_stop_estimate_seconds: 18,
-    last_lap_seconds: 98,
-    best_lap_seconds: 96,
-    track_length_meters: 5_000,
-    player_in_pits: false
-  }, previewVehicles.find((vehicle) => vehicle.is_player));
+  renderPitPrediction(1_900, 5_000);
 }

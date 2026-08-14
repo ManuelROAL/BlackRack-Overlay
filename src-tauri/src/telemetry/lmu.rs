@@ -5,6 +5,7 @@ use std::time::{Duration, Instant};
 use super::consumption_profile::{ConsumptionProfiler, ProfileEstimate};
 use super::driver_ranks::DriverRankResolver;
 use super::event_split::{DriverRankSettings, SessionSplitResolver};
+use super::fuel_strategy::{calculate_resource_strategy, FuelStrategies, ResourceStrategyInput};
 use super::lmu_rest::{LocalRestResolver, RestVehicleDamage};
 use super::{StandingEntry, TelemetryFrame, TelemetrySource, TrackMapVehicle};
 
@@ -25,6 +26,17 @@ fn suspension_damage_by_wheel_percent(
                 .unwrap_or(-1.0)
         }
     })
+}
+
+fn rear_wing_detached(
+    damage: Option<RestVehicleDamage>,
+    part_detached: bool,
+    rear_center_severity: u8,
+) -> bool {
+    part_detached
+        && damage
+            .map(|value| value.aero >= 1.5)
+            .unwrap_or(rear_center_severity > 0)
 }
 
 #[repr(C)]
@@ -374,6 +386,7 @@ struct CarHistory {
     out_lap_started_at: Option<i32>,
     pit_stop_started_at: Option<Instant>,
     pit_stop_elapsed: Option<Duration>,
+    rest_history_last_lap: Option<i32>,
 }
 
 impl CarHistory {
@@ -395,6 +408,29 @@ impl CarHistory {
         }
     }
 
+    fn seed_recent_lap_times(&mut self, current_total_laps: i32, laps: &[(i32, f64)]) {
+        let Some(last_history_lap) = laps
+            .iter()
+            .rev()
+            .find(|(lap, _)| *lap <= current_total_laps)
+            .map(|(lap, _)| *lap)
+        else {
+            return;
+        };
+        if self.rest_history_last_lap == Some(last_history_lap) {
+            return;
+        }
+        self.recent_lap_times.clear();
+        let eligible = laps
+            .iter()
+            .filter(|(lap, _)| *lap <= current_total_laps)
+            .collect::<Vec<_>>();
+        for (_, lap_time) in eligible.iter().skip(eligible.len().saturating_sub(5)) {
+            Self::push_recent(&mut self.recent_lap_times, *lap_time);
+        }
+        self.rest_history_last_lap = Some(last_history_lap);
+    }
+
     fn update(&mut self, entry: &LmuStandingEntry, current_energy: f64) {
         self.update_at(entry, current_energy, Instant::now());
     }
@@ -402,6 +438,7 @@ impl CarHistory {
     fn update_at(&mut self, entry: &LmuStandingEntry, current_energy: f64, now: Instant) {
         let in_pits = entry.in_pits != 0;
         let in_garage = entry.in_garage != 0;
+        let first_sample = self.last_total_laps.is_none();
         self.last_lap_valid = entry.last_lap_seconds > 0.0;
         self.update_lap_timing(entry);
         if entry.best_lap_seconds.is_finite() && entry.best_lap_seconds > 0.0 {
@@ -411,7 +448,7 @@ impl CarHistory {
         if in_garage {
             self.pit_stop_started_at = None;
             self.pit_stop_elapsed = None;
-        } else if !self.was_in_pits && in_pits {
+        } else if !first_sample && !self.was_in_pits && in_pits {
             self.pit_stop_started_at = Some(now);
             self.pit_stop_elapsed = Some(Duration::ZERO);
         } else if in_pits {
@@ -646,6 +683,7 @@ struct DriverRankEstimateDiagnostic {
     race_result_total: f64,
     qualifying_result_total: f64,
     gain_factor: f64,
+    internal_rating_gain: Option<f64>,
     estimated_gain: Option<f64>,
 }
 
@@ -838,6 +876,9 @@ impl LmuTelemetrySource {
         self.consumption_profiler.reset_lap();
         self.car_histories.clear();
         self.starting_positions.clear();
+        if previous_session.is_some() {
+            self.local_rest.reset_session_history();
+        }
         self.vehicle_identities.clear();
         self.driver_ranks.begin_session();
         self.rejoin_hold_frames = 0;
@@ -1049,44 +1090,6 @@ impl LmuTelemetrySource {
         }
     }
 
-    fn resource_plan(
-        current: f64,
-        capacity: f64,
-        per_lap: f64,
-        laps_remaining: f64,
-        pit_cycle_adjustment: f64,
-        current_pit_out_adjustment: Option<f64>,
-    ) -> (f64, f64, u32) {
-        if per_lap <= 0.0 || laps_remaining <= 0.0 || capacity <= 0.0 {
-            return (0.0, 0.0, 0);
-        }
-
-        let base_needed = per_lap * laps_remaining;
-        for stops in 0..=100u32 {
-            let pit_adjustment = current_pit_out_adjustment.map_or(
-                pit_cycle_adjustment * stops as f64,
-                |current_adjustment| {
-                    current_adjustment + pit_cycle_adjustment * stops.saturating_sub(1) as f64
-                },
-            );
-            let needed = (base_needed + pit_adjustment).max(0.0);
-            let available = current + capacity * stops as f64;
-            if available + 1e-6 >= needed {
-                return (needed, (needed - current).clamp(0.0, capacity), stops);
-            }
-        }
-
-        let stops = 100u32;
-        let pit_adjustment = current_pit_out_adjustment.map_or(
-            pit_cycle_adjustment * stops as f64,
-            |current_adjustment| {
-                current_adjustment + pit_cycle_adjustment * stops.saturating_sub(1) as f64
-            },
-        );
-        let needed = (base_needed + pit_adjustment).max(0.0);
-        (needed, (needed - current).clamp(0.0, capacity), stops)
-    }
-
     fn string_from_chars(chars: &[c_char]) -> String {
         let bytes = chars
             .iter()
@@ -1257,7 +1260,9 @@ impl LmuTelemetrySource {
         settings: DriverRankSettings,
     ) -> f64 {
         let gain_factor = settings.multiplier * settings.k * 2.0 / f64::from(opponent_count);
-        gain_factor * (race_result_total + DRIVER_RANK_QUALIFY_WEIGHT * qualify_result_total)
+        let internal_rating_gain =
+            gain_factor * (race_result_total + DRIVER_RANK_QUALIFY_WEIGHT * qualify_result_total);
+        internal_rating_gain / DRIVER_RANK_INTERNAL_SCALE
     }
 
     fn update_driver_rank_estimates(
@@ -1313,6 +1318,7 @@ impl LmuTelemetrySource {
                         race_result_total: 0.0,
                         qualifying_result_total: 0.0,
                         gain_factor: 0.0,
+                        internal_rating_gain: None,
                         estimated_gain: None,
                     });
                 }
@@ -1358,6 +1364,7 @@ impl LmuTelemetrySource {
                         race_result_total,
                         qualifying_result_total: qualify_result_total,
                         gain_factor: 0.0,
+                        internal_rating_gain: None,
                         estimated_gain: None,
                     });
                 }
@@ -1385,6 +1392,7 @@ impl LmuTelemetrySource {
                     race_result_total,
                     qualifying_result_total: qualify_result_total,
                     gain_factor,
+                    internal_rating_gain: Some(gain * DRIVER_RANK_INTERNAL_SCALE),
                     estimated_gain: Some(gain),
                 });
             }
@@ -1519,17 +1527,39 @@ impl LmuTelemetrySource {
             let class_position = *class_position;
 
             let current_energy = Self::virtual_energy_percent(entry.virtual_energy);
+            let historical_lap_times = self
+                .local_rest
+                .history(entry.vehicle_id, &identity.driver_name)
+                .map(|history| {
+                    history
+                        .iter()
+                        .filter_map(|lap| {
+                            (lap.total_laps > 0 && lap.lap_time.is_finite() && lap.lap_time > 0.0)
+                                .then_some((lap.total_laps, lap.lap_time))
+                        })
+                        .collect::<Vec<_>>()
+                })
+                .unwrap_or_default();
             let history = self.car_histories.entry(entry.vehicle_id).or_default();
+            history.seed_recent_lap_times(entry.total_laps, &historical_lap_times);
             let average_lap_seconds = history.average_lap_time();
             let average_energy_usage = history.average_energy_usage();
             let is_out_lap = history.is_out_lap();
             let pit_stop_time_seconds = history.pit_stop_time_seconds();
 
             let starting_position = self
-                .starting_positions
-                .get(&entry.vehicle_id)
-                .copied()
+                .local_rest
+                .starting_class_position(
+                    entry.vehicle_id,
+                    &identity.driver_name,
+                    &identity.vehicle_class,
+                )
+                .or_else(|| self.starting_positions.get(&entry.vehicle_id).copied())
                 .unwrap_or(class_position);
+            let initial_class_count = self
+                .local_rest
+                .initial_class_count(&identity.vehicle_class)
+                .max(class_position as usize);
 
             let leader = *class_leaders.entry(vehicle_class.clone()).or_insert(entry);
             let (laps_behind_leader, time_behind_leader) =
@@ -1622,6 +1652,7 @@ impl LmuTelemetrySource {
                 team_name: identity.team_name.clone(),
                 vehicle_name: identity.vehicle_name.clone(),
                 vehicle_class,
+                initial_class_count,
                 total_laps: entry.total_laps,
                 laps_behind_leader,
                 laps_behind_next,
@@ -1722,6 +1753,7 @@ impl LmuTelemetrySource {
                         "qualifying_result_total": sample.qualifying_result_total,
                         "qualifying_weight": DRIVER_RANK_QUALIFY_WEIGHT,
                         "gain_factor": sample.gain_factor,
+                        "internal_rating_gain": sample.internal_rating_gain,
                         "estimated_gain": sample.estimated_gain,
                     },
                     "settings": {
@@ -2455,52 +2487,134 @@ impl TelemetrySource for LmuTelemetrySource {
         let planned_fuel_per_lap = [
             profile_estimate.fuel_projected,
             fuel_per_lap,
+            self.fuel_last_lap.unwrap_or(0.0),
             profile_estimate.fuel_reference,
+            self.fuel_qualifying_lap.unwrap_or(0.0),
         ]
         .into_iter()
         .find(|value| *value > 0.0)
         .unwrap_or(0.0);
-        let (fuel_needed_liters, _, _) = Self::resource_plan(
-            snapshot.fuel_liters,
-            snapshot.fuel_capacity_liters,
-            planned_fuel_per_lap,
-            session_lap_equivalents_remaining,
-            if profile_estimate.fuel_pit_cycle_consumption > 0.0 {
-                profile_estimate.fuel_pit_cycle_consumption - 2.0 * planned_fuel_per_lap
-            } else {
-                0.0
-            },
-            (profile_estimate.current_lap_started_in_pits
-                && profile_estimate.fuel_pit_out_consumption > 0.0)
-                .then(|| profile_estimate.fuel_pit_out_consumption - planned_fuel_per_lap),
-        );
         let virtual_energy_active = Self::uses_virtual_energy(&snapshot);
         let planned_energy_per_lap = [
             profile_estimate.energy_projected,
             virtual_energy_per_lap,
+            self.energy_last_lap.unwrap_or(0.0),
             profile_estimate.energy_reference,
+            self.energy_qualifying_lap.unwrap_or(0.0),
         ]
         .into_iter()
         .find(|value| *value > 0.0)
         .unwrap_or(0.0);
+        let lap_seconds = [
+            self.lap_time_pace.unwrap_or(0.0),
+            snapshot.last_lap_seconds,
+            snapshot.best_lap_seconds,
+            snapshot.current_lap_seconds,
+        ]
+        .into_iter()
+        .find(|value| value.is_finite() && *value > 0.0)
+        .unwrap_or(0.0);
+        let strategy_input =
+            |current, capacity, consumption, pit_cycle, pit_out| ResourceStrategyInput {
+                current,
+                capacity,
+                consumption,
+                laps_remaining: session_lap_equivalents_remaining,
+                lap_progress,
+                completed_laps: snapshot.player_total_laps,
+                pit_cycle_consumption: pit_cycle,
+                pit_out_consumption: pit_out,
+                pit_out_lap: profile_estimate.current_lap_started_in_pits,
+            };
+        let fuel_input = |consumption| {
+            strategy_input(
+                snapshot.fuel_liters,
+                snapshot.fuel_capacity_liters,
+                consumption,
+                profile_estimate.fuel_pit_cycle_consumption,
+                profile_estimate.fuel_pit_out_consumption,
+            )
+        };
+        let energy_input = |consumption| {
+            strategy_input(
+                virtual_energy_percent,
+                100.0,
+                consumption,
+                profile_estimate.energy_pit_cycle_consumption,
+                profile_estimate.energy_pit_out_consumption,
+            )
+        };
+        let fuel_strategy =
+            calculate_resource_strategy(fuel_input(planned_fuel_per_lap), lap_seconds, 0);
+        let active_input = if virtual_energy_active {
+            energy_input(planned_energy_per_lap)
+        } else {
+            fuel_input(planned_fuel_per_lap)
+        };
+        let active_strategy = calculate_resource_strategy(
+            active_input,
+            lap_seconds,
+            if virtual_energy_active {
+                fuel_strategy.map_or(0, |strategy| strategy.stops)
+            } else {
+                0
+            },
+        );
+        let active_minimum_stops = active_strategy.map_or(0, |strategy| strategy.stops);
+        let active_scenario = |consumption| {
+            let input = if virtual_energy_active {
+                energy_input(consumption)
+            } else {
+                fuel_input(consumption)
+            };
+            calculate_resource_strategy(input, lap_seconds, active_minimum_stops)
+        };
+        let fuel_strategies = FuelStrategies {
+            active: active_strategy,
+            fuel: virtual_energy_active.then_some(fuel_strategy).flatten(),
+            estimated: active_scenario(if virtual_energy_active {
+                planned_energy_per_lap
+            } else {
+                planned_fuel_per_lap
+            }),
+            average: active_scenario(if virtual_energy_active {
+                virtual_energy_per_lap
+            } else {
+                fuel_per_lap
+            }),
+            qualifying: active_scenario(if virtual_energy_active {
+                self.energy_qualifying_lap.unwrap_or(0.0)
+            } else {
+                self.fuel_qualifying_lap.unwrap_or(0.0)
+            }),
+            last: active_scenario(if virtual_energy_active {
+                self.energy_last_lap.unwrap_or(0.0)
+            } else {
+                self.fuel_last_lap.unwrap_or(0.0)
+            }),
+        };
+        let fuel_needed_liters = fuel_strategy
+            .map(|strategy| {
+                snapshot.fuel_liters + strategy.total_additional - strategy.end_remaining
+            })
+            .unwrap_or(0.0);
         let (
             virtual_energy_needed_percent,
             virtual_energy_next_stint_percent,
             virtual_energy_stints_remaining,
-        ) = Self::resource_plan(
-            virtual_energy_percent,
-            100.0,
-            planned_energy_per_lap,
-            session_lap_equivalents_remaining,
-            if profile_estimate.energy_pit_cycle_consumption > 0.0 {
-                profile_estimate.energy_pit_cycle_consumption - 2.0 * planned_energy_per_lap
-            } else {
-                0.0
-            },
-            (profile_estimate.current_lap_started_in_pits
-                && profile_estimate.energy_pit_out_consumption > 0.0)
-                .then(|| profile_estimate.energy_pit_out_consumption - planned_energy_per_lap),
-        );
+        ) = if let Some(strategy) = if virtual_energy_active {
+            active_strategy
+        } else {
+            None
+        } {
+            (
+                virtual_energy_percent + strategy.total_additional - strategy.end_remaining,
+                strategy.next_fill,
+                strategy.stops,
+            )
+        } else {
+            (0.0, 0.0, 0)
+        };
         let track_map_vehicles = if include_track_map {
             snapshot.standings[..snapshot.standings_count.min(MAX_VEHICLES as u32) as usize]
                 .iter()
@@ -2600,6 +2714,9 @@ impl TelemetrySource for LmuTelemetrySource {
             virtual_energy_needed_percent,
             virtual_energy_next_stint_percent,
             virtual_energy_stints_remaining,
+            fuel_strategies,
+            standings_model: Default::default(),
+            relative_model: Default::default(),
             player_tire_remaining_percent: snapshot.player_tire_remaining_percent,
             player_damage_percent: snapshot.player_damage_percent.clamp(0.0, 100.0),
             player_aero_damage_percent: rest_vehicle_damage
@@ -2627,6 +2744,11 @@ impl TelemetrySource for LmuTelemetrySource {
                 * 100.0,
             player_damage_severity: snapshot.player_damage_severity,
             player_part_detached: snapshot.player_part_detached != 0,
+            player_rear_wing_detached: rear_wing_detached(
+                rest_vehicle_damage,
+                snapshot.player_part_detached != 0,
+                snapshot.player_damage_severity[4],
+            ),
             player_tire_temperature_c: snapshot.player_tire_temperature_c,
             player_brake_temperature_c: snapshot.player_brake_temperature_c,
             player_tire_remaining_by_wheel_percent: snapshot.player_tire_remaining_by_wheel_percent,
@@ -2673,6 +2795,7 @@ impl TelemetrySource for LmuTelemetrySource {
             lap_progress: profile_estimate.lap_progress,
             track_length_meters: snapshot.track_length.max(0.0),
             track_map_vehicles,
+            track_map_model: Default::default(),
             consumption_profile_samples: profile_estimate.samples,
             current_lap_seconds: snapshot.current_lap_seconds.max(0.0),
             last_lap_seconds: snapshot.last_lap_seconds.max(0.0),
@@ -2698,8 +2821,8 @@ impl TelemetrySource for LmuTelemetrySource {
 #[cfg(test)]
 mod tests {
     use super::{
-        lmu_snapshot_size, suspension_damage_by_wheel_percent, CarHistory, LmuSnapshot,
-        LmuStandingEntry, LmuTelemetrySource, TireWearTracker,
+        lmu_snapshot_size, rear_wing_detached, suspension_damage_by_wheel_percent, CarHistory,
+        LmuSnapshot, LmuStandingEntry, LmuTelemetrySource, TireWearTracker,
     };
     use crate::telemetry::event_split::DriverRankSettings;
     use crate::telemetry::lmu_rest::{RestStanding, RestVehicleDamage};
@@ -2746,6 +2869,23 @@ mod tests {
             suspension_damage_by_wheel_percent(None, [0, 0, 1, 0]),
             [-1.0, -1.0, 100.0, -1.0]
         );
+    }
+
+    #[test]
+    fn rear_wing_loss_requires_the_detached_flag_and_out_of_range_aero_wear() {
+        let attached_false_positive = RestVehicleDamage {
+            aero: 0.294,
+            suspension: [0.0; 4],
+        };
+        let missing_rear_wing = RestVehicleDamage {
+            aero: 1.999,
+            suspension: [0.0; 4],
+        };
+
+        assert!(!rear_wing_detached(Some(attached_false_positive), true, 0));
+        assert!(rear_wing_detached(Some(missing_rear_wing), true, 0));
+        assert!(!rear_wing_detached(Some(missing_rear_wing), false, 0));
+        assert!(rear_wing_detached(None, true, 1));
     }
     use std::ffi::c_char;
     use std::time::{Duration, Instant};
@@ -2843,7 +2983,7 @@ mod tests {
 
         let gain =
             LmuTelemetrySource::driver_rank_gain(1.0 - expected, 1.0 - expected, 1, settings);
-        assert!((gain - 35.294_117_647_058_82).abs() < 1e-9);
+        assert!((gain - 11.764_705_882_352_94).abs() < 1e-9);
     }
 
     #[test]
@@ -2927,6 +3067,20 @@ mod tests {
         entry.total_laps = 6;
         history.update_at(&entry, 75.0, started + Duration::from_secs(31));
         assert!(!history.is_out_lap());
+        assert_eq!(history.pit_stop_time_seconds(), None);
+    }
+
+    #[test]
+    fn pit_timer_does_not_invent_elapsed_time_when_started_mid_stop() {
+        let mut history = CarHistory::default();
+        let entry = LmuStandingEntry {
+            total_laps: 5,
+            in_pits: 1,
+            ..LmuStandingEntry::default()
+        };
+
+        history.update_at(&entry, 80.0, Instant::now());
+
         assert_eq!(history.pit_stop_time_seconds(), None);
     }
 
@@ -3508,38 +3662,6 @@ mod tests {
         assert!(LmuTelemetrySource::uses_virtual_energy(&snapshot));
         snapshot.vehicle_class_id = 3;
         assert!(!LmuTelemetrySource::uses_virtual_energy(&snapshot));
-    }
-
-    #[test]
-    fn plans_next_stint_and_additional_energy_loads() {
-        assert_eq!(
-            LmuTelemetrySource::resource_plan(50.0, 100.0, 4.0, 10.0, 0.0, None),
-            (40.0, 0.0, 0)
-        );
-        assert_eq!(
-            LmuTelemetrySource::resource_plan(20.0, 100.0, 4.0, 30.0, 0.0, None),
-            (120.0, 100.0, 1)
-        );
-        assert_eq!(
-            LmuTelemetrySource::resource_plan(20.0, 100.0, 4.0, 30.0, -2.0, None),
-            (118.0, 98.0, 1)
-        );
-    }
-
-    #[test]
-    fn active_pit_stop_uses_only_the_remaining_out_lap_adjustment() {
-        let (needed, to_add, stops) = LmuTelemetrySource::resource_plan(
-            2.968,
-            75.0,
-            2.872,
-            12.0,
-            4.807 - 2.0 * 2.872,
-            Some(2.754 - 2.872),
-        );
-
-        assert!((needed - 34.346).abs() < 0.001);
-        assert!((to_add - 31.378).abs() < 0.001);
-        assert_eq!(stops, 1);
     }
 
     #[test]

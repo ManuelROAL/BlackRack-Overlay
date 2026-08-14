@@ -314,11 +314,17 @@ extern "C" int lmu_read_snapshot(LmuSnapshot* output) {
                     // con neumático nuevo y 0.0 al agotarse.
                     const double tire_remaining = std::clamp(wheel.mWear * 100.0, 0.0, 100.0);
                     remaining = std::min(remaining, tire_remaining);
-                    // El HUD de LMU muestra la temperatura de carcasa, no la
-                    // media instantánea de las tres muestras de superficie.
+                    // Match the temperature displayed by Dox's LMU overlay: 34%
+                    // carcass and 22% from each inner-layer sample. All four
+                    // inputs are reported in Kelvin.
                     output->player_tire_temperature_c[wheel_index] =
-                        wheel.mTireCarcassTemperature - 273.15;
-                    output->player_brake_temperature_c[wheel_index] = wheel.mBrakeTemp;
+                        wheel.mTireCarcassTemperature * 0.34
+                        + wheel.mTireInnerLayerTemperature[0] * 0.22
+                        + wheel.mTireInnerLayerTemperature[1] * 0.22
+                        + wheel.mTireInnerLayerTemperature[2] * 0.22
+                        - 273.15;
+                    // LMU entrega mBrakeTemp en Kelvin pese al comentario heredado del SDK.
+                    output->player_brake_temperature_c[wheel_index] = wheel.mBrakeTemp - 273.15;
                     output->player_tire_remaining_by_wheel_percent[wheel_index] = tire_remaining;
                     const double speed_mps = destination.speed_kph / 3.6;
                     const double radius_m = static_cast<double>(wheel.mStaticUndeflectedRadius) / 100.0;

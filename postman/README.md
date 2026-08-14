@@ -36,6 +36,8 @@ límites sin previo aviso; usa la colección únicamente con tu propia sesión d
   recomendada para los datos usados por LMUOverlay.
 - `OBSERVED-RESPONSE-FIELDS-2026-08-12.md` conserva los campos y formas de
   respuesta observados sin incluir valores personales ni credenciales.
+- `RACE-ENDPOINT-CAPTURE-2026-08-13.md` completa los esquemas dependientes de una
+  carrera y un evento online registrado, también de forma anonimizada.
 
 Las operaciones que no sean de lectura están bloqueadas inicialmente. Para ejecutar
 conscientemente una operación que modifica datos habría que cambiar `allow_mutations` a

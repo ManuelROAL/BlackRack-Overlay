@@ -8,52 +8,51 @@
   </head>
   <body class="driving-body">
     <main class="driving-shell" data-tauri-drag-region>
-      <section class="trailing-panel" aria-label="Historial de pedales">
-        <canvas id="trailing-canvas" width="175" height="72"></canvas>
-        <div class="trailing-legend">
-          <span><i class="throttle-mark"></i>THR</span>
-          <span><i class="brake-mark"></i>BRK</span>
-          <span><i class="clutch-mark"></i>CLT</span>
-          <span><i class="tc-mark"></i>TC</span>
-          <span><i class="abs-mark"></i>ABS</span>
+      <section class="drive-dial" aria-label="Volante, marcha y velocidad">
+        <div class="dial-face" aria-hidden="true"></div>
+        <div id="steering-wheel" class="steering-indicator" data-driving-item="steering" aria-hidden="true">
+          <svg viewBox="0 0 100 100">
+            <path d="M27 18A40 40 0 0 1 73 18"></path>
+          </svg>
         </div>
+        <strong id="gear" class="dial-gear" data-driving-item="gear">N</strong>
+        <b id="speed" class="dial-speed" data-driving-item="speed">0</b>
       </section>
       <section class="pedal-panel" aria-label="Pedales actuales">
-        <div class="pedal-column clutch-column">
+        <div class="pedal-column clutch-column" data-input-pedal="clutch">
           <b id="clutch-value">0</b>
           <div class="pedal-column-track"><i id="clutch-level"></i></div>
           <span>CLT</span>
         </div>
-        <div class="pedal-column brake-column">
+        <div class="pedal-column brake-column" data-input-pedal="brake">
           <b id="brake-value">0</b>
           <div class="pedal-column-track"><i id="brake-level"></i></div>
           <span>BRK</span>
         </div>
-        <div class="pedal-column">
+        <div class="pedal-column" data-input-pedal="throttle">
           <b id="throttle-value">0</b>
           <div class="pedal-column-track"><i id="throttle-level"></i></div>
           <span>THR</span>
         </div>
       </section>
-      <section class="driving-readout" aria-label="Velocidad, marcha y Force Feedback">
-        <div class="driving-primary">
-          <strong id="gear">N</strong>
-          <div class="speed-readout"><b id="speed">0</b><span>KM/H</span></div>
-        </div>
-        <div class="ffb-readout">
-          <span>FF</span>
+      <section class="driving-readout" aria-label="Force Feedback">
+        <div class="ffb-readout" data-driving-item="ffb">
+          <span>FFB</span>
           <div class="ffb-track" aria-hidden="true"><i id="ffb-level"></i><em></em></div>
         </div>
       </section>
-      <section class="steering-panel" aria-label="Ángulo del volante">
-        <div id="steering-wheel" class="steering-wheel" aria-hidden="true">
-          <svg viewBox="0 0 100 100">
-            <circle cx="50" cy="50" r="38"></circle>
-            <circle cx="50" cy="50" r="6"></circle>
-            <path d="M13 44h74M50 56 27 78M50 56l23 22"></path>
-          </svg>
+      <section class="trailing-panel" aria-label="Historial de pedales">
+        <div class="trailing-header">
+          <strong>INPUT TRACE</strong>
+          <div class="trailing-legend">
+            <span data-graph-pedal="throttle"><i class="throttle-mark"></i>THR</span>
+            <span data-graph-pedal="brake"><i class="brake-mark"></i>BRK</span>
+            <span data-graph-pedal="clutch"><i class="clutch-mark"></i>CLT</span>
+            <span data-graph-pedal="throttle"><i class="tc-mark"></i>TC</span>
+            <span data-graph-pedal="brake"><i class="abs-mark"></i>ABS</span>
+          </div>
         </div>
-        <b id="steering-angle">0°</b>
+        <canvas id="trailing-canvas" width="262" height="82"></canvas>
       </section>
       <div class="resize-handle" data-resize-handle aria-hidden="true"></div>
     </main>

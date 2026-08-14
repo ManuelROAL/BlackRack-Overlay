@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { emit, listen } from "@tauri-apps/api/event";
+import { open, save } from "@tauri-apps/plugin-dialog";
 import "./control-panel.css";
 import type { InteractionMode, TelemetryFrame } from "./telemetry-types";
 import {
@@ -20,6 +21,14 @@ import {
   type RelativeSettings
 } from "./relative-settings";
 import {
+  defaultDrivingSettings,
+  DRIVING_PEDALS,
+  DRIVING_SETTINGS_KEY,
+  readDrivingSettings,
+  type DrivingPedalId,
+  type DrivingSettings
+} from "./driving-settings";
+import {
   DEFAULT_OVERLAY_TRANSPARENCY,
   effectiveOverlayTransparency,
   OVERLAY_TRANSPARENCY_KEY,
@@ -32,8 +41,11 @@ import {
 } from "./overlay-appearance";
 import {
   ensureCompositeLayout,
+  COMPOSITE_LAYOUT_KEY,
   getOverlayDisplays,
+  MONITOR_SELECTION_KEY,
   moveOverlayToMonitor,
+  readCompositeLayout,
   readMonitorSelection,
   resetOverlayPlacement,
   saveMonitorSelection,
@@ -73,6 +85,24 @@ interface BrowserSourceStatus {
   url: string;
   clients: number;
   error: string | null;
+}
+
+interface OverlayConfigurationExport {
+  format: "lmu-overlay-configuration";
+  schemaVersion: 2;
+  exportedAt: string;
+  overlays: {
+    visibility: Record<OverlayId, boolean>;
+    transparency: {
+      scope: OverlayTransparencyScope;
+      values: Record<OverlayId, number>;
+    };
+    monitorSelection: MonitorSelectionSettings;
+    layout: Awaited<ReturnType<typeof ensureCompositeLayout>>;
+    standings: StandingsSettings;
+    relative: RelativeSettings;
+    driving: DrivingSettings;
+  };
 }
 
 type ShortcutAction = "interaction_mode" | "show_panel";
@@ -168,14 +198,29 @@ filterOverlays();
 
 let standingsSettings: StandingsSettings = readStandingsSettings();
 let relativeSettings: RelativeSettings = readRelativeSettings();
+let drivingSettings: DrivingSettings = readDrivingSettings();
 const overlayTransparency = readOverlayTransparency();
 let overlayTransparencyScope: OverlayTransparencyScope = readOverlayTransparencyScope();
 
 const syncBrowserSourcePreferences = (): void => {
+  void invoke("set_overlay_view_settings", {
+    settings: {
+      standings: {
+        ownClassRows: standingsSettings.ownClassRows,
+        otherClassRows: standingsSettings.otherClassRows,
+        showOtherClasses: standingsSettings.showOtherClasses
+      },
+      relative: {
+        aheadRows: relativeSettings.aheadRows,
+        behindRows: relativeSettings.behindRows
+      }
+    }
+  }).catch(() => undefined);
   void invoke("set_browser_source_preferences", {
     preferences: {
       standings: standingsSettings,
       relative: relativeSettings,
+      driving: drivingSettings,
       transparency: effectiveOverlayTransparency(overlayTransparency, overlayTransparencyScope)
     }
   }).catch(() => undefined);
@@ -289,6 +334,12 @@ const persistRelativeSettings = (): void => {
   syncBrowserSourcePreferences();
 };
 
+const persistDrivingSettings = (): void => {
+  localStorage.setItem(DRIVING_SETTINGS_KEY, JSON.stringify(drivingSettings));
+  void emit("driving://settings", drivingSettings);
+  syncBrowserSourcePreferences();
+};
+
 const inputFor = (id: OverlayId): HTMLInputElement | null =>
   document.querySelector<HTMLInputElement>(`input[data-overlay="${id}"]`);
 
@@ -391,6 +442,10 @@ const resetOverlayConfiguration = async (id: OverlayId): Promise<void> => {
     relativeSettings = defaultRelativeSettings();
     localStorage.setItem(RELATIVE_SETTINGS_KEY, JSON.stringify(relativeSettings));
     events.push(emit("relative://settings", relativeSettings));
+  } else if (id === "driving") {
+    drivingSettings = defaultDrivingSettings();
+    localStorage.setItem(DRIVING_SETTINGS_KEY, JSON.stringify(drivingSettings));
+    events.push(emit("driving://settings", drivingSettings));
   }
 
   const effective = effectiveOverlayTransparency(overlayTransparency, overlayTransparencyScope);
@@ -624,6 +679,276 @@ const bindMonitorSelectors = async (): Promise<void> => {
 
 document.getElementById("show-all")?.addEventListener("click", () => void setAll(true));
 document.getElementById("hide-all")?.addEventListener("click", () => void setAll(false));
+
+const exportConfigurationButton = document.getElementById("export-overlay-configuration") as HTMLButtonElement | null;
+const importConfigurationButton = document.getElementById("import-overlay-configuration") as HTMLButtonElement | null;
+const exportConfigurationStatus = document.getElementById("export-overlay-configuration-status");
+const configurationFileFilters = [{ name: "Configuración de LMUOverlay", extensions: ["json"] }];
+
+const configurationObject = (value: unknown): Record<string, unknown> | null =>
+  value !== null && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null;
+
+const parseOverlayConfiguration = (contents: string): OverlayConfigurationExport => {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(contents);
+  } catch {
+    throw new Error("El archivo no contiene JSON válido.");
+  }
+  const root = configurationObject(parsed);
+  const overlays = configurationObject(root?.overlays);
+  const visibility = configurationObject(overlays?.visibility);
+  const transparency = configurationObject(overlays?.transparency);
+  const transparencyScope = configurationObject(transparency?.scope);
+  const transparencyValues = configurationObject(transparency?.values);
+  const monitorSelection = configurationObject(overlays?.monitorSelection);
+  const individualMonitors = configurationObject(monitorSelection?.individualMonitors);
+  const layout = configurationObject(overlays?.layout);
+  const standings = configurationObject(overlays?.standings);
+  const relative = configurationObject(overlays?.relative);
+  const driving = configurationObject(overlays?.driving);
+  const schemaVersion = root?.schemaVersion;
+  if (root?.format !== "lmu-overlay-configuration"
+    || (schemaVersion !== 1 && schemaVersion !== 2) || !overlays
+    || !visibility || !transparency || !transparencyScope || !transparencyValues
+    || !monitorSelection || !individualMonitors || !layout
+    || !standings || !relative || (schemaVersion === 2 && !driving)) {
+    throw new Error("El archivo no es una configuración compatible de LMUOverlay.");
+  }
+  if (transparencyScope.mode !== "global" && transparencyScope.mode !== "individual") {
+    throw new Error("El modo de transparencia del archivo no es válido.");
+  }
+  if (monitorSelection.mode !== "global" && monitorSelection.mode !== "individual") {
+    throw new Error("El modo de monitor del archivo no es válido.");
+  }
+  const percentageIsValid = (value: unknown): value is number =>
+    typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 100;
+  if (!percentageIsValid(transparencyScope.globalTransparency)
+    || !Number.isInteger(monitorSelection.globalMonitor)
+    || Number(monitorSelection.globalMonitor) < 0) {
+    throw new Error("La configuración general del archivo no es válida.");
+  }
+  const completeBooleanRecord = (value: unknown, keys: string[]): boolean => {
+    const record = configurationObject(value);
+    return record !== null && keys.every((key) => typeof record[key] === "boolean");
+  };
+  const completeOrder = (value: unknown, keys: string[]): boolean =>
+    Array.isArray(value) && value.length === keys.length
+      && new Set(value).size === keys.length
+      && value.every((key) => typeof key === "string" && keys.includes(key));
+  const defaultStandings = defaultStandingsSettings();
+  const standingsColumnIds = Object.keys(defaultStandings.columns);
+  const standingsHeaderIds = Object.keys(defaultStandings.header);
+  if (!completeBooleanRecord(standings.columns, standingsColumnIds)
+    || !completeOrder(standings.columnOrder, standingsColumnIds)
+    || typeof standings.showHeader !== "boolean"
+    || !completeBooleanRecord(standings.header, standingsHeaderIds)
+    || !Number.isInteger(standings.ownClassRows) || Number(standings.ownClassRows) < 3
+    || Number(standings.ownClassRows) > 30
+    || !Number.isInteger(standings.otherClassRows) || Number(standings.otherClassRows) < 1
+    || Number(standings.otherClassRows) > 15
+    || typeof standings.showOtherClasses !== "boolean") {
+    throw new Error("La configuración de Standings está incompleta o dañada.");
+  }
+  const defaultRelative = defaultRelativeSettings();
+  const relativeOptionIds = Object.keys(defaultRelative.options);
+  const relativeColumnIds = defaultRelative.columnOrder;
+  if (!completeBooleanRecord(relative.options, relativeOptionIds)
+    || !completeOrder(relative.columnOrder, relativeColumnIds)
+    || !Number.isInteger(relative.aheadRows) || Number(relative.aheadRows) < 1
+    || Number(relative.aheadRows) > 10
+    || !Number.isInteger(relative.behindRows) || Number(relative.behindRows) < 1
+    || Number(relative.behindRows) > 10) {
+    throw new Error("La configuración de Relative está incompleta o dañada.");
+  }
+  const defaultDriving = defaultDrivingSettings();
+  const drivingPedalIds = Object.keys(defaultDriving.graphPedals);
+  if (driving && (!completeBooleanRecord(driving.graphPedals, drivingPedalIds)
+    || !completeBooleanRecord(driving.inputPedals, drivingPedalIds)
+    || typeof driving.showSteering !== "boolean"
+    || typeof driving.showForceFeedback !== "boolean"
+    || typeof driving.showSpeed !== "boolean"
+    || typeof driving.showGear !== "boolean")) {
+    throw new Error("La configuración de Trailing + Pedal está incompleta o dañada.");
+  }
+  for (const id of overlayIds) {
+    const placement = configurationObject(layout[id]);
+    if (typeof visibility[id] !== "boolean" || !percentageIsValid(transparencyValues[id])
+      || !placement || placement.overlay !== id || !Number.isInteger(placement.monitor)
+      || Number(placement.monitor) < 0
+      || ![placement.x, placement.y, placement.width, placement.height]
+        .every((value) => typeof value === "number" && Number.isFinite(value))
+      || Number(placement.width) <= 0 || Number(placement.height) <= 0) {
+      throw new Error(`La configuración de ${id} está incompleta o dañada.`);
+    }
+    const individualMonitor = individualMonitors[id];
+    if (individualMonitor !== undefined
+      && (!Number.isInteger(individualMonitor) || Number(individualMonitor) < 0)) {
+      throw new Error(`El monitor asignado a ${id} no es válido.`);
+    }
+  }
+  const normalized = parsed as OverlayConfigurationExport;
+  return {
+    ...normalized,
+    schemaVersion: 2,
+    overlays: {
+      ...normalized.overlays,
+      driving: driving ? driving as unknown as DrivingSettings : defaultDriving
+    }
+  };
+};
+
+const normalizeImportedMonitors = async (
+  configuration: OverlayConfigurationExport
+): Promise<OverlayConfigurationExport> => {
+  const displays = await getOverlayDisplays();
+  const availableMonitors = new Set(displays.map(({ index }) => index));
+  const primaryMonitor = displays[0]?.index ?? 0;
+  const monitorOrPrimary = (monitor: number): number =>
+    availableMonitors.has(monitor) ? monitor : primaryMonitor;
+  const monitorSelection = configuration.overlays.monitorSelection;
+  return {
+    ...configuration,
+    overlays: {
+      ...configuration.overlays,
+      monitorSelection: {
+        ...monitorSelection,
+        globalMonitor: monitorOrPrimary(monitorSelection.globalMonitor),
+        individualMonitors: Object.fromEntries(overlayIds.map((id) => [
+          id,
+          monitorOrPrimary(monitorSelection.individualMonitors[id]
+            ?? configuration.overlays.layout[id].monitor)
+        ]))
+      },
+      layout: Object.fromEntries(overlayIds.map((id) => [id, {
+        ...configuration.overlays.layout[id],
+        monitor: monitorOrPrimary(configuration.overlays.layout[id].monitor)
+      }])) as OverlayConfigurationExport["overlays"]["layout"]
+    }
+  };
+};
+
+const applyImportedConfiguration = (configuration: OverlayConfigurationExport): void => {
+  const entries: Array<[string, unknown]> = [
+    [storageKey, configuration.overlays.visibility],
+    [OVERLAY_TRANSPARENCY_KEY, configuration.overlays.transparency.values],
+    [OVERLAY_TRANSPARENCY_SCOPE_KEY, configuration.overlays.transparency.scope],
+    [MONITOR_SELECTION_KEY, configuration.overlays.monitorSelection],
+    [COMPOSITE_LAYOUT_KEY, configuration.overlays.layout],
+    [STANDINGS_SETTINGS_KEY, configuration.overlays.standings],
+    [RELATIVE_SETTINGS_KEY, configuration.overlays.relative],
+    [DRIVING_SETTINGS_KEY, configuration.overlays.driving]
+  ];
+  const previous = entries.map(([key]) => [key, localStorage.getItem(key)] as const);
+  try {
+    for (const [key, value] of entries) localStorage.setItem(key, JSON.stringify(value));
+  } catch (error) {
+    for (const [key, value] of previous) {
+      if (value === null) localStorage.removeItem(key);
+      else localStorage.setItem(key, value);
+    }
+    throw error;
+  }
+};
+
+const setConfigurationTransferBusy = (busy: boolean): void => {
+  if (exportConfigurationButton) exportConfigurationButton.disabled = busy;
+  if (importConfigurationButton) importConfigurationButton.disabled = busy;
+};
+
+exportConfigurationButton?.addEventListener("click", () => {
+  setConfigurationTransferBusy(true);
+  if (exportConfigurationStatus) exportConfigurationStatus.textContent = "PREPARANDO ARCHIVO…";
+  void (async () => {
+    const now = new Date();
+    const layout = readCompositeLayout() ?? await ensureCompositeLayout();
+    const configuration: OverlayConfigurationExport = {
+      format: "lmu-overlay-configuration",
+      schemaVersion: 2,
+      exportedAt: now.toISOString(),
+      overlays: {
+        visibility: { ...preferences },
+        transparency: {
+          scope: { ...overlayTransparencyScope },
+          values: { ...overlayTransparency }
+        },
+        monitorSelection: readMonitorSelection(),
+        layout,
+        standings: standingsSettings,
+        relative: relativeSettings,
+        driving: drivingSettings
+      }
+    };
+    const timestamp = now.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
+    const selectedPath = await save({
+      title: "Exportar configuración de LMUOverlay",
+      defaultPath: `LMUOverlay-config-${timestamp}.json`,
+      filters: configurationFileFilters
+    });
+    if (!selectedPath) {
+      if (exportConfigurationStatus) exportConfigurationStatus.textContent = "EXPORTACIÓN CANCELADA";
+      return;
+    }
+    const pathWithExtension = selectedPath.toLocaleLowerCase().endsWith(".json")
+      ? selectedPath
+      : `${selectedPath}.json`;
+    const path = await invoke<string>("export_overlay_configuration", {
+      path: pathWithExtension,
+      contents: JSON.stringify(configuration, null, 2)
+    });
+    if (exportConfigurationStatus) {
+      exportConfigurationStatus.textContent = "CONFIGURACIÓN EXPORTADA";
+      exportConfigurationStatus.title = path;
+    }
+  })().catch((error) => {
+    if (exportConfigurationStatus) {
+      exportConfigurationStatus.textContent = `ERROR · ${String(error)}`;
+      exportConfigurationStatus.title = String(error);
+    }
+  }).finally(() => {
+    setConfigurationTransferBusy(false);
+  });
+});
+
+importConfigurationButton?.addEventListener("click", () => {
+  setConfigurationTransferBusy(true);
+  if (exportConfigurationStatus) exportConfigurationStatus.textContent = "SELECCIONA UNA CONFIGURACIÓN…";
+  void (async () => {
+    const selectedPath = await open({
+      title: "Importar configuración de LMUOverlay",
+      multiple: false,
+      directory: false,
+      filters: configurationFileFilters
+    });
+    if (!selectedPath) {
+      if (exportConfigurationStatus) exportConfigurationStatus.textContent = "IMPORTACIÓN CANCELADA";
+      return;
+    }
+    const contents = await invoke<string>("import_overlay_configuration", { path: selectedPath });
+    const configuration = await normalizeImportedMonitors(parseOverlayConfiguration(contents));
+    if (!await confirmReset(
+      "Se reemplazarán la configuración, los monitores, la posición y el tamaño de todos los overlays."
+    )) {
+      if (exportConfigurationStatus) exportConfigurationStatus.textContent = "IMPORTACIÓN CANCELADA";
+      return;
+    }
+    applyImportedConfiguration(configuration);
+    if (exportConfigurationStatus) {
+      exportConfigurationStatus.textContent = "CONFIGURACIÓN IMPORTADA · APLICANDO…";
+      exportConfigurationStatus.title = selectedPath;
+    }
+    window.setTimeout(() => window.location.reload(), 250);
+  })().catch((error) => {
+    if (exportConfigurationStatus) {
+      exportConfigurationStatus.textContent = `ERROR · ${String(error)}`;
+      exportConfigurationStatus.title = String(error);
+    }
+  }).finally(() => {
+    setConfigurationTransferBusy(false);
+  });
+});
 
 const standingsColumns = document.getElementById("standings-columns");
 for (const column of STANDINGS_COLUMNS.filter(({ configurable }) => configurable)) {
@@ -879,6 +1204,41 @@ const bindRelativeRowCount = (
 
 bindRelativeRowCount("relative-ahead-rows", "aheadRows");
 bindRelativeRowCount("relative-behind-rows", "behindRows");
+
+const appendDrivingPedalToggle = (
+  container: HTMLElement | null,
+  group: "graphPedals" | "inputPedals",
+  id: DrivingPedalId,
+  label: string
+): void => {
+  appendToggle(container, label, drivingSettings[group][id], (checked) => {
+    drivingSettings = {
+      ...drivingSettings,
+      [group]: { ...drivingSettings[group], [id]: checked }
+    };
+    persistDrivingSettings();
+  });
+};
+
+const drivingGraphPedals = document.getElementById("driving-graph-pedals");
+const drivingInputPedals = document.getElementById("driving-input-pedals");
+for (const pedal of DRIVING_PEDALS) {
+  appendDrivingPedalToggle(drivingGraphPedals, "graphPedals", pedal.id, pedal.label);
+  appendDrivingPedalToggle(drivingInputPedals, "inputPedals", pedal.id, pedal.label);
+}
+
+const drivingReadoutOptions = document.getElementById("driving-readout-options");
+for (const [key, label] of [
+  ["showSteering", "Volante"],
+  ["showForceFeedback", "Force Feedback"],
+  ["showSpeed", "Velocidad (km/h)"],
+  ["showGear", "Marcha"]
+] as const) {
+  appendToggle(drivingReadoutOptions, label, drivingSettings[key], (checked) => {
+    drivingSettings = { ...drivingSettings, [key]: checked };
+    persistDrivingSettings();
+  });
+}
 
 const loggingInput = document.getElementById("telemetry-logging") as HTMLInputElement | null;
 

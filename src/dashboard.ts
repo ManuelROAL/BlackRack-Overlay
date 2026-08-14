@@ -10,14 +10,22 @@ import { listenTelemetry } from "./runtime-events";
 fitOverlay({ width: 780, height: 340 });
 bindOverlayTransparency("dashboard");
 const renderPerformance = createOverlayPerformanceTracker("dashboard");
+const elements = new Map<string, HTMLElement>();
+for (const element of document.querySelectorAll<HTMLElement>("[id]")) {
+  elements.set(element.id, element);
+}
+const fuelWidget = document.querySelector<HTMLElement>(".fuel-widget");
+const sourceStatus = elements.get("source-status");
+const connection = sourceStatus?.parentElement;
+const delta = elements.get("lap-delta");
 
 const text = (id: string, value: string): void => {
-  const element = document.getElementById(id);
+  const element = elements.get(id);
   if (element && element.textContent !== value) element.textContent = value;
 };
 
 const width = (id: string, ratio: number): void => {
-  const element = document.getElementById(id);
+  const element = elements.get(id);
   if (element) {
     const safeRatio = Math.max(0, Math.min(1, ratio));
     const value = `${Math.round(safeRatio * 1_000) / 10}%`;
@@ -34,7 +42,7 @@ const formatLapTime = (seconds: number): string => {
 };
 
 const render = (frame: TelemetryFrame): void => {
-  document.querySelector(".fuel-widget")?.classList.toggle("energy-mode", frame.virtual_energy_active);
+  fuelWidget?.classList.toggle("energy-mode", frame.virtual_energy_active);
   text("speed", Math.round(frame.speed_kph).toString().padStart(3, "0"));
   text("gear", frame.gear < 0 ? "R" : frame.gear === 0 ? "N" : frame.gear.toString());
   text("rpm", `${Math.round(frame.rpm).toLocaleString("es-ES")} RPM`);
@@ -66,20 +74,18 @@ const render = (frame: TelemetryFrame): void => {
   );
   text("source-name", frame.source.toUpperCase());
 
-  const sourceStatus = document.getElementById("source-status");
-  const connection = sourceStatus?.parentElement;
   if (frame.source === "mock") {
     text("source-status", "SIMULACIÓN");
-    connection?.setAttribute("data-state", "mock");
+    if (connection && connection.dataset.state !== "mock") connection.dataset.state = "mock";
   } else if (!frame.connected) {
     text("source-status", "ESPERANDO LMU");
-    connection?.setAttribute("data-state", "offline");
+    if (connection && connection.dataset.state !== "offline") connection.dataset.state = "offline";
   } else if (!frame.player_active) {
     text("source-status", "LMU · SIN COCHE");
-    connection?.setAttribute("data-state", "standby");
+    if (connection && connection.dataset.state !== "standby") connection.dataset.state = "standby";
   } else {
     text("source-status", "TELEMETRÍA LMU");
-    connection?.setAttribute("data-state", "live");
+    if (connection && connection.dataset.state !== "live") connection.dataset.state = "live";
   }
 
   width("rpm-bar", frame.rpm / frame.max_rpm);
@@ -92,7 +98,6 @@ const render = (frame: TelemetryFrame): void => {
       : frame.fuel_liters / frame.fuel_capacity_liters
   );
 
-  const delta = document.getElementById("lap-delta");
   delta?.classList.toggle("positive", frame.lap_delta_seconds <= 0);
   delta?.classList.toggle("negative", frame.lap_delta_seconds > 0);
 };

@@ -4,7 +4,7 @@ import { fitOverlay } from "./overlay-fit";
 import { bindOverlayInteractionMode } from "./overlay-interaction";
 import { createOverlayPerformanceTracker } from "./overlay-performance";
 import { bindOverlayTransparency } from "./overlay-appearance";
-import type { StandingEntry, TelemetryFrame } from "./telemetry-types";
+import type { StandingEntry, StandingsClassModel, TelemetryFrame } from "./telemetry-types";
 import {
   readStandingsSettings,
   STANDINGS_COLUMNS,
@@ -24,19 +24,16 @@ import {
 import { applyTrackLimitTone, formatTrackLimitPoints } from "./track-limit-tone";
 
 let settings = readStandingsSettings();
-const updateOverlayFit = fitOverlay({ width: 948, height: 450 });
+const standingsBaseWidth = (): number => Math.max(
+  760,
+  visibleStandingsColumns(settings).reduce((total, { width }) => total + width, 0) + 8
+);
+const updateOverlayFit = fitOverlay({ width: standingsBaseWidth(), height: 450 });
 let fittedOverlayHeight = 450;
 bindOverlayTransparency("standings");
 const renderPerformance = createOverlayPerformanceTracker("standings");
 
 let lastFrame: TelemetryFrame | null = null;
-const initialClassCarCounts = new Map<string, number>();
-let countSession: {
-  sessionType: number;
-  trackName: string;
-  playerLaps: number;
-  timeRemaining: number;
-} | null = null;
 
 const activeColumns = () => visibleStandingsColumns(settings);
 
@@ -169,6 +166,16 @@ const formatClock = (seconds: number): string => {
     : `${minutes}:${remainder.toString().padStart(2, "0")}`;
 };
 
+const formatSessionDuration = (seconds: number): string => {
+  if (!Number.isFinite(seconds) || seconds <= 0) return "--";
+  const totalMinutes = Math.max(1, Math.round(seconds / 60));
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return hours > 0
+    ? `${hours}h ${minutes.toString().padStart(2, "0")}m`
+    : `${minutes}m`;
+};
+
 const sessionLabel = (sessionType: number): string => {
   if (sessionType >= 10 && sessionType <= 13) {
     return sessionType === 10 ? "CARRERA" : `CARRERA ${sessionType - 9}`;
@@ -181,11 +188,6 @@ const sessionLabel = (sessionType: number): string => {
 };
 
 const isPracticeSession = (sessionType: number): boolean => sessionType >= 0 && sessionType <= 4;
-
-const classPriority = (vehicleClass: string): number => {
-  const tone = classTone(vehicleClass);
-  return { hypercar: 0, lmp2: 1, lmp3: 2, lmgt3: 3, other: 4 }[tone] ?? 4;
-};
 
 const countryFlagModules = import.meta.glob<string>(
   "./assets/countries/*.{svg,png}",
@@ -222,13 +224,6 @@ const countryFlag = (nationality: string): HTMLImageElement | undefined => {
   flag.alt = code;
   flag.title = nationality;
   return flag;
-};
-
-const displayClass = (vehicleClass: string): string => {
-  const value = vehicleClass.toUpperCase();
-  if (value.includes("HYPER") || value.includes("GTP")) return "HYPERCAR";
-  if (value.includes("LMGT3") || value.includes("GT3")) return "LMGT3";
-  return vehicleClass || "SIN CLASE";
 };
 
 const classTone = (vehicleClass: string): string => {
@@ -391,11 +386,7 @@ interface CachedRow {
 
 const rowCache = new Map<string, CachedRow>();
 
-const pitTimeLabel = (seconds: number): string => {
-  if (seconds < 60) return seconds.toFixed(1);
-  const minutes = Math.floor(seconds / 60);
-  return `${minutes}:${(seconds % 60).toFixed(1).padStart(4, "0")}`;
-};
+const pitTimeLabel = (seconds: number): string => Math.floor(Math.max(0, seconds)).toString();
 
 const cellSignature = (entry: StandingEntry, column: StandingsColumnId, trackLimit: number): string => {
   switch (column) {
@@ -467,8 +458,8 @@ const createCell = (entry: StandingEntry, column: StandingsColumnId, trackLimit:
     case "last": {
       const cell = entry.is_out_lap ? node("b", "lap-time out-lap", "OUT") : node("b", "lap-time", formatLapTime(entry.last_lap_seconds));
       const personalBest = entry.last_lap_seconds > 0 && entry.best_lap_seconds > 0 && Math.abs(entry.last_lap_seconds - entry.best_lap_seconds) <= 0.001;
-      if (personalBest) cell.classList.add(entry.has_fastest_lap ? "session-fastest" : "personal-best");
-      if (entry.last_lap_seconds > 0 && !entry.last_lap_valid) cell.classList.add("invalid-lap");
+      if (!entry.is_out_lap && personalBest) cell.classList.add(entry.has_fastest_lap ? "session-fastest" : "personal-best");
+      if (!entry.is_out_lap && entry.last_lap_seconds > 0 && !entry.last_lap_valid) cell.classList.add("invalid-lap");
       return cell;
     }
     case "average": return node("b", "lap-time", formatLapTime(entry.average_lap_seconds));
@@ -560,35 +551,16 @@ const renderRow = (entry: StandingEntry, trackLimit: number, instanceKey = `vehi
   return cached.element;
 };
 
-const continuousDriverRank = (entry: StandingEntry): number | null => {
-  if (!Number.isFinite(entry.driver_rank_progress) || entry.driver_rank_progress < 0) return null;
-  const match = entry.driver_rank.trim().toUpperCase().match(/^([BSGP])([1-3])$/);
-  if (!match) return null;
-  const level = { B: 0, S: 3, G: 6, P: 9 }[match[1] as "B" | "S" | "G" | "P"];
-  return (level + Number(match[2])) * 100 + Math.min(entry.driver_rank_progress, 100);
-};
-
-const formatStrengthOfField = (entries: StandingEntry[]): HTMLElement => {
-  const ratings = entries
-    .map(continuousDriverRank)
-    .filter((rating): rating is number => rating !== null);
+const strengthOfField = (model: StandingsClassModel): HTMLElement => {
   const sof = node("span", "class-sof", "SOF --");
-  if (ratings.length === 0) {
+  if (!model.strength_of_field) {
     sof.title = "SOF no disponible: no hay perfiles DR resueltos";
     return sof;
   }
-
-  const average = ratings.reduce((total, rating) => total + rating, 0) / ratings.length;
-  const capped = Math.max(100, Math.min(average, 1300));
-  const terminalRank = capped >= 1300;
-  const band = terminalRank ? 12 : Math.floor(capped / 100);
-  const rankIndex = Math.max(0, Math.min(band - 1, 11));
-  const levels = ["B", "S", "G", "P"];
-  const rank = `${levels[Math.floor(rankIndex / 3)]}${rankIndex % 3 + 1}`;
-  const progress = terminalRank ? 100 : Math.round(capped - band * 100);
-  sof.textContent = `SOF ${rank} ${progress}%`;
-  sof.title = `Fuerza media de la categoría · ${ratings.length}/${entries.length} perfiles DR`;
-  sof.dataset.coverage = ratings.length === entries.length ? "complete" : "partial";
+  const strength = model.strength_of_field;
+  sof.textContent = strength.label;
+  sof.title = `Fuerza media de la categoría · ${strength.resolved_profiles}/${strength.total_profiles} perfiles DR`;
+  sof.dataset.coverage = strength.resolved_profiles === strength.total_profiles ? "complete" : "partial";
   return sof;
 };
 
@@ -607,7 +579,11 @@ const sessionHeader = (frame: TelemetryFrame): HTMLElement => {
   }
   if (settings.header.remainingTime) {
     const clock = node("b", "standings-session-clock");
-    clock.append(icon(timingIconUrl, "standings-session-timing-icon"), formatClock(frame.session_time_remaining));
+    const totalSessionSeconds = frame.session_elapsed_seconds + frame.session_time_remaining;
+    clock.append(
+      icon(timingIconUrl, "standings-session-timing-icon"),
+      `${formatClock(frame.session_time_remaining)} / ${formatSessionDuration(totalSessionSeconds)}`
+    );
     sessionGroup.append(clock);
   }
   if (settings.header.laps) {
@@ -668,16 +644,15 @@ const sessionHeader = (frame: TelemetryFrame): HTMLElement => {
 };
 
 const classTableHeader = (
-  vehicleClass: string,
-  entries: StandingEntry[],
-  initialCount: number,
+  model: StandingsClassModel,
   sessionType: number
 ): HTMLElement => {
   const header = node("header", "class-table-header");
   const identity = node("div", "class-heading-inline");
   const practice = isPracticeSession(sessionType);
-  const currentCount = entries.filter((entry) => entry.finish_status !== 2 && entry.finish_status !== 3).length;
-  const retiredCount = Math.max(initialCount - currentCount, 0);
+  const currentCount = model.current_count;
+  const initialCount = model.initial_count;
+  const retiredCount = model.retired_count;
   const carCount = node("span", "class-car-count");
   carCount.append(icon(profileIconUrl, "class-car-icon"), practice ? `${currentCount}` : `${currentCount}/${initialCount}`);
   carCount.dataset.retired = !practice && retiredCount > 0 ? "true" : "false";
@@ -688,73 +663,15 @@ const classTableHeader = (
       : `${currentCount} actuales · ${initialCount} iniciales`;
   const columns = activeColumns();
   const identityColumns = columns.filter(({ identity: isIdentity }) => isIdentity);
-  identity.append(node("strong", undefined, displayClass(vehicleClass)));
+  identity.append(node("strong", undefined, model.display_class));
   identity.append(carCount);
-  if (!practice) identity.append(formatStrengthOfField(entries));
+  if (!practice) identity.append(strengthOfField(model));
   identity.style.gridColumn = `span ${identityColumns.length}`;
   header.append(identity);
   for (const column of columns.filter(({ identity: isIdentity }) => !isIdentity)) {
     header.append(columnLabel(column));
   }
   return header;
-};
-
-const visibleClassEntries = (entries: StandingEntry[], requestedRows: number): StandingEntry[] => {
-  const targetSize = Math.min(Math.max(requestedRows, 3), entries.length);
-  const top = entries.slice(0, Math.min(3, targetSize));
-  const playerIndex = entries.findIndex((entry) => entry.is_player);
-  if (playerIndex < 0) return entries.slice(0, targetSize);
-
-  const selectedIds = new Set(top.map((entry) => entry.vehicle_id));
-  const visible = [...top];
-  const proximityOrder = entries
-    .map((entry, index) => ({ entry, distance: Math.abs(index - playerIndex) }))
-    .sort((left, right) => left.distance - right.distance || left.entry.position - right.entry.position);
-  for (const { entry } of proximityOrder) {
-    if (visible.length >= targetSize) break;
-    if (!selectedIds.has(entry.vehicle_id)) {
-      selectedIds.add(entry.vehicle_id);
-      visible.push(entry);
-    }
-  }
-  return visible.sort((left, right) => left.position - right.position);
-};
-
-const updateInitialClassCounts = (
-  frame: TelemetryFrame,
-  groups: Map<string, StandingEntry[]>
-): boolean => {
-  const trackName = frame.track_name.trim().toUpperCase();
-  const sessionChanged = countSession !== null && (
-    countSession.sessionType !== frame.session_type
-    || countSession.trackName !== trackName
-    || (
-      frame.player_total_laps + 1 < countSession.playerLaps
-      && frame.session_time_remaining > countSession.timeRemaining + 60
-    )
-    || (
-      frame.player_total_laps <= 1
-      && frame.session_time_remaining > countSession.timeRemaining + 120
-    )
-  );
-  const reset = countSession === null || sessionChanged;
-  if (reset) initialClassCarCounts.clear();
-
-  if (!isPracticeSession(frame.session_type)) {
-    for (const [vehicleClass, entries] of groups) {
-      initialClassCarCounts.set(
-        vehicleClass,
-        Math.max(initialClassCarCounts.get(vehicleClass) ?? 0, entries.length)
-      );
-    }
-  }
-  countSession = {
-    sessionType: frame.session_type,
-    trackName,
-    playerLaps: frame.player_total_laps,
-    timeRemaining: frame.session_time_remaining
-  };
-  return reset;
 };
 
 interface CachedNode {
@@ -777,18 +694,12 @@ const syncChildren = (parent: HTMLElement, desired: HTMLElement[]): void => {
   while (parent.children.length > desired.length) parent.lastElementChild?.remove();
 };
 
-const resetRenderCaches = (): void => {
-  rowCache.clear();
-  classSections.clear();
-  classHeaders.clear();
-  cachedSessionHeader = null;
-};
-
 const cachedSessionHeaderFor = (frame: TelemetryFrame): HTMLElement => {
   const signature = JSON.stringify([
     settings.header,
     frame.session_type,
     Math.ceil(frame.session_time_remaining),
+    Math.round((frame.session_elapsed_seconds + frame.session_time_remaining) / 60),
     frame.session_max_laps,
     frame.player_total_laps,
     frame.session_split_number,
@@ -809,26 +720,21 @@ const cachedSessionHeaderFor = (frame: TelemetryFrame): HTMLElement => {
 };
 
 const cachedClassHeaderFor = (
-  vehicleClass: string,
-  entries: StandingEntry[],
-  initialCount: number,
+  model: StandingsClassModel,
   sessionType: number
 ): HTMLElement => {
   const signature = JSON.stringify([
     activeColumns().map(({ id }) => id),
     sessionType,
-    initialCount,
-    entries.map((entry) => [
-      entry.vehicle_id,
-      entry.finish_status,
-      entry.driver_rank,
-      entry.driver_rank_progress
-    ]),
+    model.current_count,
+    model.initial_count,
+    model.retired_count,
+    model.strength_of_field
   ]);
-  const cached = classHeaders.get(vehicleClass);
+  const cached = classHeaders.get(model.vehicle_class);
   if (!cached || cached.signature !== signature) {
-    const next = { signature, element: classTableHeader(vehicleClass, entries, initialCount, sessionType) };
-    classHeaders.set(vehicleClass, next);
+    const next = { signature, element: classTableHeader(model, sessionType) };
+    classHeaders.set(model.vehicle_class, next);
     return next.element;
   }
   return cached.element;
@@ -848,37 +754,23 @@ const render = (frame: TelemetryFrame): void => {
   }
   lastFrame = frame;
 
-  const groups = new Map<string, StandingEntry[]>();
-  const playerClass = frame.standings.find((entry) => entry.is_player)?.vehicle_class;
-  for (const entry of frame.standings) {
-    const entries = groups.get(entry.vehicle_class) ?? [];
-    entries.push(entry);
-    groups.set(entry.vehicle_class, entries);
-  }
-  const sessionReset = updateInitialClassCounts(frame, groups);
-  if (sessionReset) resetRenderCaches();
-
-  const visibleGroups = [...groups.entries()]
-    .filter(([vehicleClass]) => !playerClass || vehicleClass === playerClass || settings.showOtherClasses)
-    .sort(([left], [right]) => classPriority(left) - classPriority(right));
+  const entriesById = new Map(frame.standings.map((entry) => [entry.vehicle_id, entry]));
   const children: HTMLElement[] = [];
   if (settings.showHeader) children.push(cachedSessionHeaderFor(frame));
   const visibleRowCounts: number[] = [];
-  for (const [vehicleClass, entries] of visibleGroups) {
-    const isPlayerClass = vehicleClass === playerClass;
-    const visibleEntries = vehicleClass === playerClass
-      ? visibleClassEntries(entries, settings.ownClassRows)
-      : entries.slice(0, settings.otherClassRows);
+  for (const model of frame.standings_model.groups) {
+    const visibleEntries = model.visible_vehicle_ids
+      .map((vehicleId) => entriesById.get(vehicleId))
+      .filter((entry): entry is StandingEntry => entry !== undefined);
     visibleRowCounts.push(visibleEntries.length);
-    let group = classSections.get(vehicleClass);
+    let group = classSections.get(model.vehicle_class);
     if (!group) {
       group = node("section", "standings-class");
-      classSections.set(vehicleClass, group);
+      classSections.set(model.vehicle_class, group);
     }
-    group.dataset.classTone = classTone(vehicleClass);
-    const initialCount = initialClassCarCounts.get(vehicleClass) ?? entries.length;
+    group.dataset.classTone = model.class_tone;
     syncChildren(group, [
-      cachedClassHeaderFor(vehicleClass, entries, initialCount, frame.session_type),
+      cachedClassHeaderFor(model, frame.session_type),
       ...visibleEntries.map((entry) => renderRow(entry, frame.track_limits_steps_per_penalty))
     ]);
     children.push(group);
@@ -893,7 +785,7 @@ const render = (frame: TelemetryFrame): void => {
   const nextOverlayHeight = Math.max(450, contentHeight);
   if (nextOverlayHeight !== fittedOverlayHeight) {
     fittedOverlayHeight = nextOverlayHeight;
-    updateOverlayFit({ width: 948, height: nextOverlayHeight });
+    updateOverlayFit({ width: standingsBaseWidth(), height: nextOverlayHeight });
   }
 };
 
@@ -912,6 +804,7 @@ const telemetryListener = listenTelemetry((payload) => {
 const settingsListener = listenRuntimeEvent<StandingsSettings>("standings://settings", (payload) => {
   settings = payload;
   applyColumnLayout();
+  updateOverlayFit({ width: standingsBaseWidth(), height: fittedOverlayHeight });
   if (lastFrame) render(lastFrame);
 });
 
@@ -1003,6 +896,23 @@ if (import.meta.env.DEV && new URLSearchParams(window.location.search).has("prev
     track_wetness_min_percent: 72,
     track_wetness_max_percent: 91,
     rain_percent: 69,
+    standings_model: {
+      groups: [
+        ["LMP2_ELMS", "LMP2", "lmp2", [0, 1, 2]],
+        ["LMP3", "LMP3", "lmp3", [40, 41, 42]],
+        ["LMGT3", "LMGT3", "lmgt3", [20, 21, 22, 23, 24, 25, 26, 27, 28, 29]]
+      ].map(([vehicleClass, displayClass, classTone, vehicleIds]) => ({
+        vehicle_class: vehicleClass,
+        display_class: displayClass,
+        class_tone: classTone,
+        current_count: (vehicleIds as number[]).length,
+        initial_count: (vehicleIds as number[]).length,
+        retired_count: 0,
+        strength_of_field: null,
+        visible_vehicle_ids: vehicleIds
+      }))
+    },
+    relative_model: { rows: [] },
     standings
-  } as TelemetryFrame);
+  } as unknown as TelemetryFrame);
 }

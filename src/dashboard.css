@@ -81,7 +81,7 @@
   height: 100%;
   border-radius: inherit;
   background: #d8ff3e;
-  transition: width 45ms linear;
+  transition: none;
 }
 
 .brake .pedal-track i {

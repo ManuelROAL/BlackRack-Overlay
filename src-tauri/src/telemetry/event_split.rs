@@ -7,6 +7,7 @@ use std::thread;
 use std::time::{Duration, Instant, SystemTime};
 
 const RACECONTROL_EVENT_OVERVIEW_URL: &str = "https://raceos.gg/api/v1/event/overview";
+const RACECONTROL_MY_SPLIT_URL: &str = "https://raceos.gg/api/v1/event/my-split/daily";
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(5);
 const RETRY_INTERVAL: Duration = Duration::from_secs(10);
 const TRACE_CHUNK_BYTES: u64 = 2 * 1024 * 1024;
@@ -159,11 +160,8 @@ fn fetch_session_split(current: SessionSplit) -> Result<SessionSplit, String> {
             "racecontrol_event_overview_http_{}",
             split_response.status().as_u16()
         );
-        return if cached.number > 0 || cached.count > 0 {
-            Ok(cached)
-        } else {
-            Err(error)
-        };
+        return fetch_direct_split(&client, &access_token, &event_id, cached)
+            .map_err(|direct_error| format!("{error}__{direct_error}"));
     }
     let split_json = split_response
         .json::<Value>()
@@ -175,15 +173,56 @@ fn fetch_session_split(current: SessionSplit) -> Result<SessionSplit, String> {
     if split.count == 0 {
         split.count = cached.count;
     }
+    if split.number == 0 {
+        return fetch_direct_split(&client, &access_token, &event_id, split);
+    }
     Ok(split)
 }
 
+fn fetch_direct_split(
+    client: &reqwest::blocking::Client,
+    access_token: &str,
+    event_id: &str,
+    mut fallback: SessionSplit,
+) -> Result<SessionSplit, String> {
+    let response = client
+        .get(format!("{RACECONTROL_MY_SPLIT_URL}/{event_id}"))
+        .header("Game-Authorization", format!("Bearer {access_token}"))
+        .send()
+        .map_err(|_| "racecontrol_my_split_unavailable".to_owned())?;
+    if !response.status().is_success() {
+        return if fallback.number > 0 || fallback.count > 0 {
+            Ok(fallback)
+        } else {
+            Err(format!(
+                "racecontrol_my_split_http_{}",
+                response.status().as_u16()
+            ))
+        };
+    }
+    let json = response
+        .json::<Value>()
+        .map_err(|_| "racecontrol_my_split_invalid_json".to_owned())?;
+    let direct = parse_event_split(&json, event_id);
+    if direct.number > 0 {
+        fallback.number = direct.number;
+    }
+    if direct.count > 0 {
+        fallback.count = direct.count;
+    }
+    fallback.event_id = event_id.to_owned();
+    if find_object_key(&json, "drSettings").is_some() {
+        fallback.driver_rank_settings = direct.driver_rank_settings;
+    }
+    Ok(fallback)
+}
+
 fn event_overview_request(event_id: &str) -> Value {
-    serde_json::json!([{
+    serde_json::json!({
         "game": "lmu",
         "eventType": "daily",
         "eventId": event_id,
-    }])
+    })
 }
 
 fn parse_event_split(value: &Value, event_id: &str) -> SessionSplit {
@@ -549,6 +588,20 @@ mod tests {
     }
 
     #[test]
+    fn parses_direct_my_split_response() {
+        let response = serde_json::json!({
+            "eventId": "event-id",
+            "splitNo": "4",
+            "totalSplits": 12
+        });
+
+        let split = parse_event_split(&response, "event-id");
+
+        assert_eq!(split.number, 4);
+        assert_eq!(split.count, 12);
+    }
+
+    #[test]
     fn parses_split_number_and_estimated_total() {
         let event = serde_json::json!({
             "configuration": { "settings": { "maxPlayers": 40 } },
@@ -570,11 +623,11 @@ mod tests {
     fn builds_dox_event_overview_request() {
         assert_eq!(
             event_overview_request("event-id"),
-            serde_json::json!([{
+            serde_json::json!({
                 "game": "lmu",
                 "eventType": "daily",
                 "eventId": "event-id",
-            }])
+            })
         );
     }
 

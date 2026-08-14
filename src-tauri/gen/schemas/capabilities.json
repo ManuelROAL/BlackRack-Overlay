@@ -1,1 +1,1 @@
-{"main-capability":{"identifier":"main-capability","description":"Permisos mínimos del panel y las ventanas de overlay","local":true,"windows":["control","overlay-monitor-*"],"permissions":["core:default","window-state:default"]}}
+{"main-capability":{"identifier":"main-capability","description":"Permisos mínimos del panel y las ventanas de overlay","local":true,"windows":["control","overlay-monitor-*"],"permissions":["core:default","core:webview:deny-internal-toggle-devtools","dialog:allow-open","dialog:allow-save","window-state:default"]}}

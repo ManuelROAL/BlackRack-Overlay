@@ -103,8 +103,11 @@ historial que cambia por vuelta/evento. No representa el balance instantáneo.
 
 ### `GET /rest/strategy/overall`
 
-Respondió `400` durante `PRACTICE1`; no se pudo inferir su esquema. Debe volver a
-capturarse en carrera y durante una parada antes de considerarlo utilizable.
+Respondió `400` durante `PRACTICE1`, pero durante `RACE1` devolvió un array de
+tuplas `[driver, stints[]]`. Cada stint contiene `driver`, `driverSwap`, `lap`,
+`penalty`, `previousStintDuration`, `time`, `ve` y cuatro objetos de neumático
+`tyres.{fl,fr,rl,rr}` con `changed`, `compound` y `new`. La captura anonimizada
+está en `RACE-ENDPOINT-CAPTURE-2026-08-13.md`.
 
 ### `GET /rest/garage/getVehicleCondition`
 
@@ -317,7 +320,8 @@ Reglas de consumo para LMUOverlay:
 - Preferir el objeto `split` del usuario autenticado frente al roster completo
   `splits` que pueda aparecer en otras respuestas.
 - Obtener `totalSplits` de la misma respuesta cuando esté disponible.
-- Usar el estado local `lmu.cs.registeredEvents` solo como fallback.
+- Si no hay split autenticado, consultar la ruta read-only `event/my-split` y
+  usar después el estado local `lmu.cs.registeredEvents` como último fallback.
 - Dejar de consultar cuando split y total estén resueltos; repetir únicamente si
   cambia el event ID detectado.
 
@@ -325,11 +329,17 @@ En la muestra de un evento en el que el usuario no estaba registrado,
 `split=null` y `totalSplits=0`; esto es un resultado contextual esperado, no una
 prueba de que el endpoint sea inadecuado.
 
+En una carrera online registrada posterior, `split` contenía `splitNo`, el
+registro autenticado en `drivers[]`, datos de servidor y `sof`; `totalSplits`
+estaba disponible en overview. También se observaron `drSettings { base, k, d,
+log }`. Véase `RACE-ENDPOINT-CAPTURE-2026-08-13.md`.
+
 ### `GET /api/v1/event/my-split/{eventType}/{eventId}`
 
-La ruta existe en el cliente y devolvió error para un evento no registrado. Se
-conserva en el inventario, pero no es la fuente elegida por LMUOverlay; la
-resolución vigente usa `POST /api/v1/event/overview`.
+La ruta existe en el cliente y devolvió error para un evento no registrado. En
+una carrera registrada devolvió `eventId`, `splitNo`, `numOfSplits`, los pilotos
+del split, servidor y SOF. LMUOverlay la usa como fallback read-only cuando
+`event/overview` falla o no incluye el split autenticado, antes del estado local.
 
 ### Otros endpoints RaceOS observados
 
@@ -352,9 +362,8 @@ material sensible de autenticación de servidor.
 
 ## Contextos pendientes
 
-- Capturar `event/overview` estando registrado en un evento online para guardar
-  la forma interna de `split`, `totalSplits` y los parámetros DR.
-- Capturar `/rest/strategy/overall` en carrera/parada.
+- Capturar `/rest/strategy/overall` durante y después de una parada para observar
+  múltiples stints, `driverSwap`, `penalty` y cambios de neumático.
 - Decodificar los tipos de `/rest/watch/trackmap` en varios circuitos.
 - Comparar `/rest/strategy/usage` con el consumo local durante varias vueltas y
   ciclos de pit.

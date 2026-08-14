@@ -1,5 +1,6 @@
 use std::time::Instant;
 
+use super::fuel_strategy::{calculate_resource_strategy, FuelStrategies, ResourceStrategyInput};
 use super::{
     FlagWarning, RejoinWarning, StandingEntry, TelemetryFrame, TelemetrySource, TrackMapVehicle,
 };
@@ -44,6 +45,47 @@ impl TelemetrySource for MockTelemetrySource {
         let virtual_energy_percent = (86.0 - (elapsed % 210.0) / 210.0 * 8.4).max(0.0);
         let virtual_energy_per_lap = 8.4;
         let session_laps_remaining = 5.0;
+        let lap_progress = current_lap_seconds / 215.0;
+        let laps_remaining = session_laps_remaining - lap_progress;
+        let completed_laps = (elapsed / 215.0).floor() as i32;
+        let strategy_input =
+            |current, capacity, consumption, pit_cycle, pit_out| ResourceStrategyInput {
+                current,
+                capacity,
+                consumption,
+                laps_remaining,
+                lap_progress,
+                completed_laps,
+                pit_cycle_consumption: pit_cycle,
+                pit_out_consumption: pit_out,
+                pit_out_lap: false,
+            };
+        let fuel_strategy = calculate_resource_strategy(
+            strategy_input(fuel_liters, 90.0, 12.1, 20.6, 10.1),
+            215.0,
+            0,
+        );
+        let active_strategy = calculate_resource_strategy(
+            strategy_input(virtual_energy_percent, 100.0, 8.5, 14.4, 7.0),
+            215.0,
+            fuel_strategy.map_or(0, |strategy| strategy.stops),
+        );
+        let minimum_stops = active_strategy.map_or(0, |strategy| strategy.stops);
+        let energy_strategy = |consumption| {
+            calculate_resource_strategy(
+                strategy_input(virtual_energy_percent, 100.0, consumption, 14.4, 7.0),
+                215.0,
+                minimum_stops,
+            )
+        };
+        let fuel_strategies = FuelStrategies {
+            active: active_strategy,
+            fuel: fuel_strategy,
+            estimated: energy_strategy(8.5),
+            average: energy_strategy(virtual_energy_per_lap),
+            qualifying: energy_strategy(8.8),
+            last: energy_strategy(8.55),
+        };
 
         let mut frame = TelemetryFrame {
             source: "mock",
@@ -69,7 +111,7 @@ impl TelemetrySource for MockTelemetrySource {
             track_wetness_min_percent: 4.0,
             track_wetness_max_percent: 22.0,
             lap_number: (elapsed / 215.0).floor() as i32 + 1,
-            player_total_laps: (elapsed / 215.0).floor() as i32,
+            player_total_laps: completed_laps,
             player_lap_valid: true,
             player_in_pits: false,
             speed_kph,
@@ -98,7 +140,7 @@ impl TelemetrySource for MockTelemetrySource {
             estimated_fuel_laps: fuel_liters / fuel_per_lap,
             session_laps_remaining,
             session_laps_remaining_estimated: session_laps_remaining - 0.35,
-            session_lap_equivalents_remaining: session_laps_remaining - current_lap_seconds / 215.0,
+            session_lap_equivalents_remaining: laps_remaining,
             session_total_laps_estimated: 24.0,
             fuel_needed_liters: fuel_per_lap * session_laps_remaining,
             fuel_to_add_liters: (fuel_per_lap * session_laps_remaining - fuel_liters).max(0.0),
@@ -124,6 +166,9 @@ impl TelemetrySource for MockTelemetrySource {
                 .max(0.0)
                 / 100.0)
                 .ceil() as u32,
+            fuel_strategies,
+            standings_model: Default::default(),
+            relative_model: Default::default(),
             player_tire_remaining_percent: 83.0,
             player_damage_percent: 0.0,
             player_aero_damage_percent: 4.0,
@@ -132,6 +177,7 @@ impl TelemetrySource for MockTelemetrySource {
             player_body_damage_percent: 6.0,
             player_damage_severity: [0; 8],
             player_part_detached: false,
+            player_rear_wing_detached: false,
             player_tire_temperature_c: [76.2, 83.3, 76.7, 81.1],
             player_brake_temperature_c: [540.0, 575.0, 420.0, 445.0],
             player_tire_remaining_by_wheel_percent: [94.0, 94.0, 95.0, 95.0],
@@ -149,7 +195,7 @@ impl TelemetrySource for MockTelemetrySource {
             pit_stop_damage_seconds: 0.0,
             pit_stop_penalty_seconds: 0.0,
             pit_stop_driver_swap_seconds: 6.1,
-            lap_progress: current_lap_seconds / 215.0,
+            lap_progress,
             track_length_meters: 13_626.0,
             track_map_vehicles: if include_track_map {
                 (0..18)
@@ -181,6 +227,7 @@ impl TelemetrySource for MockTelemetrySource {
             } else {
                 Vec::new()
             },
+            track_map_model: Default::default(),
             consumption_profile_samples: 5,
             current_lap_seconds,
             last_lap_seconds: 209.021,
@@ -240,6 +287,7 @@ impl TelemetrySource for MockTelemetrySource {
                     team_name: "Porsche Penske".into(),
                     vehicle_name: "Porsche 963".into(),
                     vehicle_class: "HYPERCAR".into(),
+                    initial_class_count: 3,
                     total_laps: 18,
                     laps_behind_leader: 0,
                     laps_behind_next: 0,
@@ -289,6 +337,7 @@ impl TelemetrySource for MockTelemetrySource {
                     team_name: "Ferrari AF Corse".into(),
                     vehicle_name: "Ferrari 499P".into(),
                     vehicle_class: "HYPERCAR".into(),
+                    initial_class_count: 3,
                     total_laps: 18,
                     laps_behind_leader: 0,
                     laps_behind_next: 0,
@@ -338,6 +387,7 @@ impl TelemetrySource for MockTelemetrySource {
                     team_name: "Toyota Gazoo Racing".into(),
                     vehicle_name: "Toyota GR010".into(),
                     vehicle_class: "HYPERCAR".into(),
+                    initial_class_count: 3,
                     total_laps: 18,
                     laps_behind_leader: 0,
                     laps_behind_next: 0,

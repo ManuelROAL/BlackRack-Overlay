@@ -328,11 +328,7 @@ interface CachedRow {
 
 const rowCache = new Map<string, CachedRow>();
 
-const pitTimeLabel = (seconds: number): string => {
-  if (seconds < 60) return seconds.toFixed(1);
-  const minutes = Math.floor(seconds / 60);
-  return `${minutes}:${(seconds % 60).toFixed(1).padStart(4, "0")}`;
-};
+const pitTimeLabel = (seconds: number): string => Math.floor(Math.max(0, seconds)).toString();
 
 const cellSignature = (entry: StandingEntry, column: RelativeColumnId, trackLimit: number): string => {
   switch (column) {
@@ -408,8 +404,8 @@ const createCell = (entry: StandingEntry, column: RelativeColumnId, trackLimit: 
     case "last": {
       const cell = entry.is_out_lap ? node("b", "lap-time out-lap", "OUT") : node("b", "lap-time", formatLapTime(entry.last_lap_seconds));
       const personalBest = entry.last_lap_seconds > 0 && entry.best_lap_seconds > 0 && Math.abs(entry.last_lap_seconds - entry.best_lap_seconds) <= 0.001;
-      if (personalBest) cell.classList.add(entry.has_fastest_lap ? "session-fastest" : "personal-best");
-      if (entry.last_lap_seconds > 0 && !entry.last_lap_valid) cell.classList.add("invalid-lap");
+      if (!entry.is_out_lap && personalBest) cell.classList.add(entry.has_fastest_lap ? "session-fastest" : "personal-best");
+      if (!entry.is_out_lap && entry.last_lap_seconds > 0 && !entry.last_lap_valid) cell.classList.add("invalid-lap");
       return cell;
     }
     case "average": return node("b", "lap-time", formatLapTime(entry.average_lap_seconds));
@@ -588,32 +584,6 @@ const cachedSessionHeaderFor = (frame: TelemetryFrame): HTMLElement => {
   return cachedSessionHeader.element;
 };
 
-const relativeEntries = (entries: StandingEntry[]): {
-  ahead: StandingEntry[];
-  behind: StandingEntry[];
-  visible: StandingEntry[];
-} => {
-  const player = entries.find((entry) => entry.is_player);
-  if (!player) return { ahead: [], behind: [], visible: [] };
-
-  const aheadCandidates = entries
-    .filter((entry) => !entry.is_player && !entry.in_garage && Number.isFinite(entry.relative_ahead_seconds) && entry.relative_ahead_seconds < -0.05)
-    .map((entry) => ({ ...entry, relative_gap_seconds: entry.relative_ahead_seconds }))
-    .sort((left, right) => Math.abs(left.relative_gap_seconds) - Math.abs(right.relative_gap_seconds))
-    .slice(0, relativeSettings.aheadRows);
-  const behindCandidates = entries
-    .filter((entry) => !entry.is_player && !entry.in_garage && Number.isFinite(entry.relative_behind_seconds) && entry.relative_behind_seconds > 0.05)
-    .map((entry) => ({ ...entry, relative_gap_seconds: entry.relative_behind_seconds }))
-    .sort((left, right) => left.relative_gap_seconds - right.relative_gap_seconds)
-    .slice(0, relativeSettings.behindRows);
-  // Igual que el relativo de LMU, un coche puede representar el tráfico más
-  // próximo una vez por delante y otra por detrás al cerrar la vuelta, pero no
-  // se rellena repetidamente una misma dirección con ese único coche.
-  const ahead = aheadCandidates.reverse();
-  const behind = behindCandidates;
-  return { ahead, behind, visible: [...ahead, player, ...behind] };
-};
-
 const render = (frame: TelemetryFrame): void => {
   const list = document.getElementById("relative-list");
   if (!list) return;
@@ -629,8 +599,14 @@ const render = (frame: TelemetryFrame): void => {
   lastFrame = frame;
 
   {
-    const selected = relativeEntries(frame.standings);
-    if (selected.visible.length === 0) {
+    const entriesById = new Map(frame.standings.map((entry) => [entry.vehicle_id, entry]));
+    const selected = frame.relative_model.rows
+      .map((model) => {
+        const entry = entriesById.get(model.vehicle_id);
+        return entry ? { model, entry: { ...entry, relative_gap_seconds: model.relative_gap_seconds } } : null;
+      })
+      .filter((row): row is { model: typeof frame.relative_model.rows[number]; entry: StandingEntry } => row !== null);
+    if (selected.length === 0) {
       list.replaceChildren(node("p", "empty-state", "Esperando al jugador…"));
       return;
     }
@@ -641,10 +617,10 @@ const render = (frame: TelemetryFrame): void => {
       classSections.set("__relative", group);
     }
     const groupChildren: HTMLElement[] = [];
-    groupChildren.push(...selected.visible.map((entry, index) => renderRow(
+    groupChildren.push(...selected.map(({ model, entry }) => renderRow(
       entry,
       frame.track_limits_steps_per_penalty,
-      `relative-${index}`
+      `relative-${model.kind}-${model.vehicle_id}`
     )));
     syncChildren(group, groupChildren);
     const children: HTMLElement[] = [];
@@ -757,6 +733,20 @@ if (import.meta.env.DEV && new URLSearchParams(window.location.search).has("prev
     ambient_temperature_c: 19,
     track_temperature_c: 25,
     track_name: "Circuit de la Sarthe",
+    standings_model: { groups: [] },
+    relative_model: {
+      rows: [
+        { vehicle_id: 0, relative_gap_seconds: -8.4, kind: "ahead" },
+        { vehicle_id: 1, relative_gap_seconds: -6.3, kind: "ahead" },
+        { vehicle_id: 2, relative_gap_seconds: -4.2, kind: "ahead" },
+        { vehicle_id: 3, relative_gap_seconds: -2.1, kind: "ahead" },
+        { vehicle_id: 22, relative_gap_seconds: 0, kind: "player" },
+        { vehicle_id: 25, relative_gap_seconds: 2.1, kind: "behind" },
+        { vehicle_id: 26, relative_gap_seconds: 4.2, kind: "behind" },
+        { vehicle_id: 27, relative_gap_seconds: 6.3, kind: "behind" },
+        { vehicle_id: 28, relative_gap_seconds: 8.4, kind: "behind" }
+      ]
+    },
     standings
-  } as TelemetryFrame);
+  } as unknown as TelemetryFrame);
 }

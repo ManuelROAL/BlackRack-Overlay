@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::sync::{Mutex, OnceLock};
+use std::sync::{Arc, Mutex, OnceLock};
 use std::time::Duration;
 
 #[derive(Clone, Copy, Debug, Deserialize)]
@@ -13,18 +13,47 @@ struct RawTrackMapPoint {
 
 #[derive(Clone, Copy, Debug, Serialize)]
 pub(crate) struct TrackGeometryPoint {
-    x: f64,
-    y: f64,
+    pub(super) x: f64,
+    pub(super) y: f64,
 }
 
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct OfficialTrackMapGeometry {
-    main_path: Vec<TrackGeometryPoint>,
+    pub(super) main_path: Vec<TrackGeometryPoint>,
+    pub(super) pit_path: Vec<TrackGeometryPoint>,
+}
+
+#[derive(Clone, Copy, Debug, Serialize)]
+pub(crate) struct PreparedTrackGeometryPoint {
+    x: f64,
+    y: f64,
+    distance: f64,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct TrackMapGeometry {
+    source: &'static str,
+    main_path: Vec<PreparedTrackGeometryPoint>,
+    main_length: f64,
     pit_path: Vec<TrackGeometryPoint>,
 }
 
-static GEOMETRY_CACHE: OnceLock<Mutex<HashMap<String, OfficialTrackMapGeometry>>> = OnceLock::new();
+static GEOMETRY_CACHE: OnceLock<Mutex<HashMap<String, Arc<OfficialTrackMapGeometry>>>> =
+    OnceLock::new();
+
+pub(super) fn cached_official_track_map_geometry(
+    cache_key: &str,
+) -> Option<Arc<OfficialTrackMapGeometry>> {
+    GEOMETRY_CACHE.get().and_then(|cache| {
+        cache
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .get(cache_key)
+            .cloned()
+    })
+}
 
 fn decode_geometry(points: Vec<RawTrackMapPoint>) -> Result<OfficialTrackMapGeometry, String> {
     let collect = |kind| {
@@ -55,7 +84,7 @@ fn decode_geometry(points: Vec<RawTrackMapPoint>) -> Result<OfficialTrackMapGeom
 
 pub(crate) fn official_track_map_geometry(
     cache_key: &str,
-) -> Result<OfficialTrackMapGeometry, String> {
+) -> Result<Arc<OfficialTrackMapGeometry>, String> {
     let key = cache_key.trim();
     if key.is_empty() {
         return Err("Falta la clave del circuito".into());
@@ -70,12 +99,66 @@ pub(crate) fn official_track_map_geometry(
         return Ok(geometry);
     }
 
-    let geometry = fetch_geometry()?;
+    let geometry = Arc::new(fetch_geometry()?);
     cache
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
         .insert(key.to_string(), geometry.clone());
     Ok(geometry)
+}
+
+pub(crate) fn track_map_geometry(cache_key: &str) -> Result<TrackMapGeometry, String> {
+    match official_track_map_geometry(cache_key) {
+        Ok(geometry) => {
+            let mut distance = 0.0;
+            let mut main_path = Vec::with_capacity(geometry.main_path.len());
+            for (index, point) in geometry.main_path.iter().enumerate() {
+                if let Some(previous) = index
+                    .checked_sub(1)
+                    .and_then(|previous| geometry.main_path.get(previous))
+                {
+                    distance += (point.x - previous.x).hypot(point.y - previous.y);
+                }
+                main_path.push(PreparedTrackGeometryPoint {
+                    x: point.x,
+                    y: point.y,
+                    distance,
+                });
+            }
+            let main_length = main_path
+                .first()
+                .zip(main_path.last())
+                .map_or(distance, |(first, last)| {
+                    distance + (first.x - last.x).hypot(first.y - last.y)
+                });
+            Ok(TrackMapGeometry {
+                source: "official",
+                main_path,
+                main_length,
+                pit_path: geometry.pit_path.clone(),
+            })
+        }
+        Err(official_error) => {
+            let Some((points, track_length)) =
+                super::track_map_model::learned_track_points(cache_key)
+            else {
+                return Err(official_error);
+            };
+            Ok(TrackMapGeometry {
+                source: "learned",
+                main_path: points
+                    .into_iter()
+                    .map(|point| PreparedTrackGeometryPoint {
+                        x: point.x,
+                        y: point.y,
+                        distance: point.distance,
+                    })
+                    .collect(),
+                main_length: track_length,
+                pit_path: Vec::new(),
+            })
+        }
+    }
 }
 
 #[cfg(all(target_os = "windows", lmu_sdk))]

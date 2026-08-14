@@ -62,6 +62,13 @@ export interface TrackMapVehicle {
   is_player: boolean;
 }
 
+export interface TrackMapViewModel {
+  cache_key: string;
+  geometry_revision: number;
+  learned_geometry_available: boolean;
+  pit_prediction_lap_distance: number | null;
+}
+
 export interface TelemetryFrame {
   source: string;
   connected: boolean;
@@ -135,6 +142,9 @@ export interface TelemetryFrame {
   virtual_energy_needed_percent: number;
   virtual_energy_next_stint_percent: number;
   virtual_energy_stints_remaining: number;
+  fuel_strategies: FuelStrategies;
+  standings_model: StandingsViewModel;
+  relative_model: RelativeViewModel;
   player_tire_remaining_percent: number;
   player_damage_percent: number;
   player_aero_damage_percent: number;
@@ -143,6 +153,7 @@ export interface TelemetryFrame {
   player_body_damage_percent: number;
   player_damage_severity: [number, number, number, number, number, number, number, number];
   player_part_detached: boolean;
+  player_rear_wing_detached: boolean;
   player_tire_temperature_c: [number, number, number, number];
   player_brake_temperature_c: [number, number, number, number];
   player_tire_remaining_by_wheel_percent: [number, number, number, number];
@@ -163,6 +174,7 @@ export interface TelemetryFrame {
   lap_progress: number;
   track_length_meters: number;
   track_map_vehicles: TrackMapVehicle[];
+  track_map_model: TrackMapViewModel;
   consumption_profile_samples: number;
   current_lap_seconds: number;
   last_lap_seconds: number;
@@ -171,6 +183,60 @@ export interface TelemetryFrame {
   flag_warning: FlagWarning;
   rejoin_warning: RejoinWarning;
   standings: StandingEntry[];
+}
+
+export interface ResourceStrategy {
+  stops: number;
+  target_stops: number;
+  target_consumption: number;
+  saving_percent: number;
+  autonomy: number;
+  minutes: number;
+  earliest_pit_lap: number;
+  latest_pit_lap: number;
+  next_fill: number;
+  total_additional: number;
+  end_remaining: number;
+}
+
+export interface FuelStrategies {
+  active: ResourceStrategy | null;
+  fuel: ResourceStrategy | null;
+  estimated: ResourceStrategy | null;
+  average: ResourceStrategy | null;
+  qualifying: ResourceStrategy | null;
+  last: ResourceStrategy | null;
+}
+
+export interface StrengthOfFieldModel {
+  label: string;
+  resolved_profiles: number;
+  total_profiles: number;
+}
+
+export interface StandingsClassModel {
+  vehicle_class: string;
+  display_class: string;
+  class_tone: string;
+  current_count: number;
+  initial_count: number;
+  retired_count: number;
+  strength_of_field: StrengthOfFieldModel | null;
+  visible_vehicle_ids: number[];
+}
+
+export interface StandingsViewModel {
+  groups: StandingsClassModel[];
+}
+
+export interface RelativeRowModel {
+  vehicle_id: number;
+  relative_gap_seconds: number;
+  kind: "ahead" | "player" | "behind";
+}
+
+export interface RelativeViewModel {
+  rows: RelativeRowModel[];
 }
 
 export interface FlagWarning {

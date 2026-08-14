@@ -50,22 +50,6 @@
   font-variant-numeric: tabular-nums;
 }
 
-.standing-relative {
-  padding-inline: 5px;
-  border-radius: 3px;
-  background: rgb(0 0 0 / 18%);
-  color: #f7f9fb;
-  font-size: 14px;
-  font-weight: 950;
-  letter-spacing: 0.015em;
-  text-shadow: 0 1px 3px rgb(0 0 0 / 70%);
-}
-
-.standing-row.player .standing-relative {
-  background: rgb(216 255 62 / 8%);
-  color: #d8ff3e;
-}
-
 body[data-overlay-fit="true"].relative-body .standings-shell {
   height: calc(var(--overlay-base-height) - 16px);
 }
@@ -268,7 +252,7 @@ body[data-overlay-fit="true"].relative-body .standings-shell {
   background:
     linear-gradient(90deg, rgb(216 255 62 / 18%), transparent 38%),
     linear-gradient(270deg, rgb(216 255 62 / 18%), transparent 38%),
-    linear-gradient(rgb(216 255 62 / 9%), rgb(216 255 62 / 9%)),
+    linear-gradient(rgb(216 255 62 / 10%), rgb(216 255 62 / 10%)),
     rgb(5 8 12 / var(--overlay-background-opacity));
   box-shadow: inset 2px 0 #d8ff3e, inset -2px 0 #d8ff3e;
 }
@@ -283,14 +267,14 @@ body[data-overlay-fit="true"].relative-body .standings-shell {
   background:
     linear-gradient(90deg, rgb(216 255 62 / 18%), transparent 38%),
     linear-gradient(270deg, rgb(216 255 62 / 18%), transparent 38%),
-    linear-gradient(rgb(216 255 62 / 9%), rgb(216 255 62 / 9%)),
+    linear-gradient(rgb(216 255 62 / 10%), rgb(216 255 62 / 10%)),
     linear-gradient(rgb(255 184 77 / 4%), rgb(255 184 77 / 4%)),
     rgb(5 8 12 / var(--overlay-background-opacity));
   box-shadow: inset 2px 0 #d8ff3e, inset -2px 0 #d8ff3e;
 }
 
 /* Relative mezcla categorías en una sola tabla. Cada fila conserva el color
-   oficial de su clase sin sustituir el resaltado lime del jugador. */
+   oficial de su clase sin sustituir el resaltado lima del jugador. */
 .relative-body .standing-row {
   --row-class-color: #98a5b3;
 }
@@ -316,12 +300,15 @@ body[data-overlay-fit="true"].relative-body .standings-shell {
     linear-gradient(
       90deg,
       color-mix(in srgb, var(--row-class-color) 24%, transparent),
-      color-mix(in srgb, var(--row-class-color) 10%, transparent) 54%,
-      color-mix(in srgb, var(--row-class-color) 4%, transparent)
+      color-mix(in srgb, var(--row-class-color) 10%, transparent) 12%,
+      transparent 28%
     ),
     rgb(5 8 12 / var(--overlay-background-opacity));
   border-radius: 3px;
-  box-shadow: inset 2px 0 var(--row-class-color), inset 0 0 0 1px rgb(255 255 255 / 8%);
+  box-shadow:
+    inset 2px 0 var(--row-class-color),
+    inset 0 1px rgb(255 255 255 / 8%),
+    inset 0 -1px rgb(255 255 255 / 8%);
 }
 
 .relative-body .standing-row + .standing-row {
@@ -334,33 +321,33 @@ body[data-overlay-fit="true"].relative-body .standings-shell {
     linear-gradient(
       90deg,
       color-mix(in srgb, var(--row-class-color) 24%, transparent),
-      color-mix(in srgb, var(--row-class-color) 10%, transparent) 54%,
-      color-mix(in srgb, var(--row-class-color) 4%, transparent)
+      color-mix(in srgb, var(--row-class-color) 10%, transparent) 12%,
+      transparent 28%
     ),
     rgb(5 8 12 / var(--overlay-background-opacity));
 }
 
 .relative-body .standing-row.player::before {
   background:
-    linear-gradient(90deg, rgb(216 255 62 / 20%), transparent 38%),
-    linear-gradient(270deg, rgb(216 255 62 / 20%), transparent 38%),
-    linear-gradient(rgb(216 255 62 / 9%), rgb(216 255 62 / 9%)),
-    linear-gradient(90deg, color-mix(in srgb, var(--row-class-color) 5%, transparent), transparent 58%),
+    linear-gradient(90deg, rgb(216 255 62 / 18%), transparent 38%),
+    linear-gradient(270deg, rgb(216 255 62 / 18%), transparent 38%),
+    linear-gradient(rgb(216 255 62 / 10%), rgb(216 255 62 / 10%)),
+    linear-gradient(90deg, color-mix(in srgb, var(--row-class-color) 5%, transparent), transparent 28%),
     rgb(5 8 12 / var(--overlay-background-opacity));
   border-radius: 3px;
-  box-shadow: inset 2px 0 #d8ff3e, inset -2px 0 #d8ff3e, inset 0 0 0 1px rgb(216 255 62 / 24%);
+  box-shadow: inset 2px 0 #d8ff3e, inset -2px 0 #d8ff3e, inset 0 0 0 1px rgb(216 255 62 / 26%);
 }
 
 .relative-body .standing-row.player.in-pits::before {
   background:
-    linear-gradient(90deg, rgb(216 255 62 / 20%), transparent 38%),
-    linear-gradient(270deg, rgb(216 255 62 / 20%), transparent 38%),
-    linear-gradient(rgb(216 255 62 / 9%), rgb(216 255 62 / 9%)),
+    linear-gradient(90deg, rgb(216 255 62 / 18%), transparent 38%),
+    linear-gradient(270deg, rgb(216 255 62 / 18%), transparent 38%),
+    linear-gradient(rgb(216 255 62 / 10%), rgb(216 255 62 / 10%)),
     linear-gradient(rgb(255 184 77 / 4%), rgb(255 184 77 / 4%)),
-    linear-gradient(90deg, color-mix(in srgb, var(--row-class-color) 5%, transparent), transparent 58%),
+    linear-gradient(90deg, color-mix(in srgb, var(--row-class-color) 5%, transparent), transparent 28%),
     rgb(5 8 12 / var(--overlay-background-opacity));
   border-radius: 3px;
-  box-shadow: inset 2px 0 #d8ff3e, inset -2px 0 #d8ff3e, inset 0 0 0 1px rgb(216 255 62 / 24%);
+  box-shadow: inset 2px 0 #d8ff3e, inset -2px 0 #d8ff3e, inset 0 0 0 1px rgb(216 255 62 / 26%);
 }
 
 .relative-body .standing-row::after {
@@ -589,7 +576,7 @@ body[data-overlay-fit="true"].relative-body .standings-shell {
   color: #7a7a7a;
 }
 
-.out-lap {
+.lap-time.out-lap {
   color: #ffb84d;
 }
 
@@ -600,10 +587,10 @@ body[data-overlay-fit="true"].relative-body .standings-shell {
   gap: 5px;
   min-height: 17px;
   padding: 1px;
-  border: 1px solid rgb(255 255 255 / 8%);
+  border: 0;
   border-radius: 4px;
   color: #c0c7cf;
-  background: rgb(255 255 255 / 3%);
+  background: transparent;
   font-size: inherit;
   font-weight: inherit;
 }
@@ -618,7 +605,7 @@ body[data-overlay-fit="true"].relative-body .standings-shell {
   padding: 2px;
   border-radius: 4px;
   color: #fff;
-  background: rgb(255 255 255 / 5%);
+  background: transparent;
   font-size: inherit;
   font-weight: inherit;
   text-align: center;
@@ -646,7 +633,7 @@ body[data-overlay-fit="true"].relative-body .standings-shell {
 
 .standing-track-limits[data-track-limit-tone="normal"] {
   border-radius: 3px;
-  background: rgb(255 255 255 / 8%);
+  background: transparent;
 }
 
 .standing-track-limits[data-track-limit-tone="warning"] {
@@ -665,24 +652,22 @@ body[data-overlay-fit="true"].relative-body .standings-shell {
   height: 17px;
   padding: 0 3px;
   place-items: center;
-  border: 1px solid rgb(255 255 255 / 10%);
+  border: 0;
   border-radius: 4px;
   color: #dce2e8;
-  background: rgb(255 255 255 / 5%);
+  background: transparent;
   font: inherit;
   font-variant-numeric: tabular-nums;
   line-height: 1;
 }
 
 .standing-pit-stops.requested {
-  border-color: rgb(83 220 118 / 75%);
   color: #eaffef;
   background: rgb(35 155 72 / 78%);
   box-shadow: 0 0 7px rgb(49 208 91 / 38%);
 }
 
 .standing-pit-stops.timing {
-  border-color: rgb(65 190 255 / 78%);
   color: #e8f8ff;
   background: rgb(17 112 168 / 88%);
   box-shadow: 0 0 7px rgb(49 181 255 / 32%);

@@ -136,9 +136,9 @@ export const RELATIVE_COLUMNS: RelativeColumnDefinition[] = [
   relativeColumn("number", "#", 26, true, "number"),
   relativeColumn("country", "", 23, true, "country"),
   relativeColumn("badge", "LIC", 29, false, "license"),
-  relativeColumn("driver", "PILOTO", 116, true),
+  relativeColumn("driver", "PILOTO", 95, true),
   relativeColumn("ranks", "ELO", 98, false, "rating"),
-  relativeColumn("relative", "REL", 58, false),
+  relativeColumn("relative", "REL", 52, false),
   relativeColumn("lap", "V", 28, false, "lap"),
   relativeColumn("best", "BEST", 68, false, "best"),
   relativeColumn("last", "LAST", 68, false, "last"),
@@ -146,7 +146,7 @@ export const RELATIVE_COLUMNS: RelativeColumnDefinition[] = [
   relativeColumn("energy", "NRG", 90, false, "energy"),
   relativeColumn("damage", "DMG", 42, false, "damage"),
   relativeColumn("trackLimits", "TL", 30, false, "trackLimitsColumn"),
-  relativeColumn("pitStops", "PIT", 58, false, "pitStops"),
+  relativeColumn("pitStops", "PIT", 42, false, "pitStops"),
   relativeColumn("tire", "NEU", 30, false, "tire"),
   relativeColumn("signals", "", 82, false, "signals")
 ];

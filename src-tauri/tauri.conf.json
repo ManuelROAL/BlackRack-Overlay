@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "LMU Overlay",
-  "version": "0.2.0",
+  "version": "0.5.0",
   "identifier": "dev.lmuoverlay.desktop",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -27,6 +27,7 @@
         "alwaysOnTop": false,
         "skipTaskbar": false,
         "resizable": false,
+        "devtools": false,
         "center": true
       }
     ]
@@ -34,9 +35,6 @@
   "bundle": {
     "active": true,
     "targets": ["nsis"],
-    "resources": {
-      "../dist/": "web/"
-    },
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

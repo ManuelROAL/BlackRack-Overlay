@@ -4,12 +4,24 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { fitOverlay } from "./overlay-fit";
 import { bindOverlayInteractionMode } from "./overlay-interaction";
 import { bindOverlayTransparency } from "./overlay-appearance";
+import {
+  DRIVING_PEDALS,
+  readDrivingSettings,
+  type DrivingPedalId,
+  type DrivingSettings
+} from "./driving-settings";
 import type { TelemetryFrame } from "./telemetry-types";
-import { isCompositeOverlay, isTauriRuntime, listenTelemetry } from "./runtime-events";
+import {
+  isCompositeOverlay,
+  isTauriRuntime,
+  listenRuntimeEvent,
+  listenTelemetry
+} from "./runtime-events";
 
-const WIDTH = 440;
 const HEIGHT = 120;
-const HISTORY_SIZE = 80;
+const TELEMETRY_RATE_HZ = 50;
+const HISTORY_SECONDS = 5;
+const HISTORY_SIZE = TELEMETRY_RATE_HZ * HISTORY_SECONDS;
 const history = {
   throttle: [] as number[],
   brake: [] as number[],
@@ -19,8 +31,35 @@ const history = {
 };
 const canvas = document.getElementById("trailing-canvas") as HTMLCanvasElement;
 const context = canvas.getContext("2d");
+const shell = document.querySelector<HTMLElement>(".driving-shell");
+const driveDial = document.querySelector<HTMLElement>(".drive-dial");
+const trailingPanel = document.querySelector<HTMLElement>(".trailing-panel");
+const pedalPanel = document.querySelector<HTMLElement>(".pedal-panel");
+const drivingReadout = document.querySelector<HTMLElement>(".driving-readout");
+const elements = new Map<string, HTMLElement>();
+for (const element of document.querySelectorAll<HTMLElement>("[id]")) {
+  elements.set(element.id, element);
+}
+let settings = readDrivingSettings();
+let graphRenderPhase = 0;
 
-fitOverlay({ width: WIDTH, height: HEIGHT });
+const visiblePedalCount = (values: Record<DrivingPedalId, boolean>): number =>
+  DRIVING_PEDALS.filter(({ id }) => values[id]).length;
+
+const readoutWidth = (): number => {
+  return settings.showForceFeedback ? 72 : 0;
+};
+
+const drivingWidth = (): number => {
+  const graphWidth = visiblePedalCount(settings.graphPedals) > 0 ? 278 : 0;
+  const inputCount = visiblePedalCount(settings.inputPedals);
+  const inputWidth = inputCount > 0 ? 13 + inputCount * 25 : 0;
+  const dialWidth = settings.showSteering || settings.showGear || settings.showSpeed ? 88 : 0;
+  const widths = [dialWidth, inputWidth, readoutWidth(), graphWidth].filter((width) => width > 0);
+  return Math.max(120, 14 + widths.reduce((total, width) => total + width, 0));
+};
+
+const updateOverlayFit = fitOverlay({ width: drivingWidth(), height: HEIGHT });
 bindOverlayTransparency("driving");
 
 const resizeHandle = document.querySelector<HTMLElement>("[data-resize-handle]");
@@ -35,28 +74,35 @@ resizeHandle?.addEventListener("mousedown", (event) => {
 });
 
 const text = (id: string, value: string): void => {
-  const element = document.getElementById(id);
+  const element = elements.get(id);
   if (element && element.textContent !== value) element.textContent = value;
 };
 
 const setLevel = (id: string, value: number): void => {
-  const element = document.getElementById(id);
-  if (element) element.style.height = `${Math.round(Math.max(0, Math.min(1, value)) * 100)}%`;
+  const element = elements.get(id);
+  if (element) {
+    const height = `${Math.round(Math.max(0, Math.min(1, value)) * 100)}%`;
+    if (element.style.height !== height) element.style.height = height;
+  }
 };
 
 const setForceFeedback = (value: number): void => {
-  const element = document.getElementById("ffb-level");
+  const element = elements.get("ffb-level");
   if (!element) return;
   const force = Number.isFinite(value) ? Math.max(-1, Math.min(1, value)) : 0;
-  element.style.left = `${(force < 0 ? 0.5 + force * 0.5 : 0.5) * 100}%`;
-  element.style.width = `${Math.abs(force) * 50}%`;
+  const left = `${Math.round((force < 0 ? 50 + force * 50 : 50) * 10) / 10}%`;
+  const width = `${Math.round(Math.abs(force) * 500) / 10}%`;
+  if (element.style.left !== left) element.style.left = left;
+  if (element.style.width !== width) element.style.width = width;
 };
 
 const setSteering = (angle: number): void => {
   const safeAngle = Number.isFinite(angle) ? angle : 0;
-  const wheel = document.getElementById("steering-wheel");
-  if (wheel) wheel.style.transform = `rotate(${safeAngle}deg)`;
-  text("steering-angle", `${Math.round(safeAngle)}°`);
+  const wheel = elements.get("steering-wheel");
+  if (wheel) {
+    const transform = `rotate(${Math.round(safeAngle * 10) / 10}deg)`;
+    if (wheel.style.transform !== transform) wheel.style.transform = transform;
+  }
 };
 
 const push = (values: number[], value: number): void => {
@@ -94,6 +140,7 @@ const drawActivations = (values: number[], active: boolean[], color: string): vo
 const drawTrailing = (): void => {
   if (!context) return;
   context.clearRect(0, 0, canvas.width, canvas.height);
+  if (visiblePedalCount(settings.graphPedals) === 0) return;
   context.strokeStyle = "rgba(255,255,255,.08)";
   context.lineWidth = 1;
   for (const y of [0.25, 0.5, 0.75]) {
@@ -103,11 +150,54 @@ const drawTrailing = (): void => {
     context.stroke();
   }
   // Canvas paints later strokes on top: clutch < brake < throttle.
-  drawLine(history.clutch, "#62cce9");
-  drawLine(history.brake, "#ff5367");
-  drawLine(history.throttle, "#55ef93");
-  drawActivations(history.brake, history.abs, "#f4f7fa");
-  drawActivations(history.throttle, history.tc, "#ffd24a");
+  if (settings.graphPedals.clutch) drawLine(history.clutch, "#62cce9");
+  if (settings.graphPedals.brake) drawLine(history.brake, "#ff5367");
+  if (settings.graphPedals.throttle) drawLine(history.throttle, "#55ef93");
+  if (settings.graphPedals.brake) drawActivations(history.brake, history.abs, "#f4f7fa");
+  if (settings.graphPedals.throttle) drawActivations(history.throttle, history.tc, "#ffd24a");
+};
+
+const applySettings = (next: DrivingSettings): void => {
+  settings = next;
+  const graphCount = visiblePedalCount(settings.graphPedals);
+  const inputCount = visiblePedalCount(settings.inputPedals);
+  if (trailingPanel) trailingPanel.hidden = graphCount === 0;
+  for (const { id } of DRIVING_PEDALS) {
+    for (const element of document.querySelectorAll<HTMLElement>(`[data-graph-pedal="${id}"]`)) {
+      element.hidden = !settings.graphPedals[id];
+    }
+    const input = document.querySelector<HTMLElement>(`[data-input-pedal="${id}"]`);
+    if (input) input.hidden = !settings.inputPedals[id];
+  }
+  if (pedalPanel) {
+    pedalPanel.hidden = inputCount === 0;
+    pedalPanel.style.width = `${13 + inputCount * 25}px`;
+  }
+  for (const element of document.querySelectorAll<HTMLElement>('[data-driving-item="gear"]')) {
+    element.hidden = !settings.showGear;
+  }
+  for (const element of document.querySelectorAll<HTMLElement>('[data-driving-item="speed"]')) {
+    element.hidden = !settings.showSpeed;
+  }
+  for (const element of document.querySelectorAll<HTMLElement>('[data-driving-item="ffb"]')) {
+    element.hidden = !settings.showForceFeedback;
+  }
+  for (const element of document.querySelectorAll<HTMLElement>('[data-driving-item="steering"]')) {
+    element.hidden = !settings.showSteering;
+  }
+  if (driveDial) {
+    driveDial.hidden = !settings.showGear && !settings.showSteering && !settings.showSpeed;
+  }
+  if (drivingReadout) {
+    drivingReadout.hidden = !settings.showForceFeedback;
+    drivingReadout.style.width = `${readoutWidth()}px`;
+  }
+  const width = drivingWidth();
+  if (shell) {
+    shell.style.width = `${width}px`;
+  }
+  updateOverlayFit({ width, height: HEIGHT });
+  drawTrailing();
 };
 
 const render = (frame: TelemetryFrame): void => {
@@ -122,7 +212,8 @@ const render = (frame: TelemetryFrame): void => {
   history.abs.push(frame.abs_active);
   if (history.tc.length > HISTORY_SIZE) history.tc.shift();
   if (history.abs.length > HISTORY_SIZE) history.abs.shift();
-  drawTrailing();
+  graphRenderPhase = (graphRenderPhase + 1) % 2;
+  if (graphRenderPhase === 0) drawTrailing();
   text("throttle-value", `${Math.round(throttle * 100)}`);
   text("brake-value", `${Math.round(brake * 100)}`);
   text("clutch-value", `${Math.round(clutch * 100)}`);
@@ -136,4 +227,6 @@ const render = (frame: TelemetryFrame): void => {
 };
 
 void listenTelemetry(render);
+void listenRuntimeEvent<DrivingSettings>("driving://settings", applySettings);
+applySettings(settings);
 bindOverlayInteractionMode();

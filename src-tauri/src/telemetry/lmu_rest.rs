@@ -18,6 +18,8 @@ const LOCAL_API: &str = "http://127.0.0.1:6397";
 #[cfg(not(test))]
 const STANDINGS_INTERVAL: Duration = Duration::from_secs(1);
 #[cfg(not(test))]
+const HISTORY_INTERVAL: Duration = Duration::from_secs(5);
+#[cfg(not(test))]
 const SUPPLEMENT_INTERVAL: Duration = Duration::from_secs(1);
 const STANDINGS_MAX_AGE: Duration = Duration::from_secs(1);
 const SUPPLEMENT_MAX_AGE: Duration = Duration::from_secs(3);
@@ -30,6 +32,7 @@ pub(super) struct RestStanding {
     #[serde(rename = "slotID")]
     pub slot_id: i32,
     pub driver_name: String,
+    pub car_class: String,
     pub car_number: String,
     pub qualification: i32,
     pub server_scored: bool,
@@ -44,6 +47,17 @@ pub(super) struct RestStanding {
     pub in_garage_stall: bool,
     pub fuel_fraction: f64,
     pub ve_fraction: f64,
+}
+
+#[derive(Clone, Debug, Default, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub(super) struct RestStandingHistory {
+    pub car_class: String,
+    pub driver_name: String,
+    pub lap_time: f64,
+    #[serde(rename = "slotID")]
+    pub slot_id: i32,
+    pub total_laps: i32,
 }
 
 #[derive(Clone, Debug, Default, Deserialize)]
@@ -91,11 +105,19 @@ struct SupplementUpdate {
     vehicle_damage: Option<RestVehicleDamage>,
 }
 
+#[derive(Default)]
+struct StandingsUpdate {
+    standings: Vec<RestStanding>,
+    history: Option<HashMap<String, Vec<RestStandingHistory>>>,
+}
+
 pub(super) struct LocalRestResolver {
-    standings_receiver: Option<Receiver<Vec<RestStanding>>>,
+    standings_receiver: Option<Receiver<StandingsUpdate>>,
     supplement_receiver: Option<Receiver<SupplementUpdate>>,
     standings_by_slot: HashMap<i32, RestStanding>,
     standings_by_name: HashMap<String, RestStanding>,
+    history_by_slot: HashMap<i32, Vec<RestStandingHistory>>,
+    history_by_name: HashMap<String, Vec<RestStandingHistory>>,
     standings_received_at: Option<Instant>,
     pit_stop: RestPitStopEstimate,
     vehicle_damage: RestVehicleDamage,
@@ -114,6 +136,7 @@ impl LocalRestResolver {
             let Some(client) = http_client() else {
                 return;
             };
+            let mut history_received_at: Option<Instant> = None;
             loop {
                 if !standings_enabled.load(Ordering::Relaxed) {
                     thread::sleep(Duration::from_secs(1));
@@ -121,7 +144,21 @@ impl LocalRestResolver {
                 }
                 let started = Instant::now();
                 if let Ok(standings) = fetch_json(&client, "/rest/watch/standings") {
-                    if standings_sender.send(standings).is_err() {
+                    let history = if history_received_at
+                        .is_none_or(|received| received.elapsed() >= HISTORY_INTERVAL)
+                    {
+                        let response = fetch_json(&client, "/rest/watch/standings/history").ok();
+                        if response.is_some() {
+                            history_received_at = Some(Instant::now());
+                        }
+                        response
+                    } else {
+                        None
+                    };
+                    if standings_sender
+                        .send(StandingsUpdate { standings, history })
+                        .is_err()
+                    {
                         break;
                     }
                 }
@@ -165,6 +202,8 @@ impl LocalRestResolver {
             supplement_receiver: Some(supplement_receiver),
             standings_by_slot: HashMap::new(),
             standings_by_name: HashMap::new(),
+            history_by_slot: HashMap::new(),
+            history_by_name: HashMap::new(),
             standings_received_at: None,
             pit_stop: RestPitStopEstimate::default(),
             vehicle_damage: RestVehicleDamage::default(),
@@ -181,6 +220,8 @@ impl LocalRestResolver {
             supplement_receiver: None,
             standings_by_slot: HashMap::new(),
             standings_by_name: HashMap::new(),
+            history_by_slot: HashMap::new(),
+            history_by_name: HashMap::new(),
             standings_received_at: None,
             pit_stop: RestPitStopEstimate::default(),
             vehicle_damage: RestVehicleDamage::default(),
@@ -192,22 +233,28 @@ impl LocalRestResolver {
 
     pub(super) fn refresh(&mut self, active: bool) {
         self.enabled.store(active, Ordering::Relaxed);
-        if let Some(receiver) = self.standings_receiver.as_ref() {
-            while let Ok(standings) = receiver.try_recv() {
-                self.standings_by_slot.clear();
-                self.standings_by_name.clear();
-                for standing in standings {
-                    if standing.slot_id != 0 {
-                        self.standings_by_slot
-                            .insert(standing.slot_id, standing.clone());
-                    }
-                    let name = normalized_name(&standing.driver_name);
-                    if !name.is_empty() {
-                        self.standings_by_name.insert(name, standing);
-                    }
+        let standings_updates = self
+            .standings_receiver
+            .as_ref()
+            .map(|receiver| receiver.try_iter().collect::<Vec<_>>())
+            .unwrap_or_default();
+        for update in standings_updates {
+            self.standings_by_slot.clear();
+            self.standings_by_name.clear();
+            for standing in update.standings {
+                if standing.slot_id != 0 {
+                    self.standings_by_slot
+                        .insert(standing.slot_id, standing.clone());
                 }
-                self.standings_received_at = Some(Instant::now());
+                let name = normalized_name(&standing.driver_name);
+                if !name.is_empty() {
+                    self.standings_by_name.insert(name, standing);
+                }
             }
+            if let Some(history) = update.history {
+                self.replace_history(history);
+            }
+            self.standings_received_at = Some(Instant::now());
         }
 
         if let Some(receiver) = self.supplement_receiver.as_ref() {
@@ -245,13 +292,105 @@ impl LocalRestResolver {
         self.standings_received_at = Some(Instant::now());
     }
 
+    #[cfg(test)]
+    pub(super) fn seed_history(&mut self, history: HashMap<String, Vec<RestStandingHistory>>) {
+        self.replace_history(history);
+    }
+
+    fn replace_history(&mut self, history: HashMap<String, Vec<RestStandingHistory>>) {
+        self.history_by_slot.clear();
+        self.history_by_name.clear();
+        for (key, entries) in history {
+            if entries.is_empty() {
+                continue;
+            }
+            let slot_id = key.parse::<i32>().unwrap_or(entries[0].slot_id);
+            if slot_id >= 0 {
+                self.history_by_slot.insert(slot_id, entries.clone());
+            }
+            for name in entries
+                .iter()
+                .map(|entry| normalized_name(&entry.driver_name))
+                .filter(|name| !name.is_empty())
+                .collect::<std::collections::HashSet<_>>()
+            {
+                self.history_by_name.insert(name, entries.clone());
+            }
+        }
+    }
+
+    pub(super) fn reset_session_history(&mut self) {
+        self.history_by_slot.clear();
+        self.history_by_name.clear();
+    }
+
+    pub(super) fn history(
+        &self,
+        slot_id: i32,
+        driver_name: &str,
+    ) -> Option<&[RestStandingHistory]> {
+        let name = normalized_name(driver_name);
+        self.history_by_name
+            .get(&name)
+            .or_else(|| {
+                self.history_by_slot.get(&slot_id).filter(|entries| {
+                    name.is_empty()
+                        || entries
+                            .iter()
+                            .any(|entry| normalized_name(&entry.driver_name) == name)
+                })
+            })
+            .map(Vec::as_slice)
+    }
+
+    pub(super) fn initial_class_count(&self, vehicle_class: &str) -> usize {
+        let class = normalized_class(vehicle_class);
+        self.history_by_slot
+            .values()
+            .filter_map(|entries| entries.first())
+            .filter(|entry| normalized_class(&entry.car_class) == class)
+            .count()
+    }
+
+    pub(super) fn starting_class_position(
+        &self,
+        slot_id: i32,
+        driver_name: &str,
+        vehicle_class: &str,
+    ) -> Option<i32> {
+        let name = normalized_name(driver_name);
+        let target = self.standings_by_name.get(&name).or_else(|| {
+            self.standings_by_slot.get(&slot_id).filter(|standing| {
+                name.is_empty() || normalized_name(&standing.driver_name) == name
+            })
+        })?;
+        if target.qualification <= 0 {
+            return None;
+        }
+        let class = normalized_class(vehicle_class);
+        Some(
+            1 + self
+                .standings_by_name
+                .values()
+                .filter(|standing| {
+                    standing.qualification > 0
+                        && normalized_class(&standing.car_class) == class
+                        && standing.qualification < target.qualification
+                })
+                .count() as i32,
+        )
+    }
+
     pub(super) fn standing(&self, slot_id: i32, driver_name: &str) -> Option<&RestStanding> {
         if !is_fresh(self.standings_received_at, STANDINGS_MAX_AGE) {
             return None;
         }
-        self.standings_by_slot
-            .get(&slot_id)
-            .or_else(|| self.standings_by_name.get(&normalized_name(driver_name)))
+        let name = normalized_name(driver_name);
+        self.standings_by_name.get(&name).or_else(|| {
+            self.standings_by_slot.get(&slot_id).filter(|standing| {
+                name.is_empty() || normalized_name(&standing.driver_name) == name
+            })
+        })
     }
 
     pub(super) fn pit_stop(&self) -> Option<&RestPitStopEstimate> {
@@ -300,17 +439,42 @@ fn normalized_name(name: &str) -> String {
     name.trim().to_lowercase()
 }
 
+fn normalized_class(value: &str) -> String {
+    let compact = value
+        .trim()
+        .to_ascii_uppercase()
+        .chars()
+        .filter(|character| character.is_ascii_alphanumeric())
+        .collect::<String>();
+    if compact.contains("GT3") {
+        "GT3".to_owned()
+    } else if compact.contains("HYPERCAR") || compact.contains("GTP") {
+        "HYPERCAR".to_owned()
+    } else if compact.contains("LMP2") {
+        "LMP2".to_owned()
+    } else if compact.contains("LMP3") {
+        "LMP3".to_owned()
+    } else {
+        compact
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{normalized_name, RestPitStopEstimate, RestRepairAndRefuel, RestStanding};
+    use super::{
+        normalized_name, LocalRestResolver, RestPitStopEstimate, RestRepairAndRefuel, RestStanding,
+        RestStandingHistory,
+    };
+    use std::collections::HashMap;
 
     #[test]
     fn parses_rest_standings_fields_used_by_the_overlay() {
         let value: RestStanding = serde_json::from_str(
-            r#"{"slotID":29,"driverName":"Test Driver","carNumber":"29","qualification":7,"serverScored":true,"finishStatus":"FSTAT_NONE","lapsBehindClassLeader":1,"timeBehindClassLeader":2.5,"lapsBehindNext":0,"timeBehindNext":1.2,"pitstops":2,"pitState":"REQUEST","pitting":true,"inGarageStall":false,"fuelFraction":0.5,"veFraction":0.75}"#,
+            r#"{"slotID":29,"driverName":"Test Driver","carClass":"LMP2_ELMS","carNumber":"29","qualification":7,"serverScored":true,"finishStatus":"FSTAT_NONE","lapsBehindClassLeader":1,"timeBehindClassLeader":2.5,"lapsBehindNext":0,"timeBehindNext":1.2,"pitstops":2,"pitState":"REQUEST","pitting":true,"inGarageStall":false,"fuelFraction":0.5,"veFraction":0.75}"#,
         )
         .unwrap();
         assert_eq!(value.slot_id, 29);
+        assert_eq!(value.car_class, "LMP2_ELMS");
         assert_eq!(value.car_number, "29");
         assert_eq!(value.qualification, 7);
         assert!(value.server_scored);
@@ -340,5 +504,71 @@ mod tests {
     #[test]
     fn normalizes_driver_names_for_fallback_matching() {
         assert_eq!(normalized_name("  Test DRIVER "), "test driver");
+    }
+
+    #[test]
+    fn recovers_qualification_grid_and_lap_history_from_rest() {
+        let history_entry =
+            |slot_id, driver_name: &str, car_class: &str, lap_time| RestStandingHistory {
+                slot_id,
+                driver_name: driver_name.to_owned(),
+                car_class: car_class.to_owned(),
+                total_laps: i32::from(lap_time > 0.0),
+                lap_time,
+            };
+        let mut resolver = LocalRestResolver::empty();
+        resolver.seed_history(HashMap::from([
+            (
+                "4".to_owned(),
+                vec![
+                    history_entry(4, "Driver B", "GT3", -1.0),
+                    history_entry(4, "Driver B", "GT3", 102.4),
+                ],
+            ),
+            (
+                "7".to_owned(),
+                vec![history_entry(7, "Driver A", "GT3", -1.0)],
+            ),
+            (
+                "9".to_owned(),
+                vec![history_entry(9, "Prototype", "HYPERCAR", -1.0)],
+            ),
+        ]));
+        resolver.seed_standings(vec![
+            RestStanding {
+                slot_id: 4,
+                driver_name: "Driver B".to_owned(),
+                car_class: "GT3".to_owned(),
+                qualification: 9,
+                ..RestStanding::default()
+            },
+            RestStanding {
+                slot_id: 7,
+                driver_name: "Driver A".to_owned(),
+                car_class: "GT3".to_owned(),
+                qualification: 3,
+                ..RestStanding::default()
+            },
+            RestStanding {
+                slot_id: 9,
+                driver_name: "Prototype".to_owned(),
+                car_class: "HYPERCAR".to_owned(),
+                qualification: 1,
+                ..RestStanding::default()
+            },
+        ]);
+
+        assert_eq!(resolver.initial_class_count("LMGT3"), 2);
+        assert_eq!(
+            resolver.starting_class_position(4, "Driver B", "GT3"),
+            Some(2)
+        );
+        assert_eq!(
+            resolver.starting_class_position(4, "Driver A", "GT3"),
+            Some(1),
+            "a shared-memory vehicle id that collides with another REST slot must match by driver"
+        );
+        assert_eq!(resolver.history(4, "Driver A").unwrap()[0].slot_id, 7);
+        assert_eq!(resolver.history(4, "Driver B").unwrap()[1].lap_time, 102.4);
     }
 }

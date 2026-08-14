@@ -4,6 +4,7 @@ mod consumption_profile;
 mod driver_ranks;
 #[cfg(all(target_os = "windows", lmu_sdk))]
 mod event_split;
+mod fuel_strategy;
 #[cfg(all(target_os = "windows", lmu_sdk))]
 mod lmu;
 #[cfg(all(target_os = "windows", lmu_sdk))]
@@ -12,7 +13,9 @@ mod lmu_rest;
 mod mock;
 #[cfg(all(target_os = "windows", lmu_sdk))]
 mod racecontrol;
+mod standings_models;
 mod track_geometry;
+mod track_map_model;
 
 use serde::{Deserialize, Serialize};
 use std::fs::{self, File};
@@ -24,7 +27,11 @@ use std::time::{Instant, SystemTime, UNIX_EPOCH};
 use std::{thread, time::Duration};
 use tauri::{AppHandle, Emitter, Manager};
 
-pub(crate) use track_geometry::{official_track_map_geometry, OfficialTrackMapGeometry};
+use fuel_strategy::FuelStrategies;
+
+pub(crate) use standings_models::{set_overlay_view_settings, OverlayViewSettings};
+pub(crate) use track_geometry::{track_map_geometry, TrackMapGeometry};
+pub(crate) use track_map_model::{migrate_legacy_track_map_learning, LearnedTrackPoint};
 
 #[cfg(all(target_os = "windows", lmu_sdk))]
 use lmu::LmuTelemetrySource;
@@ -364,7 +371,7 @@ fn interval_due(last: &mut Instant, now: Instant, interval: Duration) -> bool {
     true
 }
 
-#[derive(Clone, Serialize)]
+#[derive(Clone, Default, Serialize)]
 pub struct StandingEntry {
     vehicle_id: i32,
     overall_position: i32,
@@ -383,6 +390,8 @@ pub struct StandingEntry {
     team_name: String,
     vehicle_name: String,
     vehicle_class: String,
+    #[serde(skip)]
+    initial_class_count: usize,
     total_laps: i32,
     laps_behind_leader: i32,
     laps_behind_next: i32,
@@ -504,6 +513,9 @@ pub struct TelemetryFrame {
     virtual_energy_needed_percent: f64,
     virtual_energy_next_stint_percent: f64,
     virtual_energy_stints_remaining: u32,
+    fuel_strategies: FuelStrategies,
+    standings_model: standings_models::StandingsViewModel,
+    relative_model: standings_models::RelativeViewModel,
     player_tire_remaining_percent: f64,
     player_damage_percent: f64,
     player_aero_damage_percent: f64,
@@ -512,6 +524,7 @@ pub struct TelemetryFrame {
     player_body_damage_percent: f64,
     player_damage_severity: [u8; 8],
     player_part_detached: bool,
+    player_rear_wing_detached: bool,
     player_tire_temperature_c: [f64; 4],
     player_brake_temperature_c: [f64; 4],
     player_tire_remaining_by_wheel_percent: [f64; 4],
@@ -532,6 +545,7 @@ pub struct TelemetryFrame {
     lap_progress: f64,
     track_length_meters: f64,
     track_map_vehicles: Vec<TrackMapVehicle>,
+    track_map_model: track_map_model::TrackMapViewModel,
     consumption_profile_samples: u32,
     current_lap_seconds: f64,
     last_lap_seconds: f64,
@@ -678,6 +692,9 @@ impl TelemetryFrame {
             virtual_energy_needed_percent: 0.0,
             virtual_energy_next_stint_percent: 0.0,
             virtual_energy_stints_remaining: 0,
+            fuel_strategies: FuelStrategies::default(),
+            standings_model: standings_models::StandingsViewModel::default(),
+            relative_model: standings_models::RelativeViewModel::default(),
             player_tire_remaining_percent: -1.0,
             player_damage_percent: 0.0,
             player_aero_damage_percent: -1.0,
@@ -686,6 +703,7 @@ impl TelemetryFrame {
             player_body_damage_percent: 0.0,
             player_damage_severity: [0; 8],
             player_part_detached: false,
+            player_rear_wing_detached: false,
             player_tire_temperature_c: [-1.0; 4],
             player_brake_temperature_c: [-1.0; 4],
             player_tire_remaining_by_wheel_percent: [-1.0; 4],
@@ -706,6 +724,7 @@ impl TelemetryFrame {
             lap_progress: 0.0,
             track_length_meters: 0.0,
             track_map_vehicles: Vec::new(),
+            track_map_model: track_map_model::TrackMapViewModel::default(),
             consumption_profile_samples: 0,
             current_lap_seconds: 0.0,
             last_lap_seconds: 0.0,
@@ -724,12 +743,13 @@ pub fn spawn_source(app: AppHandle) {
         .app_data_dir()
         .unwrap_or_else(|_| PathBuf::from("."));
     configure_logging(&app_data_directory);
+    track_map_model::configure_track_map_storage(&app_data_directory);
     thread::spawn(move || {
         const SOURCE_INTERVAL: Duration = Duration::from_millis(20);
         const FUEL_INTERVAL: Duration = Duration::from_millis(20);
         const STANDINGS_INTERVAL: Duration = Duration::from_millis(100);
         const RELATIVE_INTERVAL: Duration = Duration::from_millis(50);
-        const TRACK_MAP_INTERVAL: Duration = Duration::from_millis(50);
+        const TRACK_MAP_INTERVAL: Duration = Duration::from_millis(33);
         const DAMAGE_INTERVAL: Duration = Duration::from_millis(50);
         const PITSTOP_INTERVAL: Duration = Duration::from_millis(50);
         const ACTIVE_REJOIN_INTERVAL: Duration = Duration::from_millis(50);
@@ -739,6 +759,7 @@ pub fn spawn_source(app: AppHandle) {
 
         let mut analysis_logger = AnalysisLogger::new();
         let mut performance = PerformanceMonitor::new();
+        let mut track_map_model = track_map_model::TrackMapModelState::default();
         let now = Instant::now();
         let mut last_dashboard = now.checked_sub(SOURCE_INTERVAL).unwrap_or(now);
         let mut last_fuel = now.checked_sub(FUEL_INTERVAL).unwrap_or(now);
@@ -776,6 +797,10 @@ pub fn spawn_source(app: AppHandle) {
             let source_started = Instant::now();
             let track_map_requested = track_map_due && (track_map_visible || browser_clients);
             let mut frame = source.next_frame(standings_requested, track_map_requested);
+            standings_models::prepare_overlay_models(&mut frame);
+            if track_map_requested {
+                track_map_model.update(&mut frame);
+            }
             let source_elapsed = source_started.elapsed();
             let now = Instant::now();
             let standings_rows = frame.standings.len();
@@ -787,82 +812,91 @@ pub fn spawn_source(app: AppHandle) {
             let visibility_elapsed = visibility_started.elapsed();
 
             let emission_started = Instant::now();
-            if standings_due {
-                if standings_visible && super::emit_overlay_frame(&app, "standings", &frame) {
+            let emit_standings = standings_due && standings_visible;
+            let emit_relative = relative_due && relative_visible;
+            let mut standings_targets = [""; 2];
+            let mut standings_target_count = 0;
+            if emit_standings {
+                standings_targets[standings_target_count] = "standings";
+                standings_target_count += 1;
+            }
+            if emit_relative {
+                standings_targets[standings_target_count] = "relative";
+                standings_target_count += 1;
+            }
+            if super::emit_overlay_frames(
+                &app,
+                &standings_targets[..standings_target_count],
+                &frame,
+            ) {
+                if emit_standings {
                     performance.emitted_standings += 1;
                 }
-                crate::browser_source::publish_frame(&frame);
+                if emit_relative {
+                    performance.emitted_relative += 1;
+                }
             }
-            if relative_due
-                && relative_visible
-                && super::emit_overlay_frame(&app, "relative", &frame)
-            {
-                performance.emitted_relative += 1;
+            if standings_due {
+                crate::browser_source::publish_frame(&frame);
             }
             frame.standings.clear();
             if track_map_due && track_map_visible {
-                let _ = super::emit_overlay_frame(&app, "trackmap", &frame);
+                let _ = super::emit_overlay_frames(&app, &["trackmap"], &frame);
             }
             frame.track_map_vehicles.clear();
 
             let driving_due = interval_due(&mut last_dashboard, now, SOURCE_INTERVAL);
-            if driving_due
-                && super::overlay_is_active(&app, "dashboard")
-                && super::emit_overlay_frame(&app, "dashboard", &frame)
-            {
-                performance.emitted_dashboard += 1;
-            }
-            if driving_due && super::overlay_is_active(&app, "driving") {
-                if super::emit_overlay_frame(&app, "driving", &frame) {
-                    performance.emitted_driving += 1;
-                }
-            }
-            if driving_due && super::overlay_is_active(&app, "tires") {
-                if super::emit_overlay_frame(&app, "tires", &frame) {
-                    performance.emitted_tires += 1;
-                }
-            }
-            if interval_due(&mut last_damage, now, DAMAGE_INTERVAL)
-                && super::overlay_is_active(&app, "damage")
-            {
-                if super::emit_overlay_frame(&app, "damage", &frame) {
-                    performance.emitted_damage += 1;
-                }
-            }
-            if interval_due(&mut last_pitstop, now, PITSTOP_INTERVAL)
-                && super::overlay_is_active(&app, "pitstop")
-            {
-                if super::emit_overlay_frame(&app, "pitstop", &frame) {
-                    performance.emitted_pitstop += 1;
-                }
-            }
-            if interval_due(&mut last_fuel, now, FUEL_INTERVAL)
-                && super::overlay_is_active(&app, "fuel")
-                && super::emit_overlay_frame(&app, "fuel", &frame)
-            {
-                performance.emitted_fuel += 1;
-            }
+            let emit_dashboard = driving_due && super::overlay_is_active(&app, "dashboard");
+            let emit_driving = driving_due && super::overlay_is_active(&app, "driving");
+            let emit_tires = driving_due && super::overlay_is_active(&app, "tires");
+            let emit_damage = interval_due(&mut last_damage, now, DAMAGE_INTERVAL)
+                && super::overlay_is_active(&app, "damage");
+            let emit_pitstop = interval_due(&mut last_pitstop, now, PITSTOP_INTERVAL)
+                && super::overlay_is_active(&app, "pitstop");
+            let emit_fuel = interval_due(&mut last_fuel, now, FUEL_INTERVAL)
+                && super::overlay_is_active(&app, "fuel");
             let flag_interval = if frame.flag_warning.active {
                 SOURCE_INTERVAL
             } else {
                 IDLE_WARNING_INTERVAL
             };
-            if interval_due(&mut last_flags, now, flag_interval)
-                && super::overlay_is_active(&app, "flags")
-                && super::emit_overlay_frame(&app, "flags", &frame)
-            {
-                performance.emitted_flags += 1;
-            }
+            let emit_flags = interval_due(&mut last_flags, now, flag_interval)
+                && super::overlay_is_active(&app, "flags");
             let rejoin_interval = if frame.rejoin_warning.active {
                 ACTIVE_REJOIN_INTERVAL
             } else {
                 IDLE_WARNING_INTERVAL
             };
-            if interval_due(&mut last_rejoin, now, rejoin_interval)
-                && super::overlay_is_active(&app, "rejoin")
-                && super::emit_overlay_frame(&app, "rejoin", &frame)
-            {
-                performance.emitted_rejoin += 1;
+            let emit_rejoin = interval_due(&mut last_rejoin, now, rejoin_interval)
+                && super::overlay_is_active(&app, "rejoin");
+
+            let base_emissions = [
+                ("dashboard", emit_dashboard),
+                ("driving", emit_driving),
+                ("tires", emit_tires),
+                ("damage", emit_damage),
+                ("pitstop", emit_pitstop),
+                ("fuel", emit_fuel),
+                ("flags", emit_flags),
+                ("rejoin", emit_rejoin),
+            ];
+            let mut base_targets = [""; 8];
+            let mut base_target_count = 0;
+            for (label, should_emit) in base_emissions {
+                if should_emit {
+                    base_targets[base_target_count] = label;
+                    base_target_count += 1;
+                }
+            }
+            if super::emit_overlay_frames(&app, &base_targets[..base_target_count], &frame) {
+                performance.emitted_dashboard += u64::from(emit_dashboard);
+                performance.emitted_driving += u64::from(emit_driving);
+                performance.emitted_tires += u64::from(emit_tires);
+                performance.emitted_damage += u64::from(emit_damage);
+                performance.emitted_pitstop += u64::from(emit_pitstop);
+                performance.emitted_fuel += u64::from(emit_fuel);
+                performance.emitted_flags += u64::from(emit_flags);
+                performance.emitted_rejoin += u64::from(emit_rejoin);
             }
             if interval_due(&mut last_control, now, CONTROL_INTERVAL) {
                 let _ = app.emit_to("control", "telemetry://frame", &frame);

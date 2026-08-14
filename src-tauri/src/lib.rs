@@ -6,11 +6,12 @@ mod telemetry;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::fs;
+use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 use tauri::{
-    window::Color, AppHandle, Emitter, Manager, PhysicalPosition, PhysicalSize, Position, Size,
-    State, WebviewUrl, WebviewWindow, WebviewWindowBuilder,
+    window::Color, AppHandle, Emitter, EventTarget, Manager, PhysicalPosition, PhysicalSize,
+    Position, Size, State, WebviewUrl, WebviewWindow, WebviewWindowBuilder,
 };
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 use tauri_plugin_window_state::StateFlags;
@@ -177,6 +178,7 @@ fn create_overlay_hosts(app: &AppHandle) -> Result<(), String> {
                 .always_on_top(true)
                 .skip_taskbar(true)
                 .resizable(false)
+                .devtools(false)
                 .visible(false)
                 .build()
                 .map_err(|error| {
@@ -220,15 +222,33 @@ pub(crate) fn overlay_is_active(app: &AppHandle, label: &str) -> bool {
             .contains(label)
 }
 
-pub(crate) fn emit_overlay_frame<T: Serialize>(app: &AppHandle, label: &str, payload: &T) -> bool {
-    let event = format!("telemetry://{label}");
-    let mut emitted = false;
-    for_each_overlay_host(app, |window| {
-        if window.is_visible().unwrap_or(false) && window.emit(&event, payload).is_ok() {
-            emitted = true;
-        }
-    });
-    emitted
+#[derive(Serialize)]
+struct OverlayFrameBatch<'a, T> {
+    targets: &'a [&'a str],
+    frame: &'a T,
+}
+
+pub(crate) fn emit_overlay_frames<T: Serialize>(
+    app: &AppHandle,
+    targets: &[&str],
+    frame: &T,
+) -> bool {
+    if targets.is_empty() {
+        return false;
+    }
+    let batch = OverlayFrameBatch { targets, frame };
+    app.emit_filter("telemetry://batch", &batch, is_overlay_host_target)
+        .is_ok()
+}
+
+fn is_overlay_host_target(target: &EventTarget) -> bool {
+    match target {
+        EventTarget::Window { label }
+        | EventTarget::Webview { label }
+        | EventTarget::WebviewWindow { label }
+        | EventTarget::AnyLabel { label } => label.starts_with(OVERLAY_HOST_PREFIX),
+        _ => false,
+    }
 }
 
 pub(crate) fn update_overlay_auto_visibility(app: &AppHandle, frame: &telemetry::TelemetryFrame) {
@@ -332,9 +352,9 @@ fn get_overlay_displays(app: AppHandle) -> Result<Vec<OverlayDisplay>, String> {
 fn default_overlay_geometry(label: &str) -> (f64, f64, f64, f64) {
     match label {
         "dashboard" => (20.0, 20.0, 780.0, 340.0),
-        "driving" => (20.0, 380.0, 440.0, 120.0),
-        "tires" => (480.0, 380.0, 236.0, 188.0),
-        "damage" => (690.0, 380.0, 94.0, 94.0),
+        "driving" => (20.0, 380.0, 540.0, 120.0),
+        "tires" => (588.0, 380.0, 174.0, 130.0),
+        "damage" => (798.0, 380.0, 94.0, 94.0),
         "standings" => (20.0, 70.0, 980.0, 500.0),
         "relative" => (20.0, 590.0, 980.0, 300.0),
         "fuel" => (1020.0, 70.0, 560.0, 230.0),
@@ -445,10 +465,25 @@ fn record_frontend_performance(sample: serde_json::Value) {
 }
 
 #[tauri::command]
-fn get_track_map_geometry(
+fn get_track_map_geometry(cache_key: String) -> Result<telemetry::TrackMapGeometry, String> {
+    telemetry::track_map_geometry(&cache_key)
+}
+
+#[tauri::command]
+fn migrate_legacy_track_map_learning(
     cache_key: String,
-) -> Result<telemetry::OfficialTrackMapGeometry, String> {
-    telemetry::official_track_map_geometry(&cache_key)
+    track_name: String,
+    track_length: f64,
+    points: Vec<telemetry::LearnedTrackPoint>,
+    pit_traversal_samples: Vec<f64>,
+) -> bool {
+    telemetry::migrate_legacy_track_map_learning(
+        &cache_key,
+        track_name,
+        track_length,
+        points,
+        pit_traversal_samples,
+    )
 }
 
 #[tauri::command]
@@ -464,6 +499,11 @@ fn set_browser_source_enabled(enabled: bool) -> browser_source::BrowserSourceSta
 #[tauri::command]
 fn set_browser_source_preferences(preferences: serde_json::Value) {
     browser_source::set_preferences(preferences);
+}
+
+#[tauri::command]
+fn set_overlay_view_settings(settings: telemetry::OverlayViewSettings) {
+    telemetry::set_overlay_view_settings(settings);
 }
 
 #[tauri::command]
@@ -520,6 +560,54 @@ fn save_shortcut_settings(app: &AppHandle, settings: &ShortcutSettings) -> Resul
         .map_err(|error| format!("No se pudo serializar la configuracion: {error}"))?;
     fs::write(&path, contents)
         .map_err(|error| format!("No se pudo guardar {}: {error}", path.display()))
+}
+
+fn validate_overlay_configuration(contents: &str) -> Result<(), String> {
+    let parsed: serde_json::Value = serde_json::from_str(&contents)
+        .map_err(|error| format!("La configuración no es JSON válido: {error}"))?;
+    if parsed.get("format").and_then(serde_json::Value::as_str) != Some("lmu-overlay-configuration")
+        || parsed
+            .get("schemaVersion")
+            .and_then(serde_json::Value::as_u64)
+            != Some(1)
+    {
+        return Err("Formato de configuración no reconocido".into());
+    }
+    Ok(())
+}
+
+#[tauri::command]
+fn export_overlay_configuration(path: PathBuf, contents: String) -> Result<String, String> {
+    validate_overlay_configuration(&contents)?;
+    if !path
+        .extension()
+        .and_then(|extension| extension.to_str())
+        .is_some_and(|extension| extension.eq_ignore_ascii_case("json"))
+    {
+        return Err("El archivo de configuración debe tener extensión .json".into());
+    }
+    if let Some(directory) = path.parent() {
+        fs::create_dir_all(directory)
+            .map_err(|error| format!("No se pudo preparar la carpeta elegida: {error}"))?;
+    }
+    fs::write(&path, contents)
+        .map_err(|error| format!("No se pudo guardar {}: {error}", path.display()))?;
+    Ok(path.display().to_string())
+}
+
+#[tauri::command]
+fn import_overlay_configuration(path: PathBuf) -> Result<String, String> {
+    if !path
+        .extension()
+        .and_then(|extension| extension.to_str())
+        .is_some_and(|extension| extension.eq_ignore_ascii_case("json"))
+    {
+        return Err("El archivo de configuración debe tener extensión .json".into());
+    }
+    let contents = fs::read_to_string(&path)
+        .map_err(|error| format!("No se pudo leer {}: {error}", path.display()))?;
+    validate_overlay_configuration(&contents)?;
+    Ok(contents)
 }
 
 fn toggle_interaction_mode(app: &AppHandle) {
@@ -735,14 +823,19 @@ pub fn run() {
             set_telemetry_logging,
             record_frontend_performance,
             get_track_map_geometry,
+            migrate_legacy_track_map_learning,
             get_browser_source_status,
             set_browser_source_enabled,
             set_browser_source_preferences,
+            set_overlay_view_settings,
             get_lmu_dependency_status,
             get_shortcut_settings,
-            set_shortcut
+            set_shortcut,
+            export_overlay_configuration,
+            import_overlay_configuration
         ])
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+        .plugin(tauri_plugin_dialog::init())
         .plugin(
             tauri_plugin_window_state::Builder::default()
                 .with_state_flags(StateFlags::POSITION | StateFlags::SIZE)

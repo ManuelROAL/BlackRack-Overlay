@@ -35,6 +35,7 @@ impl Default for DriverRanks {
 
 struct RankFetchResult {
     requested_names: Vec<String>,
+    fixed_session: bool,
     result: Result<HashMap<String, DriverRanks>, String>,
 }
 
@@ -145,9 +146,6 @@ impl DriverRankResolver {
         }
 
         self.last_attempt = Some(now);
-        if !practice_session {
-            self.fixed_session_attempted = true;
-        }
         let (sender, receiver) = mpsc::channel();
         self.receiver = Some(receiver);
         let requested_names = names.clone();
@@ -155,6 +153,7 @@ impl DriverRankResolver {
             let result = fetch_driver_ranks(&requested_names);
             let _ = sender.send(RankFetchResult {
                 requested_names,
+                fixed_session: !practice_session,
                 result,
             });
         });
@@ -179,9 +178,21 @@ impl DriverRankResolver {
 
         match response.result {
             Ok(discovered) => {
-                for name in &response.requested_names {
-                    self.queried_names.insert(normalized_name(name));
-                    self.resolved_roster_names.insert(name.trim().to_owned());
+                if !discovered.is_empty() {
+                    for name in &response.requested_names {
+                        if discovered.contains_key(&normalized_name(name)) {
+                            self.queried_names.insert(normalized_name(name));
+                            self.resolved_roster_names.insert(name.trim().to_owned());
+                        }
+                    }
+                    if response.fixed_session
+                        && response
+                            .requested_names
+                            .iter()
+                            .all(|name| discovered.contains_key(&normalized_name(name)))
+                    {
+                        self.fixed_session_attempted = true;
+                    }
                 }
                 let received = discovered.len();
                 self.ranks.extend(discovered);
@@ -467,7 +478,9 @@ fn rank_code(value: &Value) -> Option<String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{collect_profiles, DriverRankResolver, DriverRanks};
+    use super::{collect_profiles, DriverRankResolver, DriverRanks, RankFetchResult};
+    use std::collections::HashMap;
+    use std::sync::mpsc;
 
     #[test]
     fn keeps_profile_cache_between_sessions() {
@@ -489,6 +502,73 @@ mod tests {
         assert!(resolver.queried_names.is_empty());
         assert!(resolver.resolved_roster_names.is_empty());
         assert_eq!(resolver.lookup("Cached Driver").unwrap().driver, "S1");
+    }
+
+    #[test]
+    fn fixed_session_retries_after_failed_or_empty_profile_request() {
+        let mut resolver = DriverRankResolver::empty();
+
+        for result in [
+            Err("temporary failure".to_owned()),
+            Ok(HashMap::<String, DriverRanks>::new()),
+        ] {
+            let (sender, receiver) = mpsc::channel();
+            sender
+                .send(RankFetchResult {
+                    requested_names: vec!["Test Driver".to_owned()],
+                    fixed_session: true,
+                    result,
+                })
+                .unwrap();
+            resolver.receiver = Some(receiver);
+            resolver.receive_result();
+
+            assert!(!resolver.fixed_session_attempted);
+            assert!(resolver.queried_names.is_empty());
+        }
+    }
+
+    #[test]
+    fn fixed_session_stops_after_profiles_are_received() {
+        let mut resolver = DriverRankResolver::empty();
+        let (sender, receiver) = mpsc::channel();
+        sender
+            .send(RankFetchResult {
+                requested_names: vec!["Test Driver".to_owned()],
+                fixed_session: true,
+                result: Ok(HashMap::from([(
+                    "test driver".to_owned(),
+                    DriverRanks::default(),
+                )])),
+            })
+            .unwrap();
+        resolver.receiver = Some(receiver);
+        resolver.receive_result();
+
+        assert!(resolver.fixed_session_attempted);
+        assert!(resolver.queried_names.contains("test driver"));
+    }
+
+    #[test]
+    fn fixed_session_retries_names_missing_from_a_partial_response() {
+        let mut resolver = DriverRankResolver::empty();
+        let (sender, receiver) = mpsc::channel();
+        sender
+            .send(RankFetchResult {
+                requested_names: vec!["Resolved Driver".to_owned(), "Missing Driver".to_owned()],
+                fixed_session: true,
+                result: Ok(HashMap::from([(
+                    "resolved driver".to_owned(),
+                    DriverRanks::default(),
+                )])),
+            })
+            .unwrap();
+        resolver.receiver = Some(receiver);
+        resolver.receive_result();
+
+        assert!(!resolver.fixed_session_attempted);
+        assert!(resolver.queried_names.contains("resolved driver"));
+        assert!(!resolver.queried_names.contains("missing driver"));
     }
 
     #[test]

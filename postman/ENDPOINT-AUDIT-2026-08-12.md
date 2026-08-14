@@ -64,7 +64,7 @@ cuando existe ese contexto. No se sondearon mutaciones con cuerpos inventados.
 | `/rest/watch/sessionInfo` | Sesión, fase, tiempos, vueltas máximas, lluvia, humedad de pista, temperaturas, viento, banderas de sector y metadatos del servidor | Buen suplemento para datos de sesión o meteorología que falten, pero shared memory sigue siendo mejor para fase y banderas en tiempo real. |
 | `/rest/strategy/pitstop-estimate` | `fuel`, `ve`, neumáticos, frenos, conductos, daños, cambio de piloto, penalizaciones y `total` | Es la mejor fuente para la estimación oficial. `total` debe seguir siendo autoritativo. Solo ~150 B y ~2,2 ms de mediana. |
 | `/rest/strategy/usage` | Historial por piloto y vuelta: `lap`, `stint`, `pit`, VE; combustible y neumáticos aparecieron solo para el jugador | Es historial por vuelta, no estado actual. Sirve para validar consumo o estudiar rivales, no para reemplazar el cálculo local ni como fallback de `NRG`. |
-| `/rest/strategy/overall` | No disponible en esta práctica (`400`) | Dependiente del tipo/estado de sesión; no debe ser una dependencia del overlay hasta capturarlo en carrera. |
+| `/rest/strategy/overall` | No disponible en práctica (`400`); en una carrera posterior devolvió 38 entradas `[driver, stints[]]` con vueltas, tiempos, VE, cambio de piloto, penalización y selección/cambio de neumáticos | Historial/resumen de estrategia dependiente de carrera. No es una fuente de alta frecuencia; véase la captura del 13 de agosto. |
 | `/rest/garage/UIScreen/RepairAndRefuel` | Clima, combustible/batería, menú y recomendaciones de pit, tiempos internos de servicio, posición, equipo, forecast y `wearables` de carrocería, frenos, suspensión y neumáticos | Mantener para daño aerodinámico y suspensión. Es la única respuesta probada que separa `body.aero`; ~10,9 KB y ~5,1 ms de mediana son aceptables a 1 Hz. |
 | `/rest/garage/getVehicleCondition` | Condición de frenos y neumáticos, combustible/capacidad, suspensión y daño agregado | Mucho más pequeño (~259 B), y la suspensión coincidió con `RepairAndRefuel`, pero no expone daño aero y la condición de frenos tiene otra semántica. No sustituye por sí solo al endpoint actual. |
 | `/rest/garage/UIScreen/TireManagement` | Inventario, compuestos, wheel info, desgaste, forecast y recomendaciones | Rico para una pantalla de garaje, demasiado pesado y orientado al jugador para el overlay vivo. Shared memory es mejor para temperaturas, presión, desgaste y estado instantáneo. |
@@ -103,8 +103,8 @@ actualización frecuente.
 | `GET /api/v1/statistics/overall` | El cliente envía `{ playerIds }` incluso siendo GET; sin cuerpo respondió `404` | No aporta ventaja frente a `/players` para DR/SR y exige una petición no convencional. |
 | `GET /api/v1/daily/list/{beginner|intermediate|advanced}` | Eventos, configuración, registros, servidores, splits e historial; 115–325 KB por categoría y 201–286 ms | Demasiado pesado para resolver el evento actual periódicamente. Solo usar en una pantalla de calendario. |
 | `GET /api/v1/daily/schedule` | Tiers y frecuencia; ~11,5 KB | Adecuado para calendario, no para el overlay. |
-| `GET /api/v1/event/my-split/{type}/{id}` | Split del jugador para un evento concreto; devuelve error si el jugador no pertenece al evento | Ruta observada, pero no es la fuente elegida por LMUOverlay. Se conserva para comparación manual. |
-| `POST /api/v1/event/overview` | Configuración completa, registros, amigos, rating y campos `split`/`totalSplits`; ~7,3 KB y 162 ms | Fuente primaria vigente para el split. Usa el cuerpo Dox-compatible `game`/`eventType`/`eventId`, prefiere el objeto `split` del usuario autenticado y mantiene el estado local de LMU como fallback. En un evento no registrado es normal obtener `split=null`. |
+| `GET /api/v1/event/my-split/{type}/{id}` | En un evento registrado devolvió `splitNo`, `numOfSplits`, 38 pilotos, servidor y SOF | Fallback read-only después de `event/overview` y antes del almacenamiento local. No registrar la respuesta completa porque incluye campos sensibles del servidor. |
+| `POST /api/v1/event/overview` | Configuración completa, registros, amigos, rating y campos `split`/`totalSplits`; ~7,3 KB y 162 ms | Fuente primaria vigente para el split. Usa `game`/`eventType`/`eventId` y prefiere el objeto `split` autenticado. Si falta, usa `event/my-split` y después el estado local de LMU. En un evento no registrado es normal obtener `split=null`. |
 | `GET /api/v1/championships/completed` | Resumen paginado; ~162 KB | Solo para una futura UI de campeonatos. |
 | `GET /api/v1/results` | Respuesta de ~1,31 MB y ~1 s en la consulta genérica | Evitar en runtime; requiere filtros estrictos y uso interactivo. |
 | `GET /api/v1/hosted` | Servidores, región, IP/puerto, sesión, pista y configuración; ~184 KB | No tiene valor para los overlays actuales. No consultar `hosted/auth-token` para explorar: devuelve material de autenticación de servidor. |
@@ -125,7 +125,7 @@ dependientes de despliegue, no como nuevas dependencias.
 | Duración de parada | `/rest/strategy/pitstop-estimate` a 1 Hz | Endpoint específico, pequeño y con `total` oficial. |
 | Aero y suspensión detallada del jugador | `/rest/garage/UIScreen/RepairAndRefuel` a 1 Hz | Única fuente probada con daño aero separado. |
 | DR/SR, nacionalidad y badge del roster | RaceOS `POST /api/v1/players`, una vez por roster y con caché | Batch específico; evita una petición por piloto. |
-| Split online | RaceOS `POST /api/v1/event/overview`, una vez resuelto | Devuelve el objeto `split` autenticado, `totalSplits` y parámetros del evento con el cuerpo compatible con Dox. El estado local de LMU queda como fallback. |
+| Split online | RaceOS `POST /api/v1/event/overview`, una vez resuelto | Devuelve el objeto `split` autenticado, `totalSplits` y parámetros del evento. `event/my-split` es el primer fallback y el estado local de LMU el último. |
 | Geometría de circuito | `/rest/watch/trackmap` una vez por circuito | Tipo 0 alimenta el trazado oficial y tipo 1 valida recorridos completos de pitlane; el backend filtra, valida y cachea la respuesta. |
 | Historial de consumo rival | Investigar `/rest/strategy/usage` solo por vuelta | Tiene datos únicos, pero no representa el estado actual y no debe alimentar `NRG`. |
 
@@ -136,12 +136,9 @@ forma parte del loop de 50 Hz.
 
 ## Validaciones pendientes por contexto
 
-1. Repetir `event/overview` durante un evento online en el que el jugador esté
-   registrado y guardar la forma interna de `split`, `totalSplits` y parámetros
-   DR. `my-split` puede compararse manualmente, pero no es la fuente vigente.
-2. Capturar `/rest/strategy/overall` durante carrera y durante una parada para
-   documentar su esquema y su cadencia real.
-3. Confirmar en más circuitos que los tipos 0 y 1 mantienen la semántica observada;
+1. Capturar `/rest/strategy/overall` durante y después de una parada para
+   documentar múltiples stints y su cadencia real.
+2. Confirmar en más circuitos que los tipos 0 y 1 mantienen la semántica observada;
    la implementación debe seguir validando y volver al mapa aprendido si no se cumple.
-4. Comparar `strategy/usage` con el aprendizaje local al completar varias vueltas,
+3. Comparar `strategy/usage` con el aprendizaje local al completar varias vueltas,
    incluyendo stint, pit-in, pit-out y cambio de piloto.

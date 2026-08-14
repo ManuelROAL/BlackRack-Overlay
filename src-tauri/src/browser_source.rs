@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{mpsc, Mutex, OnceLock, RwLock};
 use std::thread::{self, JoinHandle};
@@ -49,7 +49,7 @@ struct ServerRuntime {
 
 struct ServiceState {
     settings_path: PathBuf,
-    web_root: PathBuf,
+    app: AppHandle,
     runtime: Option<ServerRuntime>,
     error: Option<String>,
 }
@@ -79,27 +79,12 @@ pub(crate) fn configure(app: &AppHandle) {
         .map(|settings| settings.enabled)
         .unwrap_or(false);
 
-    let bundled_root = app
-        .path()
-        .resource_dir()
-        .map(|path| path.join("web"))
-        .unwrap_or_default();
-    let development_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .unwrap_or_else(|| Path::new("."))
-        .join("dist");
-    let web_root = if bundled_root.join("standings.html").is_file() {
-        bundled_root
-    } else {
-        development_root
-    };
-
     let _ = SERVICE.set(BrowserSourceService {
         enabled: AtomicBool::new(false),
         clients: AtomicUsize::new(0),
         state: Mutex::new(ServiceState {
             settings_path,
-            web_root,
+            app: app.clone(),
             runtime: None,
             error: None,
         }),
@@ -150,7 +135,7 @@ pub(crate) fn set_enabled(enabled: bool) -> BrowserSourceStatus {
         .unwrap_or_else(|poisoned| poisoned.into_inner());
 
     if enabled && state.runtime.is_none() {
-        match start_server(state.web_root.clone()) {
+        match start_server(state.app.clone()) {
             Ok(runtime) => {
                 state.runtime = Some(runtime);
                 state.error = None;
@@ -226,12 +211,9 @@ pub(crate) fn has_clients() -> bool {
     })
 }
 
-fn start_server(web_root: PathBuf) -> Result<ServerRuntime, String> {
-    if !web_root.join("standings.html").is_file() {
-        return Err(format!(
-            "No se encontraron los recursos web en {}",
-            web_root.display()
-        ));
+fn start_server(app: AppHandle) -> Result<ServerRuntime, String> {
+    if app.asset_resolver().get("standings.html".into()).is_none() {
+        return Err("No se encontraron los recursos web incrustados".into());
     }
     let listener = TcpListener::bind(ADDRESS)
         .map_err(|error| format!("No se pudo abrir {ADDRESS}: {error}"))?;
@@ -242,7 +224,7 @@ fn start_server(web_root: PathBuf) -> Result<ServerRuntime, String> {
     let (shutdown_tx, shutdown_rx) = mpsc::channel::<()>();
     let server_thread = thread::Builder::new()
         .name("lmu-browser-source".into())
-        .spawn(move || server_loop(listener, web_root, frame_rx, shutdown_rx))
+        .spawn(move || server_loop(listener, app, frame_rx, shutdown_rx))
         .map_err(|error| format!("No se pudo iniciar el servidor local: {error}"))?;
     Ok(ServerRuntime {
         frames: frame_tx,
@@ -253,7 +235,7 @@ fn start_server(web_root: PathBuf) -> Result<ServerRuntime, String> {
 
 fn server_loop(
     listener: TcpListener,
-    web_root: PathBuf,
+    app: AppHandle,
     frames: mpsc::Receiver<String>,
     shutdown: mpsc::Receiver<()>,
 ) {
@@ -272,7 +254,7 @@ fn server_loop(
                 } else if path == "/api/trackmap" {
                     serve_track_map(&mut stream, &target);
                 } else {
-                    serve_request(&mut stream, path, &web_root);
+                    serve_request(&mut stream, path, &app);
                 }
             }
         }
@@ -308,7 +290,7 @@ fn serve_track_map(stream: &mut TcpStream, target: &str) {
         .map(|(_, query)| query)
         .and_then(|query| query.split('&').find_map(|part| part.strip_prefix("key=")))
         .unwrap_or("");
-    match crate::telemetry::official_track_map_geometry(cache_key) {
+    match crate::telemetry::track_map_geometry(cache_key) {
         Ok(geometry) => match serde_json::to_vec(&geometry) {
             Ok(body) => write_response(stream, 200, "application/json", &body),
             Err(error) => write_error(stream, 500, &error.to_string()),
@@ -323,7 +305,7 @@ fn write_sse_headers(stream: &mut TcpStream) -> std::io::Result<()> {
     )
 }
 
-fn serve_request(stream: &mut TcpStream, request_path: &str, web_root: &Path) {
+fn serve_request(stream: &mut TcpStream, request_path: &str, app: &AppHandle) {
     if request_path == "/" {
         let body = browser_source_index();
         write_response(stream, 200, "text/html; charset=utf-8", body.as_bytes());
@@ -341,7 +323,7 @@ fn serve_request(stream: &mut TcpStream, request_path: &str, web_root: &Path) {
             .unwrap_or_else(|| serde_json::json!({}));
         let json = serde_json::to_string(&settings).unwrap_or_else(|_| "{}".into());
         let script = format!(
-            "(()=>{{const p={json};if(p.standings)localStorage.setItem('lmu-overlay.standings.v1',JSON.stringify(p.standings));if(p.relative)localStorage.setItem('lmu-overlay.relative.v1',JSON.stringify(p.relative));if(p.transparency)localStorage.setItem('lmu-overlay.background-transparency.v1',JSON.stringify(p.transparency));if(p.fuel)localStorage.setItem('lmu-overlay.fuel-strategy.v1',JSON.stringify(p.fuel));document.documentElement.dataset.browserSource='true';}})();"
+            "(()=>{{const p={json};if(p.standings)localStorage.setItem('lmu-overlay.standings.v1',JSON.stringify(p.standings));if(p.relative)localStorage.setItem('lmu-overlay.relative.v1',JSON.stringify(p.relative));if(p.driving)localStorage.setItem('lmu-overlay.driving.v1',JSON.stringify(p.driving));if(p.transparency)localStorage.setItem('lmu-overlay.background-transparency.v1',JSON.stringify(p.transparency));if(p.fuel)localStorage.setItem('lmu-overlay.fuel-strategy.v1',JSON.stringify(p.fuel));document.documentElement.dataset.browserSource='true';}})();"
         );
         write_response(
             stream,
@@ -358,12 +340,12 @@ fn serve_request(stream: &mut TcpStream, request_path: &str, web_root: &Path) {
         write_response(stream, 404, "text/plain; charset=utf-8", b"Not found");
         return;
     }
-    let path = web_root.join(relative);
-    let Ok(mut contents) = fs::read(&path) else {
+    let Some(asset) = app.asset_resolver().get(relative.to_string()) else {
         write_response(stream, 404, "text/plain; charset=utf-8", b"Not found");
         return;
     };
-    let mime = mime_type(&path);
+    let mut contents = asset.bytes;
+    let mime = asset.mime_type;
     if mime.starts_with("text/html") {
         contents = String::from_utf8_lossy(&contents)
             .replace(
@@ -372,7 +354,7 @@ fn serve_request(stream: &mut TcpStream, request_path: &str, web_root: &Path) {
             )
             .into_bytes();
     }
-    write_response(stream, 200, mime, &contents);
+    write_response(stream, 200, &mime, &contents);
 }
 
 fn write_response(stream: &mut TcpStream, status: u16, mime: &str, body: &[u8]) {
@@ -397,21 +379,6 @@ fn write_error(stream: &mut TcpStream, status: u16, message: &str) {
         "text/plain; charset=utf-8",
         message.as_bytes(),
     );
-}
-
-fn mime_type(path: &Path) -> &'static str {
-    match path.extension().and_then(|extension| extension.to_str()) {
-        Some("html") => "text/html; charset=utf-8",
-        Some("js") => "application/javascript; charset=utf-8",
-        Some("css") => "text/css; charset=utf-8",
-        Some("svg") => "image/svg+xml",
-        Some("png") => "image/png",
-        Some("jpg" | "jpeg") => "image/jpeg",
-        Some("ttf") => "font/ttf",
-        Some("woff") => "font/woff",
-        Some("woff2") => "font/woff2",
-        _ => "application/octet-stream",
-    }
 }
 
 fn browser_source_index() -> String {

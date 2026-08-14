@@ -10,12 +10,17 @@ declare global {
 
 interface CompositeMessage {
   source: "lmu-overlay-composite";
-  kind: "event" | "invoke";
+  kind: "event" | "invoke" | "fit";
   event?: string;
   payload?: unknown;
   command?: string;
   args?: Record<string, unknown>;
   requestId?: string;
+}
+
+interface OverlayDesignSize {
+  width: number;
+  height: number;
 }
 
 export const isCompositeOverlay = (): boolean =>
@@ -24,6 +29,15 @@ export const isCompositeOverlay = (): boolean =>
 export const isTauriRuntime = (): boolean => Boolean(window.__TAURI_INTERNALS__) || isCompositeOverlay();
 
 if (isCompositeOverlay()) document.documentElement.classList.add("composite-embed");
+
+export const reportCompositeOverlaySize = (size: OverlayDesignSize): void => {
+  if (!isCompositeOverlay()) return;
+  window.parent.postMessage({
+    source: "lmu-overlay-composite",
+    kind: "fit",
+    payload: size
+  } satisfies CompositeMessage, window.location.origin);
+};
 
 export const listenRuntimeEvent = <T>(
   event: string,

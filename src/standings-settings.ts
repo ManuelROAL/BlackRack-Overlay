@@ -57,7 +57,7 @@ export const STANDINGS_SETTINGS_KEY = "lmu-overlay.standings.v1";
 export const STANDINGS_HEADER_OPTIONS: StandingsHeaderOptionDefinition[] = [
   { id: "sessionType", label: "Tipo de sesión" },
   { id: "eventSplit", label: "Split del evento" },
-  { id: "remainingTime", label: "Tiempo restante" },
+  { id: "remainingTime", label: "Tiempo restante / total" },
   { id: "laps", label: "Vuelta actual / restantes" },
   { id: "airTemperature", label: "Temperatura ambiente" },
   { id: "trackTemperature", label: "Temperatura de pista" },
@@ -81,7 +81,7 @@ export const STANDINGS_COLUMNS: StandingsColumnDefinition[] = [
   { id: "energy", label: "Energía", header: "NRG", width: 90, configurable: true, identity: false },
   { id: "damage", label: "Daño", header: "DMG", width: 42, configurable: true, identity: false },
   { id: "trackLimits", label: "Cortes de circuito", header: "TL", width: 30, configurable: true, identity: false },
-  { id: "pitStops", label: "Paradas / tiempo", header: "PIT", width: 54, configurable: true, identity: false },
+  { id: "pitStops", label: "Paradas / tiempo", header: "PIT", width: 42, configurable: true, identity: false },
   { id: "tire", label: "Neumático", header: "NEU", width: 30, configurable: true, identity: false },
   { id: "signals", label: "Banderas / estados", header: "", width: 115, configurable: true, identity: false }
 ];
@@ -91,7 +91,6 @@ export const defaultStandingsSettings = (): StandingsSettings => {
     StandingsColumnId,
     boolean
   >;
-  columns.trackLimits = false;
   return {
     columns,
     columnOrder: STANDINGS_COLUMNS.map(({ id }) => id),

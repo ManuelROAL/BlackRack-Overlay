@@ -3,6 +3,20 @@ import { defineConfig } from "vite";
 export default defineConfig({
   clearScreen: false,
   build: {
+    minify: "terser",
+    sourcemap: false,
+    terserOptions: {
+      compress: {
+        passes: 2,
+        drop_debugger: true,
+        pure_funcs: ["console.log", "console.debug", "console.info"]
+      },
+      mangle: true,
+      toplevel: true,
+      format: {
+        comments: false
+      }
+    },
     // Evita convertir cientos de banderas e insignias pequeñas a Base64 dentro
     // del JavaScript de standings. Como recursos separados solo se decodifican
     // las imágenes que realmente aparecen en pantalla.
