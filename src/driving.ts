@@ -35,7 +35,6 @@ const shell = document.querySelector<HTMLElement>(".driving-shell");
 const driveDial = document.querySelector<HTMLElement>(".drive-dial");
 const trailingPanel = document.querySelector<HTMLElement>(".trailing-panel");
 const pedalPanel = document.querySelector<HTMLElement>(".pedal-panel");
-const drivingReadout = document.querySelector<HTMLElement>(".driving-readout");
 const elements = new Map<string, HTMLElement>();
 for (const element of document.querySelectorAll<HTMLElement>("[id]")) {
   elements.set(element.id, element);
@@ -46,16 +45,13 @@ let graphRenderPhase = 0;
 const visiblePedalCount = (values: Record<DrivingPedalId, boolean>): number =>
   DRIVING_PEDALS.filter(({ id }) => values[id]).length;
 
-const readoutWidth = (): number => {
-  return settings.showForceFeedback ? 72 : 0;
-};
-
 const drivingWidth = (): number => {
   const graphWidth = visiblePedalCount(settings.graphPedals) > 0 ? 278 : 0;
   const inputCount = visiblePedalCount(settings.inputPedals);
   const inputWidth = inputCount > 0 ? 13 + inputCount * 25 : 0;
-  const dialWidth = settings.showSteering || settings.showGear || settings.showSpeed ? 88 : 0;
-  const widths = [dialWidth, inputWidth, readoutWidth(), graphWidth].filter((width) => width > 0);
+  const dialWidth = settings.showSteering || settings.showGear
+    || settings.showSpeed || settings.showForceFeedback ? 88 : 0;
+  const widths = [dialWidth, inputWidth, graphWidth].filter((width) => width > 0);
   return Math.max(120, 14 + widths.reduce((total, width) => total + width, 0));
 };
 
@@ -163,9 +159,6 @@ const applySettings = (next: DrivingSettings): void => {
   const inputCount = visiblePedalCount(settings.inputPedals);
   if (trailingPanel) trailingPanel.hidden = graphCount === 0;
   for (const { id } of DRIVING_PEDALS) {
-    for (const element of document.querySelectorAll<HTMLElement>(`[data-graph-pedal="${id}"]`)) {
-      element.hidden = !settings.graphPedals[id];
-    }
     const input = document.querySelector<HTMLElement>(`[data-input-pedal="${id}"]`);
     if (input) input.hidden = !settings.inputPedals[id];
   }
@@ -186,11 +179,8 @@ const applySettings = (next: DrivingSettings): void => {
     element.hidden = !settings.showSteering;
   }
   if (driveDial) {
-    driveDial.hidden = !settings.showGear && !settings.showSteering && !settings.showSpeed;
-  }
-  if (drivingReadout) {
-    drivingReadout.hidden = !settings.showForceFeedback;
-    drivingReadout.style.width = `${readoutWidth()}px`;
+    driveDial.hidden = !settings.showGear && !settings.showSteering
+      && !settings.showSpeed && !settings.showForceFeedback;
   }
   const width = drivingWidth();
   if (shell) {

@@ -24,9 +24,12 @@
 - Keep one continuous compact dark surface with thin internal separators and a
   restrained lime edge accent, not independent cards.
 - Left-to-right composition is: a circular dial combining the rotating
-  steering-centre arc, central gear and speed below it; clutch/brake/throttle
-  meters; a separate FFB bar; and the wide five-second trace.
-- Show the physical steering angle in degrees.
+  steering-centre arc, central gear, speed and the FFB bar below it;
+  clutch/brake/throttle meters; and the wide five-second trace.
+- Represent the physical steering angle with the rotating white centre arc; do
+  not add a separate numeric angle readout.
+- Keep the trace free of a title and color legend. The established pedal-line and
+  TC/ABS marker colors identify its contents while preserving graph space.
 - Graph pedals and current-input pedals are independently selectable. Steering,
   FFB, speed and gear are independently selectable too.
 - Compact panel width when a complete block is hidden while preserving current

@@ -5,7 +5,7 @@
 .driving-shell {
   position: relative;
   display: flex;
-  width: 540px;
+  width: 468px;
   height: 120px;
   padding: 6px;
   align-items: stretch;
@@ -23,7 +23,6 @@
 
 .drive-dial,
 .pedal-panel,
-.driving-readout,
 .trailing-panel {
   position: relative;
   overflow: hidden;
@@ -56,10 +55,10 @@
 .dial-face,
 .steering-indicator {
   position: absolute;
-  top: 10px;
-  left: 3px;
-  width: 82px;
-  height: 82px;
+  top: 2px;
+  left: 6px;
+  width: 76px;
+  height: 76px;
   border-radius: 50%;
 }
 
@@ -95,7 +94,7 @@
 }
 
 .dial-gear {
-  top: 34px;
+  top: 25px;
   color: #f4f7f9;
   font-size: 31px;
   font-weight: 900;
@@ -103,7 +102,7 @@
 }
 
 .dial-speed {
-  top: 69px;
+  top: 59px;
   color: #aab8c8;
   font-size: 12px;
   font-weight: 900;
@@ -171,15 +170,6 @@
   box-shadow: 0 0 8px rgb(98 204 233 / 22%);
 }
 
-.driving-readout {
-  display: flex;
-  width: 72px;
-  flex: 0 0 72px;
-  padding: 10px 7px 8px 10px;
-  flex-direction: column;
-  justify-content: center;
-}
-
 .ffb-readout > span {
   color: #78838e;
   font-size: 7px;
@@ -188,14 +178,19 @@
 }
 
 .ffb-readout {
+  position: absolute;
+  right: 5px;
+  bottom: 7px;
+  left: 7px;
   display: flex;
-  flex-direction: column;
-  gap: 5px;
+  align-items: center;
+  gap: 4px;
 }
 
 .ffb-track {
   position: relative;
-  width: 53px;
+  width: auto;
+  flex: 1;
   height: 7px;
   overflow: hidden;
   border: 1px solid rgb(255 255 255 / 7%);
@@ -224,60 +219,10 @@
   padding: 6px 7px 5px 8px;
 }
 
-.trailing-header {
-  display: flex;
-  height: 14px;
-  align-items: flex-start;
-}
-
-.trailing-header > strong {
-  color: #d8ff3e;
-  font-size: 7px;
-  font-weight: 900;
-  letter-spacing: 0.09em;
-}
-
-.trailing-legend {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-left: auto;
-  color: #78838e;
-  font-size: 6px;
-  font-weight: 900;
-  letter-spacing: 0.05em;
-}
-
-.trailing-legend span {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-}
-
-.trailing-legend i {
-  display: inline-block;
-  width: 7px;
-  height: 2px;
-}
-
-.throttle-mark { background: #55ef93; }
-.brake-mark { background: #ff5367; }
-.clutch-mark { background: #62cce9; }
-
-.trailing-legend .tc-mark,
-.trailing-legend .abs-mark {
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-}
-
-.tc-mark { background: #ffd24a; }
-.abs-mark { background: #f4f7fa; }
-
 #trailing-canvas {
   display: block;
   width: 262px;
-  height: 82px;
+  height: 94px;
   border: 1px solid rgb(255 255 255 / 8%);
   border-radius: 3px;
   background: rgb(0 0 0 / 13%);

@@ -8,7 +8,7 @@
   </head>
   <body class="driving-body">
     <main class="driving-shell" data-tauri-drag-region>
-      <section class="drive-dial" aria-label="Volante, marcha y velocidad">
+      <section class="drive-dial" aria-label="Volante, marcha, velocidad y Force Feedback">
         <div class="dial-face" aria-hidden="true"></div>
         <div id="steering-wheel" class="steering-indicator" data-driving-item="steering" aria-hidden="true">
           <svg viewBox="0 0 100 100">
@@ -17,6 +17,10 @@
         </div>
         <strong id="gear" class="dial-gear" data-driving-item="gear">N</strong>
         <b id="speed" class="dial-speed" data-driving-item="speed">0</b>
+        <div class="ffb-readout" data-driving-item="ffb">
+          <span>FFB</span>
+          <div class="ffb-track" aria-hidden="true"><i id="ffb-level"></i><em></em></div>
+        </div>
       </section>
       <section class="pedal-panel" aria-label="Pedales actuales">
         <div class="pedal-column clutch-column" data-input-pedal="clutch">
@@ -35,24 +39,8 @@
           <span>THR</span>
         </div>
       </section>
-      <section class="driving-readout" aria-label="Force Feedback">
-        <div class="ffb-readout" data-driving-item="ffb">
-          <span>FFB</span>
-          <div class="ffb-track" aria-hidden="true"><i id="ffb-level"></i><em></em></div>
-        </div>
-      </section>
       <section class="trailing-panel" aria-label="Historial de pedales">
-        <div class="trailing-header">
-          <strong>INPUT TRACE</strong>
-          <div class="trailing-legend">
-            <span data-graph-pedal="throttle"><i class="throttle-mark"></i>THR</span>
-            <span data-graph-pedal="brake"><i class="brake-mark"></i>BRK</span>
-            <span data-graph-pedal="clutch"><i class="clutch-mark"></i>CLT</span>
-            <span data-graph-pedal="throttle"><i class="tc-mark"></i>TC</span>
-            <span data-graph-pedal="brake"><i class="abs-mark"></i>ABS</span>
-          </div>
-        </div>
-        <canvas id="trailing-canvas" width="262" height="82"></canvas>
+        <canvas id="trailing-canvas" width="262" height="94"></canvas>
       </section>
       <div class="resize-handle" data-resize-handle aria-hidden="true"></div>
     </main>
