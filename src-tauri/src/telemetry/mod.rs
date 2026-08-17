@@ -1,6 +1,5 @@
 #[cfg(all(target_os = "windows", lmu_sdk))]
 mod consumption_profile;
-mod delta_records;
 #[cfg(all(target_os = "windows", lmu_sdk))]
 mod driver_ranks;
 #[cfg(all(target_os = "windows", lmu_sdk))]
@@ -30,7 +29,6 @@ use tauri::{AppHandle, Emitter, Manager};
 
 use fuel_strategy::FuelStrategies;
 
-pub(crate) use delta_records::{set_settings as set_delta_settings, DeltaSettings};
 pub(crate) use standings_models::{set_overlay_view_settings, OverlayViewSettings};
 pub(crate) use track_geometry::{track_map_geometry, TrackMapGeometry};
 pub(crate) use track_map_model::{migrate_legacy_track_map_learning, LearnedTrackPoint};
@@ -274,8 +272,6 @@ struct PerformanceMonitor {
     max_work_micros: u128,
     overruns: u64,
     emitted_dashboard: u64,
-    emitted_delta: u64,
-    emitted_timing: u64,
     emitted_driving: u64,
     emitted_tires: u64,
     emitted_damage: u64,
@@ -308,8 +304,6 @@ impl PerformanceMonitor {
             max_work_micros: 0,
             overruns: 0,
             emitted_dashboard: 0,
-            emitted_delta: 0,
-            emitted_timing: 0,
             emitted_driving: 0,
             emitted_tires: 0,
             emitted_damage: 0,
@@ -353,8 +347,6 @@ impl PerformanceMonitor {
             "overruns": self.overruns,
             "emitted": {
                 "dashboard": self.emitted_dashboard,
-                "delta": self.emitted_delta,
-                "timing": self.emitted_timing,
                 "driving": self.emitted_driving,
                 "tires": self.emitted_tires,
                 "damage": self.emitted_damage,
@@ -465,7 +457,6 @@ pub struct TelemetryFrame {
     session_split_number: u32,
     session_split_count: u32,
     track_name: String,
-    player_vehicle_name: String,
     rest_weather_available: bool,
     ambient_temperature_c: f64,
     track_temperature_c: f64,
@@ -474,7 +465,6 @@ pub struct TelemetryFrame {
     track_wetness_min_percent: f64,
     track_wetness_max_percent: f64,
     lap_number: i32,
-    player_sector: i32,
     player_total_laps: i32,
     player_lap_valid: bool,
     player_in_pits: bool,
@@ -562,8 +552,6 @@ pub struct TelemetryFrame {
     last_lap_seconds: f64,
     best_lap_seconds: f64,
     lap_delta_seconds: f64,
-    delta_model: delta_records::DeltaViewModel,
-    timing_model: delta_records::TimingViewModel,
     flag_warning: FlagWarning,
     rejoin_warning: RejoinWarning,
     standings: Vec<StandingEntry>,
@@ -649,7 +637,6 @@ impl TelemetryFrame {
             session_split_number: 0,
             session_split_count: 0,
             track_name: String::new(),
-            player_vehicle_name: String::new(),
             rest_weather_available: false,
             ambient_temperature_c: 0.0,
             track_temperature_c: 0.0,
@@ -658,7 +645,6 @@ impl TelemetryFrame {
             track_wetness_min_percent: 0.0,
             track_wetness_max_percent: 0.0,
             lap_number: 0,
-            player_sector: 0,
             player_total_laps: 0,
             player_lap_valid: false,
             player_in_pits: false,
@@ -746,8 +732,6 @@ impl TelemetryFrame {
             last_lap_seconds: 0.0,
             best_lap_seconds: 0.0,
             lap_delta_seconds: 0.0,
-            delta_model: delta_records::DeltaViewModel::default(),
-            timing_model: delta_records::TimingViewModel::default(),
             flag_warning: FlagWarning::default(),
             rejoin_warning: RejoinWarning::default(),
             standings: Vec::new(),
@@ -778,7 +762,6 @@ pub fn spawn_source(app: AppHandle) {
         let mut analysis_logger = AnalysisLogger::new();
         let mut performance = PerformanceMonitor::new();
         let mut track_map_model = track_map_model::TrackMapModelState::default();
-        let mut delta_engine = delta_records::DeltaEngine::new(app_data_directory.clone());
         let now = Instant::now();
         let mut last_dashboard = now.checked_sub(SOURCE_INTERVAL).unwrap_or(now);
         let mut last_fuel = now.checked_sub(FUEL_INTERVAL).unwrap_or(now);
@@ -816,7 +799,6 @@ pub fn spawn_source(app: AppHandle) {
             let source_started = Instant::now();
             let track_map_requested = track_map_due && (track_map_visible || browser_clients);
             let mut frame = source.next_frame(standings_requested, track_map_requested);
-            delta_engine.update(&mut frame);
             standings_models::prepare_overlay_models(&mut frame);
             if track_map_requested {
                 track_map_model.update(&mut frame);
@@ -867,8 +849,6 @@ pub fn spawn_source(app: AppHandle) {
 
             let driving_due = interval_due(&mut last_dashboard, now, SOURCE_INTERVAL);
             let emit_dashboard = driving_due && super::overlay_is_active(&app, "dashboard");
-            let emit_delta = driving_due && super::overlay_is_active(&app, "delta");
-            let emit_timing = driving_due && super::overlay_is_active(&app, "timing");
             let emit_driving = driving_due && super::overlay_is_active(&app, "driving");
             let emit_tires = driving_due && super::overlay_is_active(&app, "tires");
             let emit_damage = interval_due(&mut last_damage, now, DAMAGE_INTERVAL)
@@ -894,8 +874,6 @@ pub fn spawn_source(app: AppHandle) {
 
             let base_emissions = [
                 ("dashboard", emit_dashboard),
-                ("delta", emit_delta),
-                ("timing", emit_timing),
                 ("driving", emit_driving),
                 ("tires", emit_tires),
                 ("damage", emit_damage),
@@ -904,7 +882,7 @@ pub fn spawn_source(app: AppHandle) {
                 ("flags", emit_flags),
                 ("rejoin", emit_rejoin),
             ];
-            let mut base_targets = [""; 10];
+            let mut base_targets = [""; 8];
             let mut base_target_count = 0;
             for (label, should_emit) in base_emissions {
                 if should_emit {
@@ -914,8 +892,6 @@ pub fn spawn_source(app: AppHandle) {
             }
             if super::emit_overlay_frames(&app, &base_targets[..base_target_count], &frame) {
                 performance.emitted_dashboard += u64::from(emit_dashboard);
-                performance.emitted_delta += u64::from(emit_delta);
-                performance.emitted_timing += u64::from(emit_timing);
                 performance.emitted_driving += u64::from(emit_driving);
                 performance.emitted_tires += u64::from(emit_tires);
                 performance.emitted_damage += u64::from(emit_damage);

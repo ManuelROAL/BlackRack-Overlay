@@ -44,7 +44,7 @@ export const clampPanelCoordinate = (
 );
 
 const overlayIds: OverlayId[] = [
-  "dashboard", "delta", "timing", "driving", "tires", "damage", "standings",
+  "dashboard", "driving", "tires", "damage", "standings",
   "relative", "fuel", "pitstop", "flags", "rejoin", "trackmap"
 ];
 
