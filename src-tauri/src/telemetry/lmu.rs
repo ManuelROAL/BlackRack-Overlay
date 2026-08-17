@@ -1976,6 +1976,7 @@ impl LmuTelemetrySource {
                 distance_meters: 0.0,
                 car_position: player.position,
                 vehicle_class: String::new(),
+                car_count: 0,
             };
         }
 
@@ -2000,7 +2001,7 @@ impl LmuTelemetrySource {
                 .min_by(|left, right| left.1.total_cmp(&right.1));
 
             if let Some((vehicle_id, distance)) = ahead {
-                return Self::warning_for_car("yellow", vehicle_id, distance, snapshot);
+                return Self::warning_for_car("yellow", vehicle_id, distance, 1, snapshot);
             }
 
             let behind = raw
@@ -2021,7 +2022,7 @@ impl LmuTelemetrySource {
 
             if let Some((vehicle_id, distance)) = behind {
                 // Igual que TinyPedal: positivo indica delante y negativo detrás.
-                return Self::warning_for_car("yellow", vehicle_id, -distance, snapshot);
+                return Self::warning_for_car("yellow", vehicle_id, -distance, 1, snapshot);
             }
         }
 
@@ -2050,18 +2051,29 @@ impl LmuTelemetrySource {
             })
             .collect::<Vec<_>>();
         candidates.sort_by(|left, right| left.1.total_cmp(&right.1));
+        let is_plausible_blue_car = |entry: &LmuStandingEntry| {
+            entry.total_laps > player.total_laps
+                || (entry.best_lap_seconds > 0.0
+                    && player.best_lap_seconds > 0.0
+                    && entry.best_lap_seconds < player.best_lap_seconds * 0.98)
+        };
+        let plausible_car_count = candidates
+            .iter()
+            .filter(|(entry, _)| is_plausible_blue_car(entry))
+            .count() as u32;
         let target = candidates
             .iter()
-            .find(|(entry, _)| {
-                entry.total_laps > player.total_laps
-                    || (entry.best_lap_seconds > 0.0
-                        && player.best_lap_seconds > 0.0
-                        && entry.best_lap_seconds < player.best_lap_seconds * 0.98)
-            })
+            .find(|(entry, _)| is_plausible_blue_car(entry))
             .or_else(|| candidates.first());
 
         target.map_or_else(super::FlagWarning::default, |(entry, distance)| {
-            Self::warning_for_car("blue", entry.vehicle_id, *distance, snapshot)
+            Self::warning_for_car(
+                "blue",
+                entry.vehicle_id,
+                *distance,
+                plausible_car_count.max(1),
+                snapshot,
+            )
         })
     }
 
@@ -2069,6 +2081,7 @@ impl LmuTelemetrySource {
         kind: &'static str,
         vehicle_id: i32,
         distance_meters: f64,
+        car_count: u32,
         snapshot: &LmuSnapshot,
     ) -> super::FlagWarning {
         let (car_position, vehicle_class) = Self::warning_car_details(snapshot, vehicle_id);
@@ -2082,6 +2095,7 @@ impl LmuTelemetrySource {
             },
             car_position,
             vehicle_class,
+            car_count,
         }
     }
 
@@ -3762,6 +3776,72 @@ mod tests {
         let warning = LmuTelemetrySource::flag_warning(&snapshot, &yellow_culprits);
         assert!(warning.active);
         assert_eq!(warning.kind, "checkered");
+    }
+
+    #[test]
+    fn blue_flag_counts_only_plausible_approaching_cars() {
+        let mut snapshot = LmuSnapshot {
+            standings_count: 5,
+            game_phase: 5,
+            track_length: 5_000.0,
+            ..LmuSnapshot::default()
+        };
+        snapshot.standings[0] = LmuStandingEntry {
+            vehicle_id: 10,
+            position: 8,
+            is_player: 1,
+            flag: 6,
+            total_laps: 3,
+            best_lap_seconds: 100.0,
+            lap_distance: 1_000.0,
+            ..LmuStandingEntry::default()
+        };
+        snapshot.standings[1] = LmuStandingEntry {
+            vehicle_id: 20,
+            position: 7,
+            total_laps: 3,
+            best_lap_seconds: 100.0,
+            lap_distance: 950.0,
+            ..LmuStandingEntry::default()
+        };
+        snapshot.standings[2] = LmuStandingEntry {
+            vehicle_id: 30,
+            position: 2,
+            total_laps: 4,
+            best_lap_seconds: 90.0,
+            lap_distance: 900.0,
+            ..LmuStandingEntry::default()
+        };
+        snapshot.standings[3] = LmuStandingEntry {
+            vehicle_id: 40,
+            position: 3,
+            total_laps: 3,
+            best_lap_seconds: 95.0,
+            lap_distance: 800.0,
+            ..LmuStandingEntry::default()
+        };
+        snapshot.standings[4] = LmuStandingEntry {
+            vehicle_id: 50,
+            position: 1,
+            total_laps: 4,
+            best_lap_seconds: 89.0,
+            lap_distance: 700.0,
+            in_pits: 1,
+            ..LmuStandingEntry::default()
+        };
+        set_chars(&mut snapshot.standings[0].vehicle_class, "LMGT3");
+        set_chars(&mut snapshot.standings[1].vehicle_class, "LMGT3");
+        set_chars(&mut snapshot.standings[2].vehicle_class, "HYPERCAR");
+        set_chars(&mut snapshot.standings[3].vehicle_class, "HYPERCAR");
+        set_chars(&mut snapshot.standings[4].vehicle_class, "HYPERCAR");
+
+        let warning = LmuTelemetrySource::flag_warning(&snapshot, &HashSet::new());
+
+        assert!(warning.active);
+        assert_eq!(warning.kind, "blue");
+        assert_eq!(warning.distance_meters, 100.0);
+        assert_eq!(warning.car_position, 2);
+        assert_eq!(warning.car_count, 2);
     }
 
     #[test]
