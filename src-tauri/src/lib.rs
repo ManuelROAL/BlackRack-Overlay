@@ -20,8 +20,10 @@ use tauri::{
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 use tauri_plugin_window_state::StateFlags;
 
-const OVERLAY_LABELS: [&str; 11] = [
+const OVERLAY_LABELS: [&str; 13] = [
     "dashboard",
+    "delta",
+    "timing",
     "driving",
     "tires",
     "damage",
@@ -735,6 +737,8 @@ fn get_overlay_displays(app: AppHandle) -> Result<Vec<OverlayDisplay>, String> {
 fn default_overlay_geometry(label: &str) -> (f64, f64, f64, f64) {
     match label {
         "dashboard" => (20.0, 20.0, 780.0, 340.0),
+        "delta" => (610.0, 20.0, 420.0, 72.0),
+        "timing" => (610.0, 110.0, 366.0, 210.0),
         "driving" => (20.0, 380.0, 540.0, 120.0),
         "tires" => (588.0, 380.0, 174.0, 130.0),
         "damage" => (798.0, 380.0, 94.0, 94.0),
@@ -895,6 +899,11 @@ fn set_overlay_view_settings(settings: telemetry::OverlayViewSettings) {
 }
 
 #[tauri::command]
+fn set_delta_settings(settings: telemetry::DeltaSettings) {
+    telemetry::set_delta_settings(settings);
+}
+
+#[tauri::command]
 fn get_lmu_dependency_status() -> LmuDependencyStatus {
     let plugin = lmu_install::telemetry_plugin();
     LmuDependencyStatus {
@@ -953,11 +962,11 @@ fn save_shortcut_settings(app: &AppHandle, settings: &ShortcutSettings) -> Resul
 fn validate_overlay_configuration(contents: &str) -> Result<(), String> {
     let parsed: serde_json::Value = serde_json::from_str(&contents)
         .map_err(|error| format!("La configuración no es JSON válido: {error}"))?;
+    let schema_version = parsed
+        .get("schemaVersion")
+        .and_then(serde_json::Value::as_u64);
     if parsed.get("format").and_then(serde_json::Value::as_str) != Some("lmu-overlay-configuration")
-        || parsed
-            .get("schemaVersion")
-            .and_then(serde_json::Value::as_u64)
-            != Some(1)
+        || !matches!(schema_version, Some(1..=3))
     {
         return Err("Formato de configuración no reconocido".into());
     }
@@ -1221,6 +1230,7 @@ pub fn run() {
             set_browser_source_enabled,
             set_browser_source_preferences,
             set_overlay_view_settings,
+            set_delta_settings,
             get_lmu_dependency_status,
             get_shortcut_settings,
             set_shortcut,

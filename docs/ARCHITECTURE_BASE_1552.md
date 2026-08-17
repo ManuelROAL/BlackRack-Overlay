@@ -43,11 +43,6 @@ lmu_bridge.cpp -> LmuSnapshot -> LmuTelemetrySource <- async/cached enrichments
     Standings/Relative share one batch when due, Track Map uses its stripped batch,
     and the remaining active overlays share the base-frame batch.
   - Owns JSONL analysis logging and top-level performance samples.
-- `src-tauri/src/telemetry/delta_records.rs`
-  - Reconstructs distance-sampled laps and selects best/optimal references for
-    overall, session, stint and last-lap comparisons.
-  - Keeps the 50 Hz calculation in memory and sends boundary records to a
-    dedicated SQLite worker.
 - `src-tauri/src/telemetry/lmu_bridge.cpp`
   - Opens the official `LMU_Data` mapping read-only.
   - Copies the shared-memory object while holding the SDK lock.
@@ -98,8 +93,7 @@ profile and diagnostics.
 
 ## Scheduling and freshness
 
-- Base source cycle, Dashboard, Delta, Timing compacto, Trailing + Pedal and tyres:
-  20 ms (50 Hz).
+- Base source cycle, Dashboard, Trailing + Pedal and tyres: 20 ms (50 Hz).
 - Fuel overlay and active flags: 20 ms (50 Hz).
 - Full standings: 100 ms (10 Hz), and only when requested by an active Standings
   panel or a connected browser-source client.
@@ -127,14 +121,7 @@ blocking HTTP calls into `next_frame()`.
 - Overlay choices, columns and transparency: WebView `localStorage`. Transparency
   stores individual values separately from its general/individual scope.
 - Learned consumption profiles: application data `consumption-profiles/`.
-<<<<<<< HEAD
-- Current and previous startup/frontend failure logs, plus optional JSONL analysis
-  logs: application data directory.
-=======
-- Learned delta references and lap/stint history: application data
-  `lap-records.sqlite3`, using bundled SQLite and asynchronous boundary writes.
 - Startup log and optional JSONL analysis logs: application data directory.
->>>>>>> feature/failure-diagnostics
 
 When adding a setting needed by OBS, mirror it through
 `set_browser_source_preferences`; browser WebViews do not share the Tauri
