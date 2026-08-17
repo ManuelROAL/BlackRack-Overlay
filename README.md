@@ -72,7 +72,7 @@ TelemetrySource (Rust) ──► TelemetryFrame ──► eventos Tauri (20 Hz)
 
 El panel crea los overlays bajo demanda y puede ocultarlos sin detener la fuente de telemetría. La estructura normalizada de `TelemetryFrame` evita que la interfaz dependa del formato binario del simulador. La calculadora de estrategia detecta la clase mediante el SDK: usa `mVirtualEnergy` en Hypercar y LMGT3, y `mFuel` en el resto.
 
-El sistema de perfiles por distancia es una implementación propia en Rust inspirada funcionalmente en [TinyPedal](https://github.com/TinyPedal/TinyPedal). No incorpora su código GPL. El balance real sigue midiendo todo lo consumido, pero solo las vueltas válidas, sin boxes y completamente en bandera verde alimentan el promedio limpio. Las vueltas de entrada y salida se aprenden por separado y corrigen el recurso necesario según el número estimado de paradas.
+El sistema de perfiles por distancia es una implementación propia en Rust inspirada funcionalmente en TinyPedal. No incorpora su código GPL. El balance real sigue midiendo todo lo consumido, pero solo las vueltas válidas, sin boxes y completamente en bandera verde alimentan el promedio limpio. Las vueltas de entrada y salida se aprenden por separado y corrigen el recurso necesario según el número estimado de paradas.
 
 ## Registro para análisis
 

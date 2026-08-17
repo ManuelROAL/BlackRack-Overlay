@@ -37,7 +37,7 @@ document.
 
 ## Common engineering rules
 
-- Preserve unrelated user changes; the working tree may be dirty.
+- Preserve unrelated user changes.
 - Use UTF-8 for text files and keep the frontend framework-free.
 - Keep overlay-specific CSS in its own file. Use `src/fonts.css` and
   `src/styles.css` only for genuinely shared rules.
@@ -103,82 +103,9 @@ For frontend-only changes, run `npm.cmd run build`. For performance work, also
 collect a comparable race/replay sample as described in `docs/PERFORMANCE.md`;
 successful compilation alone is not performance evidence.
 
-## GitFlow
-
-Use `master` and `develop` as the two permanent branches:
-
-- `master` contains only the latest production-ready version. Do not develop or
-  commit routine changes directly on it.
-- `develop` contains the latest integrated development state. Do not implement a
-  feature directly on it; use a support branch and merge the completed work back.
-
-Before starting work, inspect the current branch and working tree. Preserve
-unrelated changes, and never move them into a new branch, commit or merge without
-the user's authorization. Use lowercase, short, descriptive branch names with
-hyphen-separated words.
-
-### Approval gate for feature and hotfix branches
-
-- The user's initial request authorizes creating and working on the corresponding
-  `feature/*` or `hotfix/*` branch, but it does not authorize merging or deleting
-  that branch.
-- After implementation, documentation, verification and commits are complete,
-  keep the support branch open and report its name, commits and verification
-  results to the user.
-- Do not merge a `feature/*` branch into `develop`, or a `hotfix/*` branch into
-  `master` or `develop`, until the user gives explicit approval after reviewing
-  that completion report. Do not treat silence or the original task request as
-  approval.
-- If the user requests changes instead of approving, continue on the same support
-  branch, commit the corrections and present a new completion report for approval.
-- Delete a merged `feature/*` or `hotfix/*` branch only with separate explicit
-  user approval. Until then, leave it available even after its merges complete.
-
-### Feature branches
-
-- Create `feature/<name>` from an up-to-date `develop` branch.
-- Keep the branch limited to one feature, fix, documentation change or other
-  coherent unit of work.
-- Complete the implementation, documentation and proportional verification on
-  the feature branch and commit the finished logical change there.
-- Once the approval gate is satisfied, merge the completed branch into `develop`.
-  Never merge a feature branch directly into `master`.
-
-### Release branches
-
-- Create `release/<version>` from `develop` when the integrated state is ready to
-  become a release.
-- Restrict the branch to version synchronization, release notes, packaging and
-  release-blocking fixes; do not add unrelated features.
-- Keep the version in `package.json`, `src-tauri/Cargo.toml` and
-  `src-tauri/tauri.conf.json` synchronized and run the full release verification.
-- Merge the completed release into both `master` and `develop`, then tag the
-  release commit on `master` as `v<version>`.
-- Build a Windows installer or other release artifact only when the user has
-  explicitly requested it.
-
-### Hotfix branches
-
-- Create `hotfix/<name>` from `master` only for an urgent production correction.
-- Make the smallest complete change, update the patch version and release notes
-  when applicable, and run verification proportional to the affected behavior.
-- Once the approval gate is satisfied, merge the completed hotfix into both
-  `master` and `develop`, resolving the latter carefully if an active release
-  already contains related changes.
-- Tag a published hotfix on `master` as `v<version>`.
-
-Use explicit, non-interactive Git commands. Before each merge, confirm that the
-target branch is correct and the working tree contains no uncommitted changes
-belonging to the operation. Do not rewrite published history, force-push, or
-delete an unmerged support branch unless the user explicitly requests it.
-
-## Completion and commits
+## Completion
 
 - A change is complete only after its implementation, proportional verification
   and owning documentation are all up to date.
-- Commit every completed logical change before handing it back to the user. Use a
-  concise message that describes the finished behavior or documentation change.
-- Stage and commit only files belonging to that change. Never sweep unrelated
-  modifications from a dirty working tree into the commit.
-- If a required verification cannot run or the change cannot be committed, report
-  that explicitly instead of presenting the work as fully complete.
+- If a required verification cannot run, report that explicitly instead of
+  presenting the work as fully complete.
