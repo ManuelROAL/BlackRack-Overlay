@@ -1,5 +1,6 @@
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
+import { installFrontendDiagnostics } from "./frontend-diagnostics";
 import type { TelemetryFrame } from "./telemetry-types";
 
 declare global {
@@ -108,3 +109,10 @@ export const listenTelemetry = (
   };
   return Promise.resolve(() => events.close());
 };
+
+if (isTauriRuntime()) {
+  const overlay = window.location.pathname.split("/").pop()?.replace(/\.html$/, "") || "unknown";
+  installFrontendDiagnostics(`overlay:${overlay}`, (diagnostic) =>
+    invokeRuntime("record_frontend_error", { ...diagnostic })
+  );
+}

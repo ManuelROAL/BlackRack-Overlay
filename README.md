@@ -51,9 +51,11 @@ Para que los overlays aparezcan sobre el juego, LMU debe usarse en modo ventana 
 
 ## Diagnóstico de arranque
 
-Cada inicio sustituye el archivo `%APPDATA%\dev.lmuoverlay.desktop\startup.log`.
-Este registro incluye las etapas de Tauri, la ventana de control, el registro de
-atajos, el hilo de telemetría, el cierre normal y cualquier error fatal o panic.
+Cada inicio crea un nuevo `%APPDATA%\dev.lmuoverlay.desktop\startup.log` y conserva
+la ejecución anterior como `startup.previous.log`. Estos registros incluyen las
+etapas de Tauri, la ventana de control, el registro de atajos, el hilo de
+telemetría, el cierre normal, cualquier error fatal o panic y las excepciones no
+controladas del panel y los overlays. Los campos sensibles conocidos se ocultan.
 
 ## Arquitectura
 

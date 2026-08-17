@@ -2,6 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { emit, listen } from "@tauri-apps/api/event";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import "./control-panel.css";
+import { installFrontendDiagnostics } from "./frontend-diagnostics";
 import type { InteractionMode, TelemetryFrame } from "./telemetry-types";
 import {
   DRIVER_NAME_FORMATS,
@@ -56,6 +57,10 @@ import {
   saveMonitorSelection,
   type MonitorSelectionSettings
 } from "./composite-layout";
+
+installFrontendDiagnostics("control", (diagnostic) =>
+  invoke("record_frontend_error", { ...diagnostic })
+);
 
 interface OverlayState {
   label: OverlayId;
