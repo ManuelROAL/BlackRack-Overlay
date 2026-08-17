@@ -75,11 +75,33 @@ enum RelativeRowKind {
     Behind,
 }
 
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+enum RelativeLapRelation {
+    #[default]
+    SameLap,
+    PlayerAhead,
+    OpponentAhead,
+}
+
+impl RelativeLapRelation {
+    fn from_lap_delta(laps_relative_to_player: i32) -> Self {
+        if laps_relative_to_player < 0 {
+            Self::PlayerAhead
+        } else if laps_relative_to_player > 0 {
+            Self::OpponentAhead
+        } else {
+            Self::SameLap
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, Serialize)]
 pub(crate) struct RelativeRowModel {
     vehicle_id: i32,
     relative_gap_seconds: f64,
     kind: RelativeRowKind,
+    lap_relation: RelativeLapRelation,
 }
 
 #[derive(Clone, Debug, Default, Serialize)]
@@ -316,6 +338,7 @@ fn prepare_standings(
 fn prepare_relative(
     entries: &[StandingEntry],
     settings: RelativeModelSettings,
+    session_type: i32,
 ) -> RelativeViewModel {
     let Some(player) = entries.iter().find(|entry| entry.is_player) else {
         return RelativeViewModel::default();
@@ -349,22 +372,32 @@ fn prepare_relative(
     });
     behind.truncate(settings.behind_rows);
 
+    let lap_relation = |entry: &StandingEntry| {
+        if session_type >= 10 {
+            RelativeLapRelation::from_lap_delta(entry.laps_relative_to_player)
+        } else {
+            RelativeLapRelation::SameLap
+        }
+    };
     let rows = ahead
         .into_iter()
         .map(|(_, entry)| RelativeRowModel {
             vehicle_id: entry.vehicle_id,
             relative_gap_seconds: entry.relative_ahead_seconds,
             kind: RelativeRowKind::Ahead,
+            lap_relation: lap_relation(entry),
         })
         .chain(std::iter::once(RelativeRowModel {
             vehicle_id: player.vehicle_id,
             relative_gap_seconds: 0.0,
             kind: RelativeRowKind::Player,
+            lap_relation: RelativeLapRelation::SameLap,
         }))
         .chain(behind.into_iter().map(|entry| RelativeRowModel {
             vehicle_id: entry.vehicle_id,
             relative_gap_seconds: entry.relative_behind_seconds,
             kind: RelativeRowKind::Behind,
+            lap_relation: lap_relation(entry),
         }))
         .collect();
     RelativeViewModel { rows }
@@ -381,7 +414,8 @@ pub(super) fn prepare_overlay_models(frame: &mut TelemetryFrame) {
         .unwrap_or_else(|poisoned| poisoned.into_inner());
     frame.standings_model =
         prepare_standings(&frame.standings, settings.standings, frame.session_type);
-    frame.relative_model = prepare_relative(&frame.standings, settings.relative);
+    frame.relative_model =
+        prepare_relative(&frame.standings, settings.relative, frame.session_type);
 }
 
 #[cfg(test)]
@@ -460,17 +494,20 @@ mod tests {
 
     #[test]
     fn relative_is_prepared_in_physical_order_and_can_repeat_across_directions() {
-        let entries = vec![
+        let mut entries = vec![
             entry(1, 1, "Hypercar", true),
             entry(2, 2, "Hypercar", false),
             entry(3, 3, "Hypercar", false),
         ];
+        entries[1].laps_relative_to_player = -1;
+        entries[2].laps_relative_to_player = 1;
         let model = prepare_relative(
             &entries,
             RelativeModelSettings {
                 ahead_rows: 2,
                 behind_rows: 1,
             },
+            10,
         );
         assert_eq!(
             model
@@ -482,5 +519,18 @@ mod tests {
         );
         assert_eq!(model.rows[0].relative_gap_seconds, -3.0);
         assert_eq!(model.rows[3].relative_gap_seconds, 2.0);
+        assert_eq!(
+            model.rows[0].lap_relation,
+            RelativeLapRelation::OpponentAhead
+        );
+        assert_eq!(model.rows[1].lap_relation, RelativeLapRelation::PlayerAhead);
+        assert_eq!(model.rows[2].lap_relation, RelativeLapRelation::SameLap);
+        assert_eq!(model.rows[3].lap_relation, RelativeLapRelation::PlayerAhead);
+
+        let practice = prepare_relative(&entries, RelativeModelSettings::default(), 1);
+        assert!(practice
+            .rows
+            .iter()
+            .all(|row| row.lap_relation == RelativeLapRelation::SameLap));
     }
 }

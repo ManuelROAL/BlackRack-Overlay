@@ -50,6 +50,14 @@
   font-variant-numeric: tabular-nums;
 }
 
+.standing-relative {
+  color: #fff;
+  font-size: 13px;
+  font-weight: inherit;
+  letter-spacing: .1px;
+  text-shadow: 0 1px 3px rgb(0 0 0 / 75%);
+}
+
 body[data-overlay-fit="true"].relative-body .standings-shell {
   height: calc(var(--overlay-base-height) - 16px);
 }
@@ -311,6 +319,42 @@ body[data-overlay-fit="true"].relative-body .standings-shell {
     inset 0 -1px rgb(255 255 255 / 8%);
 }
 
+/* La clase conserva el borde izquierdo. El borde y el baño del extremo derecho
+   expresan la relación de vuelta sin competir con el tiempo relativo. */
+.relative-body .standing-row[data-lap-relation="player_ahead"]:not(.player)::before {
+  background:
+    linear-gradient(270deg, rgb(45 139 255 / 28%), transparent 48%),
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--row-class-color) 24%, transparent),
+      color-mix(in srgb, var(--row-class-color) 10%, transparent) 12%,
+      transparent 28%
+    ),
+    rgb(5 8 12 / var(--overlay-background-opacity));
+  box-shadow:
+    inset 2px 0 var(--row-class-color),
+    inset -2px 0 #2d8bff,
+    inset 0 1px rgb(255 255 255 / 8%),
+    inset 0 -1px rgb(255 255 255 / 8%);
+}
+
+.relative-body .standing-row[data-lap-relation="opponent_ahead"]:not(.player)::before {
+  background:
+    linear-gradient(270deg, rgb(255 63 82 / 28%), transparent 48%),
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--row-class-color) 24%, transparent),
+      color-mix(in srgb, var(--row-class-color) 10%, transparent) 12%,
+      transparent 28%
+    ),
+    rgb(5 8 12 / var(--overlay-background-opacity));
+  box-shadow:
+    inset 2px 0 var(--row-class-color),
+    inset -2px 0 #ff3f52,
+    inset 0 1px rgb(255 255 255 / 8%),
+    inset 0 -1px rgb(255 255 255 / 8%);
+}
+
 .relative-body .standing-row + .standing-row {
   margin-top: 2px;
 }
@@ -554,6 +598,21 @@ body[data-overlay-fit="true"].relative-body .standings-shell {
   color: #ffb84d;
 }
 
+.standing-row.out-lap .standing-driver {
+  color: #ffd36a;
+}
+
+.standing-row.damaged .standing-driver {
+  text-decoration: underline;
+  text-decoration-color: rgb(255 184 77 / 65%);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+
+.standing-row.heavily-damaged .standing-driver {
+  text-decoration-color: #ff5968;
+}
+
 .standing-gap,
 .standing-interval,
 .lap-time {
@@ -728,6 +787,8 @@ body[data-overlay-fit="true"].relative-body .standings-shell {
   justify-content: flex-start;
   gap: 2px;
   min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
 }
 
 .race-flag {
@@ -745,6 +806,21 @@ body[data-overlay-fit="true"].relative-body .standings-shell {
 .pit-flag {
   color: #1b1104;
   background: #ffad43;
+}
+
+.out-lap-flag {
+  color: #241600;
+  background: #ffd36a;
+}
+
+.damage-flag {
+  color: #241300;
+  background: #ffb84d;
+}
+
+.damage-flag--heavy {
+  color: #fff;
+  background: #d83b4f;
 }
 
 .garage-flag {

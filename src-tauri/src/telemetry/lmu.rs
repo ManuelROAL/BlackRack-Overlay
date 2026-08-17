@@ -1709,6 +1709,9 @@ impl LmuTelemetrySource {
             } else {
                 relative_behind_seconds
             };
+            let laps_relative_to_player = player_entry
+                .map(|player| Self::laps_relative_to_player(player, entry))
+                .unwrap_or(0);
 
             entries.push(StandingEntry {
                 vehicle_id: entry.vehicle_id,
@@ -1734,6 +1737,7 @@ impl LmuTelemetrySource {
                 vehicle_name: identity.vehicle_name.clone(),
                 vehicle_class,
                 initial_class_count,
+                laps_relative_to_player,
                 total_laps: entry.total_laps,
                 laps_behind_leader,
                 laps_behind_next,
@@ -1950,6 +1954,25 @@ impl LmuTelemetrySource {
             return (0.0, 0.0);
         }
         (-ahead, lap_time - ahead)
+    }
+
+    fn laps_relative_to_player(player: &LmuStandingEntry, entry: &LmuStandingEntry) -> i32 {
+        let lap_time = player.estimated_lap_time;
+        if player.vehicle_id == entry.vehicle_id
+            || !lap_time.is_finite()
+            || lap_time <= 1.0
+            || !player.time_into_lap.is_finite()
+            || !entry.time_into_lap.is_finite()
+        {
+            return 0;
+        }
+
+        // Completed laps alone briefly differ when only one car has crossed the
+        // timing line. Adding the continuous phase difference removes that false
+        // lap before rounding to the actual race-lap relationship.
+        let completed_delta = f64::from(entry.total_laps - player.total_laps);
+        let phase_delta = (entry.time_into_lap - player.time_into_lap) / lap_time;
+        (completed_delta + phase_delta).round() as i32
     }
 
     fn track_distance(from: f64, to: f64, track_length: f64) -> f64 {
@@ -3732,6 +3755,50 @@ mod tests {
         assert_eq!(
             LmuTelemetrySource::relative_gaps_seconds(&player, &lapped_car_ahead).0,
             -5.0
+        );
+    }
+
+    #[test]
+    fn lap_relation_uses_continuous_progress_across_the_timing_line() {
+        let player = LmuStandingEntry {
+            vehicle_id: 1,
+            total_laps: 8,
+            time_into_lap: 98.0,
+            estimated_lap_time: 100.0,
+            ..LmuStandingEntry::default()
+        };
+        let just_ahead_after_finish = LmuStandingEntry {
+            vehicle_id: 2,
+            total_laps: 9,
+            time_into_lap: 2.0,
+            ..LmuStandingEntry::default()
+        };
+        assert_eq!(
+            LmuTelemetrySource::laps_relative_to_player(&player, &just_ahead_after_finish),
+            0
+        );
+
+        let player = LmuStandingEntry {
+            time_into_lap: 50.0,
+            ..player
+        };
+        let lap_ahead = LmuStandingEntry {
+            time_into_lap: 60.0,
+            ..just_ahead_after_finish
+        };
+        assert_eq!(
+            LmuTelemetrySource::laps_relative_to_player(&player, &lap_ahead),
+            1
+        );
+
+        let lap_behind = LmuStandingEntry {
+            total_laps: 7,
+            time_into_lap: 45.0,
+            ..lap_ahead
+        };
+        assert_eq!(
+            LmuTelemetrySource::laps_relative_to_player(&player, &lap_behind),
+            -1
         );
     }
 

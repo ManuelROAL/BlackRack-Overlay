@@ -400,6 +400,8 @@ pub struct StandingEntry {
     vehicle_class: String,
     #[serde(skip)]
     initial_class_count: usize,
+    #[serde(skip)]
+    laps_relative_to_player: i32,
     total_laps: i32,
     laps_behind_leader: i32,
     laps_behind_next: i32,

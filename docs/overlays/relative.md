@@ -25,6 +25,24 @@ the prepared vehicle IDs and formats them; it must not repeat domain selection.
 - The physical time column is mandatory and visually larger than secondary data,
   without extra width, a special background or heavier weight.
 
+## At-a-glance events
+
+- Keep physical time as the dominant value and layer events onto the existing row;
+  do not add a second table or replace physical ordering with race order.
+- During races, tint the right side blue when the player is a lap or more ahead
+  of that car and red when that car is a lap or more ahead of the player. Do not
+  infer lapping from lap counts in practice or qualifying. Preserve the official
+  class accent on the left and the lime player treatment.
+- Derive the lap relationship in Rust from completed laps plus continuous lap
+  phase. Do not flash a false lapping event while only one car has crossed the
+  timing line.
+- Show compact, cumulative `OUT`, `PIT` and `DMG`/`DMG!` chips in Signals. Damage
+  becomes heavy at the shared 50% threshold. The driver name also receives a
+  restrained state treatment so the row remains useful when Signals is hidden.
+- For a red car physically behind, describe the state as about to lap the player;
+  for a red car ahead, describe it as having lapped the player. Blue consistently
+  means the player has lapped that car.
+
 ## Columns and header
 
 - Position, driver and physical time are mandatory. Configurable columns include
@@ -51,7 +69,9 @@ the prepared vehicle IDs and formats them; it must not repeat domain selection.
 - Keep each row's official class accent and short gradient aligned with Standings.
   Use Hypercar red, LMP2 blue, LMP3 purple and LMGT3 green. Preserve distinct
   player and pit layers, including LMGT3 contrast.
-- Derive design width from active columns with a compact 760 px minimum. Reserve
+- Derive design width from active columns with a compact 344 px minimum. New and
+  reset configurations default to number, driver, physical time and Signals;
+  advanced identity, timing and strategy columns remain configurable. Reserve
   23 px for every selected row so the last card is not clipped.
 - Cache DOM rows and update at 20 Hz. Cycles coinciding with Standings reuse the
   same constructed roster.
@@ -60,6 +80,7 @@ the prepared vehicle IDs and formats them; it must not repeat domain selection.
 
 ## Verification focus
 
-Test lap-wrap duplication, multiclass/lapped traffic, garage exclusion, sign and
-ordering of gaps, row limits, independent column/header settings and fitted size.
-Confirm 20 Hz roster demand and Standings reuse.
+Test lap-wrap duplication, multiclass/lapped traffic, timing-line transitions,
+garage exclusion, sign and ordering of gaps, event combinations, row limits,
+independent column/header settings and fitted size. Confirm 20 Hz roster demand
+and Standings reuse.
