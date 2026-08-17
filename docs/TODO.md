@@ -46,7 +46,7 @@ These are hypotheses, not approved changes; use measurements first.
 - Add repeatable session capture/replay fixtures for development without LMU.
 - Expand Rust model tests for Standings/Relative selection and frontend tests for
   presentation-only formatting.
-- Improve failure diagnostics and release automation/CI.
+- Improve release automation/CI.
 - Continue refining yellow causation if LMU exposes a stable official signal.
 
 ## Known constraints

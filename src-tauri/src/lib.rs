@@ -843,6 +843,11 @@ fn set_telemetry_logging(enabled: bool) -> Result<telemetry::TelemetryLoggingSta
 }
 
 #[tauri::command]
+fn record_frontend_error(source: String, kind: String, message: String, stack: Option<String>) {
+    startup_log::record_frontend_error(&source, &kind, &message, stack.as_deref());
+}
+
+#[tauri::command]
 fn record_frontend_performance(sample: serde_json::Value) {
     telemetry::queue_frontend_performance(sample);
 }
@@ -1208,6 +1213,7 @@ pub fn run() {
             toggle_interaction_mode_command,
             get_telemetry_logging,
             set_telemetry_logging,
+            record_frontend_error,
             record_frontend_performance,
             get_track_map_geometry,
             migrate_legacy_track_map_learning,

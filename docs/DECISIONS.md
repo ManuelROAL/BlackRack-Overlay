@@ -59,8 +59,9 @@ in `docs/overlays/` and should not be duplicated here.
   directory.
 - OBS browser source is localhost-only, optional and off by default.
 - Shortcut conflicts are non-fatal and visible/configurable.
-- `startup.log` is replaced each run and is the first diagnostic for startup
-  failures on another computer.
+- `startup.log` is replaced each run and is the first diagnostic for startup or
+  frontend failures on another computer. The replaced run remains available as
+  `startup.previous.log`, and known credential fields are redacted.
 - Release checksums accompany artifacts but are not required to run the installer.
 
 ## Documentation ownership

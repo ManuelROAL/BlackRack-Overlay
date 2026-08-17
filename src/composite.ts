@@ -2,6 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import "./composite.css";
+import { installFrontendDiagnostics } from "./frontend-diagnostics";
 import {
   COMPOSITE_LAYOUT_KEY,
   clampPanelCoordinate,
@@ -12,6 +13,10 @@ import {
 } from "./composite-layout";
 import type { OverlayId } from "./overlay-appearance";
 import type { InteractionMode, TelemetryFrame } from "./telemetry-types";
+
+installFrontendDiagnostics("composite", (diagnostic) =>
+  invoke("record_frontend_error", { ...diagnostic })
+);
 
 interface OverlayState {
   label: OverlayId;

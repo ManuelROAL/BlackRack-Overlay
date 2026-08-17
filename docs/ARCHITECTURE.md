@@ -121,7 +121,8 @@ blocking HTTP calls into `next_frame()`.
 - Overlay choices, columns and transparency: WebView `localStorage`. Transparency
   stores individual values separately from its general/individual scope.
 - Learned consumption profiles: application data `consumption-profiles/`.
-- Startup log and optional JSONL analysis logs: application data directory.
+- Current and previous startup/frontend failure logs, plus optional JSONL analysis
+  logs: application data directory.
 
 When adding a setting needed by OBS, mirror it through
 `set_browser_source_preferences`; browser WebViews do not share the Tauri
