@@ -22,7 +22,9 @@ Network and REST work runs outside `next_frame()`.
 The source snapshot runs at 50 Hz. Rust schedules each consumer according to its
 documented cadence in `docs/overlays/README.md`:
 
-- Base overlays share one serialized frame per cycle.
+- Base overlays, including Delta and Timing compacto, share one serialized frame
+  per cycle. Distance interpolation, reference selection and the player's
+  official scoring-sector transitions are calculated in Rust before delivery.
 - Standings and Relative share an enriched roster batch when due; coincident
   cycles reuse the constructed roster.
 - Track Map receives a stripped coordinate-only batch and never requests enriched
@@ -45,6 +47,9 @@ restore per-overlay native listeners or direct cross-realm object events.
   explicitly permits it.
 - Preserve unavailable values as unavailable rather than converting them to real
   zeroes.
+- Persistent lap references use track, vehicle and rounded track length as their
+  identity. They are loaded asynchronously and merged with any newer in-memory
+  result rather than replacing it.
 
 ## Local REST endpoints
 

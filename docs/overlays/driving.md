@@ -31,7 +31,7 @@
 - Keep the trace free of a title and color legend. The established pedal-line and
   TC/ABS marker colors identify its contents while preserving graph space.
 - Render TC intervention markers in electric blue and ABS intervention markers in
-  vivid purple so both alerts remain distinct from the pedal traces.
+  vivid yellow so both alerts remain distinct from the pedal traces.
 - Graph pedals and current-input pedals are independently selectable. Steering,
   FFB, speed and gear are independently selectable too.
 - Compact panel width when a complete block is hidden while preserving current

@@ -155,16 +155,21 @@ export const RELATIVE_COLUMNS: RelativeColumnDefinition[] = [
   relativeColumn("trackLimits", "TL", 30, false, "trackLimitsColumn"),
   relativeColumn("pitStops", "PIT", 42, false, "pitStops"),
   relativeColumn("tire", "NEU", 30, false, "tire"),
-  relativeColumn("signals", "", 82, false, "signals")
+  relativeColumn("signals", "", 104, false, "signals")
 ];
 
-export const defaultRelativeSettings = (): RelativeSettings => ({
-  options: Object.fromEntries(RELATIVE_OPTIONS.map(({ id }) => [id, true])) as Record<RelativeOptionId, boolean>,
-  columnOrder: RELATIVE_COLUMNS.map(({ id }) => id),
-  aheadRows: 4,
-  behindRows: 4,
-  driverNameFormat: DEFAULT_DRIVER_NAME_FORMAT
-});
+export const defaultRelativeSettings = (): RelativeSettings => {
+  const compactOptions = new Set<RelativeOptionId>(["number", "signals"]);
+  return {
+    options: Object.fromEntries(
+      RELATIVE_OPTIONS.map(({ id }) => [id, compactOptions.has(id)])
+    ) as Record<RelativeOptionId, boolean>,
+    columnOrder: RELATIVE_COLUMNS.map(({ id }) => id),
+    aheadRows: 4,
+    behindRows: 4,
+    driverNameFormat: DEFAULT_DRIVER_NAME_FORMAT
+  };
+};
 
 const integerInRange = (value: unknown, fallback: number): number =>
   Number.isFinite(value) ? Math.max(1, Math.min(Math.round(Number(value)), 10)) : fallback;

@@ -69,6 +69,33 @@ export interface TrackMapViewModel {
   pit_prediction_lap_distance: number | null;
 }
 
+export interface DeltaViewModel {
+  available: boolean;
+  seconds: number;
+  mode: import("./delta-settings").DeltaMode;
+  reference_seconds: number;
+  current_lap_valid: boolean;
+  frozen: boolean;
+  sector_index: number;
+  sector_count: number;
+  reference_generation: number;
+}
+
+export interface TimingSectorView { seconds: number; state: "pending" | "neutral" | "personal" | "overall" | "invalid"; }
+export interface TimingLapView { number: number; seconds: number; valid: boolean; state: "normal" | "best" | "invalid"; }
+export interface TimingViewModel {
+  available: boolean;
+  current_seconds: number;
+  last_seconds: number;
+  best_seconds: number;
+  delta_available: boolean;
+  delta_seconds: number;
+  delta_frozen: boolean;
+  active_sector: number;
+  sectors: TimingSectorView[];
+  history: TimingLapView[];
+}
+
 export interface TelemetryFrame {
   source: string;
   connected: boolean;
@@ -86,6 +113,7 @@ export interface TelemetryFrame {
   session_split_number: number;
   session_split_count: number;
   track_name: string;
+  player_vehicle_name: string;
   rest_weather_available: boolean;
   ambient_temperature_c: number;
   track_temperature_c: number;
@@ -94,6 +122,7 @@ export interface TelemetryFrame {
   track_wetness_min_percent: number;
   track_wetness_max_percent: number;
   lap_number: number;
+  player_sector: number;
   player_total_laps: number;
   player_lap_valid: boolean;
   player_in_pits: boolean;
@@ -181,6 +210,8 @@ export interface TelemetryFrame {
   last_lap_seconds: number;
   best_lap_seconds: number;
   lap_delta_seconds: number;
+  delta_model: DeltaViewModel;
+  timing_model: TimingViewModel;
   flag_warning: FlagWarning;
   rejoin_warning: RejoinWarning;
   standings: StandingEntry[];
@@ -237,6 +268,7 @@ export interface RelativeRowModel {
   vehicle_id: number;
   relative_gap_seconds: number;
   kind: "ahead" | "player" | "behind";
+  lap_relation: "same_lap" | "player_ahead" | "opponent_ahead";
 }
 
 export interface RelativeViewModel {
@@ -249,6 +281,7 @@ export interface FlagWarning {
   distance_meters: number;
   car_position: number;
   vehicle_class: string;
+  car_count: number;
 }
 
 export interface RejoinWarning {

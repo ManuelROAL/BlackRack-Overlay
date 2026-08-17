@@ -149,7 +149,7 @@ const drawTrailing = (): void => {
   if (settings.graphPedals.clutch) drawLine(history.clutch, "#62cce9");
   if (settings.graphPedals.brake) drawLine(history.brake, "#ff5367");
   if (settings.graphPedals.throttle) drawLine(history.throttle, "#55ef93");
-  if (settings.graphPedals.brake) drawActivations(history.brake, history.abs, "#a000a8");
+  if (settings.graphPedals.brake) drawActivations(history.brake, history.abs, "#ffd400");
   if (settings.graphPedals.throttle) drawActivations(history.throttle, history.tc, "#2448ff");
 };
 

@@ -35,6 +35,7 @@ const render = (warning: FlagWarning): void => {
 
   const distance = document.getElementById("flag-distance");
   const car = document.getElementById("flag-car");
+  const count = document.getElementById("flag-count");
   if (distance) {
     const value = warning.kind === "checkered"
       ? ""
@@ -52,6 +53,12 @@ const render = (warning: FlagWarning): void => {
       if (car.textContent !== value) car.textContent = value;
     }
   }
+  if (count) {
+    const visible = warning.kind === "blue" && warning.car_count > 1;
+    const value = visible ? `${warning.car_count} COCHES` : "";
+    if (count.textContent !== value) count.textContent = value;
+    if (count.hidden === visible) count.hidden = !visible;
+  }
 };
 
 void listenTelemetry((frame) =>
@@ -67,7 +74,8 @@ if (import.meta.env.DEV) {
       active: true,
       distance_meters: preview === "yellow" ? 428 : 164,
       car_position: preview === "yellow" ? 7 : 2,
-      vehicle_class: preview === "yellow" ? "LMGT3" : "HYPERCAR"
+      vehicle_class: preview === "yellow" ? "LMGT3" : "HYPERCAR",
+      car_count: preview === "blue" ? 3 : preview === "yellow" ? 1 : 0
     });
   }
 }

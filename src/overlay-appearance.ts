@@ -1,6 +1,6 @@
 import { isTauriRuntime, listenRuntimeEvent } from "./runtime-events";
 
-export type OverlayId = "dashboard" | "driving" | "tires" | "damage" | "standings" | "relative" | "fuel" | "pitstop" | "flags" | "rejoin" | "trackmap";
+export type OverlayId = "dashboard" | "delta" | "timing" | "driving" | "tires" | "damage" | "standings" | "relative" | "fuel" | "pitstop" | "flags" | "rejoin" | "trackmap";
 
 export type OverlayTransparencySettings = Record<OverlayId, number>;
 
@@ -21,6 +21,8 @@ export const OVERLAY_TRANSPARENCY_SCOPE_KEY = "lmu-overlay.background-transparen
 
 export const DEFAULT_OVERLAY_TRANSPARENCY: OverlayTransparencySettings = {
   dashboard: 5,
+  delta: 5,
+  timing: 5,
   driving: 5,
   tires: 5,
   damage: 5,

@@ -107,6 +107,7 @@ impl TelemetrySource for MockTelemetrySource {
             session_split_number: 2,
             session_split_count: 12,
             track_name: "Circuit de la Sarthe".into(),
+            player_vehicle_name: "Mock Hypercar".into(),
             rest_weather_available: true,
             ambient_temperature_c: 19.4,
             track_temperature_c: 27.8,
@@ -115,6 +116,13 @@ impl TelemetrySource for MockTelemetrySource {
             track_wetness_min_percent: 4.0,
             track_wetness_max_percent: 22.0,
             lap_number: (elapsed / 215.0).floor() as i32 + 1,
+            player_sector: if lap_progress < 1.0 / 3.0 {
+                1
+            } else if lap_progress < 2.0 / 3.0 {
+                2
+            } else {
+                0
+            },
             player_total_laps: completed_laps,
             player_lap_valid: true,
             player_in_pits: false,
@@ -234,9 +242,11 @@ impl TelemetrySource for MockTelemetrySource {
             track_map_model: Default::default(),
             consumption_profile_samples: 5,
             current_lap_seconds,
-            last_lap_seconds: 209.021,
+            last_lap_seconds: 215.0,
             best_lap_seconds: 208.412,
             lap_delta_seconds: (elapsed * 0.31).sin() * 0.72,
+            delta_model: Default::default(),
+            timing_model: Default::default(),
             flag_warning: if (elapsed as u64 / 8) % 2 == 0 {
                 FlagWarning {
                     kind: "yellow",
@@ -244,6 +254,7 @@ impl TelemetrySource for MockTelemetrySource {
                     distance_meters: 428.0,
                     car_position: 7,
                     vehicle_class: "LMGT3".into(),
+                    car_count: 1,
                 }
             } else {
                 FlagWarning {
@@ -252,6 +263,7 @@ impl TelemetrySource for MockTelemetrySource {
                     distance_meters: 164.0,
                     car_position: 2,
                     vehicle_class: "HYPERCAR".into(),
+                    car_count: 3,
                 }
             },
             rejoin_warning: RejoinWarning {
@@ -292,6 +304,7 @@ impl TelemetrySource for MockTelemetrySource {
                     vehicle_name: "Porsche 963".into(),
                     vehicle_class: "HYPERCAR".into(),
                     initial_class_count: 3,
+                    laps_relative_to_player: 0,
                     total_laps: 18,
                     laps_behind_leader: 0,
                     laps_behind_next: 0,
@@ -342,6 +355,7 @@ impl TelemetrySource for MockTelemetrySource {
                     vehicle_name: "Ferrari 499P".into(),
                     vehicle_class: "HYPERCAR".into(),
                     initial_class_count: 3,
+                    laps_relative_to_player: 0,
                     total_laps: 18,
                     laps_behind_leader: 0,
                     laps_behind_next: 0,
@@ -392,6 +406,7 @@ impl TelemetrySource for MockTelemetrySource {
                     vehicle_name: "Toyota GR010".into(),
                     vehicle_class: "HYPERCAR".into(),
                     initial_class_count: 3,
+                    laps_relative_to_player: 0,
                     total_laps: 18,
                     laps_behind_leader: 0,
                     laps_behind_next: 0,

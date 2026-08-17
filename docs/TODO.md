@@ -23,6 +23,9 @@ can retain the development URL and is not a valid WebView2 measurement.
    reassignment, and game mode remains click-through across the complete display.
 8. Validate Track Map's official type-0/type-1 geometry, lap-distance alignment
    and complete-pit-passage filter on at least one additional circuit.
+9. Validate Delta through a clean lap, invalid lap, pit passage, stint/session
+   transition and restart; confirm the persisted overall reference reloads for
+   the same track and vehicle.
 
 Do not perform another speculative optimization until the moving capture identifies
 the largest remaining cost.
@@ -46,7 +49,7 @@ These are hypotheses, not approved changes; use measurements first.
 - Add repeatable session capture/replay fixtures for development without LMU.
 - Expand Rust model tests for Standings/Relative selection and frontend tests for
   presentation-only formatting.
-- Improve failure diagnostics and release automation/CI.
+- Improve release automation/CI.
 - Continue refining yellow causation if LMU exposes a stable official signal.
 
 ## Known constraints

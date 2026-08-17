@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Timing compacto</title>
+  </head>
+  <body class="timing-body">
+    <main id="timing-card" class="timing-card" data-state="waiting">
+      <section class="timing-delta">
+        <span>DELTA MEJOR</span>
+        <strong id="timing-delta">---.---</strong>
+      </section>
+      <section class="timing-times">
+        <div><span>ACTUAL</span><b id="timing-current">--:--.---</b></div>
+        <div><span>ÚLTIMA</span><b id="timing-last">--:--.---</b></div>
+        <div><span>MEJOR</span><b id="timing-best">--:--.---</b></div>
+      </section>
+      <section id="timing-sectors" class="timing-sectors" aria-label="Sectores">
+        <div data-sector="0"><span>S1</span><b>--.---</b></div>
+        <div data-sector="1"><span>S2</span><b>--.---</b></div>
+        <div data-sector="2"><span>S3</span><b>--.---</b></div>
+      </section>
+      <ol id="timing-history" class="timing-history" aria-label="Últimas vueltas"></ol>
+    </main>
+    <script type="module" src="/src/timing.ts"></script>
+  </body>
+</html>

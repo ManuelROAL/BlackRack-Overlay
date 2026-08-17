@@ -35,6 +35,9 @@ in `docs/overlays/` and should not be duplicated here.
   optional cached enrichments that must degrade gracefully.
 - Rust owns telemetry semantics, persistent learning, strategy math and roster
   selection. Frontend renderers own presentation and browser-only state.
+- Lap references and lap/stint history use bundled SQLite in the application data
+  directory. The hot telemetry path remains memory-only and persistence happens
+  asynchronously at semantic boundaries.
 - Telemetry cadence follows information needs rather than host grouping. Heavy
   work does not enter the 50 Hz loop without comparable measurement.
 - Composite hosts retain grouped native batches and same-origin `postMessage`
@@ -59,8 +62,9 @@ in `docs/overlays/` and should not be duplicated here.
   directory.
 - OBS browser source is localhost-only, optional and off by default.
 - Shortcut conflicts are non-fatal and visible/configurable.
-- `startup.log` is replaced each run and is the first diagnostic for startup
-  failures on another computer.
+- `startup.log` is replaced each run and is the first diagnostic for startup or
+  frontend failures on another computer. The replaced run remains available as
+  `startup.previous.log`, and known credential fields are redacted.
 - Release checksums accompany artifacts but are not required to run the installer.
 
 ## Documentation ownership
