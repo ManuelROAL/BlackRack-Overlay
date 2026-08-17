@@ -22,7 +22,7 @@ const relativeBaseHeight = (): number => Math.max(
   48 + (relativeSettings.aheadRows + relativeSettings.behindRows + 1) * 23
 );
 const relativeBaseWidth = (): number => Math.max(
-  760,
+  344,
   visibleRelativeColumns(relativeSettings).reduce((total, { width }) => total + width, 0) + 32
 );
 const updateOverlayFit = fitOverlay({
@@ -309,6 +309,16 @@ const signals = (entry: StandingEntry): HTMLElement => {
   else if (entry.finish_status === 2) container.append(node("span", "race-flag dnf-flag", "DNF"));
   if (entry.in_garage) container.append(node("span", "race-flag garage-flag", "GAR"));
   else if (entry.in_pits) container.append(node("span", "race-flag pit-flag", "PIT"));
+  else if (entry.is_out_lap) container.append(node("span", "race-flag out-lap-flag", "OUT"));
+  if (entry.damage_percent > 0) {
+    const damage = node(
+      "span",
+      `race-flag damage-flag${entry.damage_percent >= 50 ? " damage-flag--heavy" : ""}`,
+      entry.damage_percent >= 50 ? "DMG!" : "DMG"
+    );
+    damage.title = `Daño ${Math.round(entry.damage_percent)}%`;
+    container.append(damage);
+  }
   if (entry.causing_yellow) container.append(node("span", "race-flag yellow-flag", "Y"));
   const penalties = livePenalties.get(entry.vehicle_id);
   if ((penalties?.DT ?? 0) > 0) container.append(node("span", "race-flag penalty-flag", "DT"));
@@ -359,7 +369,7 @@ const cellSignature = (entry: StandingEntry, column: RelativeColumnId, trackLimi
     case "tire": return entry.tire_compounds.join("/");
     case "signals": {
       const penalties = livePenalties.get(entry.vehicle_id);
-      return `${entry.finish_status}|${entry.in_garage}|${entry.in_pits}|${entry.causing_yellow}|${entry.penalty_count}|${entry.flag}|${penalties?.DT ?? 0}|${penalties?.SG ?? 0}`;
+      return `${entry.finish_status}|${entry.in_garage}|${entry.in_pits}|${entry.is_out_lap}|${Math.round(entry.damage_percent)}|${entry.causing_yellow}|${entry.penalty_count}|${entry.flag}|${penalties?.DT ?? 0}|${penalties?.SG ?? 0}`;
     }
   }
 };
@@ -474,7 +484,24 @@ const createCell = (entry: StandingEntry, column: RelativeColumnId, trackLimit: 
   }
 };
 
-const renderRow = (entry: StandingEntry, trackLimit: number, instanceKey: string): HTMLElement => {
+type RelativeLapRelation = TelemetryFrame["relative_model"]["rows"][number]["lap_relation"];
+type RelativeRowKind = TelemetryFrame["relative_model"]["rows"][number]["kind"];
+
+const lapRelationLabel = (relation: RelativeLapRelation, kind: RelativeRowKind): string => {
+  if (relation === "player_ahead") return "Coche doblado por ti";
+  if (relation === "opponent_ahead") {
+    return kind === "behind" ? "Coche que va a doblarte" : "Coche que te ha doblado";
+  }
+  return "";
+};
+
+const renderRow = (
+  entry: StandingEntry,
+  trackLimit: number,
+  instanceKey: string,
+  lapRelation: RelativeLapRelation,
+  rowKind: RelativeRowKind
+): HTMLElement => {
   const columns = activeColumns().map(({ id }) => id);
   const columnsKey = columns.join("|");
   let cached = rowCache.get(instanceKey);
@@ -485,7 +512,15 @@ const renderRow = (entry: StandingEntry, trackLimit: number, instanceKey: string
   }
   cached.element.classList.toggle("player", entry.is_player);
   cached.element.classList.toggle("in-pits", entry.in_pits);
+  cached.element.classList.toggle("out-lap", entry.is_out_lap && !entry.in_pits);
+  cached.element.classList.toggle("damaged", entry.damage_percent > 0);
+  cached.element.classList.toggle("heavily-damaged", entry.damage_percent >= 50);
   cached.element.dataset.classTone = classTone(entry.vehicle_class);
+  cached.element.dataset.lapRelation = lapRelation;
+  const relationLabel = lapRelationLabel(lapRelation, rowKind);
+  cached.element.title = relationLabel;
+  if (relationLabel) cached.element.setAttribute("aria-label", relationLabel);
+  else cached.element.removeAttribute("aria-label");
 
   for (const column of columns) {
     const signature = cellSignature(entry, column, trackLimit);
@@ -627,7 +662,9 @@ const render = (frame: TelemetryFrame): void => {
     groupChildren.push(...selected.map(({ model, entry }) => renderRow(
       entry,
       frame.track_limits_steps_per_penalty,
-      `relative-${model.kind}-${model.vehicle_id}`
+      `relative-${model.kind}-${model.vehicle_id}`,
+      model.lap_relation,
+      model.kind
     )));
     syncChildren(group, groupChildren);
     const children: HTMLElement[] = [];
@@ -744,15 +781,15 @@ if (import.meta.env.DEV && new URLSearchParams(window.location.search).has("prev
     standings_model: { groups: [] },
     relative_model: {
       rows: [
-        { vehicle_id: 0, relative_gap_seconds: -8.4, kind: "ahead" },
-        { vehicle_id: 1, relative_gap_seconds: -6.3, kind: "ahead" },
-        { vehicle_id: 2, relative_gap_seconds: -4.2, kind: "ahead" },
-        { vehicle_id: 3, relative_gap_seconds: -2.1, kind: "ahead" },
-        { vehicle_id: 22, relative_gap_seconds: 0, kind: "player" },
-        { vehicle_id: 25, relative_gap_seconds: 2.1, kind: "behind" },
-        { vehicle_id: 26, relative_gap_seconds: 4.2, kind: "behind" },
-        { vehicle_id: 27, relative_gap_seconds: 6.3, kind: "behind" },
-        { vehicle_id: 28, relative_gap_seconds: 8.4, kind: "behind" }
+        { vehicle_id: 0, relative_gap_seconds: -8.4, kind: "ahead", lap_relation: "player_ahead" },
+        { vehicle_id: 1, relative_gap_seconds: -6.3, kind: "ahead", lap_relation: "same_lap" },
+        { vehicle_id: 2, relative_gap_seconds: -4.2, kind: "ahead", lap_relation: "opponent_ahead" },
+        { vehicle_id: 3, relative_gap_seconds: -2.1, kind: "ahead", lap_relation: "same_lap" },
+        { vehicle_id: 22, relative_gap_seconds: 0, kind: "player", lap_relation: "same_lap" },
+        { vehicle_id: 23, relative_gap_seconds: 2.1, kind: "behind", lap_relation: "opponent_ahead" },
+        { vehicle_id: 25, relative_gap_seconds: 4.2, kind: "behind", lap_relation: "player_ahead" },
+        { vehicle_id: 28, relative_gap_seconds: 6.3, kind: "behind", lap_relation: "same_lap" },
+        { vehicle_id: 29, relative_gap_seconds: 8.4, kind: "behind", lap_relation: "same_lap" }
       ]
     },
     standings

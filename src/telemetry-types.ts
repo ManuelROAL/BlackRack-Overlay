@@ -237,6 +237,7 @@ export interface RelativeRowModel {
   vehicle_id: number;
   relative_gap_seconds: number;
   kind: "ahead" | "player" | "behind";
+  lap_relation: "same_lap" | "player_ahead" | "opponent_ahead";
 }
 
 export interface RelativeViewModel {
