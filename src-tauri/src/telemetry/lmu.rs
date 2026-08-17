@@ -1533,8 +1533,7 @@ impl LmuTelemetrySource {
             .filter_map(|entry| self.vehicle_identities.get(&entry.vehicle_id))
             .map(|identity| identity.driver_name.as_str())
             .collect::<Vec<_>>();
-        self.driver_ranks
-            .refresh(&driver_names, snapshot.session_type);
+        self.driver_ranks.refresh(&driver_names);
 
         let player_class = raw_entries
             .iter()
