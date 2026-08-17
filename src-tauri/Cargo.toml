@@ -1,6 +1,6 @@
 [package]
 name = "lmu-overlay"
-version = "0.5.1"
+version = "0.5.2"
 description = "Overlay multiplataforma de telemetría para Le Mans Ultimate"
 authors = ["LMU Overlay contributors"]
 edition = "2021"
