@@ -117,6 +117,23 @@ unrelated changes, and never move them into a new branch, commit or merge withou
 the user's authorization. Use lowercase, short, descriptive branch names with
 hyphen-separated words.
 
+### Approval gate for feature and hotfix branches
+
+- The user's initial request authorizes creating and working on the corresponding
+  `feature/*` or `hotfix/*` branch, but it does not authorize merging or deleting
+  that branch.
+- After implementation, documentation, verification and commits are complete,
+  keep the support branch open and report its name, commits and verification
+  results to the user.
+- Do not merge a `feature/*` branch into `develop`, or a `hotfix/*` branch into
+  `master` or `develop`, until the user gives explicit approval after reviewing
+  that completion report. Do not treat silence or the original task request as
+  approval.
+- If the user requests changes instead of approving, continue on the same support
+  branch, commit the corrections and present a new completion report for approval.
+- Delete a merged `feature/*` or `hotfix/*` branch only with separate explicit
+  user approval. Until then, leave it available even after its merges complete.
+
 ### Feature branches
 
 - Create `feature/<name>` from an up-to-date `develop` branch.
@@ -124,8 +141,8 @@ hyphen-separated words.
   coherent unit of work.
 - Complete the implementation, documentation and proportional verification on
   the feature branch and commit the finished logical change there.
-- Merge the completed branch into `develop`. Never merge a feature branch
-  directly into `master`.
+- Once the approval gate is satisfied, merge the completed branch into `develop`.
+  Never merge a feature branch directly into `master`.
 
 ### Release branches
 
@@ -145,8 +162,9 @@ hyphen-separated words.
 - Create `hotfix/<name>` from `master` only for an urgent production correction.
 - Make the smallest complete change, update the patch version and release notes
   when applicable, and run verification proportional to the affected behavior.
-- Merge the completed hotfix into both `master` and `develop`, resolving the
-  latter carefully if an active release already contains related changes.
+- Once the approval gate is satisfied, merge the completed hotfix into both
+  `master` and `develop`, resolving the latter carefully if an active release
+  already contains related changes.
 - Tag a published hotfix on `master` as `v<version>`.
 
 Use explicit, non-interactive Git commands. Before each merge, confirm that the
