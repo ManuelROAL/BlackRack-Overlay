@@ -69,7 +69,6 @@ struct LmuSnapshot {
     uint32_t player_offroad_wheels;
     uint32_t standings_count;
     int32_t lap_number;
-    int32_t player_sector;
     int32_t gear;
     int32_t player_total_laps;
     int32_t max_laps;
@@ -377,7 +376,6 @@ extern "C" int lmu_read_snapshot(LmuSnapshot* output) {
         }
         if (source.mIsPlayer) {
             output->player_in_garage = source.mInGarageStall ? 1u : 0u;
-            output->player_sector = static_cast<int32_t>(source.mSector);
             output->player_lap_valid = source.mCountLapFlag == 2 ? 1u : 0u;
             output->player_total_laps = static_cast<int32_t>(source.mTotalLaps);
             output->estimated_lap_time = source.mEstimatedLapTime;
