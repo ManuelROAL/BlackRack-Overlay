@@ -35,9 +35,6 @@ in `docs/overlays/` and should not be duplicated here.
   optional cached enrichments that must degrade gracefully.
 - Rust owns telemetry semantics, persistent learning, strategy math and roster
   selection. Frontend renderers own presentation and browser-only state.
-- Lap references and lap/stint history use bundled SQLite in the application data
-  directory. The hot telemetry path remains memory-only and persistence happens
-  asynchronously at semantic boundaries.
 - Telemetry cadence follows information needs rather than host grouping. Heavy
   work does not enter the 50 Hz loop without comparable measurement.
 - Composite hosts retain grouped native batches and same-origin `postMessage`
