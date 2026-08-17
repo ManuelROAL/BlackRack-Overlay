@@ -78,7 +78,9 @@ duplicate selection or timing semantics.
   duration for history `lapTime = -1`.
 - RaceControl supplies DR, progress, ELO when available, SR, nationality and badge.
   In qualifying/race, complete the one-per-roster refresh only after a successful
-  non-empty result; failed, empty and partial results remain retryable.
+  non-empty result; failed, empty and partial results remain retryable. A driver
+  swap extends that roster and must trigger a profile request for the new active
+  driver without discarding the profiles already cached for the team.
 - In registered events, the one-time `event/my-split` roster supplements missing
   or `XX` nationality and missing badges without replacing valid `/players` data.
 - The DR estimate is same-class and event-parameter aware. Convert it back from
