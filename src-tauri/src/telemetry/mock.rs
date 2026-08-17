@@ -244,6 +244,7 @@ impl TelemetrySource for MockTelemetrySource {
                     distance_meters: 428.0,
                     car_position: 7,
                     vehicle_class: "LMGT3".into(),
+                    car_count: 1,
                 }
             } else {
                 FlagWarning {
@@ -252,6 +253,7 @@ impl TelemetrySource for MockTelemetrySource {
                     distance_meters: 164.0,
                     car_position: 2,
                     vehicle_class: "HYPERCAR".into(),
+                    car_count: 3,
                 }
             },
             rejoin_warning: RejoinWarning {
