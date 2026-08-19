@@ -9,19 +9,24 @@ in `docs/overlays/` and should not be duplicated here.
   telemetry under Proton still needs validation.
 - Information density and legibility while driving take priority over decoration.
 - Overlays remain independently selectable/configurable but share one transparent
-  host WebView per monitor to reduce renderer cost.
+  host WebView on the selected monitor to reduce renderer cost.
 - Game mode is click-through and every run starts there. Edit mode is explicit.
   Escape is not intercepted because it conflicts with LMU controls.
-- Positions, proportional sizes, monitor assignments and user preferences persist.
-  Panels may cross monitor edges deliberately while retaining a recoverable strip.
+- Positions, proportional sizes, the selected monitor and user preferences
+  persist. A panel may be deliberately cropped at the monitor edge while
+  retaining a recoverable strip.
 - Roboto Condensed and all required flags, logos and badges remain bundled.
 
 ## Host and configuration
 
 - Each host and its WebView use explicit transparent RGBA backgrounds; the
   transparent flag alone is insufficient in release WebView2 builds.
-- General/per-overlay transparency and monitor modes preserve their independent
-  saved values while a common value is active.
+- General/per-overlay transparency preserves its independent saved values while a
+  common value is active.
+- All overlays share one host on a single selected monitor. Per-overlay monitor
+  assignment was removed because an empty transparent host on a secondary monitor
+  forced DWM alpha-composition at that monitor's refresh rate and degraded game
+  FPS with mixed-refresh displays.
 - Per-overlay configuration and position resets are scoped and never affect
   visibility or another overlay.
 - Import/export is a single validated versioned document covering UI preferences

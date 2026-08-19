@@ -21,6 +21,25 @@ live in `docs/PERFORMANCE.md`.
 - Native telemetry is grouped by payload variant, then projected to reused
   per-overlay field allowlists before iframe `postMessage`.
 
+## Single overlay host on the selected monitor — 2026-08-18
+
+Removed per-overlay monitor assignment. The app now creates one transparent host
+window on the user-selected monitor and moves/resizes it when the selection
+changes; monitors without the host contribute no composed surface. Configuration
+schema moved to v5 (`overlays.monitor` instead of per-overlay `monitorSelection`;
+layout placements no longer carry a monitor). Legacy v1-4 configurations and the
+old localStorage monitor-selection record are migrated on first run. Rust config
+validation now accepts schema versions 1-5.
+
+Rationale: with per-monitor hosts, any visible overlay showed a full-screen
+transparent WebView2 host on every monitor, including empty hosts on secondary
+monitors. DWM had to alpha-composite that surface at the secondary refresh rate
+(for example 60 Hz), degrading game FPS. A single host on the selected monitor
+removes that surface entirely.
+
+A controlled A/B capture comparing this build with the previous release on the
+180 Hz / 60 Hz two-monitor setup is still pending.
+
 ## Track Map GPU diagnosis — 2026-08-13
 
 Continuous 110 ms marker transitions kept WebView2's GPU process around 1.67% CPU

@@ -385,7 +385,6 @@ struct OverlayDisplay {
 #[serde(rename_all = "camelCase")]
 struct OverlayPlacementSeed {
     overlay: &'static str,
-    monitor: usize,
     x: f64,
     y: f64,
     width: f64,
@@ -544,28 +543,109 @@ mod display_name_tests {
     }
 }
 
-fn create_overlay_hosts(app: &AppHandle) -> Result<(), String> {
-    for (index, monitor) in sorted_monitors(app)?.into_iter().enumerate() {
-        let label = format!("{OVERLAY_HOST_PREFIX}{index}");
-        let logical_size = monitor.size().to_logical::<f64>(monitor.scale_factor());
-        let window =
-            WebviewWindowBuilder::new(app, &label, WebviewUrl::App("composite.html".into()))
-                .title(format!("LMU Overlay · Monitor {}", index + 1))
-                .inner_size(logical_size.width, logical_size.height)
-                .transparent(true)
-                .background_color(TRANSPARENT_BACKGROUND)
-                .decorations(false)
-                .shadow(false)
-                .always_on_top(true)
-                .skip_taskbar(true)
-                .resizable(false)
-                .devtools(false)
-                .visible(false)
-                .build()
-                .map_err(|error| {
-                    format!("No se pudo crear el host del monitor {index}: {error}")
-                })?;
+#[derive(Clone, Deserialize, Serialize)]
+struct OverlayMonitorSettings {
+    index: usize,
+}
 
+fn overlay_monitor_settings_path(app: &AppHandle) -> Result<std::path::PathBuf, String> {
+    app.path()
+        .app_config_dir()
+        .map(|directory| directory.join("overlay-monitor.json"))
+        .map_err(|error| format!("No se pudo localizar la configuracion: {error}"))
+}
+
+fn load_overlay_monitor_index(app: &AppHandle) -> usize {
+    let Ok(path) = overlay_monitor_settings_path(app) else {
+        return 0;
+    };
+    let Ok(contents) = fs::read_to_string(&path) else {
+        return 0;
+    };
+    serde_json::from_str::<OverlayMonitorSettings>(&contents)
+        .map(|settings| settings.index)
+        .unwrap_or(0)
+}
+
+fn save_overlay_monitor_index(app: &AppHandle, index: usize) -> Result<(), String> {
+    let path = overlay_monitor_settings_path(app)?;
+    if let Some(directory) = path.parent() {
+        fs::create_dir_all(directory)
+            .map_err(|error| format!("No se pudo crear la carpeta de configuracion: {error}"))?;
+    }
+    let contents = serde_json::to_string_pretty(&OverlayMonitorSettings { index })
+        .map_err(|error| error.to_string())?;
+    fs::write(&path, contents)
+        .map_err(|error| format!("No se pudo guardar la configuracion: {error}"))
+}
+
+fn create_overlay_host(app: &AppHandle) -> Result<(), String> {
+    let monitors = sorted_monitors(app)?;
+    if monitors.is_empty() {
+        return Err("No se detectaron monitores para alojar los overlays".into());
+    }
+    let saved_index = load_overlay_monitor_index(app);
+    let (host_index, monitor) = match monitors.get(saved_index) {
+        Some(monitor) => (saved_index, monitor),
+        None => (0, &monitors[0]),
+    };
+    let label = format!("{OVERLAY_HOST_PREFIX}0");
+    let logical_size = monitor.size().to_logical::<f64>(monitor.scale_factor());
+    let window = WebviewWindowBuilder::new(app, &label, WebviewUrl::App("composite.html".into()))
+        .title(format!("LMU Overlay · Monitor {}", host_index + 1))
+        .inner_size(logical_size.width, logical_size.height)
+        .transparent(true)
+        .background_color(TRANSPARENT_BACKGROUND)
+        .decorations(false)
+        .shadow(false)
+        .always_on_top(true)
+        .skip_taskbar(true)
+        .resizable(false)
+        .devtools(false)
+        .visible(false)
+        .build()
+        .map_err(|error| format!("No se pudo crear el host del monitor {saved_index}: {error}"))?;
+
+    window
+        .set_position(Position::Physical(PhysicalPosition::new(
+            monitor.position().x,
+            monitor.position().y,
+        )))
+        .map_err(|error| error.to_string())?;
+    window
+        .set_size(Size::Physical(PhysicalSize::new(
+            monitor.size().width,
+            monitor.size().height,
+        )))
+        .map_err(|error| error.to_string())?;
+    window
+        .set_ignore_cursor_events(DEFAULT_CLICK_THROUGH)
+        .map_err(|error| error.to_string())?;
+    #[cfg(windows)]
+    register_native_overlay_host(&window)?;
+    #[cfg(windows)]
+    start_native_overlay_input_tracker()?;
+    Ok(())
+}
+
+#[tauri::command]
+fn get_overlay_monitor(app: AppHandle) -> Result<usize, String> {
+    let monitors = sorted_monitors(&app)?;
+    if monitors.is_empty() {
+        return Err("No se detectaron monitores para alojar los overlays".into());
+    }
+    let saved = load_overlay_monitor_index(&app);
+    Ok(if saved < monitors.len() { saved } else { 0 })
+}
+
+#[tauri::command]
+fn set_overlay_monitor(app: AppHandle, index: usize) -> Result<usize, String> {
+    let monitors = sorted_monitors(&app)?;
+    let Some(monitor) = monitors.get(index) else {
+        return Err("El monitor seleccionado no está disponible".into());
+    };
+    save_overlay_monitor_index(&app, index)?;
+    if let Some(window) = app.get_webview_window(&format!("{OVERLAY_HOST_PREFIX}0")) {
         window
             .set_position(Position::Physical(PhysicalPosition::new(
                 monitor.position().x,
@@ -578,15 +658,9 @@ fn create_overlay_hosts(app: &AppHandle) -> Result<(), String> {
                 monitor.size().height,
             )))
             .map_err(|error| error.to_string())?;
-        window
-            .set_ignore_cursor_events(DEFAULT_CLICK_THROUGH)
-            .map_err(|error| error.to_string())?;
-        #[cfg(windows)]
-        register_native_overlay_host(&window)?;
     }
-    #[cfg(windows)]
-    start_native_overlay_input_tracker()?;
-    Ok(())
+    startup_log::record(format!("overlay monitor changed to {index}"));
+    Ok(index)
 }
 
 fn for_each_overlay_host(app: &AppHandle, mut action: impl FnMut(&WebviewWindow)) {
@@ -763,7 +837,6 @@ fn get_default_overlay_placement(label: String) -> Result<OverlayPlacementSeed, 
     let (x, y, width, height) = default_overlay_geometry(overlay);
     Ok(OverlayPlacementSeed {
         overlay,
-        monitor: 0,
         x,
         y,
         width,
@@ -772,15 +845,15 @@ fn get_default_overlay_placement(label: String) -> Result<OverlayPlacementSeed, 
 }
 
 #[tauri::command]
-fn get_composite_layout_seed(app: AppHandle) -> Result<Vec<OverlayPlacementSeed>, String> {
+fn get_composite_layout_seed(
+    app: AppHandle,
+    monitor: usize,
+) -> Result<Vec<OverlayPlacementSeed>, String> {
     let displays = overlay_displays(&app)?;
     if displays.is_empty() {
         return Err("No se detectaron monitores para alojar los overlays".into());
     }
-    let primary = displays
-        .iter()
-        .find(|display| display.x == 0 && display.y == 0)
-        .unwrap_or(&displays[0]);
+    let display = displays.get(monitor).unwrap_or(&displays[0]);
     let saved = app
         .path()
         .app_config_dir()
@@ -805,28 +878,15 @@ fn get_composite_layout_seed(app: AppHandle) -> Result<Vec<OverlayPlacementSeed>
             let Some((saved_x, saved_y, saved_width, saved_height)) = saved_geometry else {
                 return OverlayPlacementSeed {
                     overlay: label,
-                    monitor: primary.index,
                     x: default_x,
                     y: default_y,
                     width: default_width,
                     height: default_height,
                 };
             };
-            let center_x = saved_x + saved_width as i32 / 2;
-            let center_y = saved_y + saved_height as i32 / 2;
-            let display = displays
-                .iter()
-                .find(|display| {
-                    center_x >= display.x
-                        && center_x < display.x + display.width as i32
-                        && center_y >= display.y
-                        && center_y < display.y + display.height as i32
-                })
-                .unwrap_or(primary);
             let scale = display.scale_factor.max(0.1);
             OverlayPlacementSeed {
                 overlay: label,
-                monitor: display.index,
                 x: (saved_x - display.x) as f64 / scale,
                 y: (saved_y - display.y) as f64 / scale,
                 width: saved_width as f64 / scale,
@@ -966,7 +1026,7 @@ fn validate_overlay_configuration(contents: &str) -> Result<(), String> {
         .get("schemaVersion")
         .and_then(serde_json::Value::as_u64);
     if parsed.get("format").and_then(serde_json::Value::as_str) != Some("lmu-overlay-configuration")
-        || !matches!(schema_version, Some(1..=3))
+        || !matches!(schema_version, Some(1..=5))
     {
         return Err("Formato de configuración no reconocido".into());
     }
@@ -1215,6 +1275,8 @@ pub fn run() {
             set_overlay_visible,
             get_overlay_states,
             get_overlay_displays,
+            get_overlay_monitor,
+            set_overlay_monitor,
             get_composite_layout_seed,
             get_default_overlay_placement,
             get_interaction_mode,
@@ -1261,8 +1323,8 @@ pub fn run() {
                 startup_log::record("warning: control window not found during setup");
             }
 
-            create_overlay_hosts(app.handle())?;
-            startup_log::record("per-monitor overlay hosts created");
+            create_overlay_host(app.handle())?;
+            startup_log::record("overlay host created");
             if let Some(panel) = app.get_webview_window("control") {
                 let _ = panel.set_always_on_top(!DEFAULT_CLICK_THROUGH);
             }
