@@ -21,6 +21,10 @@ TypeScript fetches static geometry, interpolates and renders it.
 - Fetch `/rest/watch/trackmap` once per circuit. Type 0 is the ordered main
   centerline and type 1 the open pitlane. Filter other families and cache valid
   geometry by normalized circuit key.
+- Split type-1 geometry at discontinuities and keep only its longest continuous
+  route so unused alternate pit paths are not joined or displayed.
+- Draw that pitlane as a thin secondary open line beneath the main circuit, using
+  the same transform. Do not close it or invent one for learned and fallback maps.
 - Transfer official/learned geometry outside telemetry frames and retain cached
   official paths by shared reference in hot backend paths.
 - Align direction and lap-distance origin after a few metres of non-pit player
@@ -34,7 +38,8 @@ TypeScript fetches static geometry, interpolates and renders it.
 ## Pit passage and prediction
 
 - The separate white `P` is the predicted post-stop player position, not the
-  player marker.
+  player marker. Its visibility is independently configurable and defaults to on;
+  disabling it does not stop pit-passage learning.
 - Combine authoritative REST service total with the median learned moving time
   through the pitlane, then convert it using the latest valid player lap with best
   lap as fallback. Rust serializes the prepared lap distance; the renderer only
@@ -43,7 +48,9 @@ TypeScript fetches static geometry, interpolates and renders it.
   Exclude stationary service time and keep the last seven valid observations.
 - With official type-1 geometry, accept only endpoint-to-endpoint progress. Do not
   seed from a partial passage or invent a circuit-wide fallback before a complete
-  passage is observed.
+  passage is observed. Latch the entry and exit endpoints throughout the observed
+  pit traversal rather than requiring the `in_pits` transition sample itself to
+  fall within endpoint proximity.
 - Scan type-1 proximity only for vehicles entering, traversing or exiting pitlane.
 - Hide prediction when the player is in pitlane or any required input is missing.
 

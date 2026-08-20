@@ -178,6 +178,7 @@ struct PitVehicleState {
     moving_seconds: f64,
     pending_seconds: f64,
     pit_start_progress: Option<f64>,
+    last_pit_progress: Option<f64>,
     max_pit_progress_delta: f64,
 }
 
@@ -329,6 +330,7 @@ impl TrackMapModelState {
                         moving_seconds: 0.0,
                         pending_seconds: 0.0,
                         pit_start_progress: None,
+                        last_pit_progress: None,
                         max_pit_progress_delta: 0.0,
                     },
                 );
@@ -348,17 +350,16 @@ impl TrackMapModelState {
                 previous.eligible = true;
                 previous.moving_seconds = 0.0;
                 previous.pending_seconds = 0.0;
-                previous.pit_start_progress = progress;
+                previous.pit_start_progress = None;
+                previous.last_pit_progress = None;
                 previous.max_pit_progress_delta = 0.0;
+                observe_pit_progress(previous, progress);
             } else if previous.in_pits
                 && vehicle.in_pits
                 && previous.eligible
                 && delta_seconds > 0.0
             {
-                if let (Some(start), Some(current)) = (previous.pit_start_progress, progress) {
-                    previous.max_pit_progress_delta =
-                        previous.max_pit_progress_delta.max((current - start).abs());
-                }
+                observe_pit_progress(previous, progress);
                 previous.pending_seconds = (previous.pending_seconds + delta_seconds).min(0.5);
                 let raw_delta = vehicle.lap_distance - previous.last_distance;
                 let distance_delta = if frame.track_length_meters > 0.0 {
@@ -371,8 +372,11 @@ impl TrackMapModelState {
                     previous.pending_seconds = 0.0;
                 }
             } else if previous.in_pits && !vehicle.in_pits {
+                let exit_progress = progress
+                    .and_then(pit_endpoint_progress)
+                    .or_else(|| previous.last_pit_progress.and_then(pit_endpoint_progress));
                 if previous.eligible
-                    && completed_official_pit_passage(*previous, progress, official.is_some())
+                    && completed_official_pit_passage(*previous, exit_progress, official.is_some())
                 {
                     completed_samples
                         .push(previous.moving_seconds + previous.pending_seconds.min(0.5));
@@ -381,6 +385,7 @@ impl TrackMapModelState {
                 previous.moving_seconds = 0.0;
                 previous.pending_seconds = 0.0;
                 previous.pit_start_progress = None;
+                previous.last_pit_progress = None;
                 previous.max_pit_progress_delta = 0.0;
             }
             previous.in_pits = vehicle.in_pits;
@@ -513,6 +518,23 @@ fn completed_official_pit_passage(
         && state.max_pit_progress_delta >= 0.5
 }
 
+fn pit_endpoint_progress(progress: f64) -> Option<f64> {
+    (progress.min(1.0 - progress) <= 0.25).then_some(progress)
+}
+
+fn observe_pit_progress(state: &mut PitVehicleState, progress: Option<f64>) {
+    let Some(current) = progress else {
+        return;
+    };
+    if state.pit_start_progress.is_none() {
+        state.pit_start_progress = pit_endpoint_progress(current);
+    }
+    state.last_pit_progress = Some(current);
+    if let Some(start) = state.pit_start_progress {
+        state.max_pit_progress_delta = state.max_pit_progress_delta.max((current - start).abs());
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -540,10 +562,36 @@ mod tests {
             moving_seconds: 20.0,
             pending_seconds: 0.0,
             pit_start_progress: Some(0.1),
+            last_pit_progress: Some(0.9),
             max_pit_progress_delta: 0.8,
         };
         assert!(completed_official_pit_passage(state, Some(0.9), true));
         assert!(!completed_official_pit_passage(state, Some(0.3), true));
+    }
+
+    #[test]
+    fn pit_endpoints_are_latched_during_the_complete_traversal() {
+        let mut state = PitVehicleState {
+            in_pits: true,
+            eligible: true,
+            last_distance: 0.0,
+            moving_seconds: 0.0,
+            pending_seconds: 0.0,
+            pit_start_progress: None,
+            last_pit_progress: None,
+            max_pit_progress_delta: 0.0,
+        };
+        observe_pit_progress(&mut state, Some(0.1));
+        observe_pit_progress(&mut state, Some(0.6));
+        observe_pit_progress(&mut state, Some(0.9));
+        assert_eq!(state.pit_start_progress, Some(0.1));
+        assert_eq!(state.last_pit_progress, Some(0.9));
+        assert!((state.max_pit_progress_delta - 0.8).abs() < f64::EPSILON);
+        assert!(completed_official_pit_passage(
+            state,
+            state.last_pit_progress.and_then(pit_endpoint_progress),
+            true
+        ));
     }
 
     #[test]

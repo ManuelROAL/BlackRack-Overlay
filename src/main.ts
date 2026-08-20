@@ -49,6 +49,12 @@ import {
   type TimingSettings
 } from "./timing-settings";
 import {
+  defaultTrackMapSettings,
+  readTrackMapSettings,
+  TRACK_MAP_SETTINGS_KEY,
+  type TrackMapSettings
+} from "./trackmap-settings";
+import {
   DEFAULT_OVERLAY_TRANSPARENCY,
   effectiveOverlayTransparency,
   OVERLAY_TRANSPARENCY_KEY,
@@ -110,7 +116,7 @@ interface BrowserSourceStatus {
 
 interface OverlayConfigurationExport {
   format: "lmu-overlay-configuration";
-  schemaVersion: 5;
+  schemaVersion: 6;
   exportedAt: string;
   overlays: {
     visibility: Record<OverlayId, boolean>;
@@ -125,6 +131,7 @@ interface OverlayConfigurationExport {
     driving: DrivingSettings;
     delta: DeltaSettings;
     timing: TimingSettings;
+    trackMap: TrackMapSettings;
   };
 }
 
@@ -226,6 +233,7 @@ let relativeSettings: RelativeSettings = readRelativeSettings();
 let drivingSettings: DrivingSettings = readDrivingSettings();
 let deltaSettings: DeltaSettings = readDeltaSettings();
 let timingSettings: TimingSettings = readTimingSettings();
+let trackMapSettings: TrackMapSettings = readTrackMapSettings();
 const overlayTransparency = readOverlayTransparency();
 let overlayTransparencyScope: OverlayTransparencyScope = readOverlayTransparencyScope();
 
@@ -250,6 +258,7 @@ const syncBrowserSourcePreferences = (): void => {
       driving: drivingSettings,
       delta: deltaSettings,
       timing: timingSettings,
+      trackMap: trackMapSettings,
       transparency: effectiveOverlayTransparency(overlayTransparency, overlayTransparencyScope)
     }
   }).catch(() => undefined);
@@ -381,6 +390,12 @@ const persistTimingSettings = (): void => {
   void emit("timing://settings", timingSettings);
   syncBrowserSourcePreferences();
 };
+const persistTrackMapSettings = (): void => {
+  localStorage.setItem(TRACK_MAP_SETTINGS_KEY, JSON.stringify(trackMapSettings));
+  void emit("trackmap://settings", trackMapSettings);
+  syncBrowserSourcePreferences();
+};
+
 
 const deltaModeSelect = document.getElementById("delta-mode") as HTMLSelectElement | null;
 const deltaRangeSelect = document.getElementById("delta-display-range") as HTMLSelectElement | null;
@@ -415,6 +430,15 @@ if (timingHistorySelect) {
     if (historyLaps !== 0 && historyLaps !== 3 && historyLaps !== 5) return;
     timingSettings = { historyLaps } as TimingSettings;
     persistTimingSettings();
+  });
+}
+
+const trackMapPitPrediction = document.getElementById("trackmap-pit-prediction") as HTMLInputElement | null;
+if (trackMapPitPrediction) {
+  trackMapPitPrediction.checked = trackMapSettings.showPitPrediction;
+  trackMapPitPrediction.addEventListener("change", () => {
+    trackMapSettings = { showPitPrediction: trackMapPitPrediction.checked };
+    persistTrackMapSettings();
   });
 }
 
@@ -532,6 +556,10 @@ const resetOverlayConfiguration = async (id: OverlayId): Promise<void> => {
     timingSettings = defaultTimingSettings();
     localStorage.setItem(TIMING_SETTINGS_KEY, JSON.stringify(timingSettings));
     events.push(emit("timing://settings", timingSettings));
+  } else if (id === "trackmap") {
+    trackMapSettings = defaultTrackMapSettings();
+    localStorage.setItem(TRACK_MAP_SETTINGS_KEY, JSON.stringify(trackMapSettings));
+    events.push(emit("trackmap://settings", trackMapSettings));
   }
 
   const effective = effectiveOverlayTransparency(overlayTransparency, overlayTransparencyScope);
@@ -707,6 +735,7 @@ const parseOverlayConfiguration = (contents: string): OverlayConfigurationExport
   const driving = configurationObject(overlays?.driving);
   const delta = configurationObject(overlays?.delta);
   const timing = configurationObject(overlays?.timing);
+  const trackMap = configurationObject(overlays?.trackMap);
   const schemaVersion = root?.schemaVersion;
   const schemaMonitor = typeof overlays?.monitor === "number"
     && Number.isInteger(overlays.monitor) && Number(overlays.monitor) >= 0
@@ -720,11 +749,12 @@ const parseOverlayConfiguration = (contents: string): OverlayConfigurationExport
   const percentageIsValid = (value: unknown): value is number =>
     typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 100;
   if (root?.format !== "lmu-overlay-configuration"
-    || (schemaVersion !== 1 && schemaVersion !== 2 && schemaVersion !== 3 && schemaVersion !== 4 && schemaVersion !== 5)
+    || (schemaVersion !== 1 && schemaVersion !== 2 && schemaVersion !== 3 && schemaVersion !== 4 && schemaVersion !== 5 && schemaVersion !== 6)
     || !overlays || !visibility || !transparency || !transparencyScope || !transparencyValues
     || !layout || !standings || !relative
     || (Number(schemaVersion) >= 2 && !driving)
-    || (Number(schemaVersion) >= 3 && !delta) || (Number(schemaVersion) >= 4 && !timing)) {
+    || (Number(schemaVersion) >= 3 && !delta) || (Number(schemaVersion) >= 4 && !timing)
+    || (Number(schemaVersion) >= 6 && !trackMap)) {
     throw new Error("El archivo no es una configuración compatible de LMUOverlay.");
   }
   if (transparencyScope.mode !== "global" && transparencyScope.mode !== "individual") {
@@ -809,6 +839,11 @@ const parseOverlayConfiguration = (contents: string): OverlayConfigurationExport
     && normalizedTiming.historyLaps !== 5) {
     throw new Error("La configuración de Timing compacto está incompleta o dañada.");
   }
+  const normalizedTrackMap = trackMap ?? defaultTrackMapSettings();
+  if (typeof normalizedTrackMap.showPitPrediction !== "boolean") {
+    throw new Error("La configuraci\u00f3n del mapa est\u00e1 incompleta o da\u00f1ada.");
+  }
+
   for (const id of overlayIds) {
     const placement = configurationObject(layout[id]);
     if (typeof visibility[id] !== "boolean" || !percentageIsValid(transparencyValues[id])
@@ -827,14 +862,15 @@ const parseOverlayConfiguration = (contents: string): OverlayConfigurationExport
   const normalized = parsed as OverlayConfigurationExport;
   return {
     ...normalized,
-    schemaVersion: 5,
+    schemaVersion: 6,
     overlays: {
       ...normalized.overlays,
       monitor,
       layout: cleanedLayout,
       driving: driving ? driving as unknown as DrivingSettings : defaultDriving,
       delta: normalizedDelta as unknown as DeltaSettings,
-      timing: normalizedTiming as unknown as TimingSettings
+      timing: normalizedTiming as unknown as TimingSettings,
+      trackMap: normalizedTrackMap as unknown as TrackMapSettings
     }
   };
 };
@@ -861,7 +897,8 @@ const applyImportedConfiguration = (configuration: OverlayConfigurationExport): 
     [RELATIVE_SETTINGS_KEY, configuration.overlays.relative],
     [DRIVING_SETTINGS_KEY, configuration.overlays.driving],
     [DELTA_SETTINGS_KEY, configuration.overlays.delta],
-    [TIMING_SETTINGS_KEY, configuration.overlays.timing]
+    [TIMING_SETTINGS_KEY, configuration.overlays.timing],
+    [TRACK_MAP_SETTINGS_KEY, configuration.overlays.trackMap]
   ];
   const previous = entries.map(([key]) => [key, localStorage.getItem(key)] as const);
   try {
@@ -889,7 +926,7 @@ exportConfigurationButton?.addEventListener("click", () => {
     const monitor = await resolveOverlayMonitor();
     const configuration: OverlayConfigurationExport = {
       format: "lmu-overlay-configuration",
-      schemaVersion: 5,
+      schemaVersion: 6,
       exportedAt: now.toISOString(),
       overlays: {
         visibility: { ...preferences },
@@ -903,7 +940,8 @@ exportConfigurationButton?.addEventListener("click", () => {
         relative: relativeSettings,
         driving: drivingSettings,
         delta: deltaSettings,
-        timing: timingSettings
+        timing: timingSettings,
+        trackMap: trackMapSettings
       }
     };
     const timestamp = now.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");

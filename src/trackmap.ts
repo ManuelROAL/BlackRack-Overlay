@@ -4,7 +4,8 @@ import { fitOverlay } from "./overlay-fit";
 import { bindOverlayInteractionMode } from "./overlay-interaction";
 import { bindOverlayTransparency } from "./overlay-appearance";
 import { createOverlayPerformanceTracker } from "./overlay-performance";
-import { invokeRuntime, isTauriRuntime, listenTelemetry } from "./runtime-events";
+import { invokeRuntime, isTauriRuntime, listenRuntimeEvent, listenTelemetry } from "./runtime-events";
+import { readTrackMapSettings, type TrackMapSettings } from "./trackmap-settings";
 import type { TelemetryFrame, TrackMapVehicle } from "./telemetry-types";
 
 interface MapPoint {
@@ -65,6 +66,8 @@ const renderPerformance = createOverlayPerformanceTracker("trackmap");
 
 const outline = document.querySelector<SVGPathElement>("#track-outline")!;
 const line = document.querySelector<SVGPathElement>("#track-line")!;
+const pitOutline = document.querySelector<SVGPathElement>("#pit-outline")!;
+const pitLine = document.querySelector<SVGPathElement>("#pit-line")!;
 const startLine = document.querySelector<SVGPathElement>("#start-line")!;
 const vehicleLayer = document.querySelector<HTMLDivElement>("#vehicle-layer")!;
 const status = document.getElementById("map-status") as HTMLElement;
@@ -82,6 +85,7 @@ let transform: Transform | null = null;
 const markers = new Map<number, MarkerView>();
 let predictionMarker: HTMLDivElement | null = null;
 let predictionTransform = "";
+let trackMapSettings = readTrackMapSettings();
 
 const migrateLegacyLearning = (key: string, trackName: string, trackLength: number): void => {
   if (!isTauriRuntime()) return;
@@ -186,6 +190,15 @@ const pointPath = (points: MapPoint[], fit: Transform): string => points
   .map((point, index) => `${index ? "L" : "M"}${fit.x(point.x).toFixed(2)} ${fit.y(point.y).toFixed(2)}`)
   .join(" ") + " Z";
 
+const openPointPath = (points: GeometryPoint[], fit: Transform): string => points
+  .map((point, index) => `${index ? "L" : "M"}${fit.x(point.x).toFixed(2)} ${fit.y(point.y).toFixed(2)}`)
+  .join(" ");
+
+const clearPitPath = (): void => {
+  pitOutline.removeAttribute("d");
+  pitLine.removeAttribute("d");
+};
+
 const renderTrack = (): void => {
   const displayPoints = officialGeometry?.mainPath ?? learnedPoints;
   if (displayPoints.length >= 40) {
@@ -193,6 +206,13 @@ const renderTrack = (): void => {
     const path = pointPath(displayPoints, transform);
     outline.setAttribute("d", path);
     line.setAttribute("d", path);
+    if (officialGeometry && officialGeometry.pitPath.length >= 2) {
+      const pitPath = openPointPath(officialGeometry.pitPath, transform);
+      pitOutline.setAttribute("d", pitPath);
+      pitLine.setAttribute("d", pitPath);
+    } else {
+      clearPitPath();
+    }
     const first = officialDistancePoints.length ? officialDistancePoints[0] : displayPoints[0];
     const firstDisplayIndex = officialDistancePoints.length
       ? displayPoints.reduce((bestIndex, point, index) => {
@@ -216,6 +236,7 @@ const renderTrack = (): void => {
     const radius = (SIZE - MARGIN * 2) / 2;
     outline.setAttribute("d", `M${SIZE / 2} ${MARGIN}a${radius} ${radius} 0 1 1 0 ${radius * 2}a${radius} ${radius} 0 1 1 0 ${-radius * 2}`);
     line.setAttribute("d", outline.getAttribute("d") ?? "");
+    clearPitPath();
     startLine.setAttribute("d", `M${SIZE / 2 - 8} ${MARGIN} L${SIZE / 2 + 8} ${MARGIN}`);
     status.hidden = false;
   }
@@ -485,7 +506,9 @@ const render = (frame: TelemetryFrame): void => {
   calibrateOfficialDistances(player, frame.track_length_meters);
   renderVehicles(frame.track_map_vehicles, frame.track_length_meters);
   renderPitPrediction(
-    frame.track_map_model.pit_prediction_lap_distance,
+    trackMapSettings.showPitPrediction
+      ? frame.track_map_model.pit_prediction_lap_distance
+      : null,
     frame.track_length_meters
   );
 };
@@ -494,6 +517,10 @@ renderTrack();
 void listenTelemetry((frame) => renderPerformance.measure(
   () => render(frame), frame.track_map_vehicles.length
 ));
+void listenRuntimeEvent<TrackMapSettings>("trackmap://settings", (settings) => {
+  trackMapSettings = settings;
+  if (!settings.showPitPrediction) renderPitPrediction(null, 0);
+});
 
 if (import.meta.env.DEV && new URLSearchParams(window.location.search).has("preview")) {
   learnedPoints = Array.from({ length: 180 }, (_, index) => {

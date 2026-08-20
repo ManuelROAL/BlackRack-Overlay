@@ -398,6 +398,7 @@ for (const event of [
   "relative://settings",
   "driving://settings",
   "timing://settings",
+  "trackmap://settings",
   "overlay://background-transparency",
   "performance://logging"
 ]) {

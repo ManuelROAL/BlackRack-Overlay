@@ -43,6 +43,8 @@ pub(crate) struct TrackMapGeometry {
 static GEOMETRY_CACHE: OnceLock<Mutex<HashMap<String, Arc<OfficialTrackMapGeometry>>>> =
     OnceLock::new();
 
+const PIT_PATH_DISCONTINUITY_METERS: f64 = 25.0;
+
 pub(super) fn cached_official_track_map_geometry(
     cache_key: &str,
 ) -> Option<Arc<OfficialTrackMapGeometry>> {
@@ -69,7 +71,7 @@ fn decode_geometry(points: Vec<RawTrackMapPoint>) -> Result<OfficialTrackMapGeom
             .collect::<Vec<_>>()
     };
     let main_path = collect(0);
-    let pit_path = collect(1);
+    let pit_path = select_primary_pit_path(collect(1));
     if main_path.len() < 40 {
         return Err("La geometria oficial no contiene un trazado principal valido".into());
     }
@@ -80,6 +82,37 @@ fn decode_geometry(points: Vec<RawTrackMapPoint>) -> Result<OfficialTrackMapGeom
         main_path,
         pit_path,
     })
+}
+
+fn path_length(points: &[TrackGeometryPoint]) -> f64 {
+    points
+        .windows(2)
+        .map(|pair| (pair[1].x - pair[0].x).hypot(pair[1].y - pair[0].y))
+        .sum()
+}
+
+fn select_primary_pit_path(points: Vec<TrackGeometryPoint>) -> Vec<TrackGeometryPoint> {
+    let mut paths = Vec::new();
+    let mut current = Vec::new();
+    for point in points {
+        if current.last().is_some_and(|previous: &TrackGeometryPoint| {
+            (point.x - previous.x).hypot(point.y - previous.y) > PIT_PATH_DISCONTINUITY_METERS
+        }) {
+            if current.len() >= 2 {
+                paths.push(std::mem::take(&mut current));
+            } else {
+                current.clear();
+            }
+        }
+        current.push(point);
+    }
+    if current.len() >= 2 {
+        paths.push(current);
+    }
+    paths
+        .into_iter()
+        .max_by(|left, right| path_length(left).total_cmp(&path_length(right)))
+        .unwrap_or_default()
 }
 
 pub(crate) fn official_track_map_geometry(
@@ -213,6 +246,32 @@ mod tests {
         assert_eq!(geometry.pit_path.len(), 3);
         assert_eq!(geometry.main_path[1].x, 1.0);
         assert_eq!(geometry.main_path[1].y, -2.0);
+    }
+
+    #[test]
+    fn selects_longest_continuous_pitlane_without_joining_alternatives() {
+        let mut points = (0..45)
+            .map(|index| RawTrackMapPoint {
+                kind: 0,
+                x: index as f64,
+                z: 0.0,
+            })
+            .collect::<Vec<_>>();
+        points.extend((0..5).map(|index| RawTrackMapPoint {
+            kind: 1,
+            x: index as f64 * 5.0,
+            z: 10.0,
+        }));
+        points.extend((0..3).map(|index| RawTrackMapPoint {
+            kind: 1,
+            x: 200.0 + index as f64 * 5.0,
+            z: 100.0,
+        }));
+
+        let geometry = decode_geometry(points).expect("valid geometry");
+        assert_eq!(geometry.pit_path.len(), 5);
+        assert_eq!(geometry.pit_path.first().map(|point| point.x), Some(0.0));
+        assert_eq!(geometry.pit_path.last().map(|point| point.x), Some(20.0));
     }
 
     #[test]

@@ -28,6 +28,8 @@
 
 .track-outline,
 .track-line,
+.pit-outline,
+.pit-line,
 .start-line {
   fill: none;
   pointer-events: none;
@@ -43,6 +45,16 @@
 .track-line {
   stroke: rgb(218 222 225 / 94%);
   stroke-width: 8px;
+}
+
+.pit-outline {
+  stroke: rgb(12 16 21 / 88%);
+  stroke-width: 5px;
+}
+
+.pit-line {
+  stroke: rgb(145 154 163 / 92%);
+  stroke-width: 5px;
 }
 
 .start-line {
