@@ -39,6 +39,7 @@ const OVERLAY_LABELS: [&str; 13] = [
 const TRANSPARENT_BACKGROUND: Color = Color(0, 0, 0, 0);
 const OVERLAY_HOST_PREFIX: &str = "overlay-monitor-";
 const DEFAULT_CLICK_THROUGH: bool = true;
+const KOFI_SUPPORT_URL: &str = "https://ko-fi.com/blackrack";
 
 struct OverlayControl {
     click_through: AtomicBool,
@@ -978,6 +979,49 @@ fn get_lmu_dependency_status() -> LmuDependencyStatus {
     }
 }
 
+#[tauri::command]
+fn open_support_page() -> Result<(), String> {
+    #[cfg(windows)]
+    {
+        use std::iter::once;
+        use windows_sys::Win32::UI::Shell::ShellExecuteW;
+        use windows_sys::Win32::UI::WindowsAndMessaging::SW_SHOWNORMAL;
+
+        let url = KOFI_SUPPORT_URL
+            .encode_utf16()
+            .chain(once(0))
+            .collect::<Vec<_>>();
+        let result = unsafe {
+            ShellExecuteW(
+                std::ptr::null_mut(),
+                std::ptr::null(),
+                url.as_ptr(),
+                std::ptr::null(),
+                std::ptr::null(),
+                SW_SHOWNORMAL,
+            )
+        };
+        if result as isize <= 32 {
+            return Err("No se pudo abrir Ko-fi en el navegador predeterminado".into());
+        }
+        return Ok(());
+    }
+
+    #[cfg(not(windows))]
+    {
+        let launcher = if cfg!(target_os = "macos") {
+            "open"
+        } else {
+            "xdg-open"
+        };
+        std::process::Command::new(launcher)
+            .arg(KOFI_SUPPORT_URL)
+            .spawn()
+            .map(|_| ())
+            .map_err(|error| format!("No se pudo abrir Ko-fi: {error}"))
+    }
+}
+
 fn shortcut_settings_path(app: &AppHandle) -> Result<std::path::PathBuf, String> {
     app.path()
         .app_config_dir()
@@ -1300,6 +1344,7 @@ pub fn run() {
             set_overlay_view_settings,
             set_delta_settings,
             get_lmu_dependency_status,
+            open_support_page,
             get_shortcut_settings,
             set_shortcut,
             export_overlay_configuration,

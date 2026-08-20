@@ -62,6 +62,12 @@ in `docs/overlays/` and should not be duplicated here.
 ## Distribution and diagnostics
 
 - Users install the application normally and do not copy a project DLL into LMU.
+- Distribution is installer-only. The control panel may link to the fixed project
+  Ko-fi page in the system browser, but it does not embed remote donation content,
+  accept arbitrary URLs or make Ko-fi part of telemetry and startup behavior.
+- The NSIS finish page retains Tauri's desktop-shortcut and run-app choices and
+  adds a Ko-fi option that starts checked but can be cleared. It opens the same
+  fixed URL only when still selected on Finish; silent installs never open it.
   The app expects LMU's own shared-memory plugin and reports whether it is found.
 - Tauri embeds `frontendDist`; the installer does not deploy a duplicate `web/`
   directory.

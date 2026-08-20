@@ -50,7 +50,8 @@
       "nsis": {
         "installMode": "currentUser",
         "languages": ["Spanish", "English"],
-        "displayLanguageSelector": true
+        "displayLanguageSelector": true,
+        "template": "nsis-installer.nsi"
       }
     }
   }

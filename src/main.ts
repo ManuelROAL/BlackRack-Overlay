@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import { getVersion } from "@tauri-apps/api/app";
 import { emit, listen } from "@tauri-apps/api/event";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import "./control-panel.css";
@@ -193,6 +194,33 @@ for (const button of viewButtons) {
   button.addEventListener("click", () => selectControlView(button.dataset.controlView ?? "overlays"));
 }
 selectControlView("overlays");
+
+const appVersion = document.getElementById("app-version");
+getVersion()
+  .then((version) => {
+    if (appVersion) appVersion.textContent = `v${version}`;
+  })
+  .catch((error) => {
+    console.error("No se pudo obtener la versión de la aplicación", error);
+  });
+
+const supportButton = document.getElementById("open-kofi") as HTMLButtonElement | null;
+const supportStatus = document.getElementById("support-status");
+supportButton?.addEventListener("click", () => {
+  supportButton.disabled = true;
+  if (supportStatus) supportStatus.textContent = "ABRIENDO KO-FI…";
+  invoke("open_support_page")
+    .then(() => {
+      if (supportStatus) supportStatus.textContent = "KO-FI ABIERTO EN TU NAVEGADOR";
+    })
+    .catch((error) => {
+      console.error("No se pudo abrir Ko-fi", error);
+      if (supportStatus) supportStatus.textContent = "NO SE PUDO ABRIR KO-FI";
+    })
+    .finally(() => {
+      supportButton.disabled = false;
+    });
+});
 
 let activeOverlayFilter = "all";
 const overlaySearch = document.getElementById("overlay-search") as HTMLInputElement | null;

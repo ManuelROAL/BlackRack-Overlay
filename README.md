@@ -1,5 +1,7 @@
 # LMU Overlay
 
+[![Apoyar en Ko-fi](https://img.shields.io/badge/Ko--fi-Apoyar-72cbff?logo=kofi&logoColor=white)](https://ko-fi.com/blackrack)
+
 Overlay de telemetría para **Le Mans Ultimate**, pensado para Windows y Linux. La aplicación usa Tauri 2, una interfaz TypeScript sin framework y un núcleo Rust. En Windows lee la interfaz oficial de memoria compartida `LMU_Data`; si el SDK del juego no está disponible al compilar, mantiene una fuente simulada para desarrollo.
 
 ## Estado actual
@@ -28,6 +30,22 @@ Overlay de telemetría para **Le Mans Ultimate**, pensado para Windows y Linux. 
 Al arrancar por primera vez se muestra el dashboard. Clasificación y combustible pueden activarse desde el panel. En los siguientes arranques se restaura la última selección.
 
 Cuando LMU se ejecuta con Proton, el acceso se hará dentro del mismo entorno Wine/Proton o mediante un pequeño puente local; esta decisión queda pendiente de validar en Linux.
+
+## Instalación para usuarios
+
+La distribución pública se realiza mediante el instalador de Windows, no mediante
+el código fuente. Descarga el `.exe` junto a `README.txt` y `SHA256SUMS.txt`,
+comprueba opcionalmente su SHA-256 y ejecuta el instalador. No se necesitan Node.js,
+Rust ni Tauri. Mientras el instalador no esté firmado, Windows SmartScreen puede
+mostrar una advertencia la primera vez.
+
+## Apoyar el proyecto
+
+LMU Overlay es gratuito. El bloque **Apoyar el proyecto**, situado al final del
+panel en todas las pestañas, permite abrir
+[Ko-fi de Blackrack](https://ko-fi.com/blackrack) en el navegador predeterminado.
+La aplicación no carga contenido de Ko-fi dentro del panel ni envía datos al servicio
+por su cuenta.
 
 ## Ejecutar en desarrollo
 

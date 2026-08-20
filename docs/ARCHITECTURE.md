@@ -71,6 +71,8 @@ Tauri events       analysis JSONL      browser-source SSE
 ## Frontend ownership
 
 - `src/main.ts`: control panel and persisted settings.
+  The support action asks the Rust backend to open the fixed project Ko-fi URL
+  in the system browser; no remote page is loaded inside the application WebView.
 - `src/composite.ts`: per-monitor host, iframe lifecycle, drag/resize chrome and
   routing between Tauri events and embedded overlay documents. Each host listens
   to the single native telemetry batch and forwards frames only to locally mounted

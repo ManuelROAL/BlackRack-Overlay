@@ -1,0 +1,52 @@
+# Publicación del instalador
+
+LMU Overlay se comparte como instalador de Windows. El código fuente y los archivos
+de desarrollo no forman parte de la entrega.
+
+## Contenido de cada entrega
+
+Crear `release/<version>/` con estos tres archivos:
+
+- `LMU Overlay_<version>_x64-setup.exe`
+- `README.txt`, con requisitos, instalación, cambios y aviso de SmartScreen
+- `SHA256SUMS.txt`, con el hash SHA-256 del instalador
+
+El README de usuario puede incluir `https://ko-fi.com/blackrack`; la donación debe
+seguir siendo opcional y nunca un requisito de instalación o funcionamiento.
+
+## Comprobaciones antes de publicar
+
+1. Sincronizar la versión en `package.json`, `src-tauri/Cargo.toml` y
+   `src-tauri/tauri.conf.json`.
+2. Ejecutar las comprobaciones indicadas en `AGENTS.md` y completar la validación
+   funcional/performance pendiente de `docs/TODO.md`.
+3. Confirmar que la compilación detecta el SDK oficial de LMU y no usa la fuente mock.
+4. Crear el instalador con `npm.cmd run tauri build` solamente cuando se haya decidido
+   publicar esa versión.
+5. Instalar en una cuenta de Windows limpia o una máquina de prueba y comprobar inicio,
+   WebView2, plugin oficial, overlays, atajos, OBS, importación/exportación y el botón
+   de Ko-fi. En la pantalla final, comprobar también que las casillas para crear el
+   acceso directo e iniciar la aplicación siguen disponibles, y que **Apoyar el
+   proyecto en Ko-fi** aparece marcada inicialmente, puede desmarcarse y solo abre
+   el navegador cuando permanece seleccionada al finalizar.
+6. Generar el hash desde la carpeta de entrega:
+
+   ```powershell
+   Get-FileHash -Algorithm SHA256 '.\LMU Overlay_<version>_x64-setup.exe' |
+     ForEach-Object { "$($_.Hash.ToLower())  LMU Overlay_<version>_x64-setup.exe" } |
+     Set-Content -Encoding ascii SHA256SUMS.txt
+   ```
+
+7. Descargar de nuevo los tres archivos publicados y verificar que el hash coincide.
+
+## Privacidad y seguridad
+
+- No publicar logs de telemetría, `startup.log`, configuraciones exportadas ni bases
+  de datos aprendidas.
+- No incluir tickets, tokens, claves o datos de sesión.
+- El botón de apoyo abre una URL constante en el navegador del sistema; no aceptar
+  una URL suministrada por el frontend.
+- La plantilla `src-tauri/nsis-installer.nsi` está fijada a Tauri CLI 2.11.4 para
+  poder conservar las dos opciones finales de Tauri y añadir una tercera casilla.
+  Compararla con la plantilla oficial antes de actualizar Tauri CLI.
+- Indicar claramente si el instalador continúa sin firma digital.

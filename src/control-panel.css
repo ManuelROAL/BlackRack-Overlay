@@ -1350,6 +1350,84 @@ select {
   font-size: 7px;
 }
 
+#open-kofi {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 12px;
+  border: 1px solid rgb(114 203 255 / 55%);
+  border-radius: 5px;
+  color: #071019;
+  background: #72cbff;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+}
+
+#open-kofi:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+
+#open-kofi:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+#open-kofi span {
+  font-size: 13px;
+}
+
+.support-section {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  margin: 14px 28px 24px;
+  padding: 20px;
+  border: 1px solid rgb(114 203 255 / 20%);
+  border-radius: 7px;
+  background:
+    radial-gradient(circle at 100% 0, rgb(114 203 255 / 12%), transparent 45%),
+    #111923;
+}
+
+.support-copy {
+  display: grid;
+  flex: 1;
+  gap: 5px;
+}
+
+.support-copy > span {
+  color: #72cbff;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+}
+
+.support-copy strong {
+  font-size: 14px;
+}
+
+.support-copy small {
+  max-width: 340px;
+  color: #8793a0;
+  font-size: 10px;
+  line-height: 1.35;
+}
+
+.support-copy p {
+  min-height: 10px;
+  margin: 2px 0 0;
+  color: #aab5bf;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+
+#app-version {
+  color: #707b87;
+}
+
 #interaction-status {
   margin-left: auto;
   color: #a7b0bb;
