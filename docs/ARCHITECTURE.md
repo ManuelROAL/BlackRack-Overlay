@@ -13,17 +13,19 @@ lmu_bridge.cpp -> LmuSnapshot -> LmuTelemetrySource <- async/cached enrichments
                                       |
                   +-------------------+-------------------+
                   |                   |                   |
-             Tauri events       analysis JSONL      browser-source SSE
-                  |                                       |
-       one composite host per monitor                   OBS browser
-                  |
-       dashboard/standings/fuel/flags/rejoin panels
+Tauri events       analysis JSONL      browser-source SSE
+                   |                                       |
+        one composite host on the selected monitor      OBS browser
+                   |
+        dashboard/standings/fuel/flags/rejoin panels
 ```
 
 ## Backend ownership
 
 - `src-tauri/src/lib.rs`
-  - Creates one borderless transparent overlay host for each detected monitor.
+  - Creates one borderless transparent overlay host on the selected monitor and
+    moves/resizes it when the selection changes; monitors without the host
+    contribute no composed surface.
   - Migrates former window-state geometry into the composite layout seed.
   - Forces both the native window and WebView backgrounds to transparent RGBA;
     this is explicit because release WebView2 builds must not fall back to an
@@ -123,9 +125,9 @@ blocking HTTP calls into `next_frame()`.
 ## Persistence
 
 - Control-panel geometry: `tauri-plugin-window-state`.
-- Overlay position, size and monitor assignment: composite-layout `localStorage`.
-  A separate monitor-selection record stores general/individual mode and the
-  individual assignments retained while general mode is active.
+- Overlay position and size: composite-layout `localStorage`. The selected
+  overlay monitor index persists as `overlay-monitor.json` under the application
+  config directory.
 - Browser source and shortcuts: JSON under the application config directory.
 - Overlay choices, columns and transparency: WebView `localStorage`. Transparency
   stores individual values separately from its general/individual scope.

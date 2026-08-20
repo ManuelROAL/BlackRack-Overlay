@@ -20,9 +20,10 @@ telemetry semantics and file ownership live under `docs/overlays/`; use
 
 ## Host and interaction
 
-- Tauri groups panels into one transparent full-monitor host WebView per detected
-  monitor. Both the native host and WebView use explicit transparent RGBA
-  backgrounds.
+- Tauri hosts all panels in one transparent full-monitor WebView on the selected
+  monitor and moves that host when the selection changes. Monitors without the
+  host contribute no composed surface. Both the native host and WebView use
+  explicit transparent RGBA backgrounds.
 - Explicit deactivation removes the panel document. LMU-driven automatic
   visibility hides or shows the host without rebuilding active panels.
 - Every run starts in click-through game mode. Edit mode is entered explicitly
@@ -30,10 +31,12 @@ telemetry semantics and file ownership live under `docs/overlays/`; use
 - On Windows, edit-mode hit testing follows the global cursor independently on
   every monitor. A host accepts input only while the cursor is over one of its
   visible panel rectangles; transparent gaps pass input to the application
-  underneath, including applications owned by another process.
+  underneath, including applications owned by another process. Native window
+  style updates must run without holding the shared hit-test state lock because
+  Windows may synchronously wait for the host UI thread while applying them.
 - Embedded panel content is inert: no clicks, focus, selection, native dragging or
   context menu. Edit-mode pointer input moves panels or operates resize handles.
-- A panel may cross monitor edges for deliberate cropping, but movement retains a
+- A panel may be deliberately cropped at the monitor edge, but movement retains a
   32 px visible strip so it remains recoverable.
 - Resize scales the complete design proportionally. When configurable content
   changes the reported design size, preserve the user's visual scale while

@@ -85,6 +85,13 @@ duplicate selection or timing semantics.
   or `XX` nationality and missing badges without replacing valid `/players` data.
 - The DR estimate is same-class and event-parameter aware. Convert it back from
   the three-times internal rating scale before serializing visible progress.
+- During the live race, DR head-to-head results follow the responsive class order
+  from shared memory. After the checkered flag, prefer LMU REST `position` only
+  when `serverScored` is true and every car in that class has a positive scored
+  position; otherwise retain the complete shared-memory order rather than mixing
+  sources. This lets post-race penalties and classification changes correct the
+  final estimate without adding REST lag to the live race. Latch each complete
+  scored class order until the session changes, while accepting later corrections.
 - SOF uses resolved continuous DR and reports partial coverage. Do not calculate or
   display SOF in practice.
 

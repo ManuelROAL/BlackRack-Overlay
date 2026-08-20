@@ -14,7 +14,7 @@ on their runtime or source code.
 ## Current feature set
 
 - Tauri control panel that selects independent overlay panels hosted together in
-  one transparent WebView per monitor.
+  one transparent WebView on the selected monitor.
 - Dashboard for core driving telemetry.
 - iRacing-style delta bar with overall, session, stint and last-lap references,
   backed by persistent lap/stint records.
@@ -26,8 +26,7 @@ on their runtime or source code.
 - Optional localhost browser source for OBS.
 - Configurable global shortcuts and click-through game mode.
 - Background transparency selectable as one general value or per overlay.
-- Monitor assignment selectable globally or per overlay, preserving individual
-  choices when temporarily using one common monitor.
+- All overlays share one host on a single selected monitor.
 - Optional telemetry/performance analysis logging.
 - Compact tyre/damage schematic plus an independent detailed damage overlay.
 - Compact pit-stop estimate with LMU's official total and service breakdown.
@@ -80,9 +79,9 @@ The backend optimizations are compiled and covered by the Rust regression suite,
 but still need a new real-race/replay performance capture to quantify the
 reduction. See `docs/PERFORMANCE.md` and `docs/TODO.md`.
 
-Tauri creates one transparent full-monitor host WebView per detected display.
-Active overlays are mounted inside the assigned host and removed when disabled,
-so renderer count scales with monitors instead of overlay count. Layout is
+Tauri creates one transparent full-monitor host WebView on the selected monitor
+and moves it when the selection changes. Active overlays are mounted inside that
+host and removed when disabled, so renderer count stays at one host. Layout is
 migrated from the former native-window geometry on first use.
 
 ## Repository map

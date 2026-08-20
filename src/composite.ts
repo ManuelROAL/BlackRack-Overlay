@@ -131,7 +131,6 @@ const overlayTitles: Record<OverlayId, string> = {
 };
 
 const stage = document.getElementById("overlay-stage") as HTMLElement;
-const monitorIndex = Number(getCurrentWindow().label.replace("overlay-monitor-", ""));
 const panels = new Map<OverlayId, HTMLElement>();
 const frames = new Map<OverlayId, HTMLIFrameElement>();
 const latestFrames = new Map<OverlayId, TelemetryFrame>();
@@ -364,15 +363,12 @@ const synchronizePanels = async (): Promise<void> => {
   const layout = readCompositeLayout() ?? await ensureCompositeLayout();
   let normalized = false;
   for (const overlay of overlayIds) {
-    let placement = layout[overlay];
-    if (placement.monitor === monitorIndex) {
-      const fitted = fitPlacementToMonitor(placement);
-      normalized ||= fitted.x !== placement.x || fitted.y !== placement.y
-        || fitted.width !== placement.width || fitted.height !== placement.height;
-      placement = fitted;
-      layout[overlay] = fitted;
-    }
-    if (visible.has(overlay) && placement.monitor === monitorIndex) createPanel(overlay, placement);
+    const placement = layout[overlay];
+    const fitted = fitPlacementToMonitor(placement);
+    normalized ||= fitted.x !== placement.x || fitted.y !== placement.y
+      || fitted.width !== placement.width || fitted.height !== placement.height;
+    layout[overlay] = fitted;
+    if (visible.has(overlay)) createPanel(overlay, fitted);
     else removePanel(overlay);
   }
   if (normalized) localStorage.setItem(COMPOSITE_LAYOUT_KEY, JSON.stringify(layout));
@@ -385,6 +381,7 @@ const applyInteractionMode = (mode: InteractionMode): void => {
   for (const overlay of frames.keys()) {
     postEvent(overlay, "overlay://interaction-mode", mode);
   }
+  scheduleInteractionRegionSync();
 };
 
 void listen<TelemetryBatch>("telemetry://batch", ({ payload }) => {
@@ -420,7 +417,14 @@ void listen<InteractionMode>("overlay://interaction-mode", ({ payload }) => appl
 window.addEventListener("storage", (event) => {
   if (event.key === COMPOSITE_LAYOUT_KEY) void synchronizePanels();
 });
-window.addEventListener("resize", scheduleInteractionRegionSync);
+window.addEventListener("resize", () => {
+  void synchronizePanels();
+  scheduleInteractionRegionSync();
+});
+void getCurrentWindow().onMoved(() => {
+  void synchronizePanels();
+  scheduleInteractionRegionSync();
+}).catch(() => undefined);
 
 window.addEventListener("message", (event: MessageEvent<RuntimeMessage>) => {
   if (event.origin !== window.location.origin || event.data?.source !== "lmu-overlay-composite") return;

@@ -63,13 +63,10 @@ import {
   ensureCompositeLayout,
   COMPOSITE_LAYOUT_KEY,
   getOverlayDisplays,
-  MONITOR_SELECTION_KEY,
-  moveOverlayToMonitor,
   readCompositeLayout,
-  readMonitorSelection,
   resetOverlayPlacement,
-  saveMonitorSelection,
-  type MonitorSelectionSettings
+  resolveOverlayMonitor,
+  setOverlayMonitor
 } from "./composite-layout";
 
 installFrontendDiagnostics("control", (diagnostic) =>
@@ -113,7 +110,7 @@ interface BrowserSourceStatus {
 
 interface OverlayConfigurationExport {
   format: "lmu-overlay-configuration";
-  schemaVersion: 4;
+  schemaVersion: 5;
   exportedAt: string;
   overlays: {
     visibility: Record<OverlayId, boolean>;
@@ -121,7 +118,7 @@ interface OverlayConfigurationExport {
       scope: OverlayTransparencyScope;
       values: Record<OverlayId, number>;
     };
-    monitorSelection: MonitorSelectionSettings;
+    monitor: number;
     layout: Awaited<ReturnType<typeof ensureCompositeLayout>>;
     standings: StandingsSettings;
     relative: RelativeSettings;
@@ -656,114 +653,25 @@ globalTransparency?.addEventListener("input", () => {
 
 renderTransparencyMode();
 
-const bindMonitorSelectors = async (): Promise<void> => {
-  const [displays, layout] = await Promise.all([getOverlayDisplays(), ensureCompositeLayout()]);
-  let monitorSelection: MonitorSelectionSettings = readMonitorSelection();
-  const monitorMode = document.getElementById("monitor-mode") as HTMLSelectElement | null;
-  const globalMonitor = document.getElementById("global-monitor") as HTMLSelectElement | null;
-  const cardSelectors = new Map<OverlayId, HTMLSelectElement>();
-
-  const appendDisplays = (select: HTMLSelectElement): void => {
-    for (const display of displays) {
-      const option = document.createElement("option");
-      option.value = String(display.index);
-      option.textContent = `${display.name} · ${display.width}×${display.height}`;
-      select.append(option);
-    }
-  };
-
-  if (globalMonitor) appendDisplays(globalMonitor);
-  if (!displays.some(({ index }) => index === monitorSelection.globalMonitor)) {
-    monitorSelection = { ...monitorSelection, globalMonitor: displays[0]?.index ?? 0 };
-    saveMonitorSelection(monitorSelection);
+const bindMonitorSelector = async (): Promise<void> => {
+  const [displays, monitor] = await Promise.all([getOverlayDisplays(), resolveOverlayMonitor()]);
+  const select = document.getElementById("overlay-monitor") as HTMLSelectElement | null;
+  if (!select) return;
+  for (const display of displays) {
+    const option = document.createElement("option");
+    option.value = String(display.index);
+    option.textContent = `${display.name} · ${display.width}×${display.height}`;
+    select.append(option);
   }
-
-  for (const id of overlayIds) {
-    const card = document.querySelector<HTMLElement>(`[data-overlay-card="${id}"]`);
-    const switchElement = card?.querySelector(".switch");
-    if (!card || !switchElement) continue;
-    const control = document.createElement("label");
-    control.className = "overlay-monitor";
-    const caption = document.createElement("span");
-    caption.textContent = "MONITOR";
-    const select = document.createElement("select");
-    select.setAttribute("aria-label", `Monitor de ${id}`);
-    appendDisplays(select);
-    select.value = String(layout[id].monitor);
-    select.addEventListener("change", () => {
-      select.disabled = true;
-      const monitor = Number(select.value);
-      monitorSelection.individualMonitors[id] = monitor;
-      saveMonitorSelection(monitorSelection);
-      void moveOverlayToMonitor(id, monitor).finally(() => {
-        select.disabled = false;
-      });
+  select.value = String(monitor);
+  select.addEventListener("change", () => {
+    select.disabled = true;
+    void setOverlayMonitor(Number(select.value)).catch(() => {
+      select.value = String(monitor);
+    }).finally(() => {
+      select.disabled = false;
     });
-    control.append(caption, select);
-    card.insertBefore(control, switchElement);
-    cardSelectors.set(id, select);
-  }
-
-  const setMonitorControlsDisabled = (disabled: boolean): void => {
-    if (monitorMode) monitorMode.disabled = disabled;
-    if (globalMonitor) globalMonitor.disabled = disabled;
-    for (const select of cardSelectors.values()) select.disabled = disabled;
-  };
-
-  const applyMonitorSelection = async (rememberIndividual: boolean): Promise<void> => {
-    setMonitorControlsDisabled(true);
-    try {
-      if (monitorSelection.mode === "global") {
-        if (rememberIndividual) {
-          monitorSelection.individualMonitors = Object.fromEntries(
-            overlayIds.map((id) => [id, layout[id].monitor])
-          );
-        }
-        await Promise.all(overlayIds.map(async (id) => {
-          await moveOverlayToMonitor(id, monitorSelection.globalMonitor);
-          layout[id].monitor = monitorSelection.globalMonitor;
-          cardSelectors.get(id)!.value = String(monitorSelection.globalMonitor);
-        }));
-      } else {
-        await Promise.all(overlayIds.map(async (id) => {
-          const savedMonitor = monitorSelection.individualMonitors[id];
-          const monitor = displays.some(({ index }) => index === savedMonitor)
-            ? savedMonitor as number
-            : layout[id].monitor;
-          await moveOverlayToMonitor(id, monitor);
-          layout[id].monitor = monitor;
-          cardSelectors.get(id)!.value = String(monitor);
-        }));
-      }
-      saveMonitorSelection(monitorSelection);
-    } finally {
-      if (monitorMode) monitorMode.value = monitorSelection.mode;
-      if (globalMonitor) {
-        globalMonitor.value = String(monitorSelection.globalMonitor);
-        globalMonitor.hidden = monitorSelection.mode !== "global";
-        globalMonitor.parentElement!.hidden = monitorSelection.mode !== "global";
-      }
-      for (const select of cardSelectors.values()) {
-        select.disabled = monitorSelection.mode === "global";
-      }
-      if (monitorMode) monitorMode.disabled = false;
-      if (globalMonitor) globalMonitor.disabled = false;
-    }
-  };
-
-  monitorMode?.addEventListener("change", () => {
-    const nextMode = monitorMode.value === "global" ? "global" : "individual";
-    const rememberIndividual = monitorSelection.mode === "individual" && nextMode === "global";
-    monitorSelection = { ...monitorSelection, mode: nextMode };
-    void applyMonitorSelection(rememberIndividual);
   });
-
-  globalMonitor?.addEventListener("change", () => {
-    monitorSelection = { ...monitorSelection, globalMonitor: Number(globalMonitor.value) };
-    void applyMonitorSelection(false);
-  });
-
-  await applyMonitorSelection(false);
 };
 
 document.getElementById("show-all")?.addEventListener("click", () => void setAll(true));
@@ -793,7 +701,6 @@ const parseOverlayConfiguration = (contents: string): OverlayConfigurationExport
   const transparencyScope = configurationObject(transparency?.scope);
   const transparencyValues = configurationObject(transparency?.values);
   const monitorSelection = configurationObject(overlays?.monitorSelection);
-  const individualMonitors = configurationObject(monitorSelection?.individualMonitors);
   const layout = configurationObject(overlays?.layout);
   const standings = configurationObject(overlays?.standings);
   const relative = configurationObject(overlays?.relative);
@@ -801,52 +708,49 @@ const parseOverlayConfiguration = (contents: string): OverlayConfigurationExport
   const delta = configurationObject(overlays?.delta);
   const timing = configurationObject(overlays?.timing);
   const schemaVersion = root?.schemaVersion;
+  const schemaMonitor = typeof overlays?.monitor === "number"
+    && Number.isInteger(overlays.monitor) && Number(overlays.monitor) >= 0
+    ? Number(overlays.monitor)
+    : null;
+  const legacyMonitor = Number.isInteger(monitorSelection?.globalMonitor)
+    && Number(monitorSelection?.globalMonitor) >= 0
+    ? Number(monitorSelection?.globalMonitor)
+    : null;
+  const monitor = schemaMonitor ?? legacyMonitor ?? 0;
+  const percentageIsValid = (value: unknown): value is number =>
+    typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 100;
   if (root?.format !== "lmu-overlay-configuration"
-    || (schemaVersion !== 1 && schemaVersion !== 2 && schemaVersion !== 3 && schemaVersion !== 4) || !overlays
-    || !visibility || !transparency || !transparencyScope || !transparencyValues
-    || !monitorSelection || !individualMonitors || !layout
-    || !standings || !relative || (Number(schemaVersion) >= 2 && !driving)
-    || (Number(schemaVersion) >= 3 && !delta) || (schemaVersion === 4 && !timing)) {
+    || (schemaVersion !== 1 && schemaVersion !== 2 && schemaVersion !== 3 && schemaVersion !== 4 && schemaVersion !== 5)
+    || !overlays || !visibility || !transparency || !transparencyScope || !transparencyValues
+    || !layout || !standings || !relative
+    || (Number(schemaVersion) >= 2 && !driving)
+    || (Number(schemaVersion) >= 3 && !delta) || (Number(schemaVersion) >= 4 && !timing)) {
     throw new Error("El archivo no es una configuración compatible de LMUOverlay.");
   }
   if (transparencyScope.mode !== "global" && transparencyScope.mode !== "individual") {
     throw new Error("El modo de transparencia del archivo no es válido.");
   }
-  if (monitorSelection.mode !== "global" && monitorSelection.mode !== "individual") {
+  if (Number(schemaVersion) >= 5) {
+    if (schemaMonitor === null) {
+      throw new Error("El monitor del archivo no es válido.");
+    }
+  } else if (!monitorSelection
+    || (monitorSelection.mode !== "global" && monitorSelection.mode !== "individual")
+    || legacyMonitor === null) {
     throw new Error("El modo de monitor del archivo no es válido.");
   }
-  const percentageIsValid = (value: unknown): value is number =>
-    typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 100;
-  if (!percentageIsValid(transparencyScope.globalTransparency)
-    || !Number.isInteger(monitorSelection.globalMonitor)
-    || Number(monitorSelection.globalMonitor) < 0) {
+  if (!percentageIsValid(transparencyScope.globalTransparency)) {
     throw new Error("La configuración general del archivo no es válida.");
   }
   if (Number(schemaVersion) < 3) {
     visibility.delta = false;
     transparencyValues.delta = 5;
-    individualMonitors.delta = monitorSelection.globalMonitor;
-    layout.delta = {
-      overlay: "delta",
-      monitor: monitorSelection.globalMonitor,
-      x: 610,
-      y: 20,
-      width: 420,
-      height: 72
-    };
+    layout.delta = { overlay: "delta", x: 610, y: 20, width: 420, height: 72 };
   }
   if (Number(schemaVersion) < 4) {
     visibility.timing = false;
     transparencyValues.timing = 5;
-    individualMonitors.timing = monitorSelection.globalMonitor;
-    layout.timing = {
-      overlay: "timing",
-      monitor: monitorSelection.globalMonitor,
-      x: 610,
-      y: 110,
-      width: 366,
-      height: 210
-    };
+    layout.timing = { overlay: "timing", x: 610, y: 110, width: 366, height: 210 };
   }
   const completeBooleanRecord = (value: unknown, keys: string[]): boolean => {
     const record = configurationObject(value);
@@ -908,25 +812,26 @@ const parseOverlayConfiguration = (contents: string): OverlayConfigurationExport
   for (const id of overlayIds) {
     const placement = configurationObject(layout[id]);
     if (typeof visibility[id] !== "boolean" || !percentageIsValid(transparencyValues[id])
-      || !placement || placement.overlay !== id || !Number.isInteger(placement.monitor)
-      || Number(placement.monitor) < 0
+      || !placement || placement.overlay !== id
       || ![placement.x, placement.y, placement.width, placement.height]
         .every((value) => typeof value === "number" && Number.isFinite(value))
       || Number(placement.width) <= 0 || Number(placement.height) <= 0) {
       throw new Error(`La configuración de ${id} está incompleta o dañada.`);
     }
-    const individualMonitor = individualMonitors[id];
-    if (individualMonitor !== undefined
-      && (!Number.isInteger(individualMonitor) || Number(individualMonitor) < 0)) {
-      throw new Error(`El monitor asignado a ${id} no es válido.`);
-    }
   }
+  const cleanedLayout = Object.fromEntries(overlayIds.map((id) => {
+    const placement: Record<string, unknown> = { ...(layout[id] as Record<string, unknown>) };
+    delete placement.monitor;
+    return [id, placement];
+  })) as unknown as OverlayConfigurationExport["overlays"]["layout"];
   const normalized = parsed as OverlayConfigurationExport;
   return {
     ...normalized,
-    schemaVersion: 4,
+    schemaVersion: 5,
     overlays: {
       ...normalized.overlays,
+      monitor,
+      layout: cleanedLayout,
       driving: driving ? driving as unknown as DrivingSettings : defaultDriving,
       delta: normalizedDelta as unknown as DeltaSettings,
       timing: normalizedTiming as unknown as TimingSettings
@@ -934,34 +839,16 @@ const parseOverlayConfiguration = (contents: string): OverlayConfigurationExport
   };
 };
 
-const normalizeImportedMonitors = async (
+const normalizeImportedMonitor = async (
   configuration: OverlayConfigurationExport
 ): Promise<OverlayConfigurationExport> => {
   const displays = await getOverlayDisplays();
   const availableMonitors = new Set(displays.map(({ index }) => index));
   const primaryMonitor = displays[0]?.index ?? 0;
-  const monitorOrPrimary = (monitor: number): number =>
-    availableMonitors.has(monitor) ? monitor : primaryMonitor;
-  const monitorSelection = configuration.overlays.monitorSelection;
-  return {
-    ...configuration,
-    overlays: {
-      ...configuration.overlays,
-      monitorSelection: {
-        ...monitorSelection,
-        globalMonitor: monitorOrPrimary(monitorSelection.globalMonitor),
-        individualMonitors: Object.fromEntries(overlayIds.map((id) => [
-          id,
-          monitorOrPrimary(monitorSelection.individualMonitors[id]
-            ?? configuration.overlays.layout[id].monitor)
-        ]))
-      },
-      layout: Object.fromEntries(overlayIds.map((id) => [id, {
-        ...configuration.overlays.layout[id],
-        monitor: monitorOrPrimary(configuration.overlays.layout[id].monitor)
-      }])) as OverlayConfigurationExport["overlays"]["layout"]
-    }
-  };
+  const monitor = availableMonitors.has(configuration.overlays.monitor)
+    ? configuration.overlays.monitor
+    : primaryMonitor;
+  return { ...configuration, overlays: { ...configuration.overlays, monitor } };
 };
 
 const applyImportedConfiguration = (configuration: OverlayConfigurationExport): void => {
@@ -969,7 +856,6 @@ const applyImportedConfiguration = (configuration: OverlayConfigurationExport): 
     [storageKey, configuration.overlays.visibility],
     [OVERLAY_TRANSPARENCY_KEY, configuration.overlays.transparency.values],
     [OVERLAY_TRANSPARENCY_SCOPE_KEY, configuration.overlays.transparency.scope],
-    [MONITOR_SELECTION_KEY, configuration.overlays.monitorSelection],
     [COMPOSITE_LAYOUT_KEY, configuration.overlays.layout],
     [STANDINGS_SETTINGS_KEY, configuration.overlays.standings],
     [RELATIVE_SETTINGS_KEY, configuration.overlays.relative],
@@ -1000,9 +886,10 @@ exportConfigurationButton?.addEventListener("click", () => {
   void (async () => {
     const now = new Date();
     const layout = readCompositeLayout() ?? await ensureCompositeLayout();
+    const monitor = await resolveOverlayMonitor();
     const configuration: OverlayConfigurationExport = {
       format: "lmu-overlay-configuration",
-      schemaVersion: 4,
+      schemaVersion: 5,
       exportedAt: now.toISOString(),
       overlays: {
         visibility: { ...preferences },
@@ -1010,7 +897,7 @@ exportConfigurationButton?.addEventListener("click", () => {
           scope: { ...overlayTransparencyScope },
           values: { ...overlayTransparency }
         },
-        monitorSelection: readMonitorSelection(),
+        monitor,
         layout,
         standings: standingsSettings,
         relative: relativeSettings,
@@ -1065,14 +952,15 @@ importConfigurationButton?.addEventListener("click", () => {
       return;
     }
     const contents = await invoke<string>("import_overlay_configuration", { path: selectedPath });
-    const configuration = await normalizeImportedMonitors(parseOverlayConfiguration(contents));
+    const configuration = await normalizeImportedMonitor(parseOverlayConfiguration(contents));
     if (!await confirmReset(
-      "Se reemplazarán la configuración, los monitores, la posición y el tamaño de todos los overlays."
+      "Se reemplazarán la configuración, la posición y el tamaño de todos los overlays."
     )) {
       if (exportConfigurationStatus) exportConfigurationStatus.textContent = "IMPORTACIÓN CANCELADA";
       return;
     }
     applyImportedConfiguration(configuration);
+    await setOverlayMonitor(configuration.overlays.monitor).catch(() => undefined);
     if (exportConfigurationStatus) {
       exportConfigurationStatus.textContent = "CONFIGURACIÓN IMPORTADA · APLICANDO…";
       exportConfigurationStatus.title = selectedPath;
@@ -1552,7 +1440,7 @@ document.getElementById("toggle-interaction-mode")?.addEventListener("click", ()
 });
 
 void restoreWindows();
-void bindMonitorSelectors();
+void bindMonitorSelector();
 void refreshLoggingStatus();
 syncBrowserSourcePreferences();
 void invoke<BrowserSourceStatus>("get_browser_source_status").then(renderBrowserSourceStatus);
