@@ -2,6 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import "./composite.css";
+import { applyTranslations, getLocale, t } from "./i18n";
 import { installFrontendDiagnostics } from "./frontend-diagnostics";
 import {
   COMPOSITE_LAYOUT_KEY,
@@ -17,6 +18,7 @@ import type { InteractionMode, TelemetryFrame } from "./telemetry-types";
 installFrontendDiagnostics("composite", (diagnostic) =>
   invoke("record_frontend_error", { ...diagnostic })
 );
+applyTranslations();
 
 interface OverlayState {
   label: OverlayId;
@@ -108,20 +110,12 @@ const telemetryFields: Record<OverlayId, readonly (keyof TelemetryFrame)[]> = {
   rejoin: ["rejoin_warning"],
   trackmap: ["track_name", "track_length_meters", "track_map_vehicles", "track_map_model"]
 };
-const overlayTitles: Record<OverlayId, string> = {
-  delta: "DELTA",
-  timing: "TIMING COMPACTO",
-  driving: "TRAILING + PEDAL",
-  tires: "DAÑOS Y NEUMÁTICOS",
-  damage: "DAÑOS DETALLADOS",
-  standings: "CLASIFICACIÓN",
-  relative: "RELATIVE",
-  fuel: "ENERGÍA Y COMBUSTIBLE",
-  pitstop: "PARADA ESTIMADA",
-  flags: "BANDERAS",
-  rejoin: "REJOIN",
-  trackmap: "MAPA DEL CIRCUITO"
+const overlayTitleKeys: Record<OverlayId, import("./i18n").TranslationKey> = {
+  delta: "card.delta", timing: "card.timing", driving: "card.driving", tires: "card.tires",
+  damage: "card.damage", standings: "card.standings", relative: "card.relative", fuel: "card.fuel",
+  pitstop: "card.pitstop", flags: "card.flags", rejoin: "card.rejoin", trackmap: "card.trackmap"
 };
+const overlayTitle = (overlay: OverlayId): string => t(overlayTitleKeys[overlay]).toLocaleUpperCase(getLocale());
 
 const stage = document.getElementById("overlay-stage") as HTMLElement;
 const panels = new Map<OverlayId, HTMLElement>();
@@ -322,7 +316,7 @@ const createPanel = (overlay: OverlayId, placement: OverlayPlacement): void => {
 
   const iframe = document.createElement("iframe");
   iframe.src = `${overlay}.html?composite=1`;
-  iframe.title = overlayTitles[overlay];
+  iframe.title = overlayTitle(overlay);
   iframe.allow = "none";
   iframe.tabIndex = -1;
   iframe.draggable = false;
@@ -332,11 +326,11 @@ const createPanel = (overlay: OverlayId, placement: OverlayPlacement): void => {
   chrome.addEventListener("pointerdown", (event) => bindPointerMove(event, overlay, "move"));
   const label = document.createElement("span");
   label.className = "composite-panel-label";
-  label.textContent = overlayTitles[overlay];
+  label.textContent = overlayTitle(overlay);
   const resize = document.createElement("button");
   resize.className = "composite-resize";
   resize.type = "button";
-  resize.ariaLabel = `Redimensionar ${overlayTitles[overlay]}`;
+  resize.ariaLabel = t("composite.resize", { overlay: overlayTitle(overlay) });
   resize.tabIndex = -1;
   resize.addEventListener("pointerdown", (event) => bindPointerMove(event, overlay, "resize"));
   chrome.append(label, resize);
@@ -407,6 +401,7 @@ void listen<OverlayState>("overlay://visibility", ({ payload }) => {
 });
 void listen<OverlayPlacement>("overlay://layout", () => void synchronizePanels());
 void listen<InteractionMode>("overlay://interaction-mode", ({ payload }) => applyInteractionMode(payload));
+void listen("locale://change", () => window.location.reload());
 
 window.addEventListener("storage", (event) => {
   if (event.key === COMPOSITE_LAYOUT_KEY) void synchronizePanels();

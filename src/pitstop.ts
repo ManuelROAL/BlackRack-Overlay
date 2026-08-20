@@ -5,6 +5,7 @@ import { bindOverlayInteractionMode } from "./overlay-interaction";
 import { bindOverlayTransparency } from "./overlay-appearance";
 import { createOverlayPerformanceTracker } from "./overlay-performance";
 import { isTauriRuntime, listenTelemetry } from "./runtime-events";
+import { t } from "./i18n";
 
 type PitStopValue = "damage" | "resource" | "tires" | "driver" | "penalty" | "total";
 
@@ -30,7 +31,7 @@ const render = (frame: TelemetryFrame): void => {
   const virtualEnergy = frame.virtual_energy_active;
   const penalty = frame.pit_stop_penalty_seconds;
 
-  setText(resourceLabel, virtualEnergy ? "Energía virtual" : "Combustible");
+  setText(resourceLabel, t(virtualEnergy ? "pitstop.energy" : "pitstop.fuel"));
   setText(values.damage, formatSeconds(frame.pit_stop_damage_seconds, available));
   setText(
     values.resource,

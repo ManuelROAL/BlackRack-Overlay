@@ -9,10 +9,8 @@ and English (`en`); adding a later language should only require a complete
 catalog and visual verification.
 
 The locale applies to the control panel, native-hosted overlays and OBS browser
-pages. Spanish remains the fallback while the migration is incomplete. Once both
-catalogs are complete, a fresh installation should select Spanish for a Spanish
-browser/OS locale and English otherwise, then persist the resolved choice. The
-General view must always expose an explicit language selector.
+pages. A fresh installation starts in English and persists any explicit choice.
+The General view must always expose an explicit language selector.
 
 ## Boundaries
 
@@ -80,18 +78,20 @@ or enlarge grouped telemetry payloads.
 
 ### Current rollout state
 
-Phase 1 is implemented. `src/i18n/` owns the bundled Spanish and English
+Phases 1 and 2 are implemented. `src/i18n/` owns the bundled Spanish and English
 catalogs, typed lookup/interpolation/plural helpers, cached locale formatters,
 DOM attribute translation and the persisted `lmu-overlay.locale.v1` choice. The
 complete control panel, including generated settings, dialogs, accessibility
 labels and native file-dialog titles, uses that catalog. Configuration schema 7
 round-trips the choice as `ui.locale` and imports schemas 1–6 using the current
-local choice. `npm.cmd run build` runs the catalog/HTML binding validation before
-TypeScript and Vite.
+local choice. Fresh profiles default to English. Every native overlay translates
+its static HTML, dynamic status, tooltip and accessibility text; ordinary numbers
+and the real-world clock follow the selected locale. The composite edit chrome
+and its mounted documents reload together after a language change.
 
-Overlay documents, composite edit chrome and OBS pages remain Spanish until
-phases 2 and 3. This is intentional: phase 1 changes only the control-panel
-surface and localization infrastructure.
+`npm.cmd run build` validates catalog keys and bindings across all 14 HTML
+documents before TypeScript and Vite. Phase 3 remains: OBS preference injection,
+per-route query overrides and backend-facing user messages.
 
 ### 1. Infrastructure and control panel
 

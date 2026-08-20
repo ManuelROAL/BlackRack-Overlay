@@ -73,3 +73,9 @@ TypeScript fetches static geometry, interpolates and renders it.
 Validate type-0/type-1 geometry, alignment, fallback lap completion, persistence,
 partial/full pit passages, service-time composition, marker stacking and GPU idle
 behavior on at least one additional circuit.
+
+## Localization
+
+The learning state, pit prediction tooltip, document title and accessibility text
+use the bundled locale. Circuit geometry, category IDs and marker calculations
+remain language-neutral.

@@ -32,3 +32,8 @@
 
 Test concurrent services, zero/non-zero penalty, fuel/energy label switching,
 missing/stale REST and direct use of the official total.
+
+## Localization
+
+Service labels, the resource switch, document title and accessibility text use
+the bundled locale; timing values and estimate semantics remain unchanged.

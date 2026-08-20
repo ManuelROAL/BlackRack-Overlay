@@ -7,6 +7,7 @@ import { createOverlayPerformanceTracker } from "./overlay-performance";
 import { isTauriRuntime, listenRuntimeEvent, listenTelemetry } from "./runtime-events";
 import { readTimingSettings, type TimingSettings } from "./timing-settings";
 import type { TimingViewModel } from "./telemetry-types";
+import { t } from "./i18n";
 
 bindOverlayTransparency("timing");
 bindOverlayInteractionMode();
@@ -60,9 +61,9 @@ const render = (model: TimingViewModel): void => {
         const row = document.createElement("li");
         row.dataset.state = lap.state;
         const label = document.createElement("span");
-        label.textContent = `V${lap.number}`;
+        label.textContent = t("timing.lap", { number: lap.number });
         const value = document.createElement("b");
-        value.textContent = lap.valid ? lapTime(lap.seconds) : `${lapTime(lap.seconds)} INV`;
+        value.textContent = lap.valid ? lapTime(lap.seconds) : t("timing.invalid", { time: lapTime(lap.seconds) });
         row.append(label, value);
         return row;
       }));

@@ -13,13 +13,17 @@ export const isLocale = (value: unknown): value is Locale =>
 
 export const resolveLocale = (): Locale => {
   const stored = localStorage.getItem(LOCALE_STORAGE_KEY);
-  return isLocale(stored) ? stored : "es";
+  return isLocale(stored) ? stored : "en";
 };
 
 let locale = resolveLocale();
 let pluralRules = new Intl.PluralRules(locale);
 let numberFormatter = new Intl.NumberFormat(locale);
-let clockFormatter = new Intl.DateTimeFormat(locale, { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+let fixedNumberFormatters = Array.from({ length: 4 }, (_, digits) => new Intl.NumberFormat(locale, {
+  minimumFractionDigits: digits,
+  maximumFractionDigits: digits
+}));
+let clockFormatter = new Intl.DateTimeFormat(locale, { hour: "2-digit", minute: "2-digit" });
 
 export const getLocale = (): Locale => locale;
 export const setLocale = (next: Locale): void => {
@@ -27,7 +31,11 @@ export const setLocale = (next: Locale): void => {
   localStorage.setItem(LOCALE_STORAGE_KEY, next);
   pluralRules = new Intl.PluralRules(next);
   numberFormatter = new Intl.NumberFormat(next);
-  clockFormatter = new Intl.DateTimeFormat(next, { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  fixedNumberFormatters = Array.from({ length: 4 }, (_, digits) => new Intl.NumberFormat(next, {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits
+  }));
+  clockFormatter = new Intl.DateTimeFormat(next, { hour: "2-digit", minute: "2-digit" });
   document.documentElement.lang = next;
 };
 
@@ -42,7 +50,8 @@ export const t = (key: TranslationKey, parameters: Parameters = {}): string => {
   );
 };
 
-export const formatNumber = (value: number): string => numberFormatter.format(value);
+export const formatNumber = (value: number, digits?: number): string =>
+  digits === undefined ? numberFormatter.format(value) : fixedNumberFormatters[Math.max(0, Math.min(3, digits))].format(value);
 export const formatClock = (value: Date | number): string => clockFormatter.format(value);
 
 const applyAttribute = (root: ParentNode, attribute: string, target: string): void => {

@@ -109,3 +109,9 @@ math belongs in Rust. `fuel.ts` only formats serialized plans.
 Test session transitions, qualifying carryover, fractional progress, sub-100%
 starts, refills, formation/neutralization/pit exclusion, multi-stop pit profiles
 and the limiting-resource choice. Run Rust tests and the frontend build.
+
+## Localization
+
+Static and dynamic strategy labels use the bundled locale. Decimal formatting and
+lap abbreviations follow it, while strategy calculations and resource IDs remain
+unchanged and outside the renderer.

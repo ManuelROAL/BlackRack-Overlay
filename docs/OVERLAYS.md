@@ -69,6 +69,11 @@ telemetry semantics and file ownership live under `docs/overlays/`; use
 
 ## Composite delivery and OBS
 
+- Native overlay documents use the bundled locale selected by the control panel.
+  Translate static HTML, dynamic status, tooltips and accessibility text through
+  `src/i18n/`; keep telemetry values and stable IDs semantic. A locale change
+  reloads the composite and mounted documents instead of adding work to hot
+  telemetry render paths.
 - Composite hosts consume grouped `telemetry://batch` events, forward only named
   locally mounted targets, and project each frame onto the reused per-overlay
   allowlist in `src/composite.ts` before same-origin `postMessage`.

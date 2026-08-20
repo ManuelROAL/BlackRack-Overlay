@@ -162,7 +162,7 @@ if (localeSelect) {
   localeSelect.addEventListener("change", () => {
     if (!isLocale(localeSelect.value) || localeSelect.value === getLocale()) return;
     setLocale(localeSelect.value);
-    window.location.reload();
+    void emit("locale://change", { locale: localeSelect.value }).finally(() => window.location.reload());
   });
 }
 

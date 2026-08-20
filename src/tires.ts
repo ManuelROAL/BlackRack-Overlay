@@ -5,6 +5,7 @@ import { bindOverlayInteractionMode } from "./overlay-interaction";
 import { bindOverlayTransparency } from "./overlay-appearance";
 import { createOverlayPerformanceTracker } from "./overlay-performance";
 import { isTauriRuntime, listenTelemetry } from "./runtime-events";
+import { formatNumber, t, type TranslationKey } from "./i18n";
 
 const wheels = Array.from(document.querySelectorAll<HTMLElement>("[data-wheel]"));
 const temperatures = wheels.map((wheel) => wheel.querySelector<HTMLElement>(".wheel-temperature")!);
@@ -68,11 +69,11 @@ const shortCompound = (value: string): string => {
 };
 
 const readable = (value: number, digits: number, suffix: string): string =>
-  Number.isFinite(value) && value >= 0 ? `${value.toFixed(digits)}${suffix}` : `--${digits ? ".-" : ""}${suffix}`;
+  Number.isFinite(value) && value >= 0 ? `${formatNumber(value, digits)}${suffix}` : `--${digits ? ".-" : ""}${suffix}`;
 
-const damageNames = [
-  "frontal central", "frontal izquierda", "lateral izquierda", "trasera izquierda",
-  "trasera central", "trasera derecha", "lateral derecha", "frontal derecha"
+const damageNameKeys: TranslationKey[] = [
+  "tires.part.frontCenter", "tires.part.frontLeft", "tires.part.left", "tires.part.rearLeft",
+  "tires.part.rearCenter", "tires.part.rearRight", "tires.part.right", "tires.part.frontRight"
 ];
 
 const render = (frame: TelemetryFrame): void => {
@@ -91,7 +92,7 @@ const render = (frame: TelemetryFrame): void => {
       ? `${Math.round(remaining)}%`
       : "--%");
     setText(flatSpotValues[index], Number.isFinite(flatSpot) && flatSpot >= 0
-      ? `${flatSpot.toFixed(2)}%`
+      ? `${formatNumber(flatSpot, 2)}%`
       : "--.--%");
     setStyleProperty(
       wheels[index],
@@ -103,11 +104,15 @@ const render = (frame: TelemetryFrame): void => {
     wheels[index].classList.toggle("flat", flat);
     wheels[index].classList.toggle("detached", detached);
     const compound = shortCompound(frame.player_tire_compounds[index] ?? "");
-    const compoundLabel = compound === "–" ? "desconocido" : compound;
+    const compoundLabel = compound === "–" ? t("tires.unknown") : compound;
 
     const title = flat || detached
-      ? detached ? "Rueda desprendida" : "Neumático pinchado"
-      : `Neumático ${readable(temperature, 1, " °C")} · Disco ${readable(brakeTemperature, 0, " °C")} · ${readable(remaining, 1, "% restante")} · Plano ${readable(flatSpot, 2, "%")} · Suspensión ${readable(suspension, 0, "%")} · Compuesto ${compoundLabel}`;
+      ? detached ? t("tires.detached") : t("tires.flat")
+      : t("tires.tooltip", {
+          tire: readable(temperature, 1, " °C"), brake: readable(brakeTemperature, 0, " °C"),
+          remaining: readable(remaining, 1, "%"), flat: readable(flatSpot, 2, "%"),
+          suspension: readable(suspension, 0, "%"), compound: compoundLabel
+        });
     if (wheels[index].title !== title) wheels[index].title = title;
   }
 
@@ -115,7 +120,7 @@ const render = (frame: TelemetryFrame): void => {
     const partIndex = Number(part.dataset.damagePart);
     const severity = Math.min(frame.player_damage_severity[partIndex] ?? 0, 3);
     setData(part, "severity", String(severity));
-    setAttribute(part, "aria-label", `Chasis ${damageNames[partIndex]}: nivel ${severity}`);
+    setAttribute(part, "aria-label", t("tires.chassisPart", { part: t(damageNameKeys[partIndex]), level: severity }));
   }
 
   const aeroDamage = frame.player_aero_damage_percent;
@@ -124,10 +129,10 @@ const render = (frame: TelemetryFrame): void => {
   const rearWingDetached = frame.player_rear_wing_detached;
   setData(aeroWing, "state", rearWingDetached ? "detached" : "mounted");
   const aeroLabel = rearWingDetached
-    ? "Alerón desprendido"
+    ? t("tires.wingDetached")
     : aeroAvailable
-    ? `Daño aerodinámico global ${Math.round(normalizedAeroDamage)}%`
-    : "Daño aerodinámico global no disponible";
+    ? t("tires.aeroDamage", { value: Math.round(normalizedAeroDamage) })
+    : t("tires.aeroUnavailable");
   setAttribute(aeroWing, "aria-label", aeroLabel);
   setAttribute(aeroWing, "title", aeroLabel);
 

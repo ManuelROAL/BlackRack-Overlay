@@ -4,11 +4,11 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#080b10" />
-    <title>LMU · Trailing + Pedal</title>
+    <title data-i18n="title.driving">LMU · Trailing + Pedal</title>
   </head>
   <body class="driving-body">
     <main class="driving-shell" data-tauri-drag-region>
-      <section class="drive-dial" aria-label="Volante, marcha, velocidad y Force Feedback">
+      <section class="drive-dial" aria-label="Volante, marcha, velocidad y Force Feedback" data-i18n-aria-label="driving.dialAria">
         <div class="dial-face" aria-hidden="true"></div>
         <div id="steering-wheel" class="steering-indicator" data-driving-item="steering" aria-hidden="true">
           <svg viewBox="0 0 100 100">
@@ -22,7 +22,7 @@
           <div class="ffb-track" aria-hidden="true"><i id="ffb-level"></i><em></em></div>
         </div>
       </section>
-      <section class="pedal-panel" aria-label="Pedales actuales">
+      <section class="pedal-panel" aria-label="Pedales actuales" data-i18n-aria-label="driving.pedalsAria">
         <div class="pedal-column clutch-column" data-input-pedal="clutch">
           <b id="clutch-value">0</b>
           <div class="pedal-column-track"><i id="clutch-level"></i></div>
@@ -39,7 +39,7 @@
           <span>THR</span>
         </div>
       </section>
-      <section class="trailing-panel" aria-label="Historial de pedales">
+      <section class="trailing-panel" aria-label="Historial de pedales" data-i18n-aria-label="driving.historyAria">
         <canvas id="trailing-canvas" width="262" height="94"></canvas>
       </section>
       <div class="resize-handle" data-resize-handle aria-hidden="true"></div>

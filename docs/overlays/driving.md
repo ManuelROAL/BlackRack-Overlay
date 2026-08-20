@@ -49,3 +49,8 @@
 
 Check rapid steering/FFB/pedal changes, TC/ABS single-sample markers, five-second
 history, all visibility combinations, compact sizing and OBS preference parity.
+
+## Localization
+
+Static labels, tooltips and accessibility text use the bundled locale. Pedal IDs,
+units and telemetry sampling remain unchanged.

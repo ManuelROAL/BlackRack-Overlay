@@ -66,3 +66,9 @@ Detailed Damage (`damage.md`).
 Test all four corners independently, temperature conversion, remaining tread,
 flat-spot reset, suspension source mapping, puncture/detachment priority, wing
 false positives and REST-unavailable fallback.
+
+## Localization
+
+Labels, detailed tyre/chassis tooltips and accessibility text use the bundled
+locale. Translation does not add catalog construction or DOM churn to the 50 Hz
+renderer.

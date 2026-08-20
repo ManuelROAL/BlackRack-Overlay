@@ -29,3 +29,8 @@
 
 Test pit entry/exit, slow/off-surface arming, ten-second hold, 15-second boundary,
 closing versus non-closing cars, candidate preference and automatic visibility.
+
+## Localization
+
+Warning reasons, safety states, document title and accessibility text use the
+bundled locale. Distances and arrival times use its ordinary number formatting.

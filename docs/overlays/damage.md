@@ -37,3 +37,8 @@ brake and tyre SVGs belong only to Damage + Tyres (`tires.md`).
 
 Check independent missing-data states, detached-wheel suspension override, least-
 healthy tyre selection, threshold boundaries and fitted compact width.
+
+## Localization
+
+Static labels, the document title and accessibility text use the bundled locale;
+percentages and telemetry semantics remain language-neutral.

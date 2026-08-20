@@ -37,3 +37,8 @@ causation, so describe the result honestly as a stabilized inference.
 Test priority changes, sector-yellow gating, front/rear thresholds, stabilization,
 pit exclusion, blue selection and multi-car counting, and responsiveness at
 active cadence.
+
+## Localization
+
+The document title, accessibility text and car-count plural use the bundled
+locale. Flag kinds, category names and compact motorsport notation stay semantic.

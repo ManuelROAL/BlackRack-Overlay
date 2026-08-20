@@ -84,3 +84,9 @@ Test lap-wrap duplication, multiclass/lapped traffic, timing-line transitions,
 garage exclusion, sign and ordering of gaps, event combinations, row limits,
 independent column/header settings and fitted size. Confirm 20 Hz roster demand
 and Standings reuse.
+
+## Localization
+
+Empty states, tooltips, lap relations, session header and accessibility text use
+the bundled locale. Translations are resolved only when cached cells or headers
+change, preserving the 20 Hz presentation path.
