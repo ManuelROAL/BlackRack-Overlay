@@ -13,6 +13,8 @@ telemetry semantics and file ownership live under `docs/overlays/`; use
 - Use the bundled Roboto Condensed font throughout overlays and the control panel.
 - Optimize for legibility while driving. Keep spacing compact and give important
   values a deliberate hierarchy.
+- Keep overlay descriptions and configuration-option labels in the control panel
+  readable at a glance; secondary text must retain clear contrast against cards.
 - Keep each overlay's CSS in its own file. Shared primitives belong in
   `src/styles.css` only when they are genuinely shared.
 - Do not set `color-scheme: dark` on an embedded document root; WebView2 can paint
