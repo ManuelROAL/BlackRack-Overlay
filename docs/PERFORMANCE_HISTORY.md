@@ -44,7 +44,7 @@ A controlled A/B capture comparing this build with the previous release on the
 
 Continuous 110 ms marker transitions kept WebView2's GPU process around 1.67% CPU
 with Task Manager peaks near 3.2%. Direct 30 Hz updates reduced that process to
-0.365% in a 15-second sample; the complete LMUOverlay/WebView2 tree measured about
+0.365% in a 15-second sample; the complete BlackRack Overlay/WebView2 tree measured about
 1.08%. This isolated development diagnosis confirmed the cause but was not a
 publication comparison.
 

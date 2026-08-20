@@ -2,7 +2,7 @@ import { catalogs, type Message, type TranslationKey } from "./catalogs";
 
 export const SUPPORTED_LOCALES = ["es", "en"] as const;
 export type Locale = (typeof SUPPORTED_LOCALES)[number];
-export const LOCALE_STORAGE_KEY = "lmu-overlay.locale.v1";
+export const LOCALE_STORAGE_KEY = "blackrack-overlay.locale.v1";
 export const LOCALE_OPTIONS: ReadonlyArray<{ code: Locale; label: string }> = [
   { code: "es", label: "Español" },
   { code: "en", label: "English" }

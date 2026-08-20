@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "LMU Overlay",
+  "productName": "BlackRack Overlay",
   "version": "0.5.2",
-  "identifier": "dev.lmuoverlay.desktop",
+  "identifier": "com.blackrack.overlay",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -16,7 +16,7 @@
     "windows": [
       {
         "label": "control",
-        "title": "LMU Overlay · Panel de control",
+        "title": "BlackRack Overlay · Panel de control",
         "width": 590,
         "height": 910,
         "minWidth": 560,

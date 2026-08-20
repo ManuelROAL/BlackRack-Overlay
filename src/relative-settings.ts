@@ -69,7 +69,7 @@ export interface RelativeSettings {
   driverNameFormat: DriverNameFormat;
 }
 
-export const RELATIVE_SETTINGS_KEY = "lmu-overlay.relative.v3";
+export const RELATIVE_SETTINGS_KEY = "blackrack-overlay.relative.v3";
 export const RELATIVE_HEADER_OPTIONS: RelativeOptionDefinition[] = [
   { id: "airTemperature", labelKey: "header.airTemperature" }, { id: "trackTemperature", labelKey: "header.trackTemperature" },
   { id: "brakeBias", labelKey: "header.brakeBias" }, { id: "trackLimits", labelKey: "header.trackLimits" }, { id: "realTimeClock", labelKey: "header.realTimeClock" }

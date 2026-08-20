@@ -15,11 +15,7 @@ fn timestamp_millis() -> u128 {
 }
 
 fn default_path() -> PathBuf {
-    std::env::var_os("APPDATA")
-        .map(PathBuf::from)
-        .unwrap_or_else(std::env::temp_dir)
-        .join("dev.lmuoverlay.desktop")
-        .join("startup.log")
+    crate::app_paths::data_directory().join("startup.log")
 }
 
 fn previous_path(path: &std::path::Path) -> PathBuf {
@@ -153,7 +149,8 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let directory = std::env::temp_dir().join(format!("lmu-overlay-startup-log-{unique}"));
+        let directory =
+            std::env::temp_dir().join(format!("blackrack-overlay-startup-log-{unique}"));
         fs::create_dir_all(&directory).unwrap();
         let path = directory.join("startup.log");
         fs::write(&path, "previous failure").unwrap();

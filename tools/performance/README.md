@@ -1,7 +1,7 @@
 # Comparación de rendimiento
 
-Este recolector mide LMU Overlay y TinyPedal con el mismo criterio e incluye
-los procesos secundarios WebView2 de LMU Overlay.
+Este recolector mide BlackRack Overlay y TinyPedal con el mismo criterio e incluye
+los procesos secundarios WebView2 de BlackRack Overlay.
 
 ## Preparación
 
@@ -23,8 +23,8 @@ powershell -ExecutionPolicy Bypass -File .\tools\performance\compare-overlays.ps
 El script genera las muestras y un resumen en `tools/performance/results/`.
 Las métricas principales son CPU media/P95, memoria privada media/máxima y GPU
 media/P95. No actives el registro detallado de telemetría durante la prueba
-principal, porque añade una pequeña carga de escritura a LMU Overlay.
+principal, porque añade una pequeña carga de escritura a BlackRack Overlay.
 
 Para aislar posibles interferencias, completa además dos pasadas de cinco
-minutos: una solo con LMU Overlay y otra solo con TinyPedal. Mantén el mismo
+minutos: una solo con BlackRack Overlay y otra solo con TinyPedal. Mantén el mismo
 fragmento de repetición y la misma configuración visual.

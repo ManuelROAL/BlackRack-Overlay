@@ -11,7 +11,7 @@ declare global {
 }
 
 interface CompositeMessage {
-  source: "lmu-overlay-composite";
+  source: "blackrack-overlay-composite";
   kind: "event" | "invoke" | "fit";
   event?: string;
   payload?: unknown;
@@ -35,7 +35,7 @@ if (isCompositeOverlay()) document.documentElement.classList.add("composite-embe
 export const reportCompositeOverlaySize = (size: OverlayDesignSize): void => {
   if (!isCompositeOverlay()) return;
   window.parent.postMessage({
-    source: "lmu-overlay-composite",
+    source: "blackrack-overlay-composite",
     kind: "fit",
     payload: size
   } satisfies CompositeMessage, window.location.origin);
@@ -48,7 +48,7 @@ export const listenRuntimeEvent = <T>(
   if (isCompositeOverlay()) {
     const listener = (message: MessageEvent<CompositeMessage>): void => {
       if (message.origin !== window.location.origin) return;
-      if (message.data?.source !== "lmu-overlay-composite" || message.data.kind !== "event") return;
+      if (message.data?.source !== "blackrack-overlay-composite" || message.data.kind !== "event") return;
       if (message.data.event === event) handler(message.data.payload as T);
     };
     window.addEventListener("message", listener);
@@ -71,7 +71,7 @@ export const invokeRuntime = <T>(
     }, 5_000);
     const listener = (message: MessageEvent<CompositeMessage>): void => {
       if (message.origin !== window.location.origin) return;
-      if (message.data?.source !== "lmu-overlay-composite" || message.data.kind !== "event") return;
+      if (message.data?.source !== "blackrack-overlay-composite" || message.data.kind !== "event") return;
       if (message.data.event === `invoke:${requestId}:ok`) {
         window.clearTimeout(timeout);
         window.removeEventListener("message", listener);
@@ -84,7 +84,7 @@ export const invokeRuntime = <T>(
     };
     window.addEventListener("message", listener);
     window.parent.postMessage({
-      source: "lmu-overlay-composite",
+      source: "blackrack-overlay-composite",
       kind: "invoke",
       command,
       args,

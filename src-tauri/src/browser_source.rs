@@ -7,7 +7,7 @@ use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{mpsc, Mutex, OnceLock, RwLock};
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
-use tauri::{AppHandle, Manager};
+use tauri::AppHandle;
 
 use crate::telemetry::TelemetryFrame;
 
@@ -87,10 +87,7 @@ fn service() -> Option<&'static BrowserSourceService> {
 }
 
 pub(crate) fn configure(app: &AppHandle) {
-    let config_dir = app
-        .path()
-        .app_config_dir()
-        .unwrap_or_else(|_| PathBuf::from("."));
+    let config_dir = crate::app_paths::data_directory();
     let settings_path = config_dir.join("browser-source.json");
     let enabled = fs::read(&settings_path)
         .ok()
@@ -358,7 +355,7 @@ fn serve_request(stream: &mut TcpStream, request_path: &str, app: &AppHandle) {
             .unwrap_or_else(|| serde_json::json!({}));
         let json = serde_json::to_string(&settings).unwrap_or_else(|_| "{}".into());
         let script = format!(
-            "(()=>{{const p={json},q=new URLSearchParams(location.search).get('lang'),valid=l=>typeof l==='string'&&Array.isArray(p.supportedLocales)&&p.supportedLocales.includes(l);if(valid(q))document.documentElement.dataset.localeOverride=q;else if(valid(p.locale))localStorage.setItem('lmu-overlay.locale.v1',p.locale);if(p.standings)localStorage.setItem('lmu-overlay.standings.v1',JSON.stringify(p.standings));if(p.relative)localStorage.setItem('lmu-overlay.relative.v1',JSON.stringify(p.relative));if(p.driving)localStorage.setItem('lmu-overlay.driving.v1',JSON.stringify(p.driving));if(p.delta)localStorage.setItem('lmu-overlay.delta.v1',JSON.stringify(p.delta));if(p.timing)localStorage.setItem('lmu-overlay.timing.v1',JSON.stringify(p.timing));if(p.trackMap)localStorage.setItem('lmu-overlay.track-map-settings.v1',JSON.stringify(p.trackMap));if(p.transparency)localStorage.setItem('lmu-overlay.background-transparency.v1',JSON.stringify(p.transparency));if(p.fuel)localStorage.setItem('lmu-overlay.fuel-strategy.v1',JSON.stringify(p.fuel));document.documentElement.dataset.browserSource='true';}})();"
+            "(()=>{{const p={json},q=new URLSearchParams(location.search).get('lang'),valid=l=>typeof l==='string'&&Array.isArray(p.supportedLocales)&&p.supportedLocales.includes(l);if(valid(q))document.documentElement.dataset.localeOverride=q;else if(valid(p.locale))localStorage.setItem('blackrack-overlay.locale.v1',p.locale);if(p.standings)localStorage.setItem('blackrack-overlay.standings.v1',JSON.stringify(p.standings));if(p.relative)localStorage.setItem('blackrack-overlay.relative.v1',JSON.stringify(p.relative));if(p.driving)localStorage.setItem('blackrack-overlay.driving.v1',JSON.stringify(p.driving));if(p.delta)localStorage.setItem('blackrack-overlay.delta.v1',JSON.stringify(p.delta));if(p.timing)localStorage.setItem('blackrack-overlay.timing.v1',JSON.stringify(p.timing));if(p.trackMap)localStorage.setItem('blackrack-overlay.track-map-settings.v1',JSON.stringify(p.trackMap));if(p.transparency)localStorage.setItem('blackrack-overlay.background-transparency.v1',JSON.stringify(p.transparency));if(p.fuel)localStorage.setItem('blackrack-overlay.fuel-strategy.v1',JSON.stringify(p.fuel));document.documentElement.dataset.browserSource='true';}})();"
         );
         write_response(
             stream,

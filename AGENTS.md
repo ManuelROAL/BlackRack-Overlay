@@ -1,8 +1,8 @@
-# LMUOverlay agent guide
+# BlackRack Overlay agent guide
 
 ## Project
 
-LMUOverlay is a Windows-first desktop telemetry overlay for Le Mans Ultimate.
+BlackRack Overlay is a Windows-first desktop telemetry overlay for Le Mans Ultimate.
 The current release line is `0.5.x`. It uses Tauri 2, Rust, TypeScript, Vite and
 plain HTML/CSS without a frontend framework. Live telemetry uses the official LMU
 shared-memory SDK on Windows; builds without the SDK use the mock source.

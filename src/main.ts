@@ -130,7 +130,7 @@ interface BrowserSourceStatus {
 }
 
 interface OverlayConfigurationExport {
-  format: "lmu-overlay-configuration";
+  format: "blackrack-overlay-configuration";
   schemaVersion: 7;
   exportedAt: string;
   ui: { locale: Locale };
@@ -169,7 +169,7 @@ if (localeSelect) {
 }
 
 const overlayIds: OverlayId[] = ["delta", "timing", "driving", "tires", "damage", "standings", "relative", "fuel", "pitstop", "flags", "rejoin", "trackmap"];
-const storageKey = "lmu-overlay.visible-windows.v1";
+const storageKey = "blackrack-overlay.visible-windows.v1";
 
 const readPreferences = (): Record<OverlayId, boolean> => {
   const defaults: Record<OverlayId, boolean> = {
@@ -821,7 +821,7 @@ const parseOverlayConfiguration = (contents: string): OverlayConfigurationExport
   const monitor = schemaMonitor ?? legacyMonitor ?? 0;
   const percentageIsValid = (value: unknown): value is number =>
     typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 100;
-  if (root?.format !== "lmu-overlay-configuration"
+  if (root?.format !== "blackrack-overlay-configuration"
     || ![1, 2, 3, 4, 5, 6, 7].includes(Number(schemaVersion))
     || !overlays || !visibility || !transparency || !transparencyScope || !transparencyValues
     || !layout || !standings || !relative
@@ -1003,7 +1003,7 @@ exportConfigurationButton?.addEventListener("click", () => {
     const layout = readCompositeLayout() ?? await ensureCompositeLayout();
     const monitor = await resolveOverlayMonitor();
     const configuration: OverlayConfigurationExport = {
-      format: "lmu-overlay-configuration",
+      format: "blackrack-overlay-configuration",
       schemaVersion: 7,
       exportedAt: now.toISOString(),
       ui: { locale: getLocale() },
@@ -1026,7 +1026,7 @@ exportConfigurationButton?.addEventListener("click", () => {
     const timestamp = now.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
     const selectedPath = await save({
       title: t("config.exportDialog"),
-      defaultPath: `LMUOverlay-config-${timestamp}.json`,
+      defaultPath: `BlackRackOverlay-config-${timestamp}.json`,
       filters: configurationFileFilters
     });
     if (!selectedPath) {

@@ -1,3 +1,4 @@
+mod app_paths;
 mod browser_source;
 mod lmu_install;
 mod startup_log;
@@ -18,7 +19,6 @@ use tauri::{
     Position, Size, State, WebviewUrl, WebviewWindow, WebviewWindowBuilder,
 };
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
-use tauri_plugin_window_state::StateFlags;
 
 const OVERLAY_LABELS: [&str; 12] = [
     "delta",
@@ -71,6 +71,42 @@ struct ShortcutRuntime {
 }
 
 struct ShortcutControl(Mutex<ShortcutRuntime>);
+
+#[derive(Clone, Deserialize, Serialize)]
+struct ControlWindowPosition {
+    x: i32,
+    y: i32,
+}
+
+fn control_window_position_path() -> PathBuf {
+    app_paths::data_directory().join("control-window.json")
+}
+
+fn load_control_window_position() -> Option<ControlWindowPosition> {
+    fs::read_to_string(control_window_position_path())
+        .ok()
+        .and_then(|contents| serde_json::from_str(&contents).ok())
+}
+
+fn save_control_window_position(window: &tauri::Window) {
+    let Ok(position) = window.outer_position() else {
+        return;
+    };
+    let path = control_window_position_path();
+    let Some(directory) = path.parent() else {
+        return;
+    };
+    if fs::create_dir_all(directory).is_err() {
+        return;
+    }
+    let state = ControlWindowPosition {
+        x: position.x,
+        y: position.y,
+    };
+    if let Ok(contents) = serde_json::to_vec_pretty(&state) {
+        let _ = fs::write(path, contents);
+    }
+}
 
 #[derive(Clone, Serialize)]
 struct ShortcutBindingStatus {
@@ -555,10 +591,8 @@ struct OverlayMonitorSettings {
 }
 
 fn overlay_monitor_settings_path(app: &AppHandle) -> Result<std::path::PathBuf, String> {
-    app.path()
-        .app_config_dir()
-        .map(|directory| directory.join("overlay-monitor.json"))
-        .map_err(|error| format!("No se pudo localizar la configuracion: {error}"))
+    let _ = app;
+    Ok(app_paths::data_directory().join("overlay-monitor.json"))
 }
 
 fn load_overlay_monitor_index(app: &AppHandle) -> usize {
@@ -598,7 +632,7 @@ fn create_overlay_host(app: &AppHandle) -> Result<(), String> {
     let label = format!("{OVERLAY_HOST_PREFIX}0");
     let logical_size = monitor.size().to_logical::<f64>(monitor.scale_factor());
     let window = WebviewWindowBuilder::new(app, &label, WebviewUrl::App("composite.html".into()))
-        .title(format!("LMU Overlay · Monitor {}", host_index + 1))
+        .title(format!("BlackRack Overlay · Monitor {}", host_index + 1))
         .inner_size(logical_size.width, logical_size.height)
         .transparent(true)
         .background_color(TRANSPARENT_BACKGROUND)
@@ -852,50 +886,23 @@ fn get_default_overlay_placement(label: String) -> Result<OverlayPlacementSeed, 
 #[tauri::command]
 fn get_composite_layout_seed(
     app: AppHandle,
-    monitor: usize,
+    _monitor: usize,
 ) -> Result<Vec<OverlayPlacementSeed>, String> {
     let displays = overlay_displays(&app)?;
     if displays.is_empty() {
         return Err("No se detectaron monitores para alojar los overlays".into());
     }
-    let display = displays.get(monitor).unwrap_or(&displays[0]);
-    let saved = app
-        .path()
-        .app_config_dir()
-        .ok()
-        .and_then(|directory| fs::read_to_string(directory.join(".window-state.json")).ok())
-        .and_then(|contents| serde_json::from_str::<serde_json::Value>(&contents).ok());
 
     Ok(OVERLAY_LABELS
         .iter()
         .map(|label| {
-            let (default_x, default_y, default_width, default_height) =
-                default_overlay_geometry(label);
-            let state = saved.as_ref().and_then(|value| value.get(*label));
-            let saved_geometry = state.and_then(|value| {
-                Some((
-                    value.get("x")?.as_i64()? as i32,
-                    value.get("y")?.as_i64()? as i32,
-                    value.get("width")?.as_u64()? as u32,
-                    value.get("height")?.as_u64()? as u32,
-                ))
-            });
-            let Some((saved_x, saved_y, saved_width, saved_height)) = saved_geometry else {
-                return OverlayPlacementSeed {
-                    overlay: label,
-                    x: default_x,
-                    y: default_y,
-                    width: default_width,
-                    height: default_height,
-                };
-            };
-            let scale = display.scale_factor.max(0.1);
+            let (x, y, width, height) = default_overlay_geometry(label);
             OverlayPlacementSeed {
                 overlay: label,
-                x: (saved_x - display.x) as f64 / scale,
-                y: (saved_y - display.y) as f64 / scale,
-                width: saved_width as f64 / scale,
-                height: saved_height as f64 / scale,
+                x,
+                y,
+                width,
+                height,
             }
         })
         .collect())
@@ -1021,10 +1028,8 @@ fn open_support_page() -> Result<(), String> {
 }
 
 fn shortcut_settings_path(app: &AppHandle) -> Result<std::path::PathBuf, String> {
-    app.path()
-        .app_config_dir()
-        .map(|directory| directory.join("shortcuts.json"))
-        .map_err(|error| format!("No se pudo localizar la configuracion: {error}"))
+    let _ = app;
+    Ok(app_paths::data_directory().join("shortcuts.json"))
 }
 
 fn load_shortcut_settings(app: &AppHandle) -> ShortcutSettings {
@@ -1073,7 +1078,8 @@ fn validate_overlay_configuration(contents: &str) -> Result<(), String> {
     let schema_version = parsed
         .get("schemaVersion")
         .and_then(serde_json::Value::as_u64);
-    if parsed.get("format").and_then(serde_json::Value::as_str) != Some("lmu-overlay-configuration")
+    if parsed.get("format").and_then(serde_json::Value::as_str)
+        != Some("blackrack-overlay-configuration")
         || !matches!(schema_version, Some(1..=5))
     {
         return Err("Formato de configuración no reconocido".into());
@@ -1351,16 +1357,13 @@ pub fn run() {
         ])
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_dialog::init())
-        .plugin(
-            tauri_plugin_window_state::Builder::default()
-                .with_state_flags(StateFlags::POSITION | StateFlags::SIZE)
-                .with_filter(|label| !label.starts_with(OVERLAY_HOST_PREFIX))
-                .build(),
-        )
         .setup(|app| {
             startup_log::record("Tauri setup started");
             if let Some(panel) = app.get_webview_window("control") {
                 startup_log::record("control window available");
+                if let Some(position) = load_control_window_position() {
+                    let _ = panel.set_position(PhysicalPosition::new(position.x, position.y));
+                }
                 if panel
                     .inner_size()
                     .map(|size| size.height < 880)
@@ -1458,6 +1461,7 @@ pub fn run() {
             if window.label() == "control"
                 && matches!(event, tauri::WindowEvent::CloseRequested { .. })
             {
+                save_control_window_position(window);
                 startup_log::record("control window close requested; exiting normally");
                 window.app_handle().exit(0);
                 return;
@@ -1466,7 +1470,7 @@ pub fn run() {
         .run(tauri::generate_context!())
         .unwrap_or_else(|error| {
             startup_log::record(format!("fatal Tauri error: {error}"));
-            panic!("error al ejecutar LMU Overlay: {error}");
+            panic!("error al ejecutar BlackRack Overlay: {error}");
         });
 
     startup_log::record("Tauri event loop finished");

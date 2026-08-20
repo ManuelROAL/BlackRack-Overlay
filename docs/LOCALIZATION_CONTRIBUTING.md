@@ -13,7 +13,7 @@
 
 ## Terminology
 
-- Keep product and domain names such as LMU, LMU Overlay, Relative, Delta, DR,
+- Keep product and domain names such as LMU, BlackRack Overlay, Relative, Delta, DR,
   SR, NRG, PIT and OUT unchanged unless a product decision explicitly renames
   them.
 - English uses British motorsport spelling (`tyre`, not `tire`) in visible copy.

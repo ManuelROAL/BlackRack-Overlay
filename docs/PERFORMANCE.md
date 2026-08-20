@@ -2,10 +2,10 @@
 
 ## Goal and comparison method
 
-Compare LMUOverlay with TinyPedal under the same moving LMU replay/race segment
+Compare BlackRack Overlay with TinyPedal under the same moving LMU replay/race segment
 and comparable visible content. Follow `tools/performance/README.md`.
 
-Primary external metrics include LMUOverlay's WebView2 child processes:
+Primary external metrics include BlackRack Overlay's WebView2 child processes:
 
 - CPU average and P95
 - private memory average and maximum

@@ -1,8 +1,8 @@
 {
   "info": {
     "_postman_id": "a31fc019-e0a7-4aaf-82dc-d198446afca2",
-    "name": "LMUOverlay - RaceControl",
-    "description": "Peticiones HTTP utilizadas por LMUOverlay para obtener el ticket local de Le Mans Ultimate, autenticarse en RaceControl, consultar DR/SR y consultar el split. Ejecuta las peticiones en el orden indicado.",
+    "name": "BlackRack Overlay - RaceControl",
+    "description": "Peticiones HTTP utilizadas por BlackRack Overlay para obtener el ticket local de Le Mans Ultimate, autenticarse en RaceControl, consultar DR/SR y consultar el split. Ejecuta las peticiones en el orden indicado.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [

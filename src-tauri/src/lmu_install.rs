@@ -70,7 +70,7 @@ mod tests {
     #[test]
     fn extracts_steam_library_paths() {
         let path = std::env::temp_dir().join(format!(
-            "lmu-overlay-libraryfolders-{}.vdf",
+            "blackrack-overlay-libraryfolders-{}.vdf",
             std::process::id()
         ));
         fs::write(

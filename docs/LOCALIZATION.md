@@ -57,7 +57,7 @@ locale/document loads, not repeated unnecessarily on every frame.
 
 ## Persistence and propagation
 
-- Persist the selected locale under `lmu-overlay.locale.v1` as a supported
+- Persist the selected locale under `blackrack-overlay.locale.v1` as a supported
   language code, not as a translated name.
 - Add the locale to the versioned configuration document as `ui.locale` and bump
   its schema version. Older imports resolve the local default; invalid or
@@ -80,7 +80,7 @@ or enlarge grouped telemetry payloads.
 
 Phases 1–4 are implemented. `src/i18n/` owns the bundled Spanish and English
 catalogs, typed lookup/interpolation/plural helpers, cached locale formatters,
-DOM attribute translation and the persisted `lmu-overlay.locale.v1` choice. The
+DOM attribute translation and the persisted `blackrack-overlay.locale.v1` choice. The
 complete control panel, including generated settings, dialogs, accessibility
 labels and native file-dialog titles, uses that catalog. Configuration schema 7
 round-trips the choice as `ui.locale` and imports schemas 1–6 using the current

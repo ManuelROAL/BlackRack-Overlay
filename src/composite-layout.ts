@@ -23,7 +23,7 @@ export interface OverlayPlacement {
 
 export type CompositeLayout = Record<OverlayId, OverlayPlacement>;
 
-export const COMPOSITE_LAYOUT_KEY = "lmu-overlay.composite-layout.v1";
+export const COMPOSITE_LAYOUT_KEY = "blackrack-overlay.composite-layout.v1";
 export const MIN_VISIBLE_PANEL_EDGE = 32;
 
 export const clampPanelCoordinate = (
@@ -99,7 +99,7 @@ export const getOverlayDisplays = (): Promise<OverlayDisplay[]> => {
   return displaysPromise;
 };
 
-const LEGACY_MONITOR_SELECTION_KEY = "lmu-overlay.monitor-selection.v1";
+const LEGACY_MONITOR_SELECTION_KEY = "blackrack-overlay.monitor-selection.v1";
 
 interface LegacyMonitorSelection {
   mode?: "global" | "individual";

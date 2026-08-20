@@ -91,8 +91,8 @@ let trackMapSettings = readTrackMapSettings();
 const migrateLegacyLearning = (key: string, trackName: string, trackLength: number): void => {
   if (!isTauriRuntime()) return;
   const pitKey = key.replace(
-    "lmu-overlay.track-map.v1.",
-    "lmu-overlay.track-map.pit-traversal.v1."
+    "blackrack-overlay.track-map.v1.",
+    "blackrack-overlay.track-map.pit-traversal.v1."
   );
   let points: MapPoint[] = [];
   let pitTraversalSamples: number[] = [];

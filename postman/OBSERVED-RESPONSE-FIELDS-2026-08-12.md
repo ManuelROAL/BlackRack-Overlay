@@ -314,7 +314,7 @@ openEvent, ratings, registrationOpens, seriesId, serverSize, sessions
 settings, smallImage, splitSetting, starts, teamEvent, tier, title
 ```
 
-Reglas de consumo para LMUOverlay:
+Reglas de consumo para BlackRack Overlay:
 
 - Es la fuente primaria para resolver el split online.
 - Preferir el objeto `split` del usuario autenticado frente al roster completo
@@ -338,7 +338,7 @@ log }`. Véase `RACE-ENDPOINT-CAPTURE-2026-08-13.md`.
 
 La ruta existe en el cliente y devolvió error para un evento no registrado. En
 una carrera registrada devolvió `eventId`, `splitNo`, `numOfSplits`, los pilotos
-del split, servidor y SOF. LMUOverlay la usa como fallback read-only cuando
+del split, servidor y SOF. BlackRack Overlay la usa como fallback read-only cuando
 `event/overview` falla o no incluye el split autenticado, antes del estado local.
 
 ### Otros endpoints RaceOS observados

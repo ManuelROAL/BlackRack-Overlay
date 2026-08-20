@@ -1,4 +1,4 @@
-# LMU Overlay
+# BlackRack Overlay
 
 [![Apoyar en Ko-fi](https://img.shields.io/badge/Ko--fi-Apoyar-72cbff?logo=kofi&logoColor=white)](https://ko-fi.com/blackrack)
 
@@ -40,7 +40,7 @@ mostrar una advertencia la primera vez.
 
 ## Apoyar el proyecto
 
-LMU Overlay es gratuito. El bloque **Apoyar el proyecto**, situado al final del
+BlackRack Overlay es gratuito. El bloque **Apoyar el proyecto**, situado al final del
 panel en todas las pestañas, permite abrir
 [Ko-fi de Blackrack](https://ko-fi.com/blackrack) en el navegador predeterminado.
 La aplicación no carga contenido de Ko-fi dentro del panel ni envía datos al servicio
@@ -68,7 +68,7 @@ Para que los overlays aparezcan sobre el juego, LMU debe usarse en modo ventana 
 
 ## Diagnóstico de arranque
 
-Cada inicio crea un nuevo `%APPDATA%\dev.lmuoverlay.desktop\startup.log` y conserva
+Cada inicio crea un nuevo `%APPDATA%\BlackRack Overlay\startup.log` y conserva
 la ejecución anterior como `startup.previous.log`. Estos registros incluyen las
 etapas de Tauri, la ventana de control, el registro de atajos, el hilo de
 telemetría, el cierre normal, cualquier error fatal o panic y las excepciones no

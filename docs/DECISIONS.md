@@ -5,6 +5,9 @@ in `docs/overlays/` and should not be duplicated here.
 
 ## Product
 
+- The product name is **BlackRack Overlay**. Its technical bundle identifier is
+  `com.blackrack.overlay`, while user-owned backend data uses the readable
+  `%APPDATA%\BlackRack Overlay` directory on Windows.
 - Windows is the primary platform. Linux UI support remains desired, while live
   telemetry under Proton still needs validation.
 - Information density and legibility while driving take priority over decoration.

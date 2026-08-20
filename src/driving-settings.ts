@@ -9,7 +9,7 @@ export interface DrivingSettings {
   showGear: boolean;
 }
 
-export const DRIVING_SETTINGS_KEY = "lmu-overlay.driving.v1";
+export const DRIVING_SETTINGS_KEY = "blackrack-overlay.driving.v1";
 
 export const DRIVING_PEDALS = [
   { id: "throttle", labelKey: "pedal.throttle" }, { id: "brake", labelKey: "pedal.brake" }, { id: "clutch", labelKey: "pedal.clutch" }

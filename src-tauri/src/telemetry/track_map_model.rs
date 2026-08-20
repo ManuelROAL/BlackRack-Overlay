@@ -165,7 +165,7 @@ pub(crate) fn track_map_cache_key(track_name: &str, track_length: f64) -> String
         slug.pop();
     }
     format!(
-        "lmu-overlay.track-map.v1.{slug}.{}",
+        "blackrack-overlay.track-map.v1.{slug}.{}",
         track_length.round() as i64
     )
 }
@@ -543,7 +543,7 @@ mod tests {
     fn cache_key_matches_the_frontend_legacy_format() {
         assert_eq!(
             track_map_cache_key("Circuit de la Sarthe", 13_626.4),
-            "lmu-overlay.track-map.v1.circuit-de-la-sarthe.13626"
+            "blackrack-overlay.track-map.v1.circuit-de-la-sarthe.13626"
         );
     }
 

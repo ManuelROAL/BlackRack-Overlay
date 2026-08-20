@@ -2,7 +2,7 @@ export interface TimingSettings {
   historyLaps: 0 | 3 | 5;
 }
 
-export const TIMING_SETTINGS_KEY = "lmu-overlay.timing.v1";
+export const TIMING_SETTINGS_KEY = "blackrack-overlay.timing.v1";
 
 export const defaultTimingSettings = (): TimingSettings => ({ historyLaps: 3 });
 

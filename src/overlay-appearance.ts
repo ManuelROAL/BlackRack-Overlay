@@ -16,8 +16,8 @@ export interface OverlayTransparencyScope {
   globalTransparency: number;
 }
 
-export const OVERLAY_TRANSPARENCY_KEY = "lmu-overlay.background-transparency.v1";
-export const OVERLAY_TRANSPARENCY_SCOPE_KEY = "lmu-overlay.background-transparency-scope.v1";
+export const OVERLAY_TRANSPARENCY_KEY = "blackrack-overlay.background-transparency.v1";
+export const OVERLAY_TRANSPARENCY_SCOPE_KEY = "blackrack-overlay.background-transparency-scope.v1";
 
 export const DEFAULT_OVERLAY_TRANSPARENCY: OverlayTransparencySettings = {
   delta: 5,

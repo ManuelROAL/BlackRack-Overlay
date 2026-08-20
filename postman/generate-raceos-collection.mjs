@@ -233,7 +233,7 @@ const environment = {
   })),
   _postman_variable_scope: "environment",
   _postman_exported_at: "2026-08-05T00:00:00.000Z",
-  _postman_exported_using: "LMUOverlay generator"
+  _postman_exported_using: "BlackRack Overlay generator"
 };
 
 writeFileSync(collectionPath, `${JSON.stringify(collection, null, 2)}\n`, "utf8");

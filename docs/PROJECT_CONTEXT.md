@@ -2,7 +2,7 @@
 
 ## Product goal
 
-LMUOverlay provides compact, readable, configurable overlays for Le Mans
+BlackRack Overlay provides compact, readable, configurable overlays for Le Mans
 Ultimate, with special attention to multiclass endurance racing and virtual
 energy management. The application should remain useful while driving, avoid
 capturing mouse input in game mode and consume as few resources as practical.
@@ -47,6 +47,9 @@ remove enrichment such as DR/SR or split data, but must not stop the overlays.
 
 ## Current release and distribution
 
+- The product is published as **BlackRack Overlay**, with bundle identifier
+  `com.blackrack.overlay`; backend configuration, learned data and diagnostics
+  live under `%APPDATA%\BlackRack Overlay` on Windows.
 - Version is defined in `package.json`, `src-tauri/Cargo.toml` and
   `src-tauri/tauri.conf.json`; keep all three synchronized.
 - Windows distribution uses a current-user NSIS installer and embeds the WebView2
@@ -95,6 +98,6 @@ src-tauri/src/telemetry/       Telemetry, REST, ranks and calculations
 src-tauri/src/telemetry/lmu_bridge.cpp Official shared-memory adapter
 docs/overlays/                 Per-overlay behavior, telemetry and ownership
 postman/                       Local LMU and RaceOS request collections
-tools/performance/             LMUOverlay/TinyPedal comparison tooling
+tools/performance/             BlackRack Overlay/TinyPedal comparison tooling
 release/                       Generated release artifacts
 ```

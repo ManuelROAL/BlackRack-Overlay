@@ -11,7 +11,7 @@ param(
 $ErrorActionPreference = "Stop"
 $logicalProcessors = [Environment]::ProcessorCount
 $targets = @(
-    [pscustomobject]@{ Name = "LMU Overlay"; ProcessNames = @("lmu-overlay") },
+    [pscustomobject]@{ Name = "BlackRack Overlay"; ProcessNames = @("blackrack-overlay") },
     [pscustomobject]@{ Name = "TinyPedal"; ProcessNames = @("tinypedal") }
 )
 
@@ -87,7 +87,7 @@ $previousCpu = @{}
 $samples = [System.Collections.Generic.List[object]]::new()
 $stopwatch = [Diagnostics.Stopwatch]::StartNew()
 
-Write-Host "Comparando LMU Overlay y TinyPedal durante $DurationSeconds s..."
+Write-Host "Comparando BlackRack Overlay y TinyPedal durante $DurationSeconds s..."
 Write-Host "Mantén abiertos los mismos overlays/widgets y no cambies su configuración durante la prueba."
 
 while ($stopwatch.Elapsed.TotalSeconds -lt $DurationSeconds) {

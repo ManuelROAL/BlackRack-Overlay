@@ -26,7 +26,8 @@ Tauri events       analysis JSONL      browser-source SSE
   - Creates one borderless transparent overlay host on the selected monitor and
     moves/resizes it when the selection changes; monitors without the host
     contribute no composed surface.
-  - Migrates former window-state geometry into the composite layout seed.
+  - Provides the initial composite layout seed; the frontend then persists panel
+    geometry in `localStorage`.
   - Forces both the native window and WebView backgrounds to transparent RGBA;
     this is explicit because release WebView2 builds must not fall back to an
     opaque black surface.
@@ -136,7 +137,8 @@ blocking HTTP calls into `next_frame()`.
 
 ## Persistence
 
-- Control-panel geometry: `tauri-plugin-window-state`.
+- Control-panel position: `control-window.json` under
+  `%APPDATA%\BlackRack Overlay`.
 - Overlay position and size: composite-layout `localStorage`. The selected
   overlay monitor index persists as `overlay-monitor.json` under the application
   config directory.
@@ -144,7 +146,7 @@ blocking HTTP calls into `next_frame()`.
 - Overlay choices, columns and transparency: WebView `localStorage`. Transparency
   stores individual values separately from its general/individual scope.
 - The selected UI locale: WebView `localStorage` under
-  `lmu-overlay.locale.v1`; configuration schema 7 also exports it as
+  `blackrack-overlay.locale.v1`; configuration schema 7 also exports it as
   `ui.locale`.
 - Learned consumption profiles: application data `consumption-profiles/`.
 - Current and previous startup/frontend failure logs, plus optional JSONL analysis

@@ -1,13 +1,13 @@
 # Publicación del instalador
 
-LMU Overlay se comparte como instalador de Windows. El código fuente y los archivos
+BlackRack Overlay se comparte como instalador de Windows. El código fuente y los archivos
 de desarrollo no forman parte de la entrega.
 
 ## Contenido de cada entrega
 
 Crear `release/<version>/` con estos tres archivos:
 
-- `LMU Overlay_<version>_x64-setup.exe`
+- `BlackRack Overlay_<version>_x64-setup.exe`
 - `README.txt`, con requisitos, instalación, cambios y aviso de SmartScreen
 - `SHA256SUMS.txt`, con el hash SHA-256 del instalador
 
@@ -32,8 +32,8 @@ seguir siendo opcional y nunca un requisito de instalación o funcionamiento.
 6. Generar el hash desde la carpeta de entrega:
 
    ```powershell
-   Get-FileHash -Algorithm SHA256 '.\LMU Overlay_<version>_x64-setup.exe' |
-     ForEach-Object { "$($_.Hash.ToLower())  LMU Overlay_<version>_x64-setup.exe" } |
+   Get-FileHash -Algorithm SHA256 '.\BlackRack Overlay_<version>_x64-setup.exe' |
+     ForEach-Object { "$($_.Hash.ToLower())  BlackRack Overlay_<version>_x64-setup.exe" } |
      Set-Content -Encoding ascii SHA256SUMS.txt
    ```
 

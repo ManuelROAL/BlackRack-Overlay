@@ -784,7 +784,7 @@ mod tests {
             .unwrap()
             .as_nanos();
         let directory = std::env::temp_dir().join(format!(
-            "lmu-overlay-consumption-profile-{}-{unique}",
+            "blackrack-overlay-consumption-profile-{}-{unique}",
             std::process::id()
         ));
 

@@ -1,10 +1,10 @@
-# Colección de Postman de LMUOverlay
+# Colección de Postman de BlackRack Overlay
 
 ## Importación
 
-1. Importa `LMUOverlay.postman_collection.json` en Postman.
-2. Importa `LMUOverlay.local.postman_environment.json`.
-3. Selecciona el entorno **LMUOverlay - Local**.
+1. Importa `BlackRackOverlay.postman_collection.json` en Postman.
+2. Importa `BlackRackOverlay.local.postman_environment.json`.
+3. Selecciona el entorno **BlackRack Overlay - Local**.
 4. Abre Le Mans Ultimate e inicia sesión.
 5. Ejecuta `1.1 Obtener ticket local de LMU`.
 6. Ejecuta `1.2 Autenticar en RaceControl`.
@@ -33,7 +33,7 @@ límites sin previo aviso; usa la colección únicamente con tu propia sesión d
 - `RaceOS.complete.postman_collection.json` contiene todas esas rutas.
 - `RaceOS.complete.postman_environment.json` contiene sus variables.
 - `ENDPOINT-AUDIT-2026-08-12.md` compara respuestas reales, coste y fuente
-  recomendada para los datos usados por LMUOverlay.
+  recomendada para los datos usados por BlackRack Overlay.
 - `OBSERVED-RESPONSE-FIELDS-2026-08-12.md` conserva los campos y formas de
   respuesta observados sin incluir valores personales ni credenciales.
 - `RACE-ENDPOINT-CAPTURE-2026-08-13.md` completa los esquemas dependientes de una

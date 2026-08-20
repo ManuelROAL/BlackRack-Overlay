@@ -757,10 +757,7 @@ impl TelemetryFrame {
 }
 
 pub fn spawn_source(app: AppHandle) {
-    let app_data_directory = app
-        .path()
-        .app_data_dir()
-        .unwrap_or_else(|_| PathBuf::from("."));
+    let app_data_directory = crate::app_paths::data_directory();
     configure_logging(&app_data_directory);
     track_map_model::configure_track_map_storage(&app_data_directory);
     thread::spawn(move || {
@@ -1003,7 +1000,7 @@ mod tests {
             .unwrap()
             .as_nanos();
         let app_data = std::env::temp_dir().join(format!(
-            "lmu-overlay-analysis-log-{}-{unique}",
+            "blackrack-overlay-analysis-log-{}-{unique}",
             std::process::id()
         ));
         configure_logging(&app_data);

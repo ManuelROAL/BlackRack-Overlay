@@ -2,7 +2,7 @@ export interface TrackMapSettings {
   showPitPrediction: boolean;
 }
 
-export const TRACK_MAP_SETTINGS_KEY = "lmu-overlay.track-map-settings.v1";
+export const TRACK_MAP_SETTINGS_KEY = "blackrack-overlay.track-map-settings.v1";
 
 export const defaultTrackMapSettings = (): TrackMapSettings => ({
   showPitPrediction: true

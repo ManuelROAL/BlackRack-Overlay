@@ -59,7 +59,7 @@ export interface StandingsHeaderOptionDefinition {
   labelKey: import("./i18n").TranslationKey;
 }
 
-export const STANDINGS_SETTINGS_KEY = "lmu-overlay.standings.v1";
+export const STANDINGS_SETTINGS_KEY = "blackrack-overlay.standings.v1";
 
 export const STANDINGS_HEADER_OPTIONS: StandingsHeaderOptionDefinition[] = [
   { id: "sessionType", labelKey: "header.sessionType" }, { id: "eventSplit", labelKey: "header.eventSplit" },

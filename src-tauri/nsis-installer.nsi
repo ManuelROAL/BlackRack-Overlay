@@ -1,5 +1,5 @@
 ; Based on Tauri CLI 2.11.4's official NSIS template.
-; LMU Overlay customization: optional Ko-fi checkbox on the finish page.
+; BlackRack Overlay customization: optional Ko-fi checkbox on the finish page.
 Unicode true
 ManifestDPIAware true
 ; Add in `dpiAwareness` `PerMonitorV2` to manifest for Windows 10 1607+ (note this should not affect lower versions since they should be able to ignore this and pick up `dpiAware` `true` set by `ManifestDPIAware true`)

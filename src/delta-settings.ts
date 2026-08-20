@@ -14,7 +14,7 @@ export interface DeltaSettings {
   displayRange: number;
 }
 
-export const DELTA_SETTINGS_KEY = "lmu-overlay.delta.v1";
+export const DELTA_SETTINGS_KEY = "blackrack-overlay.delta.v1";
 
 export const DELTA_MODES = [
   { value: "off", labelKey: "delta.off" }, { value: "overall_best", labelKey: "delta.overallBest" },

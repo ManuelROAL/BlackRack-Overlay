@@ -26,7 +26,7 @@ interface OverlayState {
 }
 
 interface RuntimeMessage {
-  source: "lmu-overlay-composite";
+  source: "blackrack-overlay-composite";
   kind: "event" | "invoke" | "fit";
   event?: string;
   payload?: unknown;
@@ -166,7 +166,7 @@ for (const eventName of ["contextmenu", "dragstart", "selectstart", "auxclick"] 
 
 const postEvent = (overlay: OverlayId, event: string, payload: unknown): void => {
   frames.get(overlay)?.contentWindow?.postMessage({
-    source: "lmu-overlay-composite",
+    source: "blackrack-overlay-composite",
     kind: "event",
     event,
     payload
@@ -416,7 +416,7 @@ void getCurrentWindow().onMoved(() => {
 }).catch(() => undefined);
 
 window.addEventListener("message", (event: MessageEvent<RuntimeMessage>) => {
-  if (event.origin !== window.location.origin || event.data?.source !== "lmu-overlay-composite") return;
+  if (event.origin !== window.location.origin || event.data?.source !== "blackrack-overlay-composite") return;
   if (event.data.kind === "fit") {
     const overlay = Array.from(frames.entries())
       .find(([, frame]) => frame.contentWindow === event.source)?.[0];
@@ -452,13 +452,13 @@ window.addEventListener("message", (event: MessageEvent<RuntimeMessage>) => {
   const source = event.source as WindowProxy | null;
   void invoke(event.data.command, event.data.args)
     .then((payload) => source?.postMessage({
-      source: "lmu-overlay-composite",
+      source: "blackrack-overlay-composite",
       kind: "event",
       event: `invoke:${event.data.requestId}:ok`,
       payload
     } satisfies RuntimeMessage, event.origin))
     .catch((error) => source?.postMessage({
-      source: "lmu-overlay-composite",
+      source: "blackrack-overlay-composite",
       kind: "event",
       event: `invoke:${event.data.requestId}:error`,
       payload: String(error)
