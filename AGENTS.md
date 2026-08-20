@@ -109,3 +109,7 @@ successful compilation alone is not performance evidence.
   and owning documentation are all up to date.
 - If a required verification cannot run, report that explicitly instead of
   presenting the work as fully complete.
+- At handoff, always provide a copy-ready Git commit message that summarizes the
+  actual completed changes. Use a concise subject and add a body only when it
+  provides useful context. Do not create the commit unless the user explicitly
+  requests it.
