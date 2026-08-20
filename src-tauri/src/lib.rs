@@ -133,12 +133,18 @@ fn refresh_native_overlay_input() {
     if unsafe { GetCursorPos(&mut cursor) } == 0 {
         return;
     }
-    let input = native_overlay_input()
-        .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner());
-    for (&raw_hwnd, regions) in &input.regions_by_window {
+    // SetWindowPos can synchronously wait for the window's UI thread. Copy the
+    // small hit-test snapshot first so that thread never waits while this mutex
+    // is held; the UI thread also updates the regions through a Tauri command.
+    let (click_through, regions_by_window) = {
+        let input = native_overlay_input()
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        (input.click_through, input.regions_by_window.clone())
+    };
+    for (raw_hwnd, regions) in regions_by_window {
         let hwnd = raw_hwnd as HWND;
-        let should_ignore = input.click_through
+        let should_ignore = click_through
             || !regions.iter().any(|&(left, top, right, bottom)| {
                 cursor.x >= left && cursor.x < right && cursor.y >= top && cursor.y < bottom
             });
