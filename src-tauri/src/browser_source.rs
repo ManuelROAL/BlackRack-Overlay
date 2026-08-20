@@ -13,14 +13,13 @@ use crate::telemetry::TelemetryFrame;
 
 const ADDRESS: &str = "127.0.0.1:47636";
 const BASE_URL: &str = "http://127.0.0.1:47636";
-const BROWSER_OVERLAYS: [(&str, &str, &str); 13] = [
+const BROWSER_OVERLAYS: [(&str, &str, &str); 12] = [
     ("standings", "standings.html", "Standings"),
     ("relative", "relative.html", "Relative"),
     ("fuel", "fuel.html", "Combustible / energía"),
     ("pitstop", "pitstop.html", "Parada estimada"),
     ("flags", "flags.html", "Banderas"),
     ("rejoin", "rejoin.html", "Rejoin"),
-    ("dashboard", "dashboard.html", "Dashboard"),
     ("delta", "delta.html", "Delta"),
     ("timing", "timing.html", "Timing compacto"),
     ("driving", "driving.html", "Trailing + Pedal"),

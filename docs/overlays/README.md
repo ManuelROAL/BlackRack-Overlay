@@ -6,7 +6,6 @@ UI behavior, telemetry semantics, cadence and special invariants.
 
 | Overlay | Document | Entry | OBS route | Normal cadence |
 | --- | --- | --- | --- | --- |
-| Dashboard | [dashboard.md](dashboard.md) | `dashboard.html` | `/dashboard` | 50 Hz |
 | Delta / lap records | [delta.md](delta.md) | `delta.html` | `/delta` | 50 Hz |
 | Timing compacto | [timing.md](timing.md) | `timing.html` | `/timing` | 50 Hz |
 | Standings | [standings.md](standings.md) | `standings.html` | `/standings` | 10 Hz |

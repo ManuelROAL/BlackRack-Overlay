@@ -51,16 +51,10 @@ interface TelemetryBatch {
 }
 
 const overlayIds: OverlayId[] = [
-  "dashboard", "delta", "timing", "driving", "tires", "damage", "standings",
+  "delta", "timing", "driving", "tires", "damage", "standings",
   "relative", "fuel", "pitstop", "flags", "rejoin", "trackmap"
 ];
 const telemetryFields: Record<OverlayId, readonly (keyof TelemetryFrame)[]> = {
-  dashboard: [
-    "source", "connected", "player_active", "speed_kph", "gear", "rpm", "max_rpm",
-    "throttle", "brake", "fuel_liters", "fuel_capacity_liters", "estimated_fuel_laps",
-    "virtual_energy_active", "virtual_energy_percent", "estimated_virtual_energy_laps",
-    "current_lap_seconds", "best_lap_seconds", "lap_delta_seconds"
-  ],
   delta: ["delta_model"],
   timing: ["timing_model"],
   driving: [
@@ -115,7 +109,6 @@ const telemetryFields: Record<OverlayId, readonly (keyof TelemetryFrame)[]> = {
   trackmap: ["track_name", "track_length_meters", "track_map_vehicles", "track_map_model"]
 };
 const overlayTitles: Record<OverlayId, string> = {
-  dashboard: "DASHBOARD",
   delta: "DELTA",
   timing: "TIMING COMPACTO",
   driving: "TRAILING + PEDAL",

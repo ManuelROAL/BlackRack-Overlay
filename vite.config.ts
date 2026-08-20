@@ -25,7 +25,6 @@ export default defineConfig({
       input: {
         control: "index.html",
         composite: "composite.html",
-        dashboard: "dashboard.html",
         delta: "delta.html",
         timing: "timing.html",
         driving: "driving.html",

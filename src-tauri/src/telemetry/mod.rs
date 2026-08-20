@@ -273,7 +273,6 @@ struct PerformanceMonitor {
     work_micros: u128,
     max_work_micros: u128,
     overruns: u64,
-    emitted_dashboard: u64,
     emitted_delta: u64,
     emitted_timing: u64,
     emitted_driving: u64,
@@ -307,7 +306,6 @@ impl PerformanceMonitor {
             work_micros: 0,
             max_work_micros: 0,
             overruns: 0,
-            emitted_dashboard: 0,
             emitted_delta: 0,
             emitted_timing: 0,
             emitted_driving: 0,
@@ -352,7 +350,6 @@ impl PerformanceMonitor {
             "max_work_us": self.max_work_micros as u64,
             "overruns": self.overruns,
             "emitted": {
-                "dashboard": self.emitted_dashboard,
                 "delta": self.emitted_delta,
                 "timing": self.emitted_timing,
                 "driving": self.emitted_driving,
@@ -784,7 +781,7 @@ pub fn spawn_source(app: AppHandle) {
         let mut track_map_model = track_map_model::TrackMapModelState::default();
         let mut delta_engine = delta_records::DeltaEngine::new(app_data_directory.clone());
         let now = Instant::now();
-        let mut last_dashboard = now.checked_sub(SOURCE_INTERVAL).unwrap_or(now);
+        let mut last_driving = now.checked_sub(SOURCE_INTERVAL).unwrap_or(now);
         let mut last_fuel = now.checked_sub(FUEL_INTERVAL).unwrap_or(now);
         let mut last_standings = now.checked_sub(STANDINGS_INTERVAL).unwrap_or(now);
         let mut last_relative = now.checked_sub(RELATIVE_INTERVAL).unwrap_or(now);
@@ -869,8 +866,7 @@ pub fn spawn_source(app: AppHandle) {
             }
             frame.track_map_vehicles.clear();
 
-            let driving_due = interval_due(&mut last_dashboard, now, SOURCE_INTERVAL);
-            let emit_dashboard = driving_due && super::overlay_is_active(&app, "dashboard");
+            let driving_due = interval_due(&mut last_driving, now, SOURCE_INTERVAL);
             let emit_delta = driving_due && super::overlay_is_active(&app, "delta");
             let emit_timing = driving_due && super::overlay_is_active(&app, "timing");
             let emit_driving = driving_due && super::overlay_is_active(&app, "driving");
@@ -897,7 +893,6 @@ pub fn spawn_source(app: AppHandle) {
                 && super::overlay_is_active(&app, "rejoin");
 
             let base_emissions = [
-                ("dashboard", emit_dashboard),
                 ("delta", emit_delta),
                 ("timing", emit_timing),
                 ("driving", emit_driving),
@@ -908,7 +903,7 @@ pub fn spawn_source(app: AppHandle) {
                 ("flags", emit_flags),
                 ("rejoin", emit_rejoin),
             ];
-            let mut base_targets = [""; 10];
+            let mut base_targets = [""; 9];
             let mut base_target_count = 0;
             for (label, should_emit) in base_emissions {
                 if should_emit {
@@ -917,7 +912,6 @@ pub fn spawn_source(app: AppHandle) {
                 }
             }
             if super::emit_overlay_frames(&app, &base_targets[..base_target_count], &frame) {
-                performance.emitted_dashboard += u64::from(emit_dashboard);
                 performance.emitted_delta += u64::from(emit_delta);
                 performance.emitted_timing += u64::from(emit_timing);
                 performance.emitted_driving += u64::from(emit_driving);

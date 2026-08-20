@@ -15,7 +15,6 @@ on their runtime or source code.
 
 - Tauri control panel that selects independent overlay panels hosted together in
   one transparent WebView on the selected monitor.
-- Dashboard for core driving telemetry.
 - iRacing-style delta bar with overall, session, stint and last-lap references,
   backed by persistent lap/stint records.
 - Compact timing panel with best-lap delta, three-sector feedback and recent laps.
@@ -70,8 +69,8 @@ The hot telemetry source runs at 50 Hz. Full standings construction has been
 removed from every source cycle: it is requested at 10 Hz for Standings or a local
 browser-source client, and at 20 Hz while the more time-sensitive Relative window
 is visible.
-Dashboard, Trailing + Pedal, tyres, fuel and active flags consume the 50 Hz raw
-snapshot. Delta also calculates and renders from that 50 Hz snapshot. Rejoin,
+Delta, Timing compacto, Trailing + Pedal, tyres, fuel and active flags consume
+the 50 Hz raw snapshot. Delta also calculates and renders from that 50 Hz snapshot. Rejoin,
 Relative and detailed damage run at 20 Hz, while standings
 history/identity state is maintained at 10 Hz.
 

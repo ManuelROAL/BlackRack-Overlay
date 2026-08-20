@@ -42,7 +42,7 @@
       "icons/icon.ico"
     ],
     "shortDescription": "Overlays de telemetría para Le Mans Ultimate",
-    "longDescription": "Dashboard, standings, estrategia de combustible y energía, banderas y avisos para Le Mans Ultimate.",
+    "longDescription": "Overlays de telemetría, standings, estrategia de combustible y energía, banderas y avisos para Le Mans Ultimate.",
     "windows": {
       "webviewInstallMode": {
         "type": "embedBootstrapper"

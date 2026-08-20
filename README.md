@@ -7,7 +7,6 @@ Overlay de telemetría para **Le Mans Ultimate**, pensado para Windows y Linux. 
 ## Estado actual
 
 - Panel de control para abrir y ocultar cada overlay de forma independiente.
-- Dashboard con velocidad, marcha, RPM, pedales, tiempos, delta y combustible.
 - Clasificación multiclase con posición de salida, gaps, intervalos, mejor/última vuelta,
   media de las últimas cinco vueltas válidas, energía virtual, daño general, neumático,
   banderas, vuelta rápida, estado en boxes y rangos DR/SR cuando RaceControl los facilita.
@@ -27,7 +26,7 @@ Overlay de telemetría para **Le Mans Ultimate**, pensado para Windows y Linux. 
 - Registro de análisis activable desde el panel, persistente entre ejecuciones y guardado en JSONL.
 - Interfaz y núcleo compartidos entre Windows y Linux.
 
-Al arrancar por primera vez se muestra el dashboard. Clasificación y combustible pueden activarse desde el panel. En los siguientes arranques se restaura la última selección.
+Al arrancar por primera vez no se activa ningún overlay. En los siguientes arranques se restaura la última selección.
 
 Cuando LMU se ejecuta con Proton, el acceso se hará dentro del mismo entorno Wine/Proton o mediante un pequeño puente local; esta decisión queda pendiente de validar en Linux.
 
@@ -85,7 +84,7 @@ TelemetrySource (Rust) ──► TelemetryFrame ──► eventos Tauri (20 Hz)
                                                     │
                        ┌────────────────────────────┼──────────────────────────┐
                        ▼                            ▼                          ▼
-                  Dashboard                  Clasificación              Combustible
+                     Delta                   Clasificación              Combustible
 ```
 
 El panel crea los overlays bajo demanda y puede ocultarlos sin detener la fuente de telemetría. La estructura normalizada de `TelemetryFrame` evita que la interfaz dependa del formato binario del simulador. La calculadora de estrategia detecta la clase mediante el SDK: usa `mVirtualEnergy` en Hypercar y LMGT3, y `mFuel` en el resto.
@@ -103,10 +102,9 @@ La preferencia se conserva al reiniciar. Al desactivarlo se vacía y cierra inme
 ## Fuente de navegador para OBS
 
 El apartado **OBS / Navegador local** del panel permite exponer los mismos overlays en
-`http://127.0.0.1:47636`. Al activarlo aparecen URLs independientes para standings,
-combustible, banderas, rejoin y dashboard. El servidor sólo escucha en el equipo local,
-reutiliza la trama de telemetría existente y entrega los datos a 5 Hz mediante una única
-conexión por fuente.
+`http://127.0.0.1:47636`. Al activarlo aparecen URLs independientes para cada overlay.
+El servidor sólo escucha en el equipo local, reutiliza la trama de telemetría existente y
+entrega los datos a 5 Hz mediante una única conexión por fuente.
 
 La opción está desactivada de forma predeterminada. Mientras permanece apagada no se abre
 ningún puerto, no se mantiene un hilo HTTP y no se serializan tramas para el navegador.

@@ -140,12 +140,11 @@ type ShortcutAction = "interaction_mode" | "show_panel";
 
 let lmuDependencyStatus: LmuDependencyStatus | null = null;
 
-const overlayIds: OverlayId[] = ["dashboard", "delta", "timing", "driving", "tires", "damage", "standings", "relative", "fuel", "pitstop", "flags", "rejoin", "trackmap"];
+const overlayIds: OverlayId[] = ["delta", "timing", "driving", "tires", "damage", "standings", "relative", "fuel", "pitstop", "flags", "rejoin", "trackmap"];
 const storageKey = "lmu-overlay.visible-windows.v1";
 
 const readPreferences = (): Record<OverlayId, boolean> => {
   const defaults: Record<OverlayId, boolean> = {
-    dashboard: true,
     delta: false,
     timing: false,
     driving: false,
