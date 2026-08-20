@@ -16,17 +16,13 @@ export interface DeltaSettings {
 
 export const DELTA_SETTINGS_KEY = "lmu-overlay.delta.v1";
 
-export const DELTA_MODES: readonly { value: DeltaMode; label: string }[] = [
-  { value: "off", label: "Desactivado" },
-  { value: "overall_best", label: "Mejor global" },
-  { value: "overall_optimal_lap", label: "Óptima global" },
-  { value: "overall_optimal_sectors", label: "Sectores globales" },
-  { value: "session_best", label: "Mejor de sesión" },
-  { value: "session_optimal_lap", label: "Óptima de sesión" },
-  { value: "session_optimal_sectors", label: "Sectores de sesión" },
-  { value: "stint_best", label: "Mejor de stint" },
-  { value: "last_lap", label: "Última vuelta" }
-];
+export const DELTA_MODES = [
+  { value: "off", labelKey: "delta.off" }, { value: "overall_best", labelKey: "delta.overallBest" },
+  { value: "overall_optimal_lap", labelKey: "delta.overallLap" }, { value: "overall_optimal_sectors", labelKey: "delta.overallSectors" },
+  { value: "session_best", labelKey: "delta.sessionBest" }, { value: "session_optimal_lap", labelKey: "delta.sessionLap" },
+  { value: "session_optimal_sectors", labelKey: "delta.sessionSectors" }, { value: "stint_best", labelKey: "delta.stintBest" },
+  { value: "last_lap", labelKey: "delta.lastLap" }
+] as const;
 
 const modeValues = new Set<DeltaMode>(DELTA_MODES.map(({ value }) => value));
 const displayRanges = new Set([0.5, 1, 2, 5]);

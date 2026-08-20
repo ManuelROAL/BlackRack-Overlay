@@ -78,6 +78,21 @@ or enlarge grouped telemetry payloads.
 
 ## Delivery phases
 
+### Current rollout state
+
+Phase 1 is implemented. `src/i18n/` owns the bundled Spanish and English
+catalogs, typed lookup/interpolation/plural helpers, cached locale formatters,
+DOM attribute translation and the persisted `lmu-overlay.locale.v1` choice. The
+complete control panel, including generated settings, dialogs, accessibility
+labels and native file-dialog titles, uses that catalog. Configuration schema 7
+round-trips the choice as `ui.locale` and imports schemas 1–6 using the current
+local choice. `npm.cmd run build` runs the catalog/HTML binding validation before
+TypeScript and Vite.
+
+Overlay documents, composite edit chrome and OBS pages remain Spanish until
+phases 2 and 3. This is intentional: phase 1 changes only the control-panel
+surface and localization infrastructure.
+
 ### 1. Infrastructure and control panel
 
 1. Inventory visible strings in HTML, TypeScript and the browser-source index.
@@ -145,4 +160,3 @@ one of its overlays mixes Spanish and English in normal operation.
 - Downloading community translations at runtime.
 - Right-to-left layout support. Catalog and locale APIs must not prevent it, but
   RTL layout requires a separate designed and verified milestone.
-

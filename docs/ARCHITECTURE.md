@@ -133,6 +133,9 @@ blocking HTTP calls into `next_frame()`.
 - Browser source and shortcuts: JSON under the application config directory.
 - Overlay choices, columns and transparency: WebView `localStorage`. Transparency
   stores individual values separately from its general/individual scope.
+- The selected UI locale: WebView `localStorage` under
+  `lmu-overlay.locale.v1`; configuration schema 7 also exports it as
+  `ui.locale`.
 - Learned consumption profiles: application data `consumption-profiles/`.
 - Current and previous startup/frontend failure logs, plus optional JSONL analysis
   logs: application data directory.

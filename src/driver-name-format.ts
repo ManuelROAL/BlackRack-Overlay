@@ -1,10 +1,10 @@
 export const DRIVER_NAME_FORMATS = [
-  { id: "full", label: "Nombre completo" },
-  { id: "initialLast", label: "N. Apellido" },
-  { id: "firstLastInitial", label: "Nombre A." },
-  { id: "lastOnly", label: "Solo apellido" },
-  { id: "firstOnly", label: "Solo nombre" },
-  { id: "lastFirstInitial", label: "Apellido, N." }
+  { id: "full", labelKey: "name.full" },
+  { id: "initialLast", labelKey: "name.initialLast" },
+  { id: "firstLastInitial", labelKey: "name.firstInitial" },
+  { id: "lastOnly", labelKey: "name.lastOnly" },
+  { id: "firstOnly", labelKey: "name.firstOnly" },
+  { id: "lastFirstInitial", labelKey: "name.lastFirst" }
 ] as const;
 
 export type DriverNameFormat = (typeof DRIVER_NAME_FORMATS)[number]["id"];

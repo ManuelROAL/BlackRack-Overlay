@@ -25,7 +25,7 @@ export type RelativeColumnId =
 
 export interface RelativeColumnDefinition {
   id: RelativeColumnId;
-  label: string;
+  labelKey: import("./i18n").TranslationKey;
   header: string;
   width: number;
   configurable: boolean;
@@ -58,7 +58,7 @@ export type RelativeOptionId =
 
 export interface RelativeOptionDefinition {
   id: RelativeOptionId;
-  label: string;
+  labelKey: import("./i18n").TranslationKey;
 }
 
 export interface RelativeSettings {
@@ -71,33 +71,20 @@ export interface RelativeSettings {
 
 export const RELATIVE_SETTINGS_KEY = "lmu-overlay.relative.v3";
 export const RELATIVE_HEADER_OPTIONS: RelativeOptionDefinition[] = [
-  { id: "airTemperature", label: "Temperatura ambiente" },
-  { id: "trackTemperature", label: "Temperatura de pista" },
-  { id: "brakeBias", label: "Reparto de frenada" },
-  { id: "trackLimits", label: "Cortes de circuito" },
-  { id: "realTimeClock", label: "Hora real" }
+  { id: "airTemperature", labelKey: "header.airTemperature" }, { id: "trackTemperature", labelKey: "header.trackTemperature" },
+  { id: "brakeBias", labelKey: "header.brakeBias" }, { id: "trackLimits", labelKey: "header.trackLimits" }, { id: "realTimeClock", labelKey: "header.realTimeClock" }
 ];
 
 export const RELATIVE_COLUMN_OPTIONS: RelativeOptionDefinition[] = [
-  { id: "number", label: "Dorsal" },
-  { id: "country", label: "Bandera del país" },
-  { id: "license", label: "Insignia" },
-  { id: "rating", label: "DR / SR" },
-  { id: "positionChange", label: "Cambio de posición" },
-  { id: "lap", label: "Número de vuelta" },
-  { id: "best", label: "Mejor vuelta" },
-  { id: "last", label: "Última vuelta" },
-  { id: "average", label: "Media 5" },
-  { id: "energy", label: "Energía" },
-  { id: "damage", label: "Daño" },
-  { id: "trackLimitsColumn", label: "Cortes de circuito" },
-  { id: "pitStops", label: "Paradas / tiempo" },
-  { id: "tire", label: "Neumático" },
-  { id: "signals", label: "Banderas / estados" }
+  { id: "number", labelKey: "column.number" }, { id: "country", labelKey: "column.country" }, { id: "license", labelKey: "column.badge" },
+  { id: "rating", labelKey: "column.ranks" }, { id: "positionChange", labelKey: "option.positionChange" }, { id: "lap", labelKey: "column.lap" },
+  { id: "best", labelKey: "column.best" }, { id: "last", labelKey: "column.last" }, { id: "average", labelKey: "column.average" },
+  { id: "energy", labelKey: "column.energy" }, { id: "damage", labelKey: "column.damage" }, { id: "trackLimitsColumn", labelKey: "column.trackLimits" },
+  { id: "pitStops", labelKey: "column.pitStops" }, { id: "tire", labelKey: "column.tire" }, { id: "signals", labelKey: "column.signals" }
 ];
 
 export const RELATIVE_OPTIONS: RelativeOptionDefinition[] = [
-  { id: "tableHeader", label: "Mostrar cabecera" },
+  { id: "tableHeader", labelKey: "settings.showHeader" },
   ...RELATIVE_HEADER_OPTIONS,
   ...RELATIVE_COLUMN_OPTIONS
 ];
@@ -110,7 +97,7 @@ const relativeColumn = (
   option?: RelativeOptionId
 ): RelativeColumnDefinition => ({
   id,
-  label: RELATIVE_COLUMN_LABELS[id],
+  labelKey: RELATIVE_COLUMN_LABELS[id],
   header,
   width,
   configurable: option !== undefined,
@@ -118,24 +105,10 @@ const relativeColumn = (
   option
 });
 
-const RELATIVE_COLUMN_LABELS: Record<RelativeColumnId, string> = {
-  position: "Posición",
-  number: "Dorsal",
-  country: "Bandera del país",
-  badge: "Insignia",
-  driver: "Piloto",
-  ranks: "DR / SR",
-  relative: "Tiempo relativo",
-  lap: "Número de vuelta",
-  best: "Mejor vuelta",
-  last: "Última vuelta",
-  average: "Media 5",
-  energy: "Energía",
-  damage: "Daño",
-  trackLimits: "Cortes de circuito",
-  pitStops: "Paradas / tiempo",
-  tire: "Neumático",
-  signals: "Banderas / estados"
+const RELATIVE_COLUMN_LABELS: Record<RelativeColumnId, import("./i18n").TranslationKey> = {
+  position: "column.position", number: "column.number", country: "column.country", badge: "column.badge", driver: "column.driver", ranks: "column.ranks",
+  relative: "column.relative", lap: "column.lap", best: "column.best", last: "column.last", average: "column.average", energy: "column.energy",
+  damage: "column.damage", trackLimits: "column.trackLimits", pitStops: "column.pitStops", tire: "column.tire", signals: "column.signals"
 };
 
 export const RELATIVE_COLUMNS: RelativeColumnDefinition[] = [

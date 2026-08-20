@@ -11,11 +11,9 @@ export interface DrivingSettings {
 
 export const DRIVING_SETTINGS_KEY = "lmu-overlay.driving.v1";
 
-export const DRIVING_PEDALS: ReadonlyArray<{ id: DrivingPedalId; label: string }> = [
-  { id: "throttle", label: "Acelerador" },
-  { id: "brake", label: "Freno" },
-  { id: "clutch", label: "Embrague" }
-];
+export const DRIVING_PEDALS = [
+  { id: "throttle", labelKey: "pedal.throttle" }, { id: "brake", labelKey: "pedal.brake" }, { id: "clutch", labelKey: "pedal.clutch" }
+] as const;
 
 export const defaultDrivingSettings = (): DrivingSettings => ({
   graphPedals: { throttle: true, brake: true, clutch: true },
