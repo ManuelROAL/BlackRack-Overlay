@@ -46,6 +46,9 @@ These are hypotheses, not approved changes; use measurements first.
 
 ## Product roadmap
 
+- Implement bundled Spanish/English localization in phased form, including the
+  control panel, overlays and OBS routes; preserve stable telemetry/persistence
+  IDs and avoid work in hot render paths. See `docs/LOCALIZATION.md`.
 - Validate and implement live telemetry under Proton/Linux.
 - Add repeatable session capture/replay fixtures for development without LMU.
 - Expand Rust model tests for Standings/Relative selection and frontend tests for

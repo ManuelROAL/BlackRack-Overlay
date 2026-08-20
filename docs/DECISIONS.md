@@ -85,6 +85,7 @@ in `docs/overlays/` and should not be duplicated here.
 - `docs/ARCHITECTURE.md`: runtime and build structure.
 - `docs/TELEMETRY.md`: shared sources, identity and integrations.
 - `docs/OVERLAYS.md`: shared visual, host and control-panel contracts.
+- `docs/LOCALIZATION.md`: cross-cutting language scope, propagation and rollout.
 - `docs/overlays/*.md`: authoritative behavior for one overlay.
 - `docs/PERFORMANCE.md`: active measurement method and next validation.
 - `docs/PERFORMANCE_HISTORY.md`: completed performance investigations.
