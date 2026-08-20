@@ -1,6 +1,6 @@
 export interface FrontendDiagnostic {
   source: string;
-  kind: "error" | "unhandledrejection";
+  kind: "error" | "unhandledrejection" | "console.error";
   message: string;
   stack?: string;
 }
@@ -12,6 +12,7 @@ const reportTimes: number[] = [];
 const DUPLICATE_WINDOW_MS = 10_000;
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const MAX_REPORTS_PER_WINDOW = 20;
+let consoleErrorInstalled = false;
 
 const errorDetails = (reason: unknown): { message: string; stack?: string } => {
   if (reason instanceof Error) return { message: reason.message, stack: reason.stack };
@@ -21,6 +22,15 @@ const errorDetails = (reason: unknown): { message: string; stack?: string } => {
   } catch {
     return { message: String(reason) };
   }
+};
+
+const consoleErrorDetails = (values: unknown[]): { message: string; stack?: string } => {
+  const details = values.map(errorDetails);
+  const stacks = details.flatMap(({ stack }) => stack ? [stack] : []);
+  return {
+    message: details.map(({ message }) => message).join(" ") || "console.error()",
+    stack: stacks.length > 0 ? stacks.join("\n") : undefined
+  };
 };
 
 export const installFrontendDiagnostics = (
@@ -44,6 +54,15 @@ export const installFrontendDiagnostics = (
     }
     void report(diagnostic).catch(() => undefined);
   };
+
+  if (!consoleErrorInstalled) {
+    const originalConsoleError = console.error.bind(console);
+    console.error = (...values: unknown[]): void => {
+      originalConsoleError(...values);
+      send({ source, kind: "console.error", ...consoleErrorDetails(values) });
+    };
+    consoleErrorInstalled = true;
+  }
 
   window.addEventListener("error", (event) => {
     const details = errorDetails(event.error ?? event.message);

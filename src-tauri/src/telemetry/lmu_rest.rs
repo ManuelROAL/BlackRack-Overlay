@@ -34,6 +34,7 @@ pub(super) struct RestStanding {
     pub driver_name: String,
     pub car_class: String,
     pub car_number: String,
+    pub position: i32,
     pub qualification: i32,
     pub server_scored: bool,
     pub finish_status: String,
@@ -502,12 +503,13 @@ mod tests {
     #[test]
     fn parses_rest_standings_fields_used_by_the_overlay() {
         let value: RestStanding = serde_json::from_str(
-            r#"{"slotID":29,"driverName":"Test Driver","carClass":"LMP2_ELMS","carNumber":"29","qualification":7,"serverScored":true,"finishStatus":"FSTAT_NONE","lapsBehindClassLeader":1,"timeBehindClassLeader":2.5,"lapsBehindNext":0,"timeBehindNext":1.2,"pitstops":2,"pitState":"REQUEST","pitting":true,"inGarageStall":false,"fuelFraction":0.5,"veFraction":0.75}"#,
+            r#"{"slotID":29,"driverName":"Test Driver","carClass":"LMP2_ELMS","carNumber":"29","position":4,"qualification":7,"serverScored":true,"finishStatus":"FSTAT_NONE","lapsBehindClassLeader":1,"timeBehindClassLeader":2.5,"lapsBehindNext":0,"timeBehindNext":1.2,"pitstops":2,"pitState":"REQUEST","pitting":true,"inGarageStall":false,"fuelFraction":0.5,"veFraction":0.75}"#,
         )
         .unwrap();
         assert_eq!(value.slot_id, 29);
         assert_eq!(value.car_class, "LMP2_ELMS");
         assert_eq!(value.car_number, "29");
+        assert_eq!(value.position, 4);
         assert_eq!(value.qualification, 7);
         assert!(value.server_scored);
         assert_eq!(value.finish_status, "FSTAT_NONE");

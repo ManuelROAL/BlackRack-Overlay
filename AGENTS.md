@@ -49,8 +49,8 @@ document.
 - Preserve grouped `telemetry://batch` delivery. Composite hosts forward only
   locally mounted targets and project reused overlay field allowlists through
   same-origin `postMessage`.
-- Keep one transparent host WebView per monitor. Configure both the native window
-  and WebView with transparent RGBA backgrounds.
+- Keep one transparent host WebView on the selected overlay monitor. Configure
+  both the native window and WebView with transparent RGBA backgrounds.
 - Start in click-through game mode. Embedded overlay documents remain inert;
   edit-mode input is reserved for panel movement and proportional resize.
 - Do not set `color-scheme: dark` on an embedded overlay document root.

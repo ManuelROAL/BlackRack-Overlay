@@ -15,7 +15,6 @@ export interface OverlayDisplay {
 
 export interface OverlayPlacement {
   overlay: OverlayId;
-  monitor: number;
   x: number;
   y: number;
   width: number;
@@ -24,14 +23,7 @@ export interface OverlayPlacement {
 
 export type CompositeLayout = Record<OverlayId, OverlayPlacement>;
 
-export interface MonitorSelectionSettings {
-  mode: "global" | "individual";
-  globalMonitor: number;
-  individualMonitors: Partial<Record<OverlayId, number>>;
-}
-
 export const COMPOSITE_LAYOUT_KEY = "lmu-overlay.composite-layout.v1";
-export const MONITOR_SELECTION_KEY = "lmu-overlay.monitor-selection.v1";
 export const MIN_VISIBLE_PANEL_EDGE = 32;
 
 export const clampPanelCoordinate = (
@@ -55,7 +47,6 @@ const validPlacement = (value: unknown, overlay: OverlayId): value is OverlayPla
   if (!value || typeof value !== "object") return false;
   const placement = value as Partial<OverlayPlacement>;
   return placement.overlay === overlay
-    && Number.isInteger(placement.monitor)
     && [placement.x, placement.y, placement.width, placement.height]
       .every((number) => typeof number === "number" && Number.isFinite(number));
 };
@@ -108,10 +99,57 @@ export const getOverlayDisplays = (): Promise<OverlayDisplay[]> => {
   return displaysPromise;
 };
 
+const LEGACY_MONITOR_SELECTION_KEY = "lmu-overlay.monitor-selection.v1";
+
+interface LegacyMonitorSelection {
+  mode?: "global" | "individual";
+  globalMonitor?: number;
+  individualMonitors?: Partial<Record<OverlayId, number>>;
+}
+
+const readLegacyMonitorSelection = (): number | null => {
+  try {
+    const stored = JSON.parse(localStorage.getItem(LEGACY_MONITOR_SELECTION_KEY) ?? "null") as
+      LegacyMonitorSelection | null;
+    return stored && Number.isInteger(stored.globalMonitor) && Number(stored.globalMonitor) >= 0
+      ? Number(stored.globalMonitor)
+      : null;
+  } catch {
+    return null;
+  }
+};
+
+let monitorPromise: Promise<number> | null = null;
+
+export const resolveOverlayMonitor = (): Promise<number> => {
+  monitorPromise ??= (async () => {
+    const displays = await getOverlayDisplays();
+    const available = new Set(displays.map(({ index }) => index));
+    const primary = displays[0]?.index ?? 0;
+    const legacy = readLegacyMonitorSelection();
+    if (legacy !== null) {
+      localStorage.removeItem(LEGACY_MONITOR_SELECTION_KEY);
+      if (available.has(legacy)) {
+        await invoke<number>("set_overlay_monitor", { index: legacy }).catch(() => undefined);
+        return legacy;
+      }
+    }
+    const current = await invoke<number>("get_overlay_monitor").catch(() => primary);
+    return available.has(current) ? current : primary;
+  })();
+  return monitorPromise;
+};
+
+export const setOverlayMonitor = (index: number): Promise<number> => {
+  monitorPromise = null;
+  return invoke<number>("set_overlay_monitor", { index });
+};
+
 export const ensureCompositeLayout = async (): Promise<CompositeLayout> => {
   layoutPromise ??= (async () => {
+    const monitor = await resolveOverlayMonitor();
     const stored = readStoredLayout();
-    const seed = await invoke<OverlayPlacement[]>("get_composite_layout_seed");
+    const seed = await invoke<OverlayPlacement[]>("get_composite_layout_seed", { monitor });
     const layout = {
       ...Object.fromEntries(seed.map((placement) => [placement.overlay, placement])),
       ...stored
@@ -129,38 +167,6 @@ export const readCompositeLayout = (): CompositeLayout | null => {
     : null;
 };
 
-export const readMonitorSelection = (): MonitorSelectionSettings => {
-  const fallback: MonitorSelectionSettings = {
-    mode: "individual",
-    globalMonitor: 0,
-    individualMonitors: {}
-  };
-  try {
-    const stored = JSON.parse(localStorage.getItem(MONITOR_SELECTION_KEY) ?? "null") as
-      Partial<MonitorSelectionSettings> | null;
-    if (!stored) return fallback;
-    const individualMonitors = Object.fromEntries(
-      Object.entries(stored.individualMonitors ?? {}).filter((entry): entry is [string, number] =>
-        Number.isInteger(entry[1]) && entry[1] >= 0
-      )
-    ) as Partial<Record<OverlayId, number>>;
-    return {
-      mode: stored.mode === "global" ? "global" : "individual",
-      globalMonitor: Number.isInteger(stored.globalMonitor) && Number(stored.globalMonitor) >= 0
-        ? Number(stored.globalMonitor)
-        : 0,
-      individualMonitors
-    };
-  } catch {
-    localStorage.removeItem(MONITOR_SELECTION_KEY);
-    return fallback;
-  }
-};
-
-export const saveMonitorSelection = (settings: MonitorSelectionSettings): void => {
-  localStorage.setItem(MONITOR_SELECTION_KEY, JSON.stringify(settings));
-};
-
 export const saveOverlayPlacement = async (placement: OverlayPlacement): Promise<void> => {
   const initializedLayout = await ensureCompositeLayout();
   const currentLayout = readCompositeLayout() ?? initializedLayout;
@@ -173,30 +179,9 @@ export const saveOverlayPlacement = async (placement: OverlayPlacement): Promise
 export const resetOverlayPlacement = async (overlay: OverlayId): Promise<OverlayPlacement> => {
   const initializedLayout = await ensureCompositeLayout();
   const layout = readCompositeLayout() ?? initializedLayout;
-  const defaults = await invoke<OverlayPlacement>("get_default_overlay_placement", { label: overlay });
-  const placement = { ...defaults, monitor: layout[overlay].monitor };
+  const placement = await invoke<OverlayPlacement>("get_default_overlay_placement", {
+    label: overlay
+  });
   await saveOverlayPlacement(placement);
   return placement;
-};
-
-export const moveOverlayToMonitor = async (
-  overlay: OverlayId,
-  monitor: number
-): Promise<void> => {
-  const [initializedLayout, displays] = await Promise.all([
-    ensureCompositeLayout(),
-    getOverlayDisplays()
-  ]);
-  const display = displays.find((candidate) => candidate.index === monitor);
-  if (!display) return;
-  const layout = readCompositeLayout() ?? initializedLayout;
-  const current = layout[overlay];
-  const logicalWidth = display.width / Math.max(display.scaleFactor, 0.1);
-  const logicalHeight = display.height / Math.max(display.scaleFactor, 0.1);
-  await saveOverlayPlacement({
-    ...current,
-    monitor,
-    x: clampPanelCoordinate(current.x, current.width, logicalWidth),
-    y: clampPanelCoordinate(current.y, current.height, logicalHeight)
-  });
 };

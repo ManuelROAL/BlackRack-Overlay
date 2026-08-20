@@ -727,6 +727,7 @@ pub struct LmuTelemetrySource {
     consumption_profiler: ConsumptionProfiler,
     car_histories: HashMap<i32, CarHistory>,
     starting_positions: HashMap<i32, i32>,
+    scored_finish_positions: HashMap<i32, i32>,
     vehicle_identities: HashMap<i32, VehicleIdentity>,
     driver_ranks: DriverRankResolver,
     session_split: SessionSplitResolver,
@@ -751,6 +752,8 @@ struct DriverRankEstimateDiagnostic {
     driver_rank_progress: f64,
     visual_score: Option<f64>,
     race_position: i32,
+    live_race_position: i32,
+    race_position_source: &'static str,
     qualifying_position: i32,
     same_class_rivals: u32,
     rated_opponents: u32,
@@ -886,6 +889,7 @@ impl LmuTelemetrySource {
             consumption_profiler: ConsumptionProfiler::new(profile_directory),
             car_histories: HashMap::new(),
             starting_positions: HashMap::new(),
+            scored_finish_positions: HashMap::new(),
             vehicle_identities: HashMap::new(),
             driver_ranks: DriverRankResolver::discover(),
             session_split: SessionSplitResolver::discover(),
@@ -950,6 +954,7 @@ impl LmuTelemetrySource {
         self.consumption_profiler.reset_lap();
         self.car_histories.clear();
         self.starting_positions.clear();
+        self.scored_finish_positions.clear();
         if previous_session.is_some() {
             self.local_rest.reset_session_history();
         }
@@ -1339,10 +1344,45 @@ impl LmuTelemetrySource {
         internal_rating_gain / DRIVER_RANK_INTERNAL_SCALE
     }
 
+    fn scored_class_positions(
+        entries: &[StandingEntry],
+        scored_overall_positions: &HashMap<i32, i32>,
+    ) -> HashMap<i32, i32> {
+        let mut classes = HashMap::<&str, Vec<&StandingEntry>>::new();
+        for entry in entries {
+            classes
+                .entry(entry.vehicle_class.as_str())
+                .or_default()
+                .push(entry);
+        }
+
+        let mut positions = HashMap::new();
+        for mut class_entries in classes.into_values() {
+            if !class_entries.iter().all(|entry| {
+                scored_overall_positions
+                    .get(&entry.vehicle_id)
+                    .is_some_and(|position| *position > 0)
+            }) {
+                continue;
+            }
+            class_entries.sort_by_key(|entry| {
+                (
+                    scored_overall_positions[&entry.vehicle_id],
+                    entry.vehicle_id,
+                )
+            });
+            for (index, entry) in class_entries.into_iter().enumerate() {
+                positions.insert(entry.vehicle_id, index as i32 + 1);
+            }
+        }
+        positions
+    }
+
     fn update_driver_rank_estimates(
         entries: &mut [StandingEntry],
         rank_scores: &HashMap<i32, f64>,
         qualifying_positions: &HashMap<i32, i32>,
+        scored_class_positions: &HashMap<i32, i32>,
         session_type: i32,
         settings: DriverRankSettings,
     ) -> Option<DriverRankEstimateDiagnostic> {
@@ -1356,6 +1396,15 @@ impl LmuTelemetrySource {
         let mut gains = Vec::<(usize, f64)>::new();
         let mut player_diagnostic = None;
         for (index, entry) in entries.iter().enumerate() {
+            let race_position = scored_class_positions
+                .get(&entry.vehicle_id)
+                .copied()
+                .unwrap_or(entry.position);
+            let race_position_source = if scored_class_positions.contains_key(&entry.vehicle_id) {
+                "rest_server_scored"
+            } else {
+                "shared_memory_live"
+            };
             let starting_position = qualifying_positions
                 .get(&entry.vehicle_id)
                 .copied()
@@ -1385,7 +1434,9 @@ impl LmuTelemetrySource {
                         driver_rank: entry.driver_rank.clone(),
                         driver_rank_progress: entry.driver_rank_progress,
                         visual_score: None,
-                        race_position: entry.position,
+                        race_position,
+                        live_race_position: entry.position,
+                        race_position_source,
                         qualifying_position: starting_position,
                         same_class_rivals,
                         rated_opponents,
@@ -1412,7 +1463,11 @@ impl LmuTelemetrySource {
                 let rating = rank_score * DRIVER_RANK_INTERNAL_SCALE;
                 let opponent_rating = opponent_rank_score * DRIVER_RANK_INTERNAL_SCALE;
                 let expected = Self::driver_rank_expected(rating, opponent_rating, settings);
-                let race_result = Self::head_to_head(entry.position, opponent.position);
+                let opponent_race_position = scored_class_positions
+                    .get(&opponent.vehicle_id)
+                    .copied()
+                    .unwrap_or(opponent.position);
+                let race_result = Self::head_to_head(race_position, opponent_race_position);
                 let opponent_start = qualifying_positions
                     .get(&opponent.vehicle_id)
                     .copied()
@@ -1431,7 +1486,9 @@ impl LmuTelemetrySource {
                         driver_rank: entry.driver_rank.clone(),
                         driver_rank_progress: entry.driver_rank_progress,
                         visual_score: Some(rank_score),
-                        race_position: entry.position,
+                        race_position,
+                        live_race_position: entry.position,
+                        race_position_source,
                         qualifying_position: starting_position,
                         same_class_rivals,
                         rated_opponents,
@@ -1459,7 +1516,9 @@ impl LmuTelemetrySource {
                     driver_rank: entry.driver_rank.clone(),
                     driver_rank_progress: entry.driver_rank_progress,
                     visual_score: Some(rank_score),
-                    race_position: entry.position,
+                    race_position,
+                    live_race_position: entry.position,
+                    race_position_source,
                     qualifying_position: starting_position,
                     same_class_rivals,
                     rated_opponents,
@@ -1579,6 +1638,7 @@ impl LmuTelemetrySource {
         let mut previous_in_class = HashMap::<String, &LmuStandingEntry>::new();
         let mut driver_rank_scores = HashMap::<i32, f64>::new();
         let mut driver_qualifying_positions = HashMap::<i32, i32>::new();
+        let mut scored_overall_positions = HashMap::<i32, i32>::new();
         let player_entry = raw_entries
             .iter()
             .find(|entry| entry.is_player != 0)
@@ -1595,6 +1655,16 @@ impl LmuTelemetrySource {
                 .local_rest
                 .standing(entry.vehicle_id, &identity.driver_name)
                 .cloned();
+            if snapshot.game_phase == 8 {
+                if let Some(position) = rest
+                    .as_ref()
+                    .filter(|standing| standing.server_scored)
+                    .map(|standing| standing.position)
+                    .filter(|position| *position > 0)
+                {
+                    scored_overall_positions.insert(entry.vehicle_id, position);
+                }
+            }
             let class_position = class_positions.entry(vehicle_class.clone()).or_default();
             *class_position += 1;
             let class_position = *class_position;
@@ -1801,10 +1871,14 @@ impl LmuTelemetrySource {
             });
         }
 
+        let latest_scored_positions =
+            Self::scored_class_positions(&entries, &scored_overall_positions);
+        self.scored_finish_positions.extend(latest_scored_positions);
         let driver_rank_diagnostic = Self::update_driver_rank_estimates(
             &mut entries,
             &driver_rank_scores,
             &driver_qualifying_positions,
+            &self.scored_finish_positions,
             snapshot.session_type,
             self.session_split.value().driver_rank_settings,
         );
@@ -1826,6 +1900,8 @@ impl LmuTelemetrySource {
                         "visual_score": sample.visual_score,
                         "internal_score": sample.visual_score.map(|score| score * DRIVER_RANK_INTERNAL_SCALE),
                         "race_position": sample.race_position,
+                        "live_race_position": sample.live_race_position,
+                        "race_position_source": sample.race_position_source,
                         "qualifying_position": sample.qualifying_position,
                     },
                     "coverage": {
@@ -3001,7 +3077,8 @@ mod tests {
     };
     use crate::telemetry::event_split::DriverRankSettings;
     use crate::telemetry::lmu_rest::{RestStanding, RestVehicleDamage};
-    use std::collections::HashSet;
+    use crate::telemetry::StandingEntry;
+    use std::collections::{HashMap, HashSet};
 
     #[test]
     fn flat_spot_wear_only_accumulates_during_a_braking_lockup() {
@@ -3120,8 +3197,10 @@ mod tests {
         source.ensure_vehicle_identity(&entry);
         assert_eq!(source.vehicle_identities[&29].driver_name, "Segundo Piloto");
 
+        source.scored_finish_positions.insert(29, 2);
         source.update_session(1);
         assert!(source.vehicle_identities.is_empty());
+        assert!(source.scored_finish_positions.is_empty());
     }
 
     #[test]
@@ -3148,6 +3227,102 @@ mod tests {
             Some(1300.0)
         );
         assert_eq!(LmuTelemetrySource::driver_rank_score("", 50.0), None);
+    }
+
+    #[test]
+    fn scored_class_positions_require_complete_category_coverage() {
+        let entries = vec![
+            StandingEntry {
+                vehicle_id: 1,
+                vehicle_class: "GT3".to_owned(),
+                position: 1,
+                ..StandingEntry::default()
+            },
+            StandingEntry {
+                vehicle_id: 2,
+                vehicle_class: "GT3".to_owned(),
+                position: 2,
+                ..StandingEntry::default()
+            },
+            StandingEntry {
+                vehicle_id: 3,
+                vehicle_class: "GT3".to_owned(),
+                position: 3,
+                ..StandingEntry::default()
+            },
+        ];
+
+        let partial =
+            LmuTelemetrySource::scored_class_positions(&entries, &HashMap::from([(1, 1), (2, 3)]));
+        assert!(partial.is_empty());
+
+        let complete = LmuTelemetrySource::scored_class_positions(
+            &entries,
+            &HashMap::from([(1, 1), (2, 3), (3, 2)]),
+        );
+        assert_eq!(complete, HashMap::from([(1, 1), (2, 3), (3, 2)]));
+    }
+
+    #[test]
+    fn driver_rank_estimate_prefers_complete_server_scored_finish_order() {
+        let entries = vec![
+            StandingEntry {
+                vehicle_id: 1,
+                position: 1,
+                vehicle_class: "GT3".to_owned(),
+                driver_rank: "S1".to_owned(),
+                driver_rank_progress: 0.0,
+                ..StandingEntry::default()
+            },
+            StandingEntry {
+                vehicle_id: 2,
+                position: 2,
+                vehicle_class: "GT3".to_owned(),
+                driver_rank: "S1".to_owned(),
+                driver_rank_progress: 0.0,
+                is_player: true,
+                ..StandingEntry::default()
+            },
+            StandingEntry {
+                vehicle_id: 3,
+                position: 3,
+                vehicle_class: "GT3".to_owned(),
+                driver_rank: "S1".to_owned(),
+                driver_rank_progress: 0.0,
+                ..StandingEntry::default()
+            },
+        ];
+        let rank_scores = HashMap::from([(1, 400.0), (2, 400.0), (3, 400.0)]);
+        let qualifying_positions = HashMap::from([(1, 1), (2, 2), (3, 3)]);
+        let settings = DriverRankSettings::default();
+
+        let mut live_entries = entries.clone();
+        let live = LmuTelemetrySource::update_driver_rank_estimates(
+            &mut live_entries,
+            &rank_scores,
+            &qualifying_positions,
+            &HashMap::new(),
+            10,
+            settings,
+        )
+        .unwrap();
+
+        let mut scored_entries = entries;
+        let scored = LmuTelemetrySource::update_driver_rank_estimates(
+            &mut scored_entries,
+            &rank_scores,
+            &qualifying_positions,
+            &HashMap::from([(1, 1), (2, 3), (3, 2)]),
+            10,
+            settings,
+        )
+        .unwrap();
+
+        assert_eq!(live.race_position, 2);
+        assert_eq!(scored.live_race_position, 2);
+        assert_eq!(scored.race_position, 3);
+        assert_eq!(scored.race_position_source, "rest_server_scored");
+        assert!(scored.estimated_gain.unwrap() < live.estimated_gain.unwrap());
     }
 
     #[test]
