@@ -47,6 +47,17 @@ restore per-overlay native listeners or direct cross-realm object events.
   explicitly permits it.
 - Preserve unavailable values as unavailable rather than converting them to real
   zeroes.
+- At the timing line, suppress a stale near-finish scoring distance while the
+  telemetry lap counter and new-lap timer have already advanced. Consumers must
+  not observe that one-frame source disagreement as a backwards lap jump.
+- The player's authoritative lap distance comes from scoring. Between its lower
+  cadence updates, advance that distance with telemetry speed and the telemetry
+  lap clock, then reconcile small scoring corrections progressively. This keeps
+  reconstructed 50 Hz deltas continuous without allowing integration drift.
+- Compact Timing uses LMU's official current-sector partials; it does not derive
+  sector duration from the asynchronously updated scoring-sector transition.
+- Delta's session-best mode consumes telemetry's native `mDeltaBest`; custom
+  overall, optimal, stint and last-lap modes retain reconstructed traces.
 - Persistent lap references use track, vehicle and rounded track length as their
   identity. They are loaded asynchronously and merged with any newer in-memory
   result rather than replacing it.

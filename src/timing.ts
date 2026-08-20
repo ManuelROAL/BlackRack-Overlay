@@ -13,8 +13,8 @@ bindOverlayTransparency("timing");
 bindOverlayInteractionMode();
 const performance = createOverlayPerformanceTracker("timing");
 let settings = readTimingSettings();
-const designHeight = (rows: number): number => rows === 0 ? 150 : rows === 5 ? 236 : 202;
-const resizeOverlay = fitOverlay({ width: 366, height: designHeight(settings.historyLaps) });
+const designHeight = (rows: number): number => rows === 0 ? 130 : rows === 5 ? 200 : 172;
+const resizeOverlay = fitOverlay({ width: 318, height: designHeight(settings.historyLaps) });
 const card = document.getElementById("timing-card");
 const delta = document.getElementById("timing-delta");
 const current = document.getElementById("timing-current");
@@ -75,6 +75,6 @@ void listenTelemetry((frame) => performance.measure(() => render(frame.timing_mo
 if (isTauriRuntime()) {
   void listenRuntimeEvent<TimingSettings>("timing://settings", (next) => {
     settings = next;
-    resizeOverlay({ width: 366, height: designHeight(settings.historyLaps) });
+    resizeOverlay({ width: 318, height: designHeight(settings.historyLaps) });
   });
 }

@@ -96,6 +96,8 @@ struct LmuSnapshot {
     uint32_t vehicle_class_id;
     uint32_t player_lap_valid;
     double current_lap_seconds;
+    double current_sector1_seconds;
+    double current_sector2_seconds;
     double best_lap_seconds;
     double lap_delta_seconds;
     double session_time_remaining;
@@ -383,6 +385,8 @@ extern "C" int lmu_read_snapshot(LmuSnapshot* output) {
             output->estimated_lap_time = source.mEstimatedLapTime;
             output->best_lap_seconds = source.mBestLapTime;
             output->last_lap_seconds = source.mLastLapTime;
+            output->current_sector1_seconds = std::abs(source.mCurSector1);
+            output->current_sector2_seconds = std::abs(source.mCurSector2);
             output->player_time_into_lap = source.mTimeIntoLap;
             output->player_lap_distance = source.mLapDist;
         }

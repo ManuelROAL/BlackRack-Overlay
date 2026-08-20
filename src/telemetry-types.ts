@@ -75,7 +75,7 @@ export interface DeltaViewModel {
   mode: import("./delta-settings").DeltaMode;
   reference_seconds: number;
   current_lap_valid: boolean;
-  frozen: boolean;
+  trend: "neutral" | "improving" | "worsening";
   sector_index: number;
   sector_count: number;
   reference_generation: number;

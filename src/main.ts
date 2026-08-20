@@ -853,7 +853,7 @@ const parseOverlayConfiguration = (contents: string): OverlayConfigurationExport
   if (Number(schemaVersion) < 4) {
     visibility.timing = false;
     transparencyValues.timing = 5;
-    layout.timing = { overlay: "timing", x: 610, y: 110, width: 366, height: 210 };
+    layout.timing = { overlay: "timing", x: 610, y: 110, width: 318, height: 172 };
   }
   const completeBooleanRecord = (value: unknown, keys: string[]): boolean => {
     const record = configurationObject(value);
