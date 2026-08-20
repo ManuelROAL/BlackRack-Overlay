@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title data-i18n="browser.indexTitle">LMU Overlay · OBS</title>
+  </head>
+  <body>
+    <main>
+      <h1 data-i18n="browser.indexHeading">LMU Overlay · Browser sources</h1>
+      <nav data-i18n-aria-label="browser.indexAria" aria-label="Browser source routes">
+        <a href="/standings" data-browser-route data-i18n="card.standings">Standings</a>
+        <a href="/relative" data-browser-route data-i18n="card.relative">Relative</a>
+        <a href="/fuel" data-browser-route data-i18n="card.fuel">Energy and fuel</a>
+        <a href="/pitstop" data-browser-route data-i18n="card.pitstop">Estimated stop</a>
+        <a href="/flags" data-browser-route data-i18n="card.flags">Flags</a>
+        <a href="/rejoin" data-browser-route data-i18n="card.rejoin">Rejoin and pit exit</a>
+        <a href="/delta" data-browser-route data-i18n="card.delta">Delta</a>
+        <a href="/timing" data-browser-route data-i18n="card.timing">Compact timing</a>
+        <a href="/driving" data-browser-route data-i18n="card.driving">Trailing + Pedal</a>
+        <a href="/tires" data-browser-route data-i18n="card.tires">Damage and tyres</a>
+        <a href="/damage" data-browser-route data-i18n="card.damage">Detailed damage</a>
+        <a href="/trackmap" data-browser-route data-i18n="card.trackmap">Track map</a>
+      </nav>
+      <p><span data-i18n="browser.localServer">Local server</span>: <code>http://127.0.0.1:47636</code></p>
+    </main>
+    <script type="module" src="/src/browser-index.ts"></script>
+  </body>
+</html>

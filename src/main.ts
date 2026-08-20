@@ -11,6 +11,7 @@ import {
   isLocale,
   LOCALE_OPTIONS,
   LOCALE_STORAGE_KEY,
+  SUPPORTED_LOCALES,
   setLocale,
   t,
   type Locale,
@@ -314,7 +315,8 @@ const syncBrowserSourcePreferences = (): void => {
       timing: timingSettings,
       trackMap: trackMapSettings,
       transparency: effectiveOverlayTransparency(overlayTransparency, overlayTransparencyScope),
-      locale: getLocale()
+      locale: getLocale(),
+      supportedLocales: SUPPORTED_LOCALES
     }
   }).catch(() => undefined);
   void invoke("set_delta_settings", { settings: deltaSettings }).catch(() => undefined);

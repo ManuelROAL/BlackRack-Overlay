@@ -78,7 +78,7 @@ or enlarge grouped telemetry payloads.
 
 ### Current rollout state
 
-Phases 1, 2 and 3 are implemented. `src/i18n/` owns the bundled Spanish and English
+Phases 1–4 are implemented. `src/i18n/` owns the bundled Spanish and English
 catalogs, typed lookup/interpolation/plural helpers, cached locale formatters,
 DOM attribute translation and the persisted `lmu-overlay.locale.v1` choice. The
 complete control panel, including generated settings, dialogs, accessibility
@@ -97,9 +97,14 @@ Known browser-server failures cross the Rust boundary as stable error kinds;
 known shortcut failures use stable codes as well. Localized UI copy is selected
 in TypeScript while raw operating-system details remain diagnostic.
 
-`npm.cmd run build` validates catalog keys and bindings across all 14 HTML
-documents before TypeScript and Vite. Phase 4 remains: stricter catalog parameter
-checks, hard-coded-copy auditing, visual scaling checks and the contributor guide.
+`npm.cmd run build` validates equal resolved catalog keys, message shapes and
+parameters, supported-locale metadata, bindings across all 15 HTML documents,
+typed calls and the documented visible-copy allowlist before TypeScript and Vite.
+The OBS index is a catalog-driven Vite entry rather than duplicated Rust copy.
+The phase-4 browser pass covered both locales at normal/compact viewports and all
+overlay design sizes; it found and fixed the Spanish Detailed Damage bodywork
+label. Native WebView2 checks at 100%, 125% and 150% remain a release-validation
+step, not an implementation blocker. See `docs/LOCALIZATION_CONTRIBUTING.md`.
 
 ### 1. Infrastructure and control panel
 

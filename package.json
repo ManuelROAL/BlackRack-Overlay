@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "check:i18n": "node tools/validate-i18n.mjs",
+    "check:i18n": "node tools/validate-i18n.mjs && node tools/audit-visible-copy.mjs",
     "build": "npm run check:i18n && tsc && vite build",
     "tauri": "tauri"
   },

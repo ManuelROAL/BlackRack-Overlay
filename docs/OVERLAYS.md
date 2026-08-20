@@ -87,6 +87,8 @@ telemetry semantics and file ownership live under `docs/overlays/`; use
 - Its route catalog must match `docs/overlays/README.md`. Mirror every configurable
   preference that an OBS page needs because browser pages do not share the Tauri
   WebView's `localStorage`.
+- The `/` route serves the catalog-driven `browser.html` entry. Keep its links in
+  sync with this route catalog; do not duplicate translated labels in Rust.
 - Serve browser assets through Tauri's embedded `frontendDist` resolver; do not
   install a separate `web/` resource directory.
 

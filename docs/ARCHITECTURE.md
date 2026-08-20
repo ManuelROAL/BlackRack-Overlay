@@ -80,6 +80,9 @@ Tauri events       analysis JSONL      browser-source SSE
   in the system browser; no remote page is loaded inside the application WebView.
   Known browser-server and shortcut failures are localized from stable backend
   kinds/codes; raw system details are logged rather than rendered as UI copy.
+- `browser.html` and `src/browser-index.ts`: catalog-driven OBS route index. The
+  backend serves this built entry and injects the same locale metadata used by
+  overlay pages; it does not maintain a second translated route catalog.
 - `src/composite.ts`: per-monitor host, iframe lifecycle, drag/resize chrome and
   routing between Tauri events and embedded overlay documents. Each host listens
   to the single native telemetry batch and forwards frames only to locally mounted

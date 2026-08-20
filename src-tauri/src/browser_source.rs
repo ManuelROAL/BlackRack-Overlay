@@ -13,60 +13,21 @@ use crate::telemetry::TelemetryFrame;
 
 const ADDRESS: &str = "127.0.0.1:47636";
 const BASE_URL: &str = "http://127.0.0.1:47636";
-const BROWSER_OVERLAYS: [(&str, &str, &str, &str); 12] = [
-    ("standings", "standings.html", "Clasificación", "Standings"),
-    ("relative", "relative.html", "Relative", "Relative"),
-    (
-        "fuel",
-        "fuel.html",
-        "Combustible / energía",
-        "Fuel / energy",
-    ),
-    (
-        "pitstop",
-        "pitstop.html",
-        "Parada estimada",
-        "Estimated stop",
-    ),
-    ("flags", "flags.html", "Banderas", "Flags"),
-    ("rejoin", "rejoin.html", "Rejoin", "Rejoin"),
-    ("delta", "delta.html", "Delta", "Delta"),
-    ("timing", "timing.html", "Timing compacto", "Compact timing"),
-    (
-        "driving",
-        "driving.html",
-        "Trailing + Pedal",
-        "Trailing + Pedal",
-    ),
-    (
-        "tires",
-        "tires.html",
-        "Daños + neumáticos",
-        "Damage + tyres",
-    ),
-    ("damage", "damage.html", "Daño detallado", "Detailed damage"),
-    (
-        "trackmap",
-        "trackmap.html",
-        "Mapa del circuito",
-        "Track map",
-    ),
+const BROWSER_INDEX_ENTRY: &str = "browser.html";
+const BROWSER_OVERLAYS: [(&str, &str); 12] = [
+    ("standings", "standings.html"),
+    ("relative", "relative.html"),
+    ("fuel", "fuel.html"),
+    ("pitstop", "pitstop.html"),
+    ("flags", "flags.html"),
+    ("rejoin", "rejoin.html"),
+    ("delta", "delta.html"),
+    ("timing", "timing.html"),
+    ("driving", "driving.html"),
+    ("tires", "tires.html"),
+    ("damage", "damage.html"),
+    ("trackmap", "trackmap.html"),
 ];
-
-#[derive(Clone, Copy, Debug, PartialEq)]
-enum BrowserLocale {
-    Es,
-    En,
-}
-
-impl BrowserLocale {
-    fn code(self) -> &'static str {
-        match self {
-            Self::Es => "es",
-            Self::En => "en",
-        }
-    }
-}
 
 #[derive(Clone, Deserialize, Serialize)]
 struct Preferences {
@@ -277,10 +238,13 @@ pub(crate) fn has_clients() -> bool {
 }
 
 fn start_server(app: AppHandle) -> Result<ServerRuntime, BrowserSourceFailure> {
-    if app.asset_resolver().get("standings.html".into()).is_none() {
+    if [BROWSER_INDEX_ENTRY, "standings.html"]
+        .into_iter()
+        .any(|entry| app.asset_resolver().get(entry.into()).is_none())
+    {
         return Err(BrowserSourceFailure {
             kind: BrowserSourceErrorKind::MissingAssets,
-            detail: "embedded standings.html asset is unavailable".into(),
+            detail: "embedded browser-source assets are unavailable".into(),
         });
     }
     let listener = TcpListener::bind(ADDRESS).map_err(|error| BrowserSourceFailure {
@@ -330,7 +294,7 @@ fn server_loop(
                 } else if path == "/api/trackmap" {
                     serve_track_map(&mut stream, &target);
                 } else {
-                    serve_request(&mut stream, path, &target, &app);
+                    serve_request(&mut stream, path, &app);
                 }
             }
         }
@@ -381,12 +345,7 @@ fn write_sse_headers(stream: &mut TcpStream) -> std::io::Result<()> {
     )
 }
 
-fn serve_request(stream: &mut TcpStream, request_path: &str, target: &str, app: &AppHandle) {
-    if request_path == "/" {
-        let body = browser_source_index(browser_locale(target));
-        write_response(stream, 200, "text/html; charset=utf-8", body.as_bytes());
-        return;
-    }
+fn serve_request(stream: &mut TcpStream, request_path: &str, app: &AppHandle) {
     if request_path == "/browser-source-settings.js" {
         let settings = service()
             .map(|service| {
@@ -399,7 +358,7 @@ fn serve_request(stream: &mut TcpStream, request_path: &str, target: &str, app: 
             .unwrap_or_else(|| serde_json::json!({}));
         let json = serde_json::to_string(&settings).unwrap_or_else(|_| "{}".into());
         let script = format!(
-            "(()=>{{const p={json},q=new URLSearchParams(location.search).get('lang'),valid=l=>l==='es'||l==='en';if(valid(q))document.documentElement.dataset.localeOverride=q;else if(valid(p.locale))localStorage.setItem('lmu-overlay.locale.v1',p.locale);if(p.standings)localStorage.setItem('lmu-overlay.standings.v1',JSON.stringify(p.standings));if(p.relative)localStorage.setItem('lmu-overlay.relative.v1',JSON.stringify(p.relative));if(p.driving)localStorage.setItem('lmu-overlay.driving.v1',JSON.stringify(p.driving));if(p.delta)localStorage.setItem('lmu-overlay.delta.v1',JSON.stringify(p.delta));if(p.timing)localStorage.setItem('lmu-overlay.timing.v1',JSON.stringify(p.timing));if(p.trackMap)localStorage.setItem('lmu-overlay.track-map-settings.v1',JSON.stringify(p.trackMap));if(p.transparency)localStorage.setItem('lmu-overlay.background-transparency.v1',JSON.stringify(p.transparency));if(p.fuel)localStorage.setItem('lmu-overlay.fuel-strategy.v1',JSON.stringify(p.fuel));document.documentElement.dataset.browserSource='true';}})();"
+            "(()=>{{const p={json},q=new URLSearchParams(location.search).get('lang'),valid=l=>typeof l==='string'&&Array.isArray(p.supportedLocales)&&p.supportedLocales.includes(l);if(valid(q))document.documentElement.dataset.localeOverride=q;else if(valid(p.locale))localStorage.setItem('lmu-overlay.locale.v1',p.locale);if(p.standings)localStorage.setItem('lmu-overlay.standings.v1',JSON.stringify(p.standings));if(p.relative)localStorage.setItem('lmu-overlay.relative.v1',JSON.stringify(p.relative));if(p.driving)localStorage.setItem('lmu-overlay.driving.v1',JSON.stringify(p.driving));if(p.delta)localStorage.setItem('lmu-overlay.delta.v1',JSON.stringify(p.delta));if(p.timing)localStorage.setItem('lmu-overlay.timing.v1',JSON.stringify(p.timing));if(p.trackMap)localStorage.setItem('lmu-overlay.track-map-settings.v1',JSON.stringify(p.trackMap));if(p.transparency)localStorage.setItem('lmu-overlay.background-transparency.v1',JSON.stringify(p.transparency));if(p.fuel)localStorage.setItem('lmu-overlay.fuel-strategy.v1',JSON.stringify(p.fuel));document.documentElement.dataset.browserSource='true';}})();"
         );
         write_response(
             stream,
@@ -410,8 +369,11 @@ fn serve_request(stream: &mut TcpStream, request_path: &str, target: &str, app: 
         return;
     }
 
-    let relative =
-        browser_overlay_entry(request_path).unwrap_or_else(|| request_path.trim_start_matches('/'));
+    let relative = if request_path == "/" {
+        BROWSER_INDEX_ENTRY
+    } else {
+        browser_overlay_entry(request_path).unwrap_or_else(|| request_path.trim_start_matches('/'))
+    };
     if relative.contains("..") || relative.is_empty() {
         write_response(stream, 404, "text/plain; charset=utf-8", b"Not found");
         return;
@@ -457,56 +419,6 @@ fn write_error(stream: &mut TcpStream, status: u16, message: &str) {
     );
 }
 
-fn query_locale(target: &str) -> Option<BrowserLocale> {
-    target.split_once('?').and_then(|(_, query)| {
-        query
-            .split('&')
-            .find_map(|part| match part.split_once('=') {
-                Some(("lang", "es")) => Some(BrowserLocale::Es),
-                Some(("lang", "en")) => Some(BrowserLocale::En),
-                _ => None,
-            })
-    })
-}
-
-fn browser_locale(target: &str) -> BrowserLocale {
-    if let Some(locale) = query_locale(target) {
-        return locale;
-    }
-    let preference = service().and_then(|service| {
-        service
-            .preferences
-            .read()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .get("locale")
-            .and_then(serde_json::Value::as_str)
-            .map(str::to_owned)
-    });
-    match preference.as_deref() {
-        Some("es") => BrowserLocale::Es,
-        _ => BrowserLocale::En,
-    }
-}
-
-fn browser_source_index(locale: BrowserLocale) -> String {
-    let links = BROWSER_OVERLAYS
-        .iter()
-        .map(|(route, _, es, en)| {
-            let label = if locale == BrowserLocale::Es { es } else { en };
-            format!("<a href=\"/{route}?lang={}\">{label}</a>", locale.code())
-        })
-        .collect::<String>();
-    let (heading, server) = if locale == BrowserLocale::Es {
-        ("LMU Overlay · Fuentes de navegador", "Servidor local")
-    } else {
-        ("LMU Overlay · Browser sources", "Local server")
-    };
-    format!(
-        "<!doctype html><html lang=\"{}\"><head><meta charset=\"utf-8\"><title>LMU Overlay · OBS</title><style>body{{margin:40px;background:#080b0f;color:#f4f7fa;font:16px sans-serif}}a{{display:block;width:max-content;margin:12px 0;color:#d8ff3e}}</style></head><body><h1>{heading}</h1>{links}<p>{server}: {BASE_URL}</p></body></html>",
-        locale.code()
-    )
-}
-
 fn browser_overlay_entry(request_path: &str) -> Option<&'static str> {
     let route = request_path
         .strip_prefix('/')
@@ -514,38 +426,19 @@ fn browser_overlay_entry(request_path: &str) -> Option<&'static str> {
         .trim_end_matches('/');
     BROWSER_OVERLAYS
         .iter()
-        .find_map(|(candidate, entry, _, _)| (*candidate == route).then_some(*entry))
+        .find_map(|(candidate, entry)| (*candidate == route).then_some(*entry))
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{
-        browser_overlay_entry, browser_source_index, query_locale, BrowserLocale, BROWSER_OVERLAYS,
-    };
+    use super::{browser_overlay_entry, BROWSER_OVERLAYS};
 
     #[test]
-    fn every_browser_overlay_has_a_route_and_index_link() {
-        let index = browser_source_index(BrowserLocale::En);
-        for (route, entry, _, label) in BROWSER_OVERLAYS {
+    fn every_browser_overlay_has_a_route() {
+        for (route, entry) in BROWSER_OVERLAYS {
             assert_eq!(browser_overlay_entry(&format!("/{route}")), Some(entry));
             assert_eq!(browser_overlay_entry(&format!("/{route}/")), Some(entry));
-            assert!(index.contains(&format!("href=\"/{route}?lang=en\"")));
-            assert!(index.contains(label));
         }
-    }
-
-    #[test]
-    fn browser_index_and_query_support_both_locales() {
-        let spanish = browser_source_index(BrowserLocale::Es);
-        assert!(spanish.contains("<html lang=\"es\""));
-        assert!(spanish.contains("Fuentes de navegador"));
-        assert!(spanish.contains("/standings?lang=es"));
-        assert_eq!(
-            query_locale("/relative?preview=1&lang=es"),
-            Some(BrowserLocale::Es)
-        );
-        assert_eq!(query_locale("/relative?lang=en"), Some(BrowserLocale::En));
-        assert_eq!(query_locale("/relative?lang=fr"), None);
     }
 
     #[test]

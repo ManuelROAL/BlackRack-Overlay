@@ -1,0 +1,14 @@
+[
+  {
+    "fingerprint": "browser.html|html-text|http://127.0.0.1:47636",
+    "reason": "Stable localhost endpoint rendered as technical data."
+  },
+  {
+    "fingerprint": "index.html|html-text|Ctrl+Shift+O",
+    "reason": "Default shortcut value; it is user-configurable data rather than prose."
+  },
+  {
+    "fingerprint": "index.html|html-text|Ctrl+Shift+M",
+    "reason": "Default shortcut value; it is user-configurable data rather than prose."
+  }
+]

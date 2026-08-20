@@ -89,6 +89,8 @@ in `docs/overlays/` and should not be duplicated here.
 - `docs/TELEMETRY.md`: shared sources, identity and integrations.
 - `docs/OVERLAYS.md`: shared visual, host and control-panel contracts.
 - `docs/LOCALIZATION.md`: cross-cutting language scope, propagation and rollout.
+- `docs/LOCALIZATION_CONTRIBUTING.md`: locale terminology, catalog workflow,
+  automated checks and the visual verification matrix.
 - `docs/overlays/*.md`: authoritative behavior for one overlay.
 - `docs/PERFORMANCE.md`: active measurement method and next validation.
 - `docs/PERFORMANCE_HISTORY.md`: completed performance investigations.
