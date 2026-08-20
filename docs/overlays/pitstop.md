@@ -22,7 +22,8 @@
 ## Presentation
 
 - Keep the panel compact and show repairs, resource, tyres, driver swap and total.
-- Add the penalty row only when non-zero.
+- Add the penalty row only when non-zero and expand the design height while it is
+  visible so the total remains fully inside the panel at every saved scale.
 - Keep the restrained lime edge accent on the left as the overlay's visual mark,
   matching the Trailing + Pedal treatment.
 - Follow the shared visual hierarchy without implying that displayed rows add up

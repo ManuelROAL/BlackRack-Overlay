@@ -18,6 +18,7 @@ const values = Object.fromEntries(
 const resourceLabel = document.querySelector<HTMLElement>("[data-pitstop-resource]")!;
 const penaltyRow = document.querySelector<HTMLElement>("[data-pitstop-penalty]")!;
 const renderPerformance = createOverlayPerformanceTracker("pitstop");
+const setOverlaySize = fitOverlay({ width: 210, height: 150 });
 
 const formatSeconds = (seconds: number, available = true): string =>
   available && Number.isFinite(seconds) ? `+${Math.max(0, seconds).toFixed(1)}s` : "--.-s";
@@ -41,7 +42,11 @@ const render = (frame: TelemetryFrame): void => {
   setText(values.driver, formatSeconds(frame.pit_stop_driver_swap_seconds, available));
   setText(values.penalty, formatSeconds(penalty, available));
   setText(values.total, formatSeconds(frame.pit_stop_estimate_seconds, available));
-  penaltyRow.hidden = !available || penalty <= 0;
+  const showPenalty = available && penalty > 0;
+  if (penaltyRow.hidden === showPenalty) {
+    penaltyRow.hidden = !showPenalty;
+    setOverlaySize({ width: 210, height: showPenalty ? 165 : 150 });
+  }
   document.body.dataset.available = available ? "true" : "false";
 };
 
@@ -57,7 +62,6 @@ const previewFrame = {
   pit_stop_driver_swap_seconds: 0
 } as TelemetryFrame;
 
-fitOverlay({ width: 210, height: 150 });
 bindOverlayTransparency("pitstop");
 bindOverlayInteractionMode();
 if (!isTauriRuntime()) render(previewFrame);
