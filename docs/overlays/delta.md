@@ -12,9 +12,9 @@ remains unclamped.
 
 The presentation contains only a transparent horizontal timing rail and the
 signed delta centred immediately below it. The numeric value remains compact so
-the timing rail retains the primary visual weight. The zero marker remains fixed
-in the centre and the coloured bar grows away from it. Mode, mini-sector and
-reference details remain configuration/backend concerns and are not rendered.
+the timing rail retains the primary visual weight. The coloured bar grows away
+from the centre without a marker or gap between the two halves. Mode, mini-sector
+and reference details remain configuration/backend concerns and are not rendered.
 
 ## Files and ownership
 

@@ -121,6 +121,7 @@ struct LmuSnapshot {
     double player_brake_temperature_c[4];
     double player_tire_remaining_by_wheel_percent[4];
     double player_tire_slip_ratio[4];
+    double player_tire_sliding_fraction[4];
     uint32_t player_part_detached;
     uint8_t player_tire_compounds[4];
     uint8_t player_tire_flat[4];
@@ -243,6 +244,7 @@ extern "C" int lmu_read_snapshot(LmuSnapshot* output) {
     std::fill_n(output->player_brake_temperature_c, 4, -1.0);
     std::fill_n(output->player_tire_remaining_by_wheel_percent, 4, -1.0);
     std::fill_n(output->player_tire_slip_ratio, 4, 0.0);
+    std::fill_n(output->player_tire_sliding_fraction, 4, 0.0);
     for (int index = 0; index < vehicle_count; ++index) {
         const VehicleScoringInfoV01& source = scoring.vehScoringInfo[index];
         LmuStandingEntry& destination = output->standings[index];
@@ -331,11 +333,15 @@ extern "C" int lmu_read_snapshot(LmuSnapshot* output) {
                     // LMU entrega mBrakeTemp en Kelvin pese al comentario heredado del SDK.
                     output->player_brake_temperature_c[wheel_index] = wheel.mBrakeTemp - 273.15;
                     output->player_tire_remaining_by_wheel_percent[wheel_index] = tire_remaining;
-                    const double speed_mps = destination.speed_kph / 3.6;
                     const double radius_m = static_cast<double>(wheel.mStaticUndeflectedRadius) / 100.0;
-                    output->player_tire_slip_ratio[wheel_index] = speed_mps > 1.0 && radius_m > 0.0
-                        ? std::abs(wheel.mRotation) * radius_m / speed_mps - 1.0
+                    const double ground_speed_mps = std::hypot(
+                        wheel.mLongitudinalGroundVel,
+                        wheel.mLateralGroundVel);
+                    output->player_tire_slip_ratio[wheel_index] = ground_speed_mps > 1.0 && radius_m > 0.0
+                        ? std::abs(wheel.mRotation) * radius_m / ground_speed_mps - 1.0
                         : 0.0;
+                    output->player_tire_sliding_fraction[wheel_index] =
+                        std::clamp(wheel.mGripFract, 0.0, 1.0);
                     output->player_tire_compounds[wheel_index] = wheel.mCompoundType;
                     output->player_tire_flat[wheel_index] = wheel.mFlat ? 1u : 0u;
                     output->player_tire_detached[wheel_index] = wheel.mDetached ? 1u : 0u;
@@ -413,10 +419,13 @@ extern "C" int lmu_read_snapshot(LmuSnapshot* output) {
     output->track_limits_steps = static_cast<uint32_t>(vehicle.mTrackLimitsSteps);
     output->tc_active = vehicle.mTCActive ? 1u : 0u;
     output->abs_active = vehicle.mABSActive ? 1u : 0u;
-    output->steering = vehicle.mUnfilteredSteering;
-    output->steering_range_degrees = vehicle.mPhysicalSteeringWheelRange > 0.0f
-        ? static_cast<double>(vehicle.mPhysicalSteeringWheelRange)
-        : static_cast<double>(vehicle.mVisualSteeringWheelRange);
+    // Match the wheel rendered by LMU: its animation uses the filtered steering
+    // input and visual rotation range. Keep the physical range as a fallback for
+    // vehicles that do not publish a visual range.
+    output->steering = vehicle.mFilteredSteering;
+    output->steering_range_degrees = vehicle.mVisualSteeringWheelRange > 0.0f
+        ? static_cast<double>(vehicle.mVisualSteeringWheelRange)
+        : static_cast<double>(vehicle.mPhysicalSteeringWheelRange);
     output->force_feedback = static_cast<double>(copied_memory.generic.FFBTorque);
     output->fuel_liters = vehicle.mFuel;
     output->fuel_capacity_liters = vehicle.mFuelCapacity;

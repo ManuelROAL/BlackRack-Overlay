@@ -16,8 +16,9 @@
 - Plot TC at the throttle trace height and ABS at the brake trace height for each
   individual 50 Hz sample.
 - Normalize signed `FFBTorque` to `[-1, 1]` for the bipolar FFB bar.
-- Steering angle is `mUnfilteredSteering` times half the physical wheel range;
-  use visual range only when physical range is unavailable.
+- Steering angle matches LMU's rendered in-game wheel: use `mFilteredSteering`
+  times half `mVisualSteeringWheelRange`, falling back to the physical wheel
+  range only when the visual range is unavailable.
 
 ## Layout and configuration
 
@@ -26,7 +27,7 @@
 - Left-to-right composition is: a circular dial combining the rotating
   steering-centre arc, central gear, speed and the FFB bar below it;
   clutch/brake/throttle meters; and the wide five-second trace.
-- Represent the physical steering angle with the rotating white centre arc; do
+- Represent the in-game steering angle with the rotating white centre arc; do
   not add a separate numeric angle readout.
 - Keep the trace free of a title and color legend. The established pedal-line and
   TC/ABS marker colors identify its contents while preserving graph space.

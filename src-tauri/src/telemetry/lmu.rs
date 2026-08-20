@@ -237,6 +237,7 @@ struct LmuSnapshot {
     player_brake_temperature_c: [f64; 4],
     player_tire_remaining_by_wheel_percent: [f64; 4],
     player_tire_slip_ratio: [f64; 4],
+    player_tire_sliding_fraction: [f64; 4],
     player_part_detached: u32,
     player_tire_compounds: [u8; 4],
     player_tire_flat: [u8; 4],
@@ -310,6 +311,7 @@ impl Default for LmuSnapshot {
             player_brake_temperature_c: [-1.0; 4],
             player_tire_remaining_by_wheel_percent: [-1.0; 4],
             player_tire_slip_ratio: [0.0; 4],
+            player_tire_sliding_fraction: [0.0; 4],
             player_part_detached: 0,
             player_tire_compounds: [0; 4],
             player_tire_flat: [0; 4],
@@ -336,6 +338,7 @@ struct TireWearTracker {
 
 impl TireWearTracker {
     const LOCK_SLIP_RATIO: f64 = -0.3;
+    const MIN_SLIDING_FRACTION: f64 = 0.5;
 
     fn reset(&mut self) {
         self.last_remaining = [None; 4];
@@ -346,7 +349,7 @@ impl TireWearTracker {
         &mut self,
         remaining: [f64; 4],
         slip_ratio: [f64; 4],
-        brake: f64,
+        sliding_fraction: [f64; 4],
         in_pits: bool,
     ) -> [f64; 4] {
         for index in 0..4 {
@@ -358,7 +361,10 @@ impl TireWearTracker {
 
             if let Some(previous) = self.last_remaining[index] {
                 let wear = previous - current;
-                if wear > 0.0 && brake > 0.02 && slip_ratio[index] < Self::LOCK_SLIP_RATIO {
+                if wear > 0.0
+                    && slip_ratio[index] < Self::LOCK_SLIP_RATIO
+                    && sliding_fraction[index] >= Self::MIN_SLIDING_FRACTION
+                {
                     self.flat_spot_wear[index] += wear;
                 }
 
@@ -2733,7 +2739,7 @@ impl TelemetrySource for LmuTelemetrySource {
         let player_tire_flat_spot_percent = self.tire_wear_tracker.update(
             snapshot.player_tire_remaining_by_wheel_percent,
             snapshot.player_tire_slip_ratio,
-            snapshot.brake,
+            snapshot.player_tire_sliding_fraction,
             in_pits,
         );
         let formation = (10..=13).contains(&snapshot.session_type) && snapshot.game_phase == 3;
@@ -3227,28 +3233,35 @@ mod tests {
     }
 
     #[test]
-    fn flat_spot_wear_only_accumulates_during_a_braking_lockup() {
+    fn flat_spot_wear_only_accumulates_during_a_localized_slide() {
         let mut tracker = TireWearTracker::default();
-        tracker.update([100.0; 4], [0.0; 4], 0.0, false);
+        tracker.update([100.0; 4], [0.0; 4], [0.0; 4], false);
 
-        let normal_wear = tracker.update([99.9; 4], [-0.1; 4], 0.7, false);
+        let normal_wear = tracker.update([99.9; 4], [-0.1; 4], [0.8; 4], false);
         assert_eq!(normal_wear, [0.0; 4]);
 
-        let lock_wear =
-            tracker.update([99.7, 99.8, 99.9, 99.9], [-0.5, -0.5, 0.0, 0.0], 0.7, false);
-        assert!((lock_wear[0] - 0.2).abs() < 0.001);
-        assert!((lock_wear[1] - 0.1).abs() < 0.001);
-        assert_eq!(lock_wear[2], 0.0);
-        assert_eq!(lock_wear[3], 0.0);
+        let low_grip_wear = tracker.update([99.8; 4], [-0.5; 4], [0.4; 4], false);
+        assert_eq!(low_grip_wear, [0.0; 4]);
+
+        let slide_wear = tracker.update(
+            [99.6, 99.7, 99.8, 99.8],
+            [-0.5, -0.5, 0.0, 0.0],
+            [0.8, 0.6, 0.8, 0.8],
+            false,
+        );
+        assert!((slide_wear[0] - 0.2).abs() < 0.001);
+        assert!((slide_wear[1] - 0.1).abs() < 0.001);
+        assert_eq!(slide_wear[2], 0.0);
+        assert_eq!(slide_wear[3], 0.0);
     }
 
     #[test]
     fn flat_spot_wear_resets_when_tyres_are_changed_in_pits() {
         let mut tracker = TireWearTracker::default();
-        tracker.update([90.0; 4], [0.0; 4], 0.0, false);
-        tracker.update([89.5; 4], [-0.5; 4], 0.8, false);
+        tracker.update([90.0; 4], [0.0; 4], [0.0; 4], false);
+        tracker.update([89.5; 4], [-0.5; 4], [0.8; 4], false);
 
-        let after_change = tracker.update([100.0; 4], [0.0; 4], 0.0, true);
+        let after_change = tracker.update([100.0; 4], [0.0; 4], [0.0; 4], true);
         assert_eq!(after_change, [0.0; 4]);
     }
 
@@ -3886,7 +3899,7 @@ mod tests {
     }
 
     #[test]
-    fn converts_steering_fraction_to_physical_degrees_and_clamps_force() {
+    fn converts_steering_fraction_to_game_wheel_degrees_and_clamps_force() {
         let snapshot = LmuSnapshot {
             steering: -0.5,
             steering_range_degrees: 900.0,

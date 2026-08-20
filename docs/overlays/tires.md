@@ -21,8 +21,11 @@ Detailed Damage (`damage.md`).
 - Convert live `mBrakeTemp` from Kelvin to Celsius despite the inherited SDK
   comment.
 - `mWear` is remaining tread (`1.0` new), so show `mWear * 100`.
-- Estimate flat spot by accumulating actual tread loss during braking lockups with
-  per-wheel slip ratio below `-0.3`. Reset after a pit tyre change or new session.
+- Estimate flat spot by accumulating actual tread loss while at least half of the
+  contact patch is sliding and the tyre's peripheral speed is at least 30% below
+  its per-wheel ground speed. This detects localized dragging during both braking
+  lockups and unbraked spins without counting a freely rotating lateral slide.
+  Reset after a pit tyre change or new session.
 - Compound, puncture and detached-wheel states come from each telemetry wheel.
 
 ## Chassis and suspension mapping
