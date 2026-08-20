@@ -1,11 +1,12 @@
 use serde::Serialize;
 
+const MAX_GUIDANCE_SAVING_PERCENT: f64 = 15.0;
+
 #[derive(Clone, Copy, Debug)]
 pub(super) struct ResourceStrategyInput {
     pub current: f64,
     pub capacity: f64,
     pub consumption: f64,
-    pub supported_minimum_consumption: f64,
     pub laps_remaining: f64,
     pub lap_progress: f64,
     pub completed_laps: i32,
@@ -154,11 +155,12 @@ pub(super) fn calculate_resource_strategy(
     let stops = stops_required(input).max(minimum_stops);
     let reduced_stops = stops.saturating_sub(1).max(minimum_stops);
     let reduced_consumption = consumption_for_stops(input, reduced_stops);
-    let reduction_is_supported = !input.pit_out_lap
+    let reduced_saving_percent =
+        ((input.consumption - reduced_consumption) / input.consumption * 100.0).max(0.0);
+    let shows_reduced_plan = !input.pit_out_lap
         && reduced_stops < stops
-        && valid_positive(input.supported_minimum_consumption)
-        && reduced_consumption + 1e-6 >= input.supported_minimum_consumption;
-    let (target_stops, target_consumption) = if reduction_is_supported {
+        && reduced_saving_percent <= MAX_GUIDANCE_SAVING_PERCENT + 1e-6;
+    let (target_stops, target_consumption) = if shows_reduced_plan {
         (reduced_stops, reduced_consumption)
     } else {
         (stops, input.consumption)
@@ -227,7 +229,6 @@ mod tests {
             current: 35.0,
             capacity: 100.0,
             consumption: 10.0,
-            supported_minimum_consumption: 7.0,
             laps_remaining: 18.5,
             lap_progress: 0.4,
             completed_laps: 12,
@@ -238,10 +239,10 @@ mod tests {
     }
 
     #[test]
-    fn calculates_stops_target_window_and_fill() {
+    fn calculates_stops_window_and_fill_without_an_exaggerated_target() {
         let strategy = calculate_resource_strategy(input(), 120.0, 0).unwrap();
         assert_eq!(strategy.stops, 2);
-        assert_eq!(strategy.target_stops, 1);
+        assert_eq!(strategy.target_stops, 2);
         assert_eq!(strategy.earliest_pit_lap, 13);
         assert_eq!(strategy.latest_pit_lap, 15);
         assert!((strategy.autonomy - 3.5).abs() < 1e-9);
@@ -277,7 +278,6 @@ mod tests {
                 current: 2.968,
                 capacity: 75.0,
                 consumption: 2.872,
-                supported_minimum_consumption: 2.5,
                 laps_remaining: 12.0,
                 lap_progress: 0.0,
                 completed_laps: 0,
@@ -309,10 +309,10 @@ mod tests {
     }
 
     #[test]
-    fn keeps_current_stops_when_reduced_plan_is_below_supported_consumption() {
+    fn shows_a_reduced_plan_as_a_reasonable_saving_reference() {
         let strategy = calculate_resource_strategy(
             ResourceStrategyInput {
-                supported_minimum_consumption: 8.0,
+                current: 57.25,
                 ..input()
             },
             120.0,
@@ -321,24 +321,19 @@ mod tests {
         .unwrap();
 
         assert_eq!(strategy.stops, 2);
-        assert_eq!(strategy.target_stops, 2);
-        assert_eq!(strategy.target_consumption, 10.0);
-        assert_eq!(strategy.saving_percent, 0.0);
+        assert_eq!(strategy.target_stops, 1);
+        assert!((strategy.target_consumption - 8.5).abs() < 1e-9);
+        assert!((strategy.saving_percent - 15.0).abs() < 1e-9);
     }
 
     #[test]
-    fn does_not_claim_a_stop_reduction_without_clean_lap_support() {
-        let strategy = calculate_resource_strategy(
-            ResourceStrategyInput {
-                supported_minimum_consumption: 0.0,
-                ..input()
-            },
-            120.0,
-            0,
-        )
-        .unwrap();
+    fn hides_a_reduced_plan_when_the_required_saving_is_exaggerated() {
+        let strategy = calculate_resource_strategy(input(), 120.0, 0).unwrap();
 
-        assert_eq!(strategy.target_stops, strategy.stops);
+        assert_eq!(strategy.stops, 2);
+        assert_eq!(strategy.target_stops, 2);
+        assert_eq!(strategy.target_consumption, 10.0);
+        assert_eq!(strategy.saving_percent, 0.0);
     }
 
     #[test]

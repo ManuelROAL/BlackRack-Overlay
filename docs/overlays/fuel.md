@@ -43,12 +43,13 @@ math belongs in Rust. `fuel.ts` only formats serialized plans.
   multi-stop strategy. Do not learn garage exit as a race pit-out lap.
 - Automatic target consumption follows TinyPedal semantics and cannot exceed the
   qualifying reference. Reaching the cap means full-power running until the stop.
-- Only propose removing a stop when the required consumption is supported by at
-  least three recent clean laps. Use the lower quartile of up to twelve clean
-  laps so one anomalously low lap cannot define an unattainable target. Without
-  enough evidence, or when the required target is below that bound, retain the
-  current stop count and request no additional saving. A parallel fuel/energy
-  resource may also impose a stop-count floor that the target cannot cross.
+- Show the theoretical one-stop reduction, its target consumption and the
+  required saving up to a 15% saving threshold, so the driver has a useful
+  reference even before achieving that pace. Above that threshold the target is
+  too disproportionate to present as actionable guidance. Do not gate this
+  guidance on previously observed clean-lap consumption. A parallel fuel/energy
+  resource may still impose a stop-count floor that the target cannot cross, and
+  a pit stop already in progress cannot be removed.
 
 ## Race distance
 
@@ -101,8 +102,9 @@ math belongs in Rust. `fuel.ts` only formats serialized plans.
   plan accounts for both resources.
 - The PIT indicator is neutral above three laps of autonomy and changes as the
   stop approaches. Show a distinct full-power state when qualifying caps target
-  consumption. Label the target `MANTÉN` when clean-lap evidence rejects the
-  attempted stop reduction and the current stop count is retained.
+  consumption. Label the target `MANTÉN` when an active pit stop, the parallel
+  resource or an over-15% saving requirement prevents reducing the current stop
+  count.
 
 ## Verification focus
 

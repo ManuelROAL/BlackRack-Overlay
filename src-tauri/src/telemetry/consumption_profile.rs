@@ -4,8 +4,6 @@ use std::path::{Path, PathBuf};
 
 const PROFILE_VERSION: u32 = 5;
 const PROFILE_POINTS: usize = 101;
-const FEASIBILITY_SAMPLE_COUNT: usize = 3;
-const RECENT_CLEAN_LAPS: usize = 12;
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 struct ResourceProfile {
@@ -140,14 +138,6 @@ struct StoredProfiles {
     pit_in: LapConsumptionAverage,
     #[serde(default)]
     pit_out: LapConsumptionAverage,
-    #[serde(default)]
-    fuel_clean_totals: Vec<f64>,
-    #[serde(default)]
-    energy_clean_totals: Vec<f64>,
-    #[serde(default)]
-    fuel_supported_minimum: f64,
-    #[serde(default)]
-    energy_supported_minimum: f64,
 }
 
 impl StoredProfiles {
@@ -162,32 +152,8 @@ impl StoredProfiles {
             energy_projection_correction: ProjectionCorrection::default(),
             pit_in: LapConsumptionAverage::default(),
             pit_out: LapConsumptionAverage::default(),
-            fuel_clean_totals: Vec::new(),
-            energy_clean_totals: Vec::new(),
-            fuel_supported_minimum: 0.0,
-            energy_supported_minimum: 0.0,
         }
     }
-}
-
-fn record_clean_total(history: &mut Vec<f64>, value: f64) {
-    if !value.is_finite() || value <= 0.0 {
-        return;
-    }
-    history.push(value);
-    if history.len() > RECENT_CLEAN_LAPS {
-        history.remove(0);
-    }
-}
-
-fn supported_minimum(history: &[f64]) -> f64 {
-    if history.len() < FEASIBILITY_SAMPLE_COUNT {
-        return 0.0;
-    }
-    let mut sorted = history.to_vec();
-    sorted.sort_by(f64::total_cmp);
-    let lower_quartile = (((sorted.len() - 1) as f64) * 0.25).ceil() as usize;
-    sorted[lower_quartile]
 }
 
 #[derive(Clone, Debug)]
@@ -278,8 +244,6 @@ pub struct ProfileEstimate {
     pub energy_pit_cycle_consumption: f64,
     pub fuel_pit_out_consumption: f64,
     pub energy_pit_out_consumption: f64,
-    pub fuel_supported_minimum: f64,
-    pub energy_supported_minimum: f64,
     pub current_lap_started_in_pits: bool,
     pub samples: u32,
 }
@@ -389,8 +353,6 @@ impl ConsumptionProfiler {
             },
             fuel_pit_out_consumption: self.profiles.pit_out.fuel.value,
             energy_pit_out_consumption: self.profiles.pit_out.energy.value,
-            fuel_supported_minimum: self.profiles.fuel_supported_minimum,
-            energy_supported_minimum: self.profiles.energy_supported_minimum,
             current_lap_started_in_pits: trace.started_in_pits,
             samples: self.profiles.fuel.samples.max(self.profiles.energy.samples),
         }
@@ -464,9 +426,6 @@ impl ConsumptionProfiler {
                             .fuel_projection_correction
                             .update(&self.profiles.fuel, &lap);
                     }
-                    record_clean_total(&mut self.profiles.fuel_clean_totals, total);
-                    self.profiles.fuel_supported_minimum =
-                        supported_minimum(&self.profiles.fuel_clean_totals);
                     changed = true;
                 }
             }
@@ -479,9 +438,6 @@ impl ConsumptionProfiler {
                             .energy_projection_correction
                             .update(&self.profiles.energy, &lap);
                     }
-                    record_clean_total(&mut self.profiles.energy_clean_totals, total);
-                    self.profiles.energy_supported_minimum =
-                        supported_minimum(&self.profiles.energy_clean_totals);
                     changed = true;
                 }
             }
@@ -569,20 +525,9 @@ impl ConsumptionProfiler {
 
 #[cfg(test)]
 mod tests {
-    use super::{record_clean_total, supported_minimum, ConsumptionProfiler};
+    use super::ConsumptionProfiler;
     use std::fs;
     use std::time::{SystemTime, UNIX_EPOCH};
-
-    #[test]
-    fn feasible_minimum_needs_three_laps_and_resists_one_low_outlier() {
-        let mut history = Vec::new();
-        record_clean_total(&mut history, 7.0);
-        record_clean_total(&mut history, 10.0);
-        assert_eq!(supported_minimum(&history), 0.0);
-
-        record_clean_total(&mut history, 10.2);
-        assert_eq!(supported_minimum(&history), 10.0);
-    }
 
     #[test]
     fn learns_clean_lap_and_projects_current_consumption_by_distance() {

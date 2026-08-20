@@ -53,7 +53,6 @@ impl TelemetrySource for MockTelemetrySource {
                 current,
                 capacity,
                 consumption,
-                supported_minimum_consumption: consumption * 0.9,
                 laps_remaining,
                 lap_progress,
                 completed_laps,
