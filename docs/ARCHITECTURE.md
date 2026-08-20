@@ -81,6 +81,9 @@ Tauri events       analysis JSONL      browser-source SSE
 - `src/telemetry-types.ts`: TypeScript mirror of serialized Rust types.
 - `src/runtime-events.ts`: Tauri, composite-frame messaging or browser-source SSE
   abstraction.
+- `src/frontend-diagnostics.ts`: persists uncaught errors, unhandled promise
+  rejections and explicit `console.error` calls through the startup log, while
+  retaining the original browser-console output and bounding duplicate reports.
 - `src/overlay-fit.ts`: scales the complete design when a window is resized.
 - `src/overlay-interaction.ts`: drag/click-through behavior.
 - `src/overlay-appearance.ts`: transparency persistence and application.
