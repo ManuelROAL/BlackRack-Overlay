@@ -4,19 +4,19 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#080b10" />
-    <title>LMU · Parada estimada</title>
+    <title data-i18n="title.pitstop">LMU · Parada estimada</title>
   </head>
   <body class="pitstop-body">
     <main class="pitstop-shell" data-tauri-drag-region>
-      <header data-tauri-drag-region>PARADA ESTIMADA</header>
+      <header data-tauri-drag-region data-i18n="pitstop.heading">PARADA ESTIMADA</header>
       <dl data-tauri-drag-region>
-        <div><dt>Daños</dt><dd data-pitstop-value="damage">--.-s</dd></div>
-        <div><dt data-pitstop-resource>Combustible</dt><dd data-pitstop-value="resource">--.-s</dd></div>
-        <div><dt>Neumáticos</dt><dd data-pitstop-value="tires">--.-s</dd></div>
-        <div><dt>Cambio piloto</dt><dd data-pitstop-value="driver">--.-s</dd></div>
-        <div class="pitstop-penalty" data-pitstop-penalty hidden><dt>Penalización</dt><dd data-pitstop-value="penalty">--.-s</dd></div>
+        <div><dt data-i18n="pitstop.damage">Daños</dt><dd data-pitstop-value="damage">--.-s</dd></div>
+        <div><dt data-pitstop-resource data-i18n="pitstop.fuel">Combustible</dt><dd data-pitstop-value="resource">--.-s</dd></div>
+        <div><dt data-i18n="pitstop.tires">Neumáticos</dt><dd data-pitstop-value="tires">--.-s</dd></div>
+        <div><dt data-i18n="pitstop.driver">Cambio piloto</dt><dd data-pitstop-value="driver">--.-s</dd></div>
+        <div class="pitstop-penalty" data-pitstop-penalty hidden><dt data-i18n="pitstop.penalty">Penalización</dt><dd data-pitstop-value="penalty">--.-s</dd></div>
       </dl>
-      <footer data-tauri-drag-region><span>Total</span><strong data-pitstop-value="total">--.-s</strong></footer>
+      <footer data-tauri-drag-region><span data-i18n="pitstop.total">Total</span><strong data-pitstop-value="total">--.-s</strong></footer>
     </main>
     <script type="module" src="/src/pitstop.ts"></script>
   </body>

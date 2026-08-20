@@ -362,6 +362,11 @@ select {
   background: rgb(255 255 255 / 2.5%);
 }
 
+.language-setting-group {
+  grid-column: 1 / -1;
+  min-height: 76px;
+}
+
 .global-setting-copy {
   display: grid;
   align-self: center;

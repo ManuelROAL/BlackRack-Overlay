@@ -25,7 +25,7 @@ export type StandingsColumnId =
 
 export interface StandingsColumnDefinition {
   id: StandingsColumnId;
-  label: string;
+  labelKey: import("./i18n").TranslationKey;
   header: string;
   width: number;
   configurable: boolean;
@@ -56,41 +56,36 @@ export type StandingsHeaderOptionId =
 
 export interface StandingsHeaderOptionDefinition {
   id: StandingsHeaderOptionId;
-  label: string;
+  labelKey: import("./i18n").TranslationKey;
 }
 
 export const STANDINGS_SETTINGS_KEY = "lmu-overlay.standings.v1";
 
 export const STANDINGS_HEADER_OPTIONS: StandingsHeaderOptionDefinition[] = [
-  { id: "sessionType", label: "Tipo de sesión" },
-  { id: "eventSplit", label: "Split del evento" },
-  { id: "remainingTime", label: "Tiempo restante / total" },
-  { id: "laps", label: "Vuelta actual / restantes" },
-  { id: "airTemperature", label: "Temperatura ambiente" },
-  { id: "trackTemperature", label: "Temperatura de pista" },
-  { id: "brakeBias", label: "Reparto de frenada" },
-  { id: "trackLimits", label: "Cortes de circuito" },
-  { id: "realTimeClock", label: "Hora real" }
+  { id: "sessionType", labelKey: "header.sessionType" }, { id: "eventSplit", labelKey: "header.eventSplit" },
+  { id: "remainingTime", labelKey: "header.remainingTime" }, { id: "laps", labelKey: "header.laps" },
+  { id: "airTemperature", labelKey: "header.airTemperature" }, { id: "trackTemperature", labelKey: "header.trackTemperature" },
+  { id: "brakeBias", labelKey: "header.brakeBias" }, { id: "trackLimits", labelKey: "header.trackLimits" }, { id: "realTimeClock", labelKey: "header.realTimeClock" }
 ];
 
 export const STANDINGS_COLUMNS: StandingsColumnDefinition[] = [
-  { id: "position", label: "Posición", header: "", width: 36, configurable: false, identity: true },
-  { id: "number", label: "Dorsal", header: "", width: 28, configurable: true, identity: true },
-  { id: "manufacturer", label: "Marca", header: "", width: 28, configurable: true, identity: true },
-  { id: "badge", label: "Insignia", header: "", width: 27, configurable: true, identity: true },
-  { id: "driver", label: "Piloto", header: "", width: 130, configurable: false, identity: true },
-  { id: "ranks", label: "DR / SR", header: "", width: 95, configurable: true, identity: true },
-  { id: "gap", label: "Gap", header: "GAP", width: 50, configurable: true, identity: false },
-  { id: "interval", label: "Intervalo", header: "INT", width: 50, configurable: true, identity: false },
-  { id: "best", label: "Mejor vuelta", header: "BEST", width: 68, configurable: true, identity: false },
-  { id: "last", label: "Última vuelta", header: "LAST", width: 68, configurable: true, identity: false },
-  { id: "average", label: "Media 5", header: "AVG 5", width: 68, configurable: true, identity: false },
-  { id: "energy", label: "Energía", header: "NRG", width: 90, configurable: true, identity: false },
-  { id: "damage", label: "Daño", header: "DMG", width: 42, configurable: true, identity: false },
-  { id: "trackLimits", label: "Cortes de circuito", header: "TL", width: 30, configurable: true, identity: false },
-  { id: "pitStops", label: "Paradas / tiempo", header: "PIT", width: 42, configurable: true, identity: false },
-  { id: "tire", label: "Neumático", header: "NEU", width: 30, configurable: true, identity: false },
-  { id: "signals", label: "Banderas / estados", header: "", width: 115, configurable: true, identity: false }
+  { id: "position", labelKey: "column.position", header: "", width: 36, configurable: false, identity: true },
+  { id: "number", labelKey: "column.number", header: "", width: 28, configurable: true, identity: true },
+  { id: "manufacturer", labelKey: "column.manufacturer", header: "", width: 28, configurable: true, identity: true },
+  { id: "badge", labelKey: "column.badge", header: "", width: 27, configurable: true, identity: true },
+  { id: "driver", labelKey: "column.driver", header: "", width: 130, configurable: false, identity: true },
+  { id: "ranks", labelKey: "column.ranks", header: "", width: 95, configurable: true, identity: true },
+  { id: "gap", labelKey: "column.gap", header: "GAP", width: 50, configurable: true, identity: false },
+  { id: "interval", labelKey: "column.interval", header: "INT", width: 50, configurable: true, identity: false },
+  { id: "best", labelKey: "column.best", header: "BEST", width: 68, configurable: true, identity: false },
+  { id: "last", labelKey: "column.last", header: "LAST", width: 68, configurable: true, identity: false },
+  { id: "average", labelKey: "column.average", header: "AVG 5", width: 68, configurable: true, identity: false },
+  { id: "energy", labelKey: "column.energy", header: "NRG", width: 90, configurable: true, identity: false },
+  { id: "damage", labelKey: "column.damage", header: "DMG", width: 42, configurable: true, identity: false },
+  { id: "trackLimits", labelKey: "column.trackLimits", header: "TL", width: 30, configurable: true, identity: false },
+  { id: "pitStops", labelKey: "column.pitStops", header: "PIT", width: 42, configurable: true, identity: false },
+  { id: "tire", labelKey: "column.tire", header: "NEU", width: 30, configurable: true, identity: false },
+  { id: "signals", labelKey: "column.signals", header: "", width: 115, configurable: true, identity: false }
 ];
 
 export const defaultStandingsSettings = (): StandingsSettings => {

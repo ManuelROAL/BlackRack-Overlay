@@ -31,9 +31,17 @@ brake and tyre SVGs belong only to Damage + Tyres (`tires.md`).
 - Show percentages only.
 - Keep label and value columns narrow and fixed. Reserve only enough value width
   for `100%`, align it right and leave no padding after the values.
+- Keep the Spanish bodywork label abbreviated as `Carroc.` so both bundled
+  locales fit the fixed 41 px label column at minimum size.
 - Preserve the intentionally compact square width and lower host minimum.
 
 ## Verification focus
 
 Check independent missing-data states, detached-wheel suspension override, least-
 healthy tyre selection, threshold boundaries and fitted compact width.
+
+## Localization
+
+Static labels, the document title and accessibility text use the bundled locale;
+percentages and telemetry semantics remain language-neutral. Its OBS route follows
+the shared saved locale or a page-local `?lang=` override.

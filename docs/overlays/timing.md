@@ -49,3 +49,9 @@ El panel consume el ciclo base de 50 Hz y no construye clasificaciones.
 - `npm.cmd run build` cubre las entradas independiente, compuesta y OBS.
 - En LMU, validar cruces S1/S2/meta, vuelta inválida, reinicio de sesión y recarga
   del mejor absoluto tras reiniciar la aplicación.
+
+## Localización
+
+Las etiquetas estáticas, el historial, el título y el texto accesible usan el
+idioma incluido seleccionado. Los tiempos y deltas conservan su notación compacta.
+La ruta OBS usa el idioma compartido guardado o un override local `?lang=`.

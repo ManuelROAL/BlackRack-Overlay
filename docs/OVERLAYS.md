@@ -69,6 +69,11 @@ telemetry semantics and file ownership live under `docs/overlays/`; use
 
 ## Composite delivery and OBS
 
+- Native overlay documents use the bundled locale selected by the control panel.
+  Translate static HTML, dynamic status, tooltips and accessibility text through
+  `src/i18n/`; keep telemetry values and stable IDs semantic. A locale change
+  reloads the composite and mounted documents instead of adding work to hot
+  telemetry render paths.
 - Composite hosts consume grouped `telemetry://batch` events, forward only named
   locally mounted targets, and project each frame onto the reused per-overlay
   allowlist in `src/composite.ts` before same-origin `postMessage`.
@@ -76,9 +81,14 @@ telemetry semantics and file ownership live under `docs/overlays/`; use
   restore per-overlay native listeners or direct cross-realm object events.
 - The optional browser server listens only on `http://127.0.0.1:47636`, uses a
   single SSE endpoint, and remains completely inactive when disabled.
+- OBS routes receive the application locale before their modules render. A valid
+  `?lang=es` or `?lang=en` query overrides the locale for that page without
+  changing the saved browser-source preference or another scene.
 - Its route catalog must match `docs/overlays/README.md`. Mirror every configurable
   preference that an OBS page needs because browser pages do not share the Tauri
   WebView's `localStorage`.
+- The `/` route serves the catalog-driven `browser.html` entry. Keep its links in
+  sync with this route catalog; do not duplicate translated labels in Rust.
 - Serve browser assets through Tauri's embedded `frontendDist` resolver; do not
   install a separate `web/` resource directory.
 

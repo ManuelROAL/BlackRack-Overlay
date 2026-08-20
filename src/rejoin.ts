@@ -6,6 +6,7 @@ import { createOverlayPerformanceTracker } from "./overlay-performance";
 import { bindOverlayTransparency } from "./overlay-appearance";
 import type { RejoinWarning, TelemetryFrame } from "./telemetry-types";
 import { listenTelemetry } from "./runtime-events";
+import { formatNumber, t } from "./i18n";
 
 fitOverlay({ width: 360, height: 140 });
 bindOverlayTransparency("rejoin");
@@ -18,7 +19,7 @@ const text = (id: string, value: string): void => {
 
 const distanceLabel = (meters: number): string => {
   if (meters < 1_000) return `${Math.round(meters)} m`;
-  return `${(meters / 1_000).toFixed(1).replace(".", ",")} km`;
+  return `${formatNumber(Math.round(meters / 100) / 10)} km`;
 };
 
 const classLabel = (vehicleClass: string): string =>
@@ -31,19 +32,19 @@ const render = (warning: RejoinWarning): void => {
   const active = String(warning.active);
   if (card.dataset.active !== active) card.dataset.active = active;
   if (card.dataset.safety !== warning.safety) card.dataset.safety = warning.safety;
-  text("rejoin-reason", warning.reason === "pit_exit" ? "SALIDA DE BOXES" : "REJOIN");
+  text("rejoin-reason", t(warning.reason === "pit_exit" ? "rejoin.reasonPit" : "rejoin.reason"));
   text(
     "rejoin-status",
     warning.safety === "danger"
-      ? "NO ENTRAR"
+      ? t("rejoin.danger")
       : warning.safety === "caution"
-        ? "PRECAUCIÓN"
-        : "SEGURO"
+        ? t("rejoin.caution")
+        : t("rejoin.safe")
   );
 
   if (!warning.rear_car_available) {
-    text("rejoin-distance", "LIBRE");
-    text("rejoin-eta", "SIN COCHE");
+    text("rejoin-distance", t("rejoin.clear"));
+    text("rejoin-eta", t("rejoin.noCar"));
     text("rejoin-car", "");
     return;
   }
@@ -52,8 +53,8 @@ const render = (warning: RejoinWarning): void => {
   text(
     "rejoin-eta",
     warning.time_to_arrival_seconds > 0
-      ? `${warning.time_to_arrival_seconds.toFixed(1).replace(".", ",")} s`
-      : "NO ACERCA"
+      ? `${formatNumber(Math.round(warning.time_to_arrival_seconds * 10) / 10)} s`
+      : t("rejoin.notClosing")
   );
   const position = warning.car_position > 0 ? `P${warning.car_position}` : "P--";
   text("rejoin-car", `${position} · ${classLabel(warning.vehicle_class)}`);

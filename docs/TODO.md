@@ -46,9 +46,11 @@ These are hypotheses, not approved changes; use measurements first.
 
 ## Product roadmap
 
-- Implement bundled Spanish/English localization in phased form, including the
-  control panel, overlays and OBS routes; preserve stable telemetry/persistence
-  IDs and avoid work in hot render paths. See `docs/LOCALIZATION.md`.
+- The Spanish/English localization rollout is complete through phase 4: catalog
+  parameters and metadata are validated, visible-copy candidates use a documented
+  allowlist, native/OBS surfaces share catalogs and contributor steps are recorded.
+  Keep the 100%/125%/150% native WebView2 language pass in release validation and
+  add later locales through `docs/LOCALIZATION_CONTRIBUTING.md`.
 - Validate and implement live telemetry under Proton/Linux.
 - Add repeatable session capture/replay fixtures for development without LMU.
 - Expand Rust model tests for Standings/Relative selection and frontend tests for

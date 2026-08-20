@@ -72,6 +72,9 @@ in `docs/overlays/` and should not be duplicated here.
 - Tauri embeds `frontendDist`; the installer does not deploy a duplicate `web/`
   directory.
 - OBS browser source is localhost-only, optional and off by default.
+- OBS pages normally mirror the application locale. A supported `?lang=` query is
+  deliberately page-local so scenes in different languages can coexist without
+  mutating the shared browser-source preference.
 - Shortcut conflicts are non-fatal and visible/configurable.
 - `startup.log` is replaced each run and is the first diagnostic for startup or
   frontend failures on another computer. Uncaught errors, unhandled promise
@@ -86,6 +89,8 @@ in `docs/overlays/` and should not be duplicated here.
 - `docs/TELEMETRY.md`: shared sources, identity and integrations.
 - `docs/OVERLAYS.md`: shared visual, host and control-panel contracts.
 - `docs/LOCALIZATION.md`: cross-cutting language scope, propagation and rollout.
+- `docs/LOCALIZATION_CONTRIBUTING.md`: locale terminology, catalog workflow,
+  automated checks and the visual verification matrix.
 - `docs/overlays/*.md`: authoritative behavior for one overlay.
 - `docs/PERFORMANCE.md`: active measurement method and next validation.
 - `docs/PERFORMANCE_HISTORY.md`: completed performance investigations.

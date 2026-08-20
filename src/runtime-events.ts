@@ -1,4 +1,5 @@
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import "./i18n/overlay";
 import { invoke } from "@tauri-apps/api/core";
 import { installFrontendDiagnostics } from "./frontend-diagnostics";
 import type { TelemetryFrame } from "./telemetry-types";

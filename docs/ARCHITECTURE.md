@@ -66,6 +66,11 @@ Tauri events       analysis JSONL      browser-source SSE
   - Optional localhost-only HTTP/SSE server at `127.0.0.1:47636`.
   - Serves OBS pages through Tauri's embedded `frontendDist` asset resolver; it
     does not read an installed `web/` directory.
+  - Injects the selected locale and browser-only preferences before overlay
+    modules run. `?lang=es|en` overrides only that page, while the localized route
+    index keeps the resolved override in its links.
+  - Returns stable browser-server error kinds to the control panel and retains
+    raw operating-system details only for diagnostics.
   - Starts only when enabled and serializes frames only with connected clients.
 
 ## Frontend ownership
@@ -73,6 +78,11 @@ Tauri events       analysis JSONL      browser-source SSE
 - `src/main.ts`: control panel and persisted settings.
   The support action asks the Rust backend to open the fixed project Ko-fi URL
   in the system browser; no remote page is loaded inside the application WebView.
+  Known browser-server and shortcut failures are localized from stable backend
+  kinds/codes; raw system details are logged rather than rendered as UI copy.
+- `browser.html` and `src/browser-index.ts`: catalog-driven OBS route index. The
+  backend serves this built entry and injects the same locale metadata used by
+  overlay pages; it does not maintain a second translated route catalog.
 - `src/composite.ts`: per-monitor host, iframe lifecycle, drag/resize chrome and
   routing between Tauri events and embedded overlay documents. Each host listens
   to the single native telemetry batch and forwards frames only to locally mounted
@@ -133,6 +143,9 @@ blocking HTTP calls into `next_frame()`.
 - Browser source and shortcuts: JSON under the application config directory.
 - Overlay choices, columns and transparency: WebView `localStorage`. Transparency
   stores individual values separately from its general/individual scope.
+- The selected UI locale: WebView `localStorage` under
+  `lmu-overlay.locale.v1`; configuration schema 7 also exports it as
+  `ui.locale`.
 - Learned consumption profiles: application data `consumption-profiles/`.
 - Current and previous startup/frontend failure logs, plus optional JSONL analysis
   logs: application data directory.

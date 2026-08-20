@@ -13,19 +13,20 @@ use crate::telemetry::TelemetryFrame;
 
 const ADDRESS: &str = "127.0.0.1:47636";
 const BASE_URL: &str = "http://127.0.0.1:47636";
-const BROWSER_OVERLAYS: [(&str, &str, &str); 12] = [
-    ("standings", "standings.html", "Standings"),
-    ("relative", "relative.html", "Relative"),
-    ("fuel", "fuel.html", "Combustible / energía"),
-    ("pitstop", "pitstop.html", "Parada estimada"),
-    ("flags", "flags.html", "Banderas"),
-    ("rejoin", "rejoin.html", "Rejoin"),
-    ("delta", "delta.html", "Delta"),
-    ("timing", "timing.html", "Timing compacto"),
-    ("driving", "driving.html", "Trailing + Pedal"),
-    ("tires", "tires.html", "Daños + neumáticos"),
-    ("damage", "damage.html", "Daño detallado"),
-    ("trackmap", "trackmap.html", "Mapa del circuito"),
+const BROWSER_INDEX_ENTRY: &str = "browser.html";
+const BROWSER_OVERLAYS: [(&str, &str); 12] = [
+    ("standings", "standings.html"),
+    ("relative", "relative.html"),
+    ("fuel", "fuel.html"),
+    ("pitstop", "pitstop.html"),
+    ("flags", "flags.html"),
+    ("rejoin", "rejoin.html"),
+    ("delta", "delta.html"),
+    ("timing", "timing.html"),
+    ("driving", "driving.html"),
+    ("tires", "tires.html"),
+    ("damage", "damage.html"),
+    ("trackmap", "trackmap.html"),
 ];
 
 #[derive(Clone, Deserialize, Serialize)]
@@ -39,7 +40,24 @@ pub(crate) struct BrowserSourceStatus {
     running: bool,
     url: &'static str,
     clients: usize,
-    error: Option<String>,
+    error_kind: Option<BrowserSourceErrorKind>,
+    error_detail: Option<String>,
+}
+
+#[derive(Clone, Copy, Serialize)]
+#[serde(rename_all = "snake_case")]
+enum BrowserSourceErrorKind {
+    NotInitialized,
+    MissingAssets,
+    AddressUnavailable,
+    ServerConfiguration,
+    ServerStartup,
+    SettingsPersistence,
+}
+
+struct BrowserSourceFailure {
+    kind: BrowserSourceErrorKind,
+    detail: String,
 }
 
 struct ServerRuntime {
@@ -52,7 +70,7 @@ struct ServiceState {
     settings_path: PathBuf,
     app: AppHandle,
     runtime: Option<ServerRuntime>,
-    error: Option<String>,
+    error: Option<BrowserSourceFailure>,
 }
 
 struct BrowserSourceService {
@@ -97,7 +115,9 @@ pub(crate) fn configure(app: &AppHandle) {
         if !status.running {
             crate::startup_log::record(format!(
                 "warning: local browser source could not start: {}",
-                status.error.unwrap_or_else(|| "unknown error".into())
+                status
+                    .error_detail
+                    .unwrap_or_else(|| "unknown error".into())
             ));
         }
     }
@@ -110,7 +130,8 @@ pub(crate) fn status() -> BrowserSourceStatus {
             running: false,
             url: BASE_URL,
             clients: 0,
-            error: Some("El servidor todavia no se ha inicializado".into()),
+            error_kind: Some(BrowserSourceErrorKind::NotInitialized),
+            error_detail: None,
         };
     };
     let state = service
@@ -122,7 +143,8 @@ pub(crate) fn status() -> BrowserSourceStatus {
         running: state.runtime.is_some(),
         url: BASE_URL,
         clients: service.clients.load(Ordering::Relaxed),
-        error: state.error.clone(),
+        error_kind: state.error.as_ref().map(|error| error.kind),
+        error_detail: state.error.as_ref().map(|error| error.detail.clone()),
     }
 }
 
@@ -167,7 +189,10 @@ pub(crate) fn set_enabled(enabled: bool) -> BrowserSourceStatus {
         enabled: actual_enabled,
     }) {
         if let Err(error) = fs::write(&state.settings_path, contents) {
-            state.error = Some(format!("No se pudo guardar la configuracion: {error}"));
+            state.error = Some(BrowserSourceFailure {
+                kind: BrowserSourceErrorKind::SettingsPersistence,
+                detail: error.to_string(),
+            });
         }
     }
     drop(state);
@@ -212,21 +237,35 @@ pub(crate) fn has_clients() -> bool {
     })
 }
 
-fn start_server(app: AppHandle) -> Result<ServerRuntime, String> {
-    if app.asset_resolver().get("standings.html".into()).is_none() {
-        return Err("No se encontraron los recursos web incrustados".into());
+fn start_server(app: AppHandle) -> Result<ServerRuntime, BrowserSourceFailure> {
+    if [BROWSER_INDEX_ENTRY, "standings.html"]
+        .into_iter()
+        .any(|entry| app.asset_resolver().get(entry.into()).is_none())
+    {
+        return Err(BrowserSourceFailure {
+            kind: BrowserSourceErrorKind::MissingAssets,
+            detail: "embedded browser-source assets are unavailable".into(),
+        });
     }
-    let listener = TcpListener::bind(ADDRESS)
-        .map_err(|error| format!("No se pudo abrir {ADDRESS}: {error}"))?;
+    let listener = TcpListener::bind(ADDRESS).map_err(|error| BrowserSourceFailure {
+        kind: BrowserSourceErrorKind::AddressUnavailable,
+        detail: format!("{ADDRESS}: {error}"),
+    })?;
     listener
         .set_nonblocking(true)
-        .map_err(|error| format!("No se pudo configurar el servidor local: {error}"))?;
+        .map_err(|error| BrowserSourceFailure {
+            kind: BrowserSourceErrorKind::ServerConfiguration,
+            detail: error.to_string(),
+        })?;
     let (frame_tx, frame_rx) = mpsc::sync_channel::<String>(2);
     let (shutdown_tx, shutdown_rx) = mpsc::channel::<()>();
     let server_thread = thread::Builder::new()
         .name("lmu-browser-source".into())
         .spawn(move || server_loop(listener, app, frame_rx, shutdown_rx))
-        .map_err(|error| format!("No se pudo iniciar el servidor local: {error}"))?;
+        .map_err(|error| BrowserSourceFailure {
+            kind: BrowserSourceErrorKind::ServerStartup,
+            detail: error.to_string(),
+        })?;
     Ok(ServerRuntime {
         frames: frame_tx,
         shutdown: shutdown_tx,
@@ -307,11 +346,6 @@ fn write_sse_headers(stream: &mut TcpStream) -> std::io::Result<()> {
 }
 
 fn serve_request(stream: &mut TcpStream, request_path: &str, app: &AppHandle) {
-    if request_path == "/" {
-        let body = browser_source_index();
-        write_response(stream, 200, "text/html; charset=utf-8", body.as_bytes());
-        return;
-    }
     if request_path == "/browser-source-settings.js" {
         let settings = service()
             .map(|service| {
@@ -324,7 +358,7 @@ fn serve_request(stream: &mut TcpStream, request_path: &str, app: &AppHandle) {
             .unwrap_or_else(|| serde_json::json!({}));
         let json = serde_json::to_string(&settings).unwrap_or_else(|_| "{}".into());
         let script = format!(
-            "(()=>{{const p={json};if(p.standings)localStorage.setItem('lmu-overlay.standings.v1',JSON.stringify(p.standings));if(p.relative)localStorage.setItem('lmu-overlay.relative.v1',JSON.stringify(p.relative));if(p.driving)localStorage.setItem('lmu-overlay.driving.v1',JSON.stringify(p.driving));if(p.delta)localStorage.setItem('lmu-overlay.delta.v1',JSON.stringify(p.delta));if(p.timing)localStorage.setItem('lmu-overlay.timing.v1',JSON.stringify(p.timing));if(p.trackMap)localStorage.setItem('lmu-overlay.track-map-settings.v1',JSON.stringify(p.trackMap));if(p.transparency)localStorage.setItem('lmu-overlay.background-transparency.v1',JSON.stringify(p.transparency));if(p.fuel)localStorage.setItem('lmu-overlay.fuel-strategy.v1',JSON.stringify(p.fuel));document.documentElement.dataset.browserSource='true';}})();"
+            "(()=>{{const p={json},q=new URLSearchParams(location.search).get('lang'),valid=l=>typeof l==='string'&&Array.isArray(p.supportedLocales)&&p.supportedLocales.includes(l);if(valid(q))document.documentElement.dataset.localeOverride=q;else if(valid(p.locale))localStorage.setItem('lmu-overlay.locale.v1',p.locale);if(p.standings)localStorage.setItem('lmu-overlay.standings.v1',JSON.stringify(p.standings));if(p.relative)localStorage.setItem('lmu-overlay.relative.v1',JSON.stringify(p.relative));if(p.driving)localStorage.setItem('lmu-overlay.driving.v1',JSON.stringify(p.driving));if(p.delta)localStorage.setItem('lmu-overlay.delta.v1',JSON.stringify(p.delta));if(p.timing)localStorage.setItem('lmu-overlay.timing.v1',JSON.stringify(p.timing));if(p.trackMap)localStorage.setItem('lmu-overlay.track-map-settings.v1',JSON.stringify(p.trackMap));if(p.transparency)localStorage.setItem('lmu-overlay.background-transparency.v1',JSON.stringify(p.transparency));if(p.fuel)localStorage.setItem('lmu-overlay.fuel-strategy.v1',JSON.stringify(p.fuel));document.documentElement.dataset.browserSource='true';}})();"
         );
         write_response(
             stream,
@@ -335,8 +369,11 @@ fn serve_request(stream: &mut TcpStream, request_path: &str, app: &AppHandle) {
         return;
     }
 
-    let relative =
-        browser_overlay_entry(request_path).unwrap_or_else(|| request_path.trim_start_matches('/'));
+    let relative = if request_path == "/" {
+        BROWSER_INDEX_ENTRY
+    } else {
+        browser_overlay_entry(request_path).unwrap_or_else(|| request_path.trim_start_matches('/'))
+    };
     if relative.contains("..") || relative.is_empty() {
         write_response(stream, 404, "text/plain; charset=utf-8", b"Not found");
         return;
@@ -382,16 +419,6 @@ fn write_error(stream: &mut TcpStream, status: u16, message: &str) {
     );
 }
 
-fn browser_source_index() -> String {
-    let links = BROWSER_OVERLAYS
-        .iter()
-        .map(|(route, _, label)| format!("<a href=\"/{route}\">{label}</a>"))
-        .collect::<String>();
-    format!(
-        "<!doctype html><html><head><meta charset=\"utf-8\"><title>LMU Overlay · OBS</title><style>body{{margin:40px;background:#080b0f;color:#f4f7fa;font:16px sans-serif}}a{{display:block;width:max-content;margin:12px 0;color:#d8ff3e}}</style></head><body><h1>LMU Overlay · Fuentes de navegador</h1>{links}<p>Servidor local: {BASE_URL}</p></body></html>"
-    )
-}
-
 fn browser_overlay_entry(request_path: &str) -> Option<&'static str> {
     let route = request_path
         .strip_prefix('/')
@@ -399,21 +426,18 @@ fn browser_overlay_entry(request_path: &str) -> Option<&'static str> {
         .trim_end_matches('/');
     BROWSER_OVERLAYS
         .iter()
-        .find_map(|(candidate, entry, _)| (*candidate == route).then_some(*entry))
+        .find_map(|(candidate, entry)| (*candidate == route).then_some(*entry))
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{browser_overlay_entry, browser_source_index, BROWSER_OVERLAYS};
+    use super::{browser_overlay_entry, BROWSER_OVERLAYS};
 
     #[test]
-    fn every_browser_overlay_has_a_route_and_index_link() {
-        let index = browser_source_index();
-        for (route, entry, label) in BROWSER_OVERLAYS {
+    fn every_browser_overlay_has_a_route() {
+        for (route, entry) in BROWSER_OVERLAYS {
             assert_eq!(browser_overlay_entry(&format!("/{route}")), Some(entry));
             assert_eq!(browser_overlay_entry(&format!("/{route}/")), Some(entry));
-            assert!(index.contains(&format!("href=\"/{route}\"")));
-            assert!(index.contains(label));
         }
     }
 

@@ -15,6 +15,7 @@ import { listenRuntimeEvent, listenTelemetry } from "./runtime-events";
 import { airTemperatureIconUrl, compoundIconUrl, timingIconUrl, trackTemperatureIconUrl } from "./lmu-icons";
 import { applyTrackLimitTone, formatTrackLimitPoints } from "./track-limit-tone";
 import { formatDriverName } from "./driver-name-format";
+import { formatClock as formatRealClock, formatNumber, t, type TranslationKey } from "./i18n";
 
 let relativeSettings = readRelativeSettings();
 const relativeBaseHeight = (): number => Math.max(
@@ -145,8 +146,7 @@ const icon = (source: string, className: string): HTMLImageElement => {
   return image;
 };
 
-const decimal = (value: number, digits = 2): string =>
-  value.toFixed(digits).replace(".", ",");
+const decimal = (value: number, digits = 2): string => formatNumber(value, digits);
 
 const formatLapTime = (seconds: number): string => {
   if (!Number.isFinite(seconds) || seconds <= 0) return "--";
@@ -155,7 +155,7 @@ const formatLapTime = (seconds: number): string => {
 };
 
 const formatDifference = (laps: number, seconds: number): string => {
-  if (laps > 0) return `+${laps} V`;
+  if (laps > 0) return t("common.lapsBehind", { count: laps });
   return `+${decimal(Math.max(seconds, 0), 1)}`;
 };
 
@@ -201,7 +201,7 @@ const countryFlag = (nationality: string): HTMLImageElement | undefined => {
       fallbackActive = true;
       flag.src = fallbackSource;
       flag.alt = "XX";
-      flag.title = `${nationality} (bandera no disponible)`;
+      flag.title = t("relative.flagUnavailable", { nationality });
       return;
     }
     flag.remove();
@@ -223,19 +223,18 @@ const driverBadgeModules = import.meta.glob<string>(
   { eager: true, query: "?url", import: "default" }
 );
 
-const DRIVER_BADGE_LABELS: Record<string, string> = {
-  "sr-noob": "Novato",
-  "sr-rookie": "Novato",
-  "sr-probation": "En prueba",
-  "sr-warning": "Advertencia",
-  "sr-danger": "Peligro",
-  "sr-clean": "Buen piloto",
-  "sr-saint": "Piloto de confianza",
-  "s397": "Studio 397",
-  "content-creator": "Creador de contenido",
-  "irl-driver": "Piloto real",
-  "early-access": "Acceso anticipado",
-  "test-driver": "Piloto de pruebas"
+const DRIVER_BADGE_LABELS: Record<string, TranslationKey> = {
+  "sr-noob": "badge.noob",
+  "sr-rookie": "badge.noob",
+  "sr-probation": "badge.probation",
+  "sr-warning": "badge.warning",
+  "sr-danger": "badge.danger",
+  "sr-clean": "badge.clean",
+  "sr-saint": "badge.saint",
+  "content-creator": "badge.creator",
+  "irl-driver": "badge.realDriver",
+  "early-access": "badge.earlyAccess",
+  "test-driver": "badge.testDriver"
 };
 
 const driverBadge = (name: string): HTMLElement => {
@@ -243,7 +242,8 @@ const driverBadge = (name: string): HTMLElement => {
   const normalized = name.trim().toLowerCase();
   if (!normalized) return cell;
   const source = driverBadgeModules[`./assets/driver-badges/${normalized}.svg`];
-  const label = DRIVER_BADGE_LABELS[normalized] ?? normalized;
+  const labelKey = DRIVER_BADGE_LABELS[normalized];
+  const label = normalized === "s397" ? "Studio 397" : labelKey ? t(labelKey) : normalized;
   cell.title = label;
   cell.setAttribute("aria-label", label);
   cell.dataset.badge = normalized;
@@ -300,8 +300,8 @@ const signals = (entry: StandingEntry): HTMLElement => {
   const container = node("div", "standing-signals");
   if (entry.finish_status === 1) {
     const checkered = node("span", "race-flag checkered-flag");
-    checkered.title = "Finalizado";
-    checkered.setAttribute("aria-label", "Bandera a cuadros");
+    checkered.title = t("standings.finished");
+    checkered.setAttribute("aria-label", t("standings.checkeredAria"));
     container.append(checkered);
     return container;
   }
@@ -316,7 +316,7 @@ const signals = (entry: StandingEntry): HTMLElement => {
       `race-flag damage-flag${entry.damage_percent >= 50 ? " damage-flag--heavy" : ""}`,
       entry.damage_percent >= 50 ? "DMG!" : "DMG"
     );
-    damage.title = `Daño ${Math.round(entry.damage_percent)}%`;
+    damage.title = t("relative.damage", { value: Math.round(entry.damage_percent) });
     container.append(damage);
   }
   if (entry.causing_yellow) container.append(node("span", "race-flag yellow-flag", "Y"));
@@ -408,7 +408,7 @@ const createCell = (entry: StandingEntry, column: RelativeColumnId, trackLimit: 
       return cell;
     }
     case "relative": {
-      const gap = entry.is_player ? "0,0" : `${entry.relative_gap_seconds > 0 ? "+" : ""}${decimal(entry.relative_gap_seconds, 1)}`;
+      const gap = entry.is_player ? decimal(0, 1) : `${entry.relative_gap_seconds > 0 ? "+" : ""}${decimal(entry.relative_gap_seconds, 1)}`;
       return node("b", "standing-relative", gap);
     }
     case "lap": return node("b", "standing-lap-number", entry.total_laps.toString());
@@ -447,8 +447,8 @@ const createCell = (entry: StandingEntry, column: RelativeColumnId, trackLimit: 
       const value = entry.track_limits_steps === null ? "--" : formatTrackLimitPoints(entry.track_limits_steps);
       const cell = node("span", "standing-track-limits", value);
       cell.title = entry.track_limits_steps === null
-        ? "Cortes no disponibles"
-        : `${value} puntos de límites de pista`;
+        ? t("standings.trackLimitsUnavailable")
+        : t("standings.trackLimitPoints", { value });
       if (entry.track_limits_steps !== null) applyTrackLimitTone(cell, entry.track_limits_steps, trackLimit);
       return cell;
     }
@@ -467,7 +467,7 @@ const createCell = (entry: StandingEntry, column: RelativeColumnId, trackLimit: 
         const compound = unique[0] || "?";
         const cell = node("span", "tire-compound");
         cell.dataset.compound = compound.toLowerCase();
-        cell.title = `Compuesto ${compound}`;
+        cell.title = t("standings.compound", { compound });
         cell.append(icon(compoundIconUrl(compound), "tire-compound-icon"));
         return cell;
       }
@@ -475,7 +475,7 @@ const createCell = (entry: StandingEntry, column: RelativeColumnId, trackLimit: 
       for (const compound of compounds) {
         const wheel = node("span", "tire-wheel");
         wheel.dataset.compound = compound.toLowerCase();
-        wheel.title = `Compuesto ${compound || "?"}`;
+        wheel.title = t("standings.compound", { compound: compound || "?" });
         grid.append(wheel);
       }
       return grid;
@@ -488,9 +488,9 @@ type RelativeLapRelation = TelemetryFrame["relative_model"]["rows"][number]["lap
 type RelativeRowKind = TelemetryFrame["relative_model"]["rows"][number]["kind"];
 
 const lapRelationLabel = (relation: RelativeLapRelation, kind: RelativeRowKind): string => {
-  if (relation === "player_ahead") return "Coche doblado por ti";
+  if (relation === "player_ahead") return t("relative.playerLapped");
   if (relation === "opponent_ahead") {
-    return kind === "behind" ? "Coche que va a doblarte" : "Coche que te ha doblado";
+    return kind === "behind" ? t("relative.lappingPlayer") : t("relative.lappedPlayer");
   }
   return "";
 };
@@ -544,13 +544,13 @@ const sessionHeader = (frame: TelemetryFrame): HTMLElement => {
   if (frame.rest_weather_available && relativeSettings.options.airTemperature) {
     const ambient = node("span", "relative-temperature relative-temperature-air");
     ambient.append(temperatureIcon(airTemperatureIconUrl), `${Math.round(frame.ambient_temperature_c)}°C`);
-    ambient.title = `Temperatura ambiente ${frame.ambient_temperature_c.toFixed(1)} °C`;
+    ambient.title = t("standings.airTemperatureTitle", { value: decimal(frame.ambient_temperature_c, 1) });
     header.append(ambient);
   }
   if (frame.rest_weather_available && relativeSettings.options.trackTemperature) {
     const track = node("span", "relative-temperature relative-temperature-track");
     track.append(temperatureIcon(trackTemperatureIconUrl), `${Math.round(frame.track_temperature_c)}°C`);
-    track.title = `Temperatura de pista ${frame.track_temperature_c.toFixed(1)} °C`;
+    track.title = t("standings.trackTemperatureTitle", { value: decimal(frame.track_temperature_c, 1) });
     header.append(track);
   }
   if (relativeSettings.options.brakeBias) {
@@ -571,10 +571,7 @@ const sessionHeader = (frame: TelemetryFrame): HTMLElement => {
   }
   if (relativeSettings.options.realTimeClock) {
     const localTime = node("time", "relative-local-time");
-    localTime.append(timingIcon(), new Date().toLocaleTimeString("es-ES", {
-      hour: "2-digit",
-      minute: "2-digit"
-    }));
+    localTime.append(timingIcon(), formatRealClock(new Date()));
     header.append(localTime);
   }
   return header;
@@ -618,7 +615,7 @@ const cachedSessionHeaderFor = (frame: TelemetryFrame): HTMLElement => {
     Math.round(frame.brake_bias_percent * 10),
     frame.track_limits_steps,
     frame.track_limits_steps_per_penalty,
-    new Date().toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })
+    formatRealClock(new Date())
   ]);
   if (!cachedSessionHeader || cachedSessionHeader.signature !== signature) {
     cachedSessionHeader = { signature, element: sessionHeader(frame) };
@@ -635,7 +632,7 @@ const render = (frame: TelemetryFrame): void => {
     // sesión. Conservamos la tabla ya pintada para que ese frame no produzca
     // un destello ni sustituya los datos por el estado de espera.
     if (lastFrame?.standings.length) return;
-    list.replaceChildren(node("p", "empty-state", "Esperando datos de la sesión…"));
+    list.replaceChildren(node("p", "empty-state", t("standings.waiting")));
     return;
   }
   lastFrame = frame;
@@ -649,7 +646,7 @@ const render = (frame: TelemetryFrame): void => {
       })
       .filter((row): row is { model: typeof frame.relative_model.rows[number]; entry: StandingEntry } => row !== null);
     if (selected.length === 0) {
-      list.replaceChildren(node("p", "empty-state", "Esperando al jugador…"));
+      list.replaceChildren(node("p", "empty-state", t("relative.waitingPlayer")));
       return;
     }
     let group = classSections.get("__relative");

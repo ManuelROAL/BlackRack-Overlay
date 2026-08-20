@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#090d13" />
-    <title>LMU Overlay · Panel de control</title>
+    <title data-i18n="app.title">LMU Overlay · Panel de control</title>
   </head>
   <body>
     <main class="control-panel">
@@ -13,136 +13,146 @@
           <span class="control-mark">LMU</span>
           <div>
             <strong>OVERLAY</strong>
-            <span>PANEL DE CONTROL</span>
+            <span data-i18n="app.panel">PANEL DE CONTROL</span>
           </div>
         </div>
         <div id="game-status" class="game-status" data-state="offline">
-          <i></i><span>ESPERANDO LMU</span>
+          <i></i><span data-i18n="status.waiting">ESPERANDO LMU</span>
         </div>
       </header>
 
-      <nav class="control-navigation" aria-label="Secciones de configuración">
+      <nav class="control-navigation" aria-label="Secciones de configuración" data-i18n-aria-label="nav.aria">
         <button class="active" type="button" data-control-view="overlays" aria-current="page">
-          <span>OVERLAYS</span>
-          <small>Visibilidad y ajustes</small>
+          <span data-i18n="nav.overlays">OVERLAYS</span>
+          <small data-i18n="nav.overlaysSub">Visibilidad y ajustes</small>
         </button>
         <button type="button" data-control-view="general">
-          <span>GENERAL</span>
-          <small>Pantalla y atajos</small>
+          <span data-i18n="nav.general">GENERAL</span>
+          <small data-i18n="nav.generalSub">Pantalla, idioma y atajos</small>
         </button>
         <button type="button" data-control-view="integrations">
-          <span>INTEGRACIONES</span>
-          <small>OBS y diagnóstico</small>
+          <span data-i18n="nav.integrations">INTEGRACIONES</span>
+          <small data-i18n="nav.integrationsSub">OBS y diagnóstico</small>
         </button>
       </nav>
 
       <section class="control-intro" data-view-section="overlays">
         <div>
-          <p>VENTANAS ACTIVAS</p>
-          <h1>Elige qué quieres ver en pista</h1>
+          <p data-i18n="control.active">VENTANAS ACTIVAS</p>
+          <h1 data-i18n="control.choose">Elige qué quieres ver en pista</h1>
         </div>
         <div class="bulk-actions">
-          <button id="show-all" type="button">Abrir todas</button>
-          <button id="hide-all" type="button">Ocultar todas</button>
+          <button id="show-all" type="button" data-i18n="control.showAll">Abrir todas</button>
+          <button id="hide-all" type="button" data-i18n="control.hideAll">Ocultar todas</button>
         </div>
       </section>
 
-      <section class="overlay-toolbar" data-view-section="overlays" aria-label="Buscar y filtrar overlays">
+      <section class="overlay-toolbar" data-view-section="overlays" aria-label="Buscar y filtrar overlays" data-i18n-aria-label="filter.aria">
         <label class="overlay-search">
           <span aria-hidden="true">⌕</span>
-          <input id="overlay-search" type="search" placeholder="Buscar overlay..." autocomplete="off" />
+          <input id="overlay-search" type="search" placeholder="Buscar overlay..." data-i18n-placeholder="filter.placeholder" autocomplete="off" />
         </label>
-        <div class="overlay-filters" role="group" aria-label="Filtrar por tipo">
-          <button class="active" type="button" data-overlay-filter="all" aria-pressed="true">TODOS</button>
-          <button type="button" data-overlay-filter="race" aria-pressed="false">CARRERA</button>
-          <button type="button" data-overlay-filter="car" aria-pressed="false">COCHE</button>
-          <button type="button" data-overlay-filter="alerts" aria-pressed="false">AVISOS</button>
+        <div class="overlay-filters" role="group" aria-label="Filtrar por tipo" data-i18n-aria-label="filter.groupAria">
+          <button class="active" type="button" data-overlay-filter="all" aria-pressed="true" data-i18n="filter.all">TODOS</button>
+          <button type="button" data-overlay-filter="race" aria-pressed="false" data-i18n="filter.race">CARRERA</button>
+          <button type="button" data-overlay-filter="car" aria-pressed="false" data-i18n="filter.car">COCHE</button>
+          <button type="button" data-overlay-filter="alerts" aria-pressed="false" data-i18n="filter.alerts">AVISOS</button>
         </div>
-        <p id="overlay-filter-empty" class="overlay-filter-empty" hidden>No hay overlays que coincidan.</p>
+        <p id="overlay-filter-empty" class="overlay-filter-empty" hidden data-i18n="filter.empty">No hay overlays que coincidan.</p>
       </section>
 
-      <section class="global-overlay-settings" data-view-section="general" aria-label="Configuración general de overlays">
-        <div class="global-setting-group">
+      <section class="global-overlay-settings" data-view-section="general" aria-label="Configuración general de overlays" data-i18n-aria-label="general.aria">
+        <div class="global-setting-group language-setting-group">
           <div class="global-setting-copy">
-            <span>TRANSPARENCIA</span>
-            <strong>General o por overlay</strong>
+            <span data-i18n="general.language">IDIOMA</span>
+            <strong data-i18n="general.languageSub">Idioma de la aplicación</strong>
           </div>
           <label class="select-field">
-            <span>APLICAR</span>
-            <select id="transparency-mode" aria-label="Modo de transparencia">
-              <option value="individual">Por overlay</option>
-              <option value="global">General</option>
+            <span data-i18n="general.languageLabel">IDIOMA DE LA INTERFAZ</span>
+            <select id="interface-locale" aria-label="Idioma de la interfaz" data-i18n-aria-label="general.languageAria"></select>
+          </label>
+        </div>
+        <div class="global-setting-group language-setting-group">
+          <div class="global-setting-copy">
+            <span data-i18n="general.transparency">TRANSPARENCIA</span>
+            <strong data-i18n="general.transparencySub">General o por overlay</strong>
+          </div>
+          <label class="select-field">
+            <span data-i18n="general.apply">APLICAR</span>
+            <select id="transparency-mode" aria-label="Modo de transparencia" data-i18n-aria-label="general.transparencyModeAria">
+              <option value="individual" data-i18n="general.individual">Por overlay</option>
+              <option value="global" data-i18n="general.global">General</option>
             </select>
           </label>
           <label id="global-transparency-control" class="global-transparency-control">
-            <span>VALOR GENERAL</span>
+            <span data-i18n="general.globalValue">VALOR GENERAL</span>
             <input id="global-transparency" type="range" min="0" max="100" step="5" />
             <output id="global-transparency-output">5%</output>
           </label>
         </div>
         <div class="global-setting-group">
           <div class="global-setting-copy">
-            <span>MONITOR</span>
-            <strong>Overlays en un solo monitor</strong>
+            <span data-i18n="general.monitor">MONITOR</span>
+            <strong data-i18n="general.monitorSub">Overlays en un solo monitor</strong>
           </div>
           <label class="select-field">
-            <span>MONITOR DE OVERLAYS</span>
-            <select id="overlay-monitor" aria-label="Monitor de overlays"></select>
+            <span data-i18n="general.monitorLabel">MONITOR DE OVERLAYS</span>
+            <select id="overlay-monitor" aria-label="Monitor de overlays" data-i18n-aria-label="general.monitorAria"></select>
           </label>
         </div>
       </section>
 
-      <section class="configuration-export" data-view-section="general" aria-label="Importar o exportar configuración">
+      <section class="configuration-export" data-view-section="general" aria-label="Importar o exportar configuración" data-i18n-aria-label="config.aria">
         <div>
-          <span>COPIA DE SEGURIDAD</span>
-          <strong>Configuración completa de overlays</strong>
-          <small>Guarda o restaura visibilidad, opciones, monitor, posición y tamaño con un único JSON.</small>
+          <span data-i18n="config.backup">COPIA DE SEGURIDAD</span>
+          <strong data-i18n="config.title">Configuración completa de overlays</strong>
+          <small data-i18n="config.sub">Guarda o restaura idioma, visibilidad, opciones, monitor, posición y tamaño con un único JSON.</small>
         </div>
         <div class="configuration-transfer-actions">
-          <button id="import-overlay-configuration" type="button">IMPORTAR</button>
-          <button id="export-overlay-configuration" type="button">EXPORTAR</button>
+          <button id="import-overlay-configuration" type="button" data-i18n="config.import">IMPORTAR</button>
+          <button id="export-overlay-configuration" type="button" data-i18n="config.export">EXPORTAR</button>
         </div>
-        <p id="export-overlay-configuration-status" aria-live="polite">ELIGE EL ARCHIVO O LA CARPETA DE DESTINO</p>
+        <p id="export-overlay-configuration-status" aria-live="polite" data-i18n="config.chooseDestination">ELIGE EL ARCHIVO O LA CARPETA DE DESTINO</p>
       </section>
       
       <details class="shortcut-settings-section" data-view-section="general" open>
         <summary>
-          <span>ATAJOS GLOBALES</span>
-          <strong>Configurar combinaciones de teclado</strong>
+          <span data-i18n="shortcuts.heading">ATAJOS GLOBALES</span>
+          <strong data-i18n="shortcuts.sub">Configurar combinaciones de teclado</strong>
         </summary>
         <div class="shortcut-settings-list">
           <label class="shortcut-setting">
             <span>
-              <b>Modo juego / edición</b>
-              <small>Activa o desactiva la interacción con los overlays.</small>
+              <b data-i18n="shortcuts.interaction">Modo juego / edición</b>
+              <small data-i18n="shortcuts.interactionSub">Activa o desactiva la interacción con los overlays.</small>
             </span>
             <input id="shortcut-interaction-mode" type="text" readonly
-              aria-label="Atajo para cambiar el modo de interacción" />
+              aria-label="Atajo para cambiar el modo de interacción" data-i18n-aria-label="shortcuts.interactionAria" />
           </label>
           <label class="shortcut-setting">
             <span>
-              <b>Mostrar panel</b>
-              <small>Recupera esta ventana cuando está oculta.</small>
+              <b data-i18n="shortcuts.showPanel">Mostrar panel</b>
+              <small data-i18n="shortcuts.showPanelSub">Recupera esta ventana cuando está oculta.</small>
             </span>
             <input id="shortcut-show-panel" type="text" readonly
-              aria-label="Atajo para mostrar el panel" />
+              aria-label="Atajo para mostrar el panel" data-i18n-aria-label="shortcuts.showPanelAria" />
           </label>
-           <p id="shortcut-message" class="shortcut-message">
+           <p id="shortcut-message" class="shortcut-message" data-i18n="shortcuts.instruction">
              Haz clic en un campo y pulsa la nueva combinación.
            </p>
-           <button id="toggle-interaction-mode" class="mode-action" type="button">
+           <button id="toggle-interaction-mode" class="mode-action" type="button" data-i18n="mode.toEdit">
              CAMBIAR A MODO EDICIÓN
            </button>
         </div>
       </details>
 
-      <section class="overlay-list" data-view-section="overlays" aria-label="Overlays disponibles">
+      <section class="overlay-list" data-view-section="overlays" aria-label="Overlays disponibles" data-i18n-aria-label="overlay.listAria">
       
       <article class="overlay-option" data-overlay-card="standings" data-overlay-category="race">
           <div class="overlay-icon">P</div>
           <div class="overlay-copy">
-            <strong>Clasificación</strong>
-            <span>Posiciones, intervalos, clase y estado en boxes.</span>
+            <strong data-i18n="card.standings">Clasificación</strong>
+            <span data-i18n="card.standingsSub">Posiciones, intervalos, clase y estado en boxes.</span>
           </div>
           <label class="switch">
             <input type="checkbox" data-overlay="standings" aria-label="Mostrar Clasificación" />
@@ -152,41 +162,41 @@
         
         <section class="standings-settings-section" data-settings-for="standings">
           <header class="settings-section-heading">
-            <span>CONFIGURACIÓN DE CLASIFICACIÓN</span>
-            <strong>Contenido y columnas</strong>
+            <span data-i18n="settings.standings">CONFIGURACIÓN DE CLASIFICACIÓN</span>
+            <strong data-i18n="settings.contentColumns">Contenido y columnas</strong>
           </header>
           <div class="standings-content-settings">
             <label class="standings-setting-toggle">
               <input id="standings-show-other-classes" type="checkbox" />
               <span></span>
-              <b>Mostrar otras categorías</b>
+              <b data-i18n="settings.otherClasses">Mostrar otras categorías</b>
             </label>
             <label class="standings-row-setting">
-              <span>COCHES · TU CATEGORÍA</span>
+              <span data-i18n="settings.ownCars">COCHES · TU CATEGORÍA</span>
               <input id="standings-own-class-rows" type="number" min="3" max="30" step="1" />
             </label>
             <label class="standings-row-setting">
-              <span>COCHES · OTRAS</span>
+              <span data-i18n="settings.otherCars">COCHES · OTRAS</span>
               <input id="standings-other-class-rows" type="number" min="1" max="15" step="1" />
             </label>
             <label class="standings-name-format-setting">
-              <span>FORMATO DEL NOMBRE</span>
+              <span data-i18n="settings.nameFormat">FORMATO DEL NOMBRE</span>
               <select id="standings-name-format"></select>
             </label>
           </div>
-          <div class="settings-subtitle">CABECERA</div>
-          <div id="standings-header-options" class="standings-columns header-options" aria-label="Datos de cabecera de clasificación"></div>
-          <div class="settings-subtitle">COLUMNAS</div>
-          <div id="standings-columns" class="standings-columns" aria-label="Columnas de clasificación"></div>
-          <div class="settings-subtitle">ORDEN DE COLUMNAS</div>
-          <div id="standings-column-order" class="column-order-list" aria-label="Orden de columnas de clasificación"></div>
+          <div class="settings-subtitle" data-i18n="settings.header">CABECERA</div>
+          <div id="standings-header-options" class="standings-columns header-options" aria-label="Datos de cabecera de clasificación" data-i18n-aria-label="settings.standingsHeaderAria"></div>
+          <div class="settings-subtitle" data-i18n="settings.columns">COLUMNAS</div>
+          <div id="standings-columns" class="standings-columns" aria-label="Columnas de clasificación" data-i18n-aria-label="settings.standingsColumnsAria"></div>
+          <div class="settings-subtitle" data-i18n="settings.order">ORDEN DE COLUMNAS</div>
+          <div id="standings-column-order" class="column-order-list" aria-label="Orden de columnas de clasificación" data-i18n-aria-label="settings.standingsOrderAria"></div>
         </section>
 
         <article class="overlay-option" data-overlay-card="relative" data-overlay-category="race">
           <div class="overlay-icon">R</div>
           <div class="overlay-copy">
-            <strong>Relative</strong>
-            <span>Coches cercanos delante y detrás con distancia y estado.</span>
+            <strong data-i18n="card.relative">Relative</strong>
+            <span data-i18n="card.relativeSub">Coches cercanos delante y detrás con distancia y estado.</span>
           </div>
           <label class="switch">
             <input type="checkbox" data-overlay="relative" aria-label="Mostrar Relative" />
@@ -196,36 +206,36 @@
 
         <section class="standings-settings-section" data-settings-for="relative">
           <header class="settings-section-heading">
-            <span>CONFIGURACIÓN DE RELATIVE</span>
-            <strong>Contenido y columnas</strong>
+            <span data-i18n="settings.relative">CONFIGURACIÓN DE RELATIVE</span>
+            <strong data-i18n="settings.contentColumns">Contenido y columnas</strong>
           </header>
           <div class="standings-content-settings relative-content-settings">
             <label class="standings-row-setting">
-              <span>COCHES · DELANTE</span>
+              <span data-i18n="settings.ahead">COCHES · DELANTE</span>
               <input id="relative-ahead-rows" type="number" min="1" max="10" step="1" />
             </label>
             <label class="standings-row-setting">
-              <span>COCHES · DETRÁS</span>
+              <span data-i18n="settings.behind">COCHES · DETRÁS</span>
               <input id="relative-behind-rows" type="number" min="1" max="10" step="1" />
             </label>
             <label class="standings-name-format-setting">
-              <span>FORMATO DEL NOMBRE</span>
+              <span data-i18n="settings.nameFormat">FORMATO DEL NOMBRE</span>
               <select id="relative-name-format"></select>
             </label>
           </div>
-          <div class="settings-subtitle">CABECERA</div>
-          <div id="relative-header-options" class="standings-columns header-options" aria-label="Datos de cabecera del relative"></div>
-          <div class="settings-subtitle">COLUMNAS</div>
-          <div id="relative-columns" class="standings-columns" aria-label="Columnas del relative"></div>
-          <div class="settings-subtitle">ORDEN DE COLUMNAS</div>
-          <div id="relative-column-order" class="column-order-list" aria-label="Orden de columnas del relative"></div>
+          <div class="settings-subtitle" data-i18n="settings.header">CABECERA</div>
+          <div id="relative-header-options" class="standings-columns header-options" aria-label="Datos de cabecera del relative" data-i18n-aria-label="settings.relativeHeaderAria"></div>
+          <div class="settings-subtitle" data-i18n="settings.columns">COLUMNAS</div>
+          <div id="relative-columns" class="standings-columns" aria-label="Columnas del relative" data-i18n-aria-label="settings.relativeColumnsAria"></div>
+          <div class="settings-subtitle" data-i18n="settings.order">ORDEN DE COLUMNAS</div>
+          <div id="relative-column-order" class="column-order-list" aria-label="Orden de columnas del relative" data-i18n-aria-label="settings.relativeOrderAria"></div>
         </section>
 
         <article class="overlay-option" data-overlay-card="fuel" data-overlay-category="race">
           <div class="overlay-icon">F</div>
           <div class="overlay-copy">
-            <strong>Energía y combustible</strong>
-            <span>NRG por stint, autonomía y combustible para el resto de clases.</span>
+            <strong data-i18n="card.fuel">Energía y combustible</strong>
+            <span data-i18n="card.fuelSub">NRG por stint, autonomía y combustible para el resto de clases.</span>
           </div>
           <label class="switch">
             <input type="checkbox" data-overlay="fuel" aria-label="Mostrar Combustible" />
@@ -236,8 +246,8 @@
         <article class="overlay-option" data-overlay-card="driving" data-overlay-category="car">
           <div class="overlay-icon">T</div>
           <div class="overlay-copy">
-            <strong>Trailing + Pedal</strong>
-            <span>Historial e inputs configurables, volante, FFB, velocidad y marcha.</span>
+            <strong data-i18n="card.driving">Trailing + Pedal</strong>
+            <span data-i18n="card.drivingSub">Historial e inputs configurables, volante, FFB, velocidad y marcha.</span>
           </div>
           <label class="switch">
             <input type="checkbox" data-overlay="driving" aria-label="Mostrar Trailing y Pedal" />
@@ -247,22 +257,22 @@
 
         <section class="standings-settings-section" data-settings-for="driving">
           <header class="settings-section-heading">
-            <span>CONFIGURACIÓN DE TRAILING + PEDAL</span>
-            <strong>Elementos visibles</strong>
+            <span data-i18n="settings.driving">CONFIGURACIÓN DE TRAILING + PEDAL</span>
+            <strong data-i18n="settings.visible">Elementos visibles</strong>
           </header>
-          <div class="settings-subtitle">PEDALES EN LA GRÁFICA</div>
-          <div id="driving-graph-pedals" class="standings-columns driving-settings-grid" aria-label="Pedales visibles en la gráfica"></div>
-          <div class="settings-subtitle">INPUTS ACTUALES</div>
-          <div id="driving-input-pedals" class="standings-columns driving-settings-grid" aria-label="Pedales visibles como inputs actuales"></div>
-          <div class="settings-subtitle">DATOS DE CONDUCCIÓN</div>
-          <div id="driving-readout-options" class="standings-columns driving-settings-grid" aria-label="Datos de conducción visibles"></div>
+          <div class="settings-subtitle" data-i18n="settings.graphPedals">PEDALES EN LA GRÁFICA</div>
+          <div id="driving-graph-pedals" class="standings-columns driving-settings-grid" aria-label="Pedales visibles en la gráfica" data-i18n-aria-label="settings.graphPedalsAria"></div>
+          <div class="settings-subtitle" data-i18n="settings.inputs">INPUTS ACTUALES</div>
+          <div id="driving-input-pedals" class="standings-columns driving-settings-grid" aria-label="Pedales visibles como inputs actuales" data-i18n-aria-label="settings.inputsAria"></div>
+          <div class="settings-subtitle" data-i18n="settings.drivingData">DATOS DE CONDUCCIÓN</div>
+          <div id="driving-readout-options" class="standings-columns driving-settings-grid" aria-label="Datos de conducción visibles" data-i18n-aria-label="settings.drivingDataAria"></div>
         </section>
 
         <article class="overlay-option" data-overlay-card="tires" data-overlay-category="car">
           <div class="overlay-icon">N</div>
           <div class="overlay-copy">
-            <strong>Daños y neumáticos</strong>
-            <span>Temperatura, desgaste, compuesto y daños del coche.</span>
+            <strong data-i18n="card.tires">Daños y neumáticos</strong>
+            <span data-i18n="card.tiresSub">Temperatura, desgaste, compuesto y daños del coche.</span>
           </div>
           <label class="switch">
             <input type="checkbox" data-overlay="tires" aria-label="Mostrar daños y neumáticos" />
@@ -273,8 +283,8 @@
         <article class="overlay-option" data-overlay-card="damage" data-overlay-category="car">
           <div class="overlay-icon">D</div>
           <div class="overlay-copy">
-            <strong>Daños detallados</strong>
-            <span>Daño aerodinámico, suspensión y carrocería.</span>
+            <strong data-i18n="card.damage">Daños detallados</strong>
+            <span data-i18n="card.damageSub">Daño aerodinámico, suspensión y carrocería.</span>
           </div>
           <label class="switch">
             <input type="checkbox" data-overlay="damage" aria-label="Mostrar daños detallados" />
@@ -285,8 +295,8 @@
         <article class="overlay-option" data-overlay-card="pitstop" data-overlay-category="race">
           <div class="overlay-icon">P</div>
           <div class="overlay-copy">
-            <strong>Parada estimada</strong>
-            <span>Desglose y tiempo total del próximo servicio en boxes.</span>
+            <strong data-i18n="card.pitstop">Parada estimada</strong>
+            <span data-i18n="card.pitstopSub">Desglose y tiempo total del próximo servicio en boxes.</span>
           </div>
           <label class="switch">
             <input type="checkbox" data-overlay="pitstop" aria-label="Mostrar parada estimada" />
@@ -297,8 +307,8 @@
         <article class="overlay-option" data-overlay-card="flags" data-overlay-category="alerts">
           <div class="overlay-icon">Y</div>
           <div class="overlay-copy">
-            <strong>Banderas</strong>
-            <span>Avisos amarillo y azul con distancia, posición y categoría.</span>
+            <strong data-i18n="card.flags">Banderas</strong>
+            <span data-i18n="card.flagsSub">Avisos amarillo y azul con distancia, posición y categoría.</span>
           </div>
           <label class="switch">
             <input type="checkbox" data-overlay="flags" aria-label="Mostrar Banderas" />
@@ -309,8 +319,8 @@
         <article class="overlay-option" data-overlay-card="rejoin" data-overlay-category="alerts">
           <div class="overlay-icon">R</div>
           <div class="overlay-copy">
-            <strong>Rejoin y salida de boxes</strong>
-            <span>Distancia del coche trasero y aviso de entrada segura.</span>
+            <strong data-i18n="card.rejoin">Rejoin y salida de boxes</strong>
+            <span data-i18n="card.rejoinSub">Distancia del coche trasero y aviso de entrada segura.</span>
           </div>
           <label class="switch">
             <input type="checkbox" data-overlay="rejoin" aria-label="Mostrar Rejoin" />
@@ -321,8 +331,8 @@
         <article class="overlay-option" data-overlay-card="delta" data-overlay-category="car">
           <div class="overlay-icon">Δ</div>
           <div class="overlay-copy">
-            <strong>Delta</strong>
-            <span>Mejor vuelta, óptima, sesión, stint y última vuelta.</span>
+            <strong data-i18n="card.delta">Delta</strong>
+            <span data-i18n="card.deltaSub">Mejor vuelta, óptima, sesión, stint y última vuelta.</span>
           </div>
           <label class="switch">
             <input type="checkbox" data-overlay="delta" aria-label="Mostrar Delta" />
@@ -332,16 +342,16 @@
 
         <section class="standings-settings-section" data-settings-for="delta">
           <header class="settings-section-heading">
-            <span>CONFIGURACIÓN DE DELTA</span>
-            <strong>Referencia y escala visual</strong>
+            <span data-i18n="settings.delta">CONFIGURACIÓN DE DELTA</span>
+            <strong data-i18n="settings.deltaSub">Referencia y escala visual</strong>
           </header>
           <div class="standings-content-settings">
             <label class="standings-name-format-setting">
-              <span>REFERENCIA</span>
+              <span data-i18n="settings.reference">REFERENCIA</span>
               <select id="delta-mode"></select>
             </label>
             <label class="standings-name-format-setting">
-              <span>RANGO DE LA BARRA</span>
+              <span data-i18n="settings.range">RANGO DE LA BARRA</span>
               <select id="delta-display-range">
                 <option value="0.5">±0,5 s</option>
                 <option value="1">±1 s</option>
@@ -350,14 +360,14 @@
               </select>
             </label>
           </div>
-          <p class="settings-note">Las referencias globales y el historial se guardan localmente por coche y circuito.</p>
+          <p class="settings-note" data-i18n="settings.deltaNote">Las referencias globales y el historial se guardan localmente por coche y circuito.</p>
         </section>
 
         <article class="overlay-option" data-overlay-card="timing" data-overlay-category="car">
           <div class="overlay-icon">T</div>
           <div class="overlay-copy">
-            <strong>Timing compacto</strong>
-            <span>Delta, tiempos, tres sectores e historial en un solo panel.</span>
+            <strong data-i18n="card.timing">Timing compacto</strong>
+            <span data-i18n="card.timingSub">Delta, tiempos, tres sectores e historial en un solo panel.</span>
           </div>
           <label class="switch">
             <input type="checkbox" data-overlay="timing" aria-label="Mostrar Timing compacto" />
@@ -367,27 +377,27 @@
 
         <section class="standings-settings-section" data-settings-for="timing">
           <header class="settings-section-heading">
-            <span>CONFIGURACIÓN DE TIMING COMPACTO</span>
-            <strong>Historial reciente</strong>
+            <span data-i18n="settings.timing">CONFIGURACIÓN DE TIMING COMPACTO</span>
+            <strong data-i18n="settings.timingSub">Historial reciente</strong>
           </header>
           <div class="standings-content-settings">
             <label class="standings-name-format-setting">
-              <span>ÚLTIMAS VUELTAS</span>
+              <span data-i18n="settings.lastLaps">ÚLTIMAS VUELTAS</span>
               <select id="timing-history-laps">
-                <option value="0">Oculto</option>
-                <option value="3">3 vueltas</option>
-                <option value="5">5 vueltas</option>
+                <option value="0" data-i18n="settings.hidden">Oculto</option>
+                <option value="3" data-i18n="settings.laps3">3 vueltas</option>
+                <option value="5" data-i18n="settings.laps5">5 vueltas</option>
               </select>
             </label>
           </div>
-          <p class="settings-note">Verde indica mejora de sesión; morado, el mejor sector absoluto guardado.</p>
+          <p class="settings-note" data-i18n="settings.timingNote">Verde indica mejora de sesión; morado, el mejor sector absoluto guardado.</p>
         </section>
 
         <article class="overlay-option" data-overlay-card="trackmap" data-overlay-category="race">
           <div class="overlay-icon">M</div>
           <div class="overlay-copy">
-            <strong>Mapa del circuito</strong>
-            <span>Posición de todos los coches y categorías en tiempo real.</span>
+            <strong data-i18n="card.trackmap">Mapa del circuito</strong>
+            <span data-i18n="card.trackmapSub">Posición de todos los coches y categorías en tiempo real.</span>
           </div>
           <label class="switch">
             <input type="checkbox" data-overlay="trackmap" aria-label="Mostrar mapa del circuito" />
@@ -396,104 +406,105 @@
         </article>
         <section class="standings-settings-section" data-settings-for="trackmap" hidden>
           <header class="settings-section-heading">
-            <span>MAPA DEL CIRCUITO</span>
-            <strong>Predicci&oacute;n de parada</strong>
+            <span data-i18n="settings.map">MAPA DEL CIRCUITO</span>
+            <strong data-i18n="settings.mapSub">Predicci&oacute;n de parada</strong>
           </header>
           <div class="standings-columns">
             <label class="column-toggle">
               <input id="trackmap-pit-prediction" type="checkbox" />
               <span></span>
-              <b>Mostrar posici&oacute;n P tras la parada</b>
+              <b data-i18n="settings.mapPrediction">Mostrar posici&oacute;n P tras la parada</b>
             </label>
           </div>
-          <p class="settings-note">El mapa contin&uacute;a aprendiendo el tr&aacute;nsito por boxes aunque se oculte la predicci&oacute;n.</p>
+          <p class="settings-note" data-i18n="settings.mapNote">El mapa contin&uacute;a aprendiendo el tr&aacute;nsito por boxes aunque se oculte la predicci&oacute;n.</p>
         </section>
 
       </section>
 
       <details id="browser-source-section" class="browser-source-section" data-view-section="integrations" open>
         <summary>
-          <span>OBS / NAVEGADOR LOCAL</span>
-          <strong>Captura directa de los overlays</strong>
+          <span data-i18n="browser.heading">OBS / NAVEGADOR LOCAL</span>
+          <strong data-i18n="browser.sub">Captura directa de los overlays</strong>
         </summary>
         <div class="browser-source-content">
           <article id="browser-source-card" class="overlay-option browser-source-option">
             <div class="overlay-icon">OBS</div>
             <div class="overlay-copy">
-              <strong>Fuente de navegador local</strong>
-              <span id="browser-source-description">Servidor apagado, sin consumo adicional.</span>
-              <small id="browser-source-status">DESACTIVADO</small>
+              <strong data-i18n="browser.name">Fuente de navegador local</strong>
+              <span id="browser-source-description" data-i18n="browser.offSub">Servidor apagado, sin puerto ni serialización adicional.</span>
+              <small id="browser-source-status" data-i18n="browser.disabled">DESACTIVADO</small>
             </div>
             <label class="switch">
               <input id="browser-source-enabled" type="checkbox"
-                aria-label="Activar fuente de navegador local" />
+                aria-label="Activar fuente de navegador local" data-i18n-aria-label="browser.toggleAria" />
               <span></span>
             </label>
           </article>
           <div id="browser-source-urls" class="browser-source-urls" hidden>
-            <p>Añade una URL como fuente de navegador en OBS:</p>
-            <div data-browser-overlay="standings"><code></code><button type="button">COPIAR</button></div>
-            <div data-browser-overlay="relative"><code></code><button type="button">COPIAR</button></div>
-            <div data-browser-overlay="fuel"><code></code><button type="button">COPIAR</button></div>
-            <div data-browser-overlay="pitstop"><code></code><button type="button">COPIAR</button></div>
-            <div data-browser-overlay="flags"><code></code><button type="button">COPIAR</button></div>
-            <div data-browser-overlay="rejoin"><code></code><button type="button">COPIAR</button></div>
-            <div data-browser-overlay="delta"><code></code><button type="button">COPIAR</button></div>
-            <div data-browser-overlay="timing"><code></code><button type="button">COPIAR</button></div>
-            <div data-browser-overlay="driving"><code></code><button type="button">COPIAR</button></div>
-            <div data-browser-overlay="tires"><code></code><button type="button">COPIAR</button></div>
-            <div data-browser-overlay="damage"><code></code><button type="button">COPIAR</button></div>
-            <div data-browser-overlay="trackmap"><code></code><button type="button">COPIAR</button></div>
+            <p data-i18n="browser.addUrl">Añade una URL como fuente de navegador en OBS:</p>
+            <p data-i18n="browser.langHint">Añade ?lang=es o ?lang=en para fijar otro idioma solo en esa fuente.</p>
+            <div data-browser-overlay="standings"><code></code><button type="button" data-i18n="browser.copy">COPIAR</button></div>
+            <div data-browser-overlay="relative"><code></code><button type="button" data-i18n="browser.copy">COPIAR</button></div>
+            <div data-browser-overlay="fuel"><code></code><button type="button" data-i18n="browser.copy">COPIAR</button></div>
+            <div data-browser-overlay="pitstop"><code></code><button type="button" data-i18n="browser.copy">COPIAR</button></div>
+            <div data-browser-overlay="flags"><code></code><button type="button" data-i18n="browser.copy">COPIAR</button></div>
+            <div data-browser-overlay="rejoin"><code></code><button type="button" data-i18n="browser.copy">COPIAR</button></div>
+            <div data-browser-overlay="delta"><code></code><button type="button" data-i18n="browser.copy">COPIAR</button></div>
+            <div data-browser-overlay="timing"><code></code><button type="button" data-i18n="browser.copy">COPIAR</button></div>
+            <div data-browser-overlay="driving"><code></code><button type="button" data-i18n="browser.copy">COPIAR</button></div>
+            <div data-browser-overlay="tires"><code></code><button type="button" data-i18n="browser.copy">COPIAR</button></div>
+            <div data-browser-overlay="damage"><code></code><button type="button" data-i18n="browser.copy">COPIAR</button></div>
+            <div data-browser-overlay="trackmap"><code></code><button type="button" data-i18n="browser.copy">COPIAR</button></div>
           </div>
         </div>
       </details>
       
-      <section class="logging-section" data-view-section="integrations" aria-label="Registro de telemetría">
+      <section class="logging-section" data-view-section="integrations" aria-label="Registro de telemetría" data-i18n-aria-label="logging.aria">
         <article id="logging-card" class="overlay-option logging-option">
           <div class="overlay-icon logging-icon">REC</div>
           <div class="overlay-copy">
-            <strong>Registro para análisis</strong>
-            <span id="logging-description">Guarda sesión, estrategia y consultas DR/SR.</span>
-            <small id="logging-path">DESACTIVADO</small>
+            <strong data-i18n="logging.name">Registro para análisis</strong>
+            <span id="logging-description" data-i18n="logging.offSub">Guarda sesión, cálculos y tiempos internos para optimización.</span>
+            <small id="logging-path" data-i18n="browser.disabled">DESACTIVADO</small>
           </div>
           <label class="switch">
-            <input id="telemetry-logging" type="checkbox" aria-label="Activar registro de telemetría" />
+            <input id="telemetry-logging" type="checkbox" aria-label="Activar registro de telemetría" data-i18n-aria-label="logging.toggleAria" />
             <span></span>
           </label>
         </article>
       </section>
 
-      <section class="support-section" aria-label="Apoyar el proyecto">
+      <section class="support-section" aria-label="Apoyar el proyecto" data-i18n-aria-label="support.aria">
         <div class="support-copy">
-          <span>APOYAR EL PROYECTO</span>
-          <strong>¿Te resulta útil LMU Overlay?</strong>
-          <small>La aplicación seguirá siendo gratuita. Si quieres apoyar su desarrollo, puedes invitarme a un café.</small>
+          <span data-i18n="support.heading">APOYAR EL PROYECTO</span>
+          <strong data-i18n="support.title">¿Te resulta útil LMU Overlay?</strong>
+          <small data-i18n="support.sub">La aplicación seguirá siendo gratuita. Si quieres apoyar su desarrollo, puedes invitarme a un café.</small>
           <p id="support-status" aria-live="polite"></p>
         </div>
-        <button id="open-kofi" type="button" aria-label="Apoyar LMU Overlay en Ko-fi">
+        <button id="open-kofi" type="button" aria-label="Apoyar LMU Overlay en Ko-fi" data-i18n-aria-label="support.buttonAria">
           <span aria-hidden="true">♥</span>
-          APOYAR EN KO-FI
+          <span data-i18n="support.button">APOYAR EN KO-FI</span>
         </button>
       </section>
 
       <footer class="control-footer">
-        <div><kbd id="footer-interaction-shortcut">Ctrl+Shift+O</kbd> Modo juego</div>
-        <div><kbd id="footer-panel-shortcut">Ctrl+Shift+M</kbd> Mostrar panel</div>
-        <span id="app-version" title="Versión instalada">v–</span>
-        <span id="interaction-status">MODO JUEGO</span>
+        <div><kbd id="footer-interaction-shortcut">Ctrl+Shift+O</kbd> <span data-i18n="footer.game">Modo juego</span></div>
+        <div><kbd id="footer-panel-shortcut">Ctrl+Shift+M</kbd> <span data-i18n="footer.panel">Mostrar panel</span></div>
+        <span id="app-version" title="Versión instalada" data-i18n-title="footer.version">v–</span>
+        <span id="interaction-status" data-i18n="mode.game">MODO JUEGO</span>
       </footer>
     </main>
     <dialog id="reset-confirmation" class="reset-confirmation" aria-labelledby="reset-confirmation-title">
       <form method="dialog">
         <div class="reset-confirmation-mark" aria-hidden="true">!</div>
         <div class="reset-confirmation-copy">
-          <span>RESTABLECER OVERLAY</span>
-          <strong id="reset-confirmation-title">Confirmar restablecimiento</strong>
+          <span data-i18n="reset.heading">RESTABLECER OVERLAY</span>
+          <strong id="reset-confirmation-title" data-i18n="reset.title">Confirmar restablecimiento</strong>
           <p id="reset-confirmation-message"></p>
         </div>
         <div class="reset-confirmation-actions">
-          <button type="submit" value="cancel">CANCELAR</button>
-          <button class="primary" type="submit" value="confirm">RESTABLECER</button>
+          <button type="submit" value="cancel" data-i18n="reset.cancel">CANCELAR</button>
+          <button class="primary" type="submit" value="confirm" data-i18n="reset.confirm">RESTABLECER</button>
         </div>
       </form>
     </dialog>

@@ -86,3 +86,9 @@ excluded from configuration import/export and configuration reset.
 - `npm.cmd run build` covers the standalone, composite and OBS entries.
 - Live LMU validation should cover a clean lap, invalid lap, pit passage, session
   reset, stint transition, vehicle/track change and application restart.
+
+## Localization
+
+The document title and accessibility text use the bundled locale. Delta values,
+reference IDs and lap-time notation remain stable telemetry presentation. Its OBS
+route follows the shared saved locale or a page-local `?lang=` override.

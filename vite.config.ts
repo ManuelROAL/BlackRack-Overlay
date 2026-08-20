@@ -24,6 +24,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         control: "index.html",
+        browser: "browser.html",
         composite: "composite.html",
         delta: "delta.html",
         timing: "timing.html",

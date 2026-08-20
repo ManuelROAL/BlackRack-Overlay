@@ -7,6 +7,7 @@ import { createOverlayPerformanceTracker } from "./overlay-performance";
 import { invokeRuntime, isTauriRuntime, listenRuntimeEvent, listenTelemetry } from "./runtime-events";
 import { readTrackMapSettings, type TrackMapSettings } from "./trackmap-settings";
 import type { TelemetryFrame, TrackMapVehicle } from "./telemetry-types";
+import { t } from "./i18n";
 
 interface MapPoint {
   x: number;
@@ -348,7 +349,7 @@ const ensurePredictionMarker = (): HTMLDivElement => {
   if (predictionMarker) return predictionMarker;
   const group = document.createElement("div");
   group.classList.add("pit-prediction-marker");
-  group.title = "Salida estimada tras la parada";
+  group.title = t("trackmap.pitPredictionTitle");
   const label = document.createElement("span");
   label.textContent = "P";
   group.appendChild(label);

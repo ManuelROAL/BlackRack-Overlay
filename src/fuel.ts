@@ -6,6 +6,7 @@ import { createOverlayPerformanceTracker } from "./overlay-performance";
 import { bindOverlayTransparency } from "./overlay-appearance";
 import type { ResourceStrategy, TelemetryFrame } from "./telemetry-types";
 import { listenTelemetry } from "./runtime-events";
+import { formatNumber, t } from "./i18n";
 
 fitOverlay({ width: 252, height: 188 });
 bindOverlayTransparency("fuel");
@@ -25,7 +26,7 @@ const tone = (id: string, value: "good" | "warn" | "bad" | "neutral"): void => {
 };
 
 const format = (value: number, decimals = 2): string =>
-  Number.isFinite(value) && value >= 0 ? value.toFixed(decimals) : "--";
+  Number.isFinite(value) && value >= 0 ? formatNumber(value, decimals) : "--";
 
 const consumptionReference = (...values: number[]): number | undefined =>
   values.find((value) => Number.isFinite(value) && value > 0);
@@ -53,13 +54,13 @@ const renderProfile = (
 const renderStatus = (frame: TelemetryFrame): void => {
   const connection = document.getElementById("source-status")?.parentElement;
   if (!frame.connected) {
-    text("source-status", "ESPERA");
+    text("source-status", t("fuel.waiting"));
     connection?.setAttribute("data-state", "offline");
   } else if (!frame.player_active) {
-    text("source-status", "SIN COCHE");
+    text("source-status", t("fuel.noCar"));
     connection?.setAttribute("data-state", "standby");
   } else {
-    text("source-status", "DIRECTO");
+    text("source-status", t("fuel.live"));
     connection?.setAttribute("data-state", "live");
   }
 };
@@ -92,28 +93,28 @@ const render = (frame: TelemetryFrame): void => {
   text("resource-current", frame.player_active ? format(current, 1) : "--");
   text("resource-unit", unit);
   if (strategy) {
-    text("strategy-autonomy", `${format(strategy.autonomy, 1)}V`);
+    text("strategy-autonomy", t("fuel.lapsValue", { value: format(strategy.autonomy, 1) }));
     text(
       "pit-window",
       strategy.stops > 0
         ? strategy.earliest_pit_lap === strategy.latest_pit_lap
-          ? `V${strategy.latest_pit_lap}`
-          : `V${strategy.earliest_pit_lap}–${strategy.latest_pit_lap}`
-        : "NO PIT"
+          ? t("timing.lap", { number: strategy.latest_pit_lap })
+          : t("fuel.lapRange", { first: strategy.earliest_pit_lap, last: strategy.latest_pit_lap })
+        : t("fuel.noPit")
     );
     text("stop-plan", strategy.stops > 0 ? `${strategy.stops}→${strategy.target_stops}` : "0");
 
     const retainsStops = strategy.target_stops >= strategy.stops;
     const fullAllowed = qualifying > 0 && strategy.target_consumption >= qualifying;
     const displayedTarget = fullAllowed ? qualifying : strategy.target_consumption;
-    text("target-label", fullAllowed ? "FULL" : retainsStops ? "MANTÉN" : "OBJ/V");
+    text("target-label", t(fullAllowed ? "fuel.full" : retainsStops ? "fuel.hold" : "fuel.target"));
     text("target-consumption", format(displayedTarget));
-    text("saving-required", fullAllowed ? "0,0%" : `−${format(strategy.saving_percent, 1)}%`);
+    text("saving-required", fullAllowed ? `${formatNumber(0, 1)}%` : `−${format(strategy.saving_percent, 1)}%`);
     tone("saving-required", fullAllowed || strategy.saving_percent <= 2 ? "good" : strategy.saving_percent <= 7 ? "warn" : "bad");
     const nextFill = frame.fuel_strategies.conservative_next_fill > 0
       ? frame.fuel_strategies.conservative_next_fill
       : strategy.next_fill;
-    text("next-fill-label", frame.fuel_strategies.conservative_fill_active ? "CARGA Q" : "CARGA");
+    text("next-fill-label", t(frame.fuel_strategies.conservative_fill_active ? "fuel.qualifyingLoad" : "fuel.load"));
     text("next-fill", strategy.stops > 0 ? `${format(nextFill, 1)}${unit}` : "--");
 
     const pit = document.getElementById("pit-status");
@@ -124,8 +125,8 @@ const render = (frame: TelemetryFrame): void => {
       ["target-consumption", "--"], ["saving-required", "--"],
       ["next-fill", "--"]
     ]) text(id, value);
-    text("target-label", "OBJ/V");
-    text("next-fill-label", "CARGA");
+    text("target-label", t("fuel.target"));
+    text("next-fill-label", t("fuel.load"));
     const pit = document.getElementById("pit-status");
     if (pit) pit.dataset.level = "unknown";
   }
@@ -134,8 +135,8 @@ const render = (frame: TelemetryFrame): void => {
     ? Math.max(frame.fuel_liters, 0) / fuelReference
     : Number.POSITIVE_INFINITY;
   text("fuel-current", energyMode ? `${format(frame.fuel_liters, 1)}L` : "--");
-  text("fuel-consumption", energyMode ? `${format(fuelReference)}L/V` : "--");
-  text("fuel-autonomy", energyMode ? `${format(fuelAutonomy, 1)}V` : "--");
+  text("fuel-consumption", energyMode ? t("fuel.litersPerLap", { value: format(fuelReference) }) : "--");
+  text("fuel-autonomy", energyMode ? t("fuel.lapsValue", { value: format(fuelAutonomy, 1) }) : "--");
   text("fuel-required", energyMode && fuelStrategy ? `+${format(fuelStrategy.total_additional, 1)}L` : "--");
   text("fuel-stops", energyMode && fuelStrategy ? `${fuelStrategy.stops}` : "--");
 

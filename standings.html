@@ -3,12 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>LMU · Clasificación</title>
+    <title data-i18n="title.standings">LMU · Clasificación</title>
   </head>
   <body class="standings-body">
     <main class="overlay-shell standings-shell" data-tauri-drag-region>
-      <section id="standings-list" class="standings-list" aria-label="Clasificación de carrera">
-        <p class="empty-state">Esperando datos de la sesión…</p>
+      <section id="standings-list" class="standings-list" aria-label="Clasificación de carrera" data-i18n-aria-label="standings.aria">
+        <p class="empty-state" data-i18n="standings.waiting">Esperando datos de la sesión…</p>
       </section>
     </main>
     <script type="module" src="/src/standings.ts"></script>

@@ -148,3 +148,10 @@ duplicate selection or timing semantics.
 Test lap transitions, invalid laps, late startup, driver swaps, pits, GAP/INT,
 class selection/counts, track-limit availability, DR/SR retry and session reset.
 Confirm 10 Hz requested cycles and reuse with Relative rather than a 50 Hz roster.
+
+## Localization
+
+Session names, empty states, counts, tooltips, table header and accessibility text
+use the bundled locale. Cached rows translate only when their visible cell or
+header changes; domain IDs and roster calculations remain stable.
+The OBS route follows the shared saved locale or a page-local `?lang=` override.

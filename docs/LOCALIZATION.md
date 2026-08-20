@@ -9,10 +9,8 @@ and English (`en`); adding a later language should only require a complete
 catalog and visual verification.
 
 The locale applies to the control panel, native-hosted overlays and OBS browser
-pages. Spanish remains the fallback while the migration is incomplete. Once both
-catalogs are complete, a fresh installation should select Spanish for a Spanish
-browser/OS locale and English otherwise, then persist the resolved choice. The
-General view must always expose an explicit language selector.
+pages. A fresh installation starts in English and persists any explicit choice.
+The General view must always expose an explicit language selector.
 
 ## Boundaries
 
@@ -77,6 +75,36 @@ No locale field belongs in `TelemetryFrame`, and changing language must not spli
 or enlarge grouped telemetry payloads.
 
 ## Delivery phases
+
+### Current rollout state
+
+Phases 1–4 are implemented. `src/i18n/` owns the bundled Spanish and English
+catalogs, typed lookup/interpolation/plural helpers, cached locale formatters,
+DOM attribute translation and the persisted `lmu-overlay.locale.v1` choice. The
+complete control panel, including generated settings, dialogs, accessibility
+labels and native file-dialog titles, uses that catalog. Configuration schema 7
+round-trips the choice as `ui.locale` and imports schemas 1–6 using the current
+local choice. Fresh profiles default to English. Every native overlay translates
+its static HTML, dynamic status, tooltip and accessibility text; ordinary numbers
+and the real-world clock follow the selected locale. The composite edit chrome
+and its mounted documents reload together after a language change.
+
+The control panel mirrors the selected locale into the optional browser-source
+preferences before an OBS page loads. Each route accepts `?lang=es` or `?lang=en`
+as a page-local override that does not rewrite the shared saved preference, and
+the localized browser-source index preserves its resolved language in every link.
+Known browser-server failures cross the Rust boundary as stable error kinds;
+known shortcut failures use stable codes as well. Localized UI copy is selected
+in TypeScript while raw operating-system details remain diagnostic.
+
+`npm.cmd run build` validates equal resolved catalog keys, message shapes and
+parameters, supported-locale metadata, bindings across all 15 HTML documents,
+typed calls and the documented visible-copy allowlist before TypeScript and Vite.
+The OBS index is a catalog-driven Vite entry rather than duplicated Rust copy.
+The phase-4 browser pass covered both locales at normal/compact viewports and all
+overlay design sizes; it found and fixed the Spanish Detailed Damage bodywork
+label. Native WebView2 checks at 100%, 125% and 150% remain a release-validation
+step, not an implementation blocker. See `docs/LOCALIZATION_CONTRIBUTING.md`.
 
 ### 1. Infrastructure and control panel
 
@@ -145,4 +173,3 @@ one of its overlays mixes Spanish and English in normal operation.
 - Downloading community translations at runtime.
 - Right-to-left layout support. Catalog and locale APIs must not prevent it, but
   RTL layout requires a separate designed and verified milestone.
-

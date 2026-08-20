@@ -4,6 +4,19 @@ import { emit, listen } from "@tauri-apps/api/event";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import "./control-panel.css";
 import { installFrontendDiagnostics } from "./frontend-diagnostics";
+import {
+  applyTranslations,
+  formatNumber,
+  getLocale,
+  isLocale,
+  LOCALE_OPTIONS,
+  LOCALE_STORAGE_KEY,
+  SUPPORTED_LOCALES,
+  setLocale,
+  t,
+  type Locale,
+  type TranslationKey
+} from "./i18n";
 import type { InteractionMode, TelemetryFrame } from "./telemetry-types";
 import {
   DRIVER_NAME_FORMATS,
@@ -112,13 +125,15 @@ interface BrowserSourceStatus {
   running: boolean;
   url: string;
   clients: number;
-  error: string | null;
+  error_kind: "not_initialized" | "missing_assets" | "address_unavailable" | "server_configuration" | "server_startup" | "settings_persistence" | null;
+  error_detail: string | null;
 }
 
 interface OverlayConfigurationExport {
   format: "lmu-overlay-configuration";
-  schemaVersion: 6;
+  schemaVersion: 7;
   exportedAt: string;
+  ui: { locale: Locale };
   overlays: {
     visibility: Record<OverlayId, boolean>;
     transparency: {
@@ -139,6 +154,19 @@ interface OverlayConfigurationExport {
 type ShortcutAction = "interaction_mode" | "show_panel";
 
 let lmuDependencyStatus: LmuDependencyStatus | null = null;
+
+applyTranslations();
+
+const localeSelect = document.getElementById("interface-locale") as HTMLSelectElement | null;
+if (localeSelect) {
+  for (const option of LOCALE_OPTIONS) localeSelect.add(new Option(option.label, option.code));
+  localeSelect.value = getLocale();
+  localeSelect.addEventListener("change", () => {
+    if (!isLocale(localeSelect.value) || localeSelect.value === getLocale()) return;
+    setLocale(localeSelect.value);
+    void emit("locale://change", { locale: localeSelect.value }).finally(() => window.location.reload());
+  });
+}
 
 const overlayIds: OverlayId[] = ["delta", "timing", "driving", "tires", "damage", "standings", "relative", "fuel", "pitstop", "flags", "rejoin", "trackmap"];
 const storageKey = "lmu-overlay.visible-windows.v1";
@@ -207,14 +235,14 @@ const supportButton = document.getElementById("open-kofi") as HTMLButtonElement 
 const supportStatus = document.getElementById("support-status");
 supportButton?.addEventListener("click", () => {
   supportButton.disabled = true;
-  if (supportStatus) supportStatus.textContent = "ABRIENDO KO-FI…";
+  if (supportStatus) supportStatus.textContent = t("support.opening");
   invoke("open_support_page")
     .then(() => {
-      if (supportStatus) supportStatus.textContent = "KO-FI ABIERTO EN TU NAVEGADOR";
+      if (supportStatus) supportStatus.textContent = t("support.opened");
     })
     .catch((error) => {
       console.error("No se pudo abrir Ko-fi", error);
-      if (supportStatus) supportStatus.textContent = "NO SE PUDO ABRIR KO-FI";
+      if (supportStatus) supportStatus.textContent = t("support.error");
     })
     .finally(() => {
       supportButton.disabled = false;
@@ -226,11 +254,11 @@ const overlaySearch = document.getElementById("overlay-search") as HTMLInputElem
 const filterButtons = [...document.querySelectorAll<HTMLButtonElement>("[data-overlay-filter]")];
 
 const filterOverlays = (): void => {
-  const query = overlaySearch?.value.trim().toLocaleLowerCase("es") ?? "";
+  const query = overlaySearch?.value.trim().toLocaleLowerCase(getLocale()) ?? "";
   let matches = 0;
   for (const card of document.querySelectorAll<HTMLElement>("[data-overlay-card]")) {
     const categoryMatches = activeOverlayFilter === "all" || card.dataset.overlayCategory === activeOverlayFilter;
-    const queryMatches = !query || (card.textContent ?? "").toLocaleLowerCase("es").includes(query);
+    const queryMatches = !query || (card.textContent ?? "").toLocaleLowerCase(getLocale()).includes(query);
     const visible = categoryMatches && queryMatches;
     card.hidden = !visible;
     const settings = card.nextElementSibling as HTMLElement | null;
@@ -286,7 +314,9 @@ const syncBrowserSourcePreferences = (): void => {
       delta: deltaSettings,
       timing: timingSettings,
       trackMap: trackMapSettings,
-      transparency: effectiveOverlayTransparency(overlayTransparency, overlayTransparencyScope)
+      transparency: effectiveOverlayTransparency(overlayTransparency, overlayTransparencyScope),
+      locale: getLocale(),
+      supportedLocales: SUPPORTED_LOCALES
     }
   }).catch(() => undefined);
   void invoke("set_delta_settings", { settings: deltaSettings }).catch(() => undefined);
@@ -312,7 +342,7 @@ const renderShortcutSettings = (status: ShortcutSettingsStatus): void => {
     if (input) {
       input.value = binding.shortcut;
       input.dataset.state = binding.active ? "active" : "error";
-      input.title = binding.error ?? (binding.active ? "Atajo activo" : "Atajo no disponible");
+      input.title = t(binding.active ? "shortcuts.active" : "shortcuts.unavailable");
     }
   }
 
@@ -324,7 +354,7 @@ const renderShortcutSettings = (status: ShortcutSettingsStatus): void => {
   const unavailable = [status.interaction_mode, status.show_panel].find((binding) => !binding.active);
   if (unavailable) {
     setShortcutMessage(
-      `${unavailable.shortcut} está ocupado. Selecciona el campo y pulsa otra combinación.`,
+      t("shortcuts.occupied", { shortcut: unavailable.shortcut }),
       "error"
     );
   }
@@ -352,13 +382,22 @@ const shortcutFromKeyboardEvent = (event: KeyboardEvent): string | null => {
 const saveShortcut = async (action: ShortcutAction, shortcut: string): Promise<void> => {
   const input = shortcutInputs[action];
   if (input) input.disabled = true;
-  setShortcutMessage(`Comprobando ${shortcut}...`);
+  setShortcutMessage(t("shortcuts.checking", { shortcut }));
   try {
     const status = await invoke<ShortcutSettingsStatus>("set_shortcut", { action, shortcut });
     renderShortcutSettings(status);
-    setShortcutMessage(`${shortcut} guardado y activo.`, "success");
+    setShortcutMessage(t("shortcuts.saved", { shortcut }), "success");
   } catch (error) {
-    setShortcutMessage(String(error), "error");
+    const kind = String(error);
+    const key = kind === "invalid"
+      ? "shortcuts.invalid"
+      : kind === "duplicate"
+        ? "shortcuts.duplicate"
+        : kind === "persistence_failed"
+          ? "shortcuts.persistenceError"
+          : "shortcuts.unavailableFor";
+    setShortcutMessage(t(key, { shortcut }), "error");
+    console.error("Could not update global shortcut:", error);
     renderShortcutSettings(await invoke<ShortcutSettingsStatus>("get_shortcut_settings"));
   } finally {
     if (input) input.disabled = false;
@@ -368,7 +407,7 @@ const saveShortcut = async (action: ShortcutAction, shortcut: string): Promise<v
 for (const action of ["interaction_mode", "show_panel"] as const) {
   const input = shortcutInputs[action];
   input?.addEventListener("focus", () => {
-    setShortcutMessage("Pulsa Ctrl o Alt, opcionalmente Shift, y una letra, número o F1–F12.");
+    setShortcutMessage(t("shortcuts.capture"));
     input.select();
   });
   input?.addEventListener("keydown", (event) => {
@@ -376,7 +415,7 @@ for (const action of ["interaction_mode", "show_panel"] as const) {
     event.preventDefault();
     if (event.key === "Escape") {
       input.blur();
-      setShortcutMessage("Cambio cancelado.");
+      setShortcutMessage(t("shortcuts.cancelled"));
       return;
     }
     const shortcut = shortcutFromKeyboardEvent(event);
@@ -427,10 +466,10 @@ const persistTrackMapSettings = (): void => {
 const deltaModeSelect = document.getElementById("delta-mode") as HTMLSelectElement | null;
 const deltaRangeSelect = document.getElementById("delta-display-range") as HTMLSelectElement | null;
 if (deltaModeSelect) {
-  deltaModeSelect.replaceChildren(...DELTA_MODES.map(({ value, label }) => {
+  deltaModeSelect.replaceChildren(...DELTA_MODES.map(({ value, labelKey }) => {
     const option = document.createElement("option");
     option.value = value;
-    option.textContent = label;
+    option.textContent = t(labelKey);
     return option;
   }));
   deltaModeSelect.value = deltaSettings.mode;
@@ -441,6 +480,7 @@ if (deltaModeSelect) {
   });
 }
 if (deltaRangeSelect) {
+  for (const option of deltaRangeSelect.options) option.textContent = `±${formatNumber(Number(option.value))} s`;
   deltaRangeSelect.value = String(deltaSettings.displayRange);
   deltaRangeSelect.addEventListener("change", () => {
     const displayRange = Number(deltaRangeSelect.value);
@@ -451,6 +491,10 @@ if (deltaRangeSelect) {
 }
 const timingHistorySelect = document.getElementById("timing-history-laps") as HTMLSelectElement | null;
 if (timingHistorySelect) {
+  for (const option of timingHistorySelect.options) {
+    const count = Number(option.value);
+    option.textContent = count === 0 ? t("settings.hidden") : t("settings.laps", { count });
+  }
   timingHistorySelect.value = String(timingSettings.historyLaps);
   timingHistorySelect.addEventListener("change", () => {
     const historyLaps = Number(timingHistorySelect.value);
@@ -557,7 +601,7 @@ const overlayDisplayName = (id: OverlayId): string =>
 
 const resetOverlayConfiguration = async (id: OverlayId): Promise<void> => {
   if (!await confirmReset(
-    `Se restaurará la configuración predeterminada de ${overlayDisplayName(id)}.`
+    t("overlay.configConfirm", { overlay: overlayDisplayName(id) })
   )) return;
   overlayTransparency[id] = DEFAULT_OVERLAY_TRANSPARENCY[id];
   localStorage.setItem(OVERLAY_TRANSPARENCY_KEY, JSON.stringify(overlayTransparency));
@@ -601,17 +645,17 @@ const resetOverlayConfiguration = async (id: OverlayId): Promise<void> => {
 
 const resetOverlayPosition = async (id: OverlayId, button: HTMLButtonElement): Promise<void> => {
   if (!await confirmReset(
-    `Se restaurarán la posición y el tamaño de ${overlayDisplayName(id)}.`
+    t("overlay.positionConfirm", { overlay: overlayDisplayName(id) })
   )) return;
   button.disabled = true;
   const previous = button.textContent;
   try {
     await resetOverlayPlacement(id);
-    button.textContent = "HECHO";
+    button.textContent = t("overlay.done");
     window.setTimeout(() => { button.textContent = previous; }, 900);
   } catch (error) {
     console.error(`No se pudo restaurar la posición de ${id}:`, error);
-    button.textContent = "ERROR";
+    button.textContent = t("overlay.error");
     window.setTimeout(() => { button.textContent = previous; }, 1200);
   } finally {
     button.disabled = false;
@@ -621,6 +665,7 @@ const resetOverlayPosition = async (id: OverlayId, button: HTMLButtonElement): P
 for (const id of overlayIds) {
   const input = inputFor(id);
   setCardState(id, preferences[id]);
+  input?.setAttribute("aria-label", t("overlay.show", { overlay: overlayDisplayName(id) }));
   input?.addEventListener("change", () => void setOverlay(id, input.checked));
 
   const card = document.querySelector<HTMLElement>(`[data-overlay-card="${id}"]`);
@@ -629,11 +674,11 @@ for (const id of overlayIds) {
     const detailsToggle = document.createElement("button");
     detailsToggle.type = "button";
     detailsToggle.className = "overlay-details-toggle";
-    detailsToggle.textContent = "AJUSTES";
+    detailsToggle.textContent = t("overlay.settings");
     detailsToggle.setAttribute("aria-expanded", "false");
     detailsToggle.addEventListener("click", () => {
       const expanded = card.classList.toggle("expanded");
-      detailsToggle.textContent = expanded ? "CERRAR" : "AJUSTES";
+      detailsToggle.textContent = t(expanded ? "overlay.close" : "overlay.settings");
       detailsToggle.setAttribute("aria-expanded", String(expanded));
       const settings = card.nextElementSibling as HTMLElement | null;
       if (settings?.matches("[data-settings-for]")) settings.hidden = !expanded;
@@ -643,14 +688,14 @@ for (const id of overlayIds) {
     const control = document.createElement("label");
     control.className = "overlay-transparency";
     const caption = document.createElement("span");
-    caption.textContent = "TRANSP.";
+    caption.textContent = t("overlay.transparency");
     const range = document.createElement("input");
     range.type = "range";
     range.min = "0";
     range.max = "100";
     range.step = "5";
     range.value = String(overlayTransparency[id]);
-    range.setAttribute("aria-label", `Transparencia del fondo de ${id}`);
+    range.setAttribute("aria-label", t("overlay.transparencyAria", { overlay: overlayDisplayName(id) }));
     const output = document.createElement("output");
     output.textContent = `${overlayTransparency[id]}%`;
     control.append(caption, range, output);
@@ -661,15 +706,15 @@ for (const id of overlayIds) {
     resetActions.className = "overlay-reset-actions";
     const resetConfiguration = document.createElement("button");
     resetConfiguration.type = "button";
-    resetConfiguration.textContent = "CONFIG.";
-    resetConfiguration.title = "Restaurar la configuración de este overlay";
-    resetConfiguration.setAttribute("aria-label", `Restaurar configuración de ${id}`);
+    resetConfiguration.textContent = t("overlay.configShort");
+    resetConfiguration.title = t("overlay.configTitle");
+    resetConfiguration.setAttribute("aria-label", t("overlay.configAria", { overlay: overlayDisplayName(id) }));
     resetConfiguration.addEventListener("click", () => void resetOverlayConfiguration(id));
     const resetPosition = document.createElement("button");
     resetPosition.type = "button";
-    resetPosition.textContent = "POSICIÓN";
-    resetPosition.title = "Restaurar posición y tamaño de este overlay";
-    resetPosition.setAttribute("aria-label", `Restaurar posición y tamaño de ${id}`);
+    resetPosition.textContent = t("overlay.positionShort");
+    resetPosition.title = t("overlay.positionTitle");
+    resetPosition.setAttribute("aria-label", t("overlay.positionAria", { overlay: overlayDisplayName(id) }));
     resetPosition.addEventListener("click", () => void resetOverlayPosition(id, resetPosition));
     resetActions.append(resetConfiguration, resetPosition);
     card.insertBefore(resetActions, switchElement);
@@ -735,7 +780,7 @@ document.getElementById("hide-all")?.addEventListener("click", () => void setAll
 const exportConfigurationButton = document.getElementById("export-overlay-configuration") as HTMLButtonElement | null;
 const importConfigurationButton = document.getElementById("import-overlay-configuration") as HTMLButtonElement | null;
 const exportConfigurationStatus = document.getElementById("export-overlay-configuration-status");
-const configurationFileFilters = [{ name: "Configuración de LMUOverlay", extensions: ["json"] }];
+const configurationFileFilters = [{ name: t("config.filter"), extensions: ["json"] }];
 
 const configurationObject = (value: unknown): Record<string, unknown> | null =>
   value !== null && typeof value === "object" && !Array.isArray(value)
@@ -747,9 +792,10 @@ const parseOverlayConfiguration = (contents: string): OverlayConfigurationExport
   try {
     parsed = JSON.parse(contents);
   } catch {
-    throw new Error("El archivo no contiene JSON válido.");
+    throw new Error(t("config.invalidJson"));
   }
   const root = configurationObject(parsed);
+  const ui = configurationObject(root?.ui);
   const overlays = configurationObject(root?.overlays);
   const visibility = configurationObject(overlays?.visibility);
   const transparency = configurationObject(overlays?.transparency);
@@ -776,28 +822,28 @@ const parseOverlayConfiguration = (contents: string): OverlayConfigurationExport
   const percentageIsValid = (value: unknown): value is number =>
     typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 100;
   if (root?.format !== "lmu-overlay-configuration"
-    || (schemaVersion !== 1 && schemaVersion !== 2 && schemaVersion !== 3 && schemaVersion !== 4 && schemaVersion !== 5 && schemaVersion !== 6)
+    || ![1, 2, 3, 4, 5, 6, 7].includes(Number(schemaVersion))
     || !overlays || !visibility || !transparency || !transparencyScope || !transparencyValues
     || !layout || !standings || !relative
     || (Number(schemaVersion) >= 2 && !driving)
     || (Number(schemaVersion) >= 3 && !delta) || (Number(schemaVersion) >= 4 && !timing)
     || (Number(schemaVersion) >= 6 && !trackMap)) {
-    throw new Error("El archivo no es una configuración compatible de LMUOverlay.");
+    throw new Error(t("config.incompatible"));
   }
   if (transparencyScope.mode !== "global" && transparencyScope.mode !== "individual") {
-    throw new Error("El modo de transparencia del archivo no es válido.");
+    throw new Error(t("config.invalidTransparency"));
   }
   if (Number(schemaVersion) >= 5) {
     if (schemaMonitor === null) {
-      throw new Error("El monitor del archivo no es válido.");
+      throw new Error(t("config.invalidMonitor"));
     }
   } else if (!monitorSelection
     || (monitorSelection.mode !== "global" && monitorSelection.mode !== "individual")
     || legacyMonitor === null) {
-    throw new Error("El modo de monitor del archivo no es válido.");
+    throw new Error(t("config.invalidMonitorMode"));
   }
   if (!percentageIsValid(transparencyScope.globalTransparency)) {
-    throw new Error("La configuración general del archivo no es válida.");
+    throw new Error(t("config.invalidGeneral"));
   }
   if (Number(schemaVersion) < 3) {
     visibility.delta = false;
@@ -830,7 +876,7 @@ const parseOverlayConfiguration = (contents: string): OverlayConfigurationExport
     || Number(standings.otherClassRows) > 15
     || typeof standings.showOtherClasses !== "boolean"
     || (standings.driverNameFormat !== undefined && !isDriverNameFormat(standings.driverNameFormat))) {
-    throw new Error("La configuración de Standings está incompleta o dañada.");
+    throw new Error(t("config.invalidStandings"));
   }
   const defaultRelative = defaultRelativeSettings();
   const relativeOptionIds = Object.keys(defaultRelative.options);
@@ -842,7 +888,7 @@ const parseOverlayConfiguration = (contents: string): OverlayConfigurationExport
     || !Number.isInteger(relative.behindRows) || Number(relative.behindRows) < 1
     || Number(relative.behindRows) > 10
     || (relative.driverNameFormat !== undefined && !isDriverNameFormat(relative.driverNameFormat))) {
-    throw new Error("La configuración de Relative está incompleta o dañada.");
+    throw new Error(t("config.invalidRelative"));
   }
   const defaultDriving = defaultDrivingSettings();
   const drivingPedalIds = Object.keys(defaultDriving.graphPedals);
@@ -852,23 +898,23 @@ const parseOverlayConfiguration = (contents: string): OverlayConfigurationExport
     || typeof driving.showForceFeedback !== "boolean"
     || typeof driving.showSpeed !== "boolean"
     || typeof driving.showGear !== "boolean")) {
-    throw new Error("La configuración de Trailing + Pedal está incompleta o dañada.");
+    throw new Error(t("config.invalidDriving"));
   }
   const normalizedDelta = delta ?? defaultDeltaSettings();
   if (!isDeltaMode(normalizedDelta.mode)
     || typeof normalizedDelta.displayRange !== "number"
     || ![0.5, 1, 2, 5].includes(normalizedDelta.displayRange)) {
-    throw new Error("La configuración de Delta está incompleta o dañada.");
+    throw new Error(t("config.invalidDelta"));
   }
   const normalizedTiming = timing ?? defaultTimingSettings();
   if (normalizedTiming.historyLaps !== 0
     && normalizedTiming.historyLaps !== 3
     && normalizedTiming.historyLaps !== 5) {
-    throw new Error("La configuración de Timing compacto está incompleta o dañada.");
+    throw new Error(t("config.invalidTiming"));
   }
   const normalizedTrackMap = trackMap ?? defaultTrackMapSettings();
   if (typeof normalizedTrackMap.showPitPrediction !== "boolean") {
-    throw new Error("La configuraci\u00f3n del mapa est\u00e1 incompleta o da\u00f1ada.");
+    throw new Error(t("config.invalidMap"));
   }
 
   for (const id of overlayIds) {
@@ -878,7 +924,7 @@ const parseOverlayConfiguration = (contents: string): OverlayConfigurationExport
       || ![placement.x, placement.y, placement.width, placement.height]
         .every((value) => typeof value === "number" && Number.isFinite(value))
       || Number(placement.width) <= 0 || Number(placement.height) <= 0) {
-      throw new Error(`La configuración de ${id} está incompleta o dañada.`);
+      throw new Error(t("config.invalidOverlay", { overlay: id }));
     }
   }
   const cleanedLayout = Object.fromEntries(overlayIds.map((id) => {
@@ -889,7 +935,8 @@ const parseOverlayConfiguration = (contents: string): OverlayConfigurationExport
   const normalized = parsed as OverlayConfigurationExport;
   return {
     ...normalized,
-    schemaVersion: 6,
+    schemaVersion: 7,
+    ui: { locale: isLocale(ui?.locale) ? ui.locale : getLocale() },
     overlays: {
       ...normalized.overlays,
       monitor,
@@ -928,13 +975,17 @@ const applyImportedConfiguration = (configuration: OverlayConfigurationExport): 
     [TRACK_MAP_SETTINGS_KEY, configuration.overlays.trackMap]
   ];
   const previous = entries.map(([key]) => [key, localStorage.getItem(key)] as const);
+  const previousLocale = localStorage.getItem(LOCALE_STORAGE_KEY);
   try {
     for (const [key, value] of entries) localStorage.setItem(key, JSON.stringify(value));
+    localStorage.setItem(LOCALE_STORAGE_KEY, configuration.ui.locale);
   } catch (error) {
     for (const [key, value] of previous) {
       if (value === null) localStorage.removeItem(key);
       else localStorage.setItem(key, value);
     }
+    if (previousLocale === null) localStorage.removeItem(LOCALE_STORAGE_KEY);
+    else localStorage.setItem(LOCALE_STORAGE_KEY, previousLocale);
     throw error;
   }
 };
@@ -946,15 +997,16 @@ const setConfigurationTransferBusy = (busy: boolean): void => {
 
 exportConfigurationButton?.addEventListener("click", () => {
   setConfigurationTransferBusy(true);
-  if (exportConfigurationStatus) exportConfigurationStatus.textContent = "PREPARANDO ARCHIVO…";
+  if (exportConfigurationStatus) exportConfigurationStatus.textContent = t("config.preparing");
   void (async () => {
     const now = new Date();
     const layout = readCompositeLayout() ?? await ensureCompositeLayout();
     const monitor = await resolveOverlayMonitor();
     const configuration: OverlayConfigurationExport = {
       format: "lmu-overlay-configuration",
-      schemaVersion: 6,
+      schemaVersion: 7,
       exportedAt: now.toISOString(),
+      ui: { locale: getLocale() },
       overlays: {
         visibility: { ...preferences },
         transparency: {
@@ -973,12 +1025,12 @@ exportConfigurationButton?.addEventListener("click", () => {
     };
     const timestamp = now.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
     const selectedPath = await save({
-      title: "Exportar configuración de LMUOverlay",
+      title: t("config.exportDialog"),
       defaultPath: `LMUOverlay-config-${timestamp}.json`,
       filters: configurationFileFilters
     });
     if (!selectedPath) {
-      if (exportConfigurationStatus) exportConfigurationStatus.textContent = "EXPORTACIÓN CANCELADA";
+      if (exportConfigurationStatus) exportConfigurationStatus.textContent = t("config.exportCancelled");
       return;
     }
     const pathWithExtension = selectedPath.toLocaleLowerCase().endsWith(".json")
@@ -989,12 +1041,12 @@ exportConfigurationButton?.addEventListener("click", () => {
       contents: JSON.stringify(configuration, null, 2)
     });
     if (exportConfigurationStatus) {
-      exportConfigurationStatus.textContent = "CONFIGURACIÓN EXPORTADA";
+      exportConfigurationStatus.textContent = t("config.exported");
       exportConfigurationStatus.title = path;
     }
   })().catch((error) => {
     if (exportConfigurationStatus) {
-      exportConfigurationStatus.textContent = `ERROR · ${String(error)}`;
+      exportConfigurationStatus.textContent = t("config.error", { detail: String(error) });
       exportConfigurationStatus.title = String(error);
     }
   }).finally(() => {
@@ -1004,36 +1056,36 @@ exportConfigurationButton?.addEventListener("click", () => {
 
 importConfigurationButton?.addEventListener("click", () => {
   setConfigurationTransferBusy(true);
-  if (exportConfigurationStatus) exportConfigurationStatus.textContent = "SELECCIONA UNA CONFIGURACIÓN…";
+  if (exportConfigurationStatus) exportConfigurationStatus.textContent = t("config.chooseImport");
   void (async () => {
     const selectedPath = await open({
-      title: "Importar configuración de LMUOverlay",
+      title: t("config.importDialog"),
       multiple: false,
       directory: false,
       filters: configurationFileFilters
     });
     if (!selectedPath) {
-      if (exportConfigurationStatus) exportConfigurationStatus.textContent = "IMPORTACIÓN CANCELADA";
+      if (exportConfigurationStatus) exportConfigurationStatus.textContent = t("config.importCancelled");
       return;
     }
     const contents = await invoke<string>("import_overlay_configuration", { path: selectedPath });
     const configuration = await normalizeImportedMonitor(parseOverlayConfiguration(contents));
     if (!await confirmReset(
-      "Se reemplazarán la configuración, la posición y el tamaño de todos los overlays."
+      t("config.confirmImport")
     )) {
-      if (exportConfigurationStatus) exportConfigurationStatus.textContent = "IMPORTACIÓN CANCELADA";
+      if (exportConfigurationStatus) exportConfigurationStatus.textContent = t("config.importCancelled");
       return;
     }
     applyImportedConfiguration(configuration);
     await setOverlayMonitor(configuration.overlays.monitor).catch(() => undefined);
     if (exportConfigurationStatus) {
-      exportConfigurationStatus.textContent = "CONFIGURACIÓN IMPORTADA · APLICANDO…";
+      exportConfigurationStatus.textContent = t("config.imported");
       exportConfigurationStatus.title = selectedPath;
     }
     window.setTimeout(() => window.location.reload(), 250);
   })().catch((error) => {
     if (exportConfigurationStatus) {
-      exportConfigurationStatus.textContent = `ERROR · ${String(error)}`;
+      exportConfigurationStatus.textContent = t("config.error", { detail: String(error) });
       exportConfigurationStatus.title = String(error);
     }
   }).finally(() => {
@@ -1051,7 +1103,7 @@ for (const column of STANDINGS_COLUMNS.filter(({ configurable }) => configurable
   input.dataset.standingsColumn = column.id;
   const mark = document.createElement("span");
   const text = document.createElement("b");
-  text.textContent = column.label;
+  text.textContent = t(column.labelKey);
   label.append(input, mark, text);
   input.addEventListener("change", () => {
     standingsSettings = {
@@ -1065,7 +1117,7 @@ for (const column of STANDINGS_COLUMNS.filter(({ configurable }) => configurable
 
 const bindColumnOrder = <Id extends string>(
   container: HTMLElement | null,
-  definitions: ReadonlyArray<{ id: Id; label: string }>,
+  definitions: ReadonlyArray<{ id: Id; labelKey: TranslationKey }>,
   getOrder: () => Id[],
   setOrder: (order: Id[]) => void,
   lockedIds: ReadonlySet<Id> = new Set()
@@ -1105,15 +1157,16 @@ const bindColumnOrder = <Id extends string>(
       grip.setAttribute("aria-hidden", "true");
       const label = document.createElement("span");
       label.className = "column-order-label";
-      label.textContent = definition.label;
-      label.title = definition.label;
+      const translatedLabel = t(definition.labelKey);
+      label.textContent = translatedLabel;
+      label.title = translatedLabel;
 
       const previous = document.createElement("button");
       previous.type = "button";
       previous.className = "column-order-button";
       previous.textContent = "←";
       previous.disabled = locked || index === 0 || lockedIds.has(order[index - 1]);
-      previous.title = `Mover ${definition.label} a la izquierda`;
+      previous.title = t("settings.left", { label: translatedLabel });
       previous.setAttribute("aria-label", previous.title);
       previous.addEventListener("click", () => move(id, index - 1));
 
@@ -1122,7 +1175,7 @@ const bindColumnOrder = <Id extends string>(
       next.className = "column-order-button";
       next.textContent = "→";
       next.disabled = locked || index === order.length - 1 || lockedIds.has(order[index + 1]);
-      next.title = `Mover ${definition.label} a la derecha`;
+      next.title = t("settings.right", { label: translatedLabel });
       next.setAttribute("aria-label", next.title);
       next.addEventListener("click", () => move(id, index + 1));
 
@@ -1154,7 +1207,7 @@ const bindColumnOrder = <Id extends string>(
       if (locked) {
         const lockedMark = document.createElement("span");
         lockedMark.className = "column-order-lock";
-        lockedMark.textContent = "FIJO";
+        lockedMark.textContent = t("settings.fixed");
         item.append(grip, label, lockedMark);
       } else {
         item.append(grip, label, previous, next);
@@ -1197,12 +1250,12 @@ const appendToggle = (
 };
 
 const standingsHeaderOptions = document.getElementById("standings-header-options");
-appendToggle(standingsHeaderOptions, "Mostrar cabecera", standingsSettings.showHeader, (checked) => {
+appendToggle(standingsHeaderOptions, t("settings.showHeader"), standingsSettings.showHeader, (checked) => {
   standingsSettings = { ...standingsSettings, showHeader: checked };
   persistStandingsSettings();
 });
 for (const option of STANDINGS_HEADER_OPTIONS) {
-  appendToggle(standingsHeaderOptions, option.label, standingsSettings.header[option.id], (checked) => {
+  appendToggle(standingsHeaderOptions, t(option.labelKey), standingsSettings.header[option.id], (checked) => {
     standingsSettings = {
       ...standingsSettings,
       header: { ...standingsSettings.header, [option.id]: checked }
@@ -1250,7 +1303,7 @@ const bindDriverNameFormat = (
   const select = document.getElementById(id) as HTMLSelectElement | null;
   if (!select) return;
   for (const format of DRIVER_NAME_FORMATS) {
-    select.add(new Option(format.label, format.id));
+    select.add(new Option(t(format.labelKey), format.id));
   }
   select.value = current();
   select.addEventListener("change", () => {
@@ -1278,14 +1331,14 @@ const appendRelativeOption = (
 };
 
 const relativeHeaderOptions = document.getElementById("relative-header-options");
-appendRelativeOption(relativeHeaderOptions, "tableHeader", "Mostrar cabecera");
+appendRelativeOption(relativeHeaderOptions, "tableHeader", t("settings.showHeader"));
 for (const option of RELATIVE_HEADER_OPTIONS) {
-  appendRelativeOption(relativeHeaderOptions, option.id, option.label);
+  appendRelativeOption(relativeHeaderOptions, option.id, t(option.labelKey));
 }
 
 const relativeColumns = document.getElementById("relative-columns");
 for (const option of RELATIVE_COLUMN_OPTIONS) {
-  appendRelativeOption(relativeColumns, option.id, option.label);
+  appendRelativeOption(relativeColumns, option.id, t(option.labelKey));
 }
 
 bindColumnOrder(
@@ -1339,16 +1392,16 @@ const appendDrivingPedalToggle = (
 const drivingGraphPedals = document.getElementById("driving-graph-pedals");
 const drivingInputPedals = document.getElementById("driving-input-pedals");
 for (const pedal of DRIVING_PEDALS) {
-  appendDrivingPedalToggle(drivingGraphPedals, "graphPedals", pedal.id, pedal.label);
-  appendDrivingPedalToggle(drivingInputPedals, "inputPedals", pedal.id, pedal.label);
+  appendDrivingPedalToggle(drivingGraphPedals, "graphPedals", pedal.id, t(pedal.labelKey));
+  appendDrivingPedalToggle(drivingInputPedals, "inputPedals", pedal.id, t(pedal.labelKey));
 }
 
 const drivingReadoutOptions = document.getElementById("driving-readout-options");
 for (const [key, label] of [
-  ["showSteering", "Volante"],
-  ["showForceFeedback", "Force Feedback"],
-  ["showSpeed", "Velocidad (km/h)"],
-  ["showGear", "Marcha"]
+  ["showSteering", t("readout.steering")],
+  ["showForceFeedback", t("readout.ffb")],
+  ["showSpeed", t("readout.speed")],
+  ["showGear", t("readout.gear")]
 ] as const) {
   appendToggle(drivingReadoutOptions, label, drivingSettings[key], (checked) => {
     drivingSettings = { ...drivingSettings, [key]: checked };
@@ -1366,15 +1419,15 @@ const renderLoggingStatus = (status: TelemetryLoggingStatus): void => {
   const description = document.getElementById("logging-description");
   if (description) {
     description.textContent = status.enabled
-      ? "Telemetría a 10 Hz y rendimiento resumido cada 5 segundos."
-      : "Guarda sesión, cálculos y tiempos internos para optimización.";
+      ? t("logging.onSub")
+      : t("logging.offSub");
   }
 
   const path = document.getElementById("logging-path");
   if (path) {
     const location = status.active_file ?? status.directory;
     const name = location.split(/[\\/]/).filter(Boolean).at(-1) ?? location;
-    path.textContent = status.enabled ? `ACTIVO · ${name}` : `DESACTIVADO · ${name}`;
+    path.textContent = t(status.enabled ? "logging.active" : "logging.disabled", { name });
     path.title = location;
   }
 };
@@ -1401,6 +1454,18 @@ loggingInput?.addEventListener("change", () => {
 
 const browserSourceInput = document.getElementById("browser-source-enabled") as HTMLInputElement | null;
 
+const browserSourceError = (kind: BrowserSourceStatus["error_kind"]): string => {
+  switch (kind) {
+    case "not_initialized": return t("browser.errorNotInitialized");
+    case "missing_assets": return t("browser.errorMissingAssets");
+    case "address_unavailable": return t("browser.errorAddress");
+    case "server_configuration": return t("browser.errorConfiguration");
+    case "server_startup": return t("browser.errorStartup");
+    case "settings_persistence": return t("browser.errorPersistence");
+    default: return t("browser.offSub");
+  }
+};
+
 const renderBrowserSourceStatus = (status: BrowserSourceStatus): void => {
   if (browserSourceInput) browserSourceInput.checked = status.enabled && status.running;
   document.getElementById("browser-source-card")?.classList.toggle("active", status.running);
@@ -1410,15 +1475,15 @@ const renderBrowserSourceStatus = (status: BrowserSourceStatus): void => {
   const description = document.getElementById("browser-source-description");
   if (description) {
     description.textContent = status.running
-      ? "Activo sólo en este equipo y reutilizando la telemetría existente."
-      : status.error ?? "Servidor apagado, sin puerto ni serialización adicional.";
+      ? t("browser.onSub")
+      : browserSourceError(status.error_kind);
   }
   const label = document.getElementById("browser-source-status");
   if (label) {
     label.textContent = status.running
-      ? `ACTIVO · ${status.clients} FUENTE${status.clients === 1 ? "" : "S"}`
-      : status.error ? "ERROR AL INICIAR" : "DESACTIVADO";
-    label.title = status.error ?? status.url;
+      ? t("browser.clients", { count: status.clients })
+      : status.error_kind ? t("browser.error") : t("browser.disabled");
+    label.title = status.error_detail ?? status.url;
   }
 
   document.querySelectorAll<HTMLElement>("[data-browser-overlay]").forEach((row) => {
@@ -1452,7 +1517,7 @@ document.querySelectorAll<HTMLButtonElement>("[data-browser-overlay] button").fo
     if (!url) return;
     void navigator.clipboard.writeText(url).then(() => {
       const previous = button.textContent;
-      button.textContent = "COPIADO";
+      button.textContent = t("browser.copied");
       window.setTimeout(() => { button.textContent = previous; }, 900);
     });
   });
@@ -1475,32 +1540,33 @@ const renderConnection = (frame: TelemetryFrame): void => {
   if (!frame.connected) {
     const pluginMissing = lmuDependencyStatus?.telemetry_plugin_available === false;
     status.dataset.state = pluginMissing ? "error" : "offline";
-    label.textContent = pluginMissing ? "FALTA PLUGIN LMU" : "ESPERANDO LMU";
+    label.textContent = t(pluginMissing ? "status.plugin" : "status.waiting");
     if (pluginMissing) {
-      status.title = "No se encontró Plugins\\LMU_SharedMemoryMapPlugin64.dll";
+      status.title = t("status.pluginTitle");
     }
   } else if (!frame.player_active) {
     status.dataset.state = "standby";
-    label.textContent = "LMU · SIN COCHE";
+    label.textContent = t("status.noCar");
   } else {
     status.dataset.state = "live";
-    label.textContent = "TELEMETRÍA ACTIVA";
+    label.textContent = t("status.active");
   }
 };
 
 void listen<TelemetryFrame>("telemetry://frame", ({ payload }) => renderConnection(payload));
 const renderInteractionMode = (mode: InteractionMode): void => {
   const status = document.getElementById("interaction-status");
-  if (status) status.textContent = mode.click_through ? "MODO JUEGO" : "MODO EDICIÓN";
+  if (status) status.textContent = t(mode.click_through ? "mode.game" : "mode.edit");
   const button = document.getElementById("toggle-interaction-mode");
-  if (button) button.textContent = mode.click_through ? "CAMBIAR A MODO EDICIÓN" : "CAMBIAR A MODO JUEGO";
+  if (button) button.textContent = t(mode.click_through ? "mode.toEdit" : "mode.toGame");
 };
 
 void listen<InteractionMode>("overlay://interaction-mode", ({ payload }) => renderInteractionMode(payload));
 
 document.getElementById("toggle-interaction-mode")?.addEventListener("click", () => {
   void invoke<InteractionMode>("toggle_interaction_mode_command").catch((error) => {
-    setShortcutMessage(`No se pudo cambiar el modo: ${error}`, "error");
+    console.error("Could not toggle interaction mode:", error);
+    setShortcutMessage(t("mode.error"), "error");
   });
 });
 
@@ -1511,7 +1577,7 @@ syncBrowserSourcePreferences();
 void invoke<BrowserSourceStatus>("get_browser_source_status").then(renderBrowserSourceStatus);
 void invoke<ShortcutSettingsStatus>("get_shortcut_settings")
   .then(renderShortcutSettings)
-  .catch((error) => setShortcutMessage(`No se pudieron cargar los atajos: ${error}`, "error"));
+  .catch((error) => setShortcutMessage(t("shortcuts.loadError", { detail: String(error) }), "error"));
 void invoke<InteractionMode>("get_interaction_mode").then(renderInteractionMode);
 void invoke<LmuDependencyStatus>("get_lmu_dependency_status").then((status) => {
   lmuDependencyStatus = status;

@@ -6,6 +6,7 @@ import { createOverlayPerformanceTracker } from "./overlay-performance";
 import { bindOverlayTransparency } from "./overlay-appearance";
 import type { FlagWarning, TelemetryFrame } from "./telemetry-types";
 import { listenTelemetry } from "./runtime-events";
+import { formatNumber, t } from "./i18n";
 
 fitOverlay({ width: 360, height: 120 });
 bindOverlayTransparency("flags");
@@ -15,7 +16,7 @@ const distanceLabel = (meters: number): string => {
   if (!Number.isFinite(meters)) return "-- m";
   meters = Math.abs(meters);
   if (meters < 1_000) return `${Math.round(meters)} m`;
-  return `${(meters / 1_000).toFixed(1).replace(".", ",")} km`;
+  return `${formatNumber(Math.round(meters / 100) / 10)} km`;
 };
 
 const yellowDirection = (meters: number): string => meters < 0 ? "↓" : "↑";
@@ -55,7 +56,7 @@ const render = (warning: FlagWarning): void => {
   }
   if (count) {
     const visible = warning.kind === "blue" && warning.car_count > 1;
-    const value = visible ? `${warning.car_count} COCHES` : "";
+    const value = visible ? t("flags.cars", { count: warning.car_count }) : "";
     if (count.textContent !== value) count.textContent = value;
     if (count.hidden === visible) count.hidden = !visible;
   }
