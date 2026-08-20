@@ -33,6 +33,17 @@ El panel consume el ciclo base de 50 Hz y no construye clasificaciones.
   nunca mejoran referencias de vuelta o sector.
 - Al cambiar sesión se vacían historia y referencias personales de sesión. Los
   mejores absolutos permanecen en `lap-records.sqlite3`.
+- Durante la salida de boxes, `ACTUAL` y los deltas permanecen sin valor. LMU
+  conserva entonces un `mLapStartET` anterior que no representa el tiempo de la
+  outlap; el contador empieza al primer paso por meta, cuando BlackRack observa
+  el inicio real de una vuelta cronometrada.
+- Una outlap tampoco rellena parciales de sector. El marcador `1.000` que resulta
+  del valor oficial no inicializado `-1` de LMU se descarta; en una vuelta
+  cronometrada invalidada se conserva en su lugar el tiempo real del cruce y se
+  presenta con el estado inválido.
+- El panel usa una superficie compacta de 318 px de ancho, separaciones reducidas
+  y el acento lima vertical izquierdo compartido con los demás overlays compactos.
+  Al cambiar entre 0, 3 o 5 vueltas, conserva la escala visual elegida.
 
 ## Invariantes
 

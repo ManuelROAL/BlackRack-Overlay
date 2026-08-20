@@ -52,6 +52,16 @@ const validPlacement = (value: unknown, overlay: OverlayId): value is OverlayPla
 };
 
 const migrateCompactPanels = (placement: OverlayPlacement): OverlayPlacement => {
+  if (placement.overlay === "timing" && placement.width === 366) {
+    const migratedHeight = placement.height === 150
+      ? 130
+      : placement.height === 236
+        ? 200
+        : (placement.height === 202 || placement.height === 210)
+          ? 172
+          : null;
+    if (migratedHeight !== null) return { ...placement, width: 318, height: migratedHeight };
+  }
   if (placement.overlay === "tires"
     && ((placement.width === 260 && placement.height === 260)
       || (placement.width === 190 && placement.height === 180)

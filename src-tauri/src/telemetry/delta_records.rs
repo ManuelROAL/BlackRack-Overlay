@@ -13,7 +13,10 @@ const SECTOR_TARGET_METERS: f64 = 250.0;
 const MIN_SECTORS: usize = 12;
 const MAX_SECTORS: usize = 40;
 const DELTA_SMOOTHING_SECONDS: f64 = 0.10;
-const FINISH_FREEZE: Duration = Duration::from_secs(3);
+const DELTA_TREND_DISTANCE_METERS: f64 = 20.0;
+const DELTA_TREND_DEADBAND_SECONDS: f64 = 0.008;
+const MIN_SECTOR_DURATION_SECONDS: f64 = 5.0;
+const TIMING_RESULT_FREEZE: Duration = Duration::from_secs(3);
 const SECTOR_FREEZE: Duration = Duration::from_secs(2);
 const STORE_VERSION: u32 = 1;
 
@@ -81,6 +84,15 @@ fn active_mode() -> DeltaMode {
     DeltaMode::from_u8(DELTA_MODE.load(Ordering::Relaxed))
 }
 
+#[derive(Clone, Copy, Debug, Default, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub(crate) enum DeltaTrend {
+    #[default]
+    Neutral,
+    Improving,
+    Worsening,
+}
+
 #[derive(Clone, Debug, Serialize)]
 pub(crate) struct DeltaViewModel {
     available: bool,
@@ -88,7 +100,7 @@ pub(crate) struct DeltaViewModel {
     mode: DeltaMode,
     reference_seconds: f64,
     current_lap_valid: bool,
-    frozen: bool,
+    trend: DeltaTrend,
     sector_index: usize,
     sector_count: usize,
     reference_generation: u64,
@@ -156,7 +168,7 @@ impl Default for DeltaViewModel {
             mode: DeltaMode::SessionBest,
             reference_seconds: 0.0,
             current_lap_valid: false,
-            frozen: false,
+            trend: DeltaTrend::Neutral,
             sector_index: 0,
             sector_count: 0,
             reference_generation: 0,
@@ -177,6 +189,16 @@ struct LapTrace {
     points: Vec<TracePoint>,
     #[serde(default)]
     official_sector_ends: [Option<f64>; 2],
+}
+
+#[derive(Clone, Copy, Debug)]
+struct DeltaTrendAnchor {
+    lap_number: i32,
+    mode: DeltaMode,
+    reference_generation: u64,
+    sector_index: usize,
+    distance: f64,
+    seconds: f64,
 }
 
 impl LapTrace {
@@ -368,7 +390,7 @@ impl CurrentLap {
             number: frame.lap_number,
             scoring_laps_at_start: frame.player_total_laps,
             started_at_line,
-            valid: frame.player_lap_valid && !frame.player_in_pits && frame.game_phase == 5,
+            valid: !frame.player_in_pits && frame.game_phase == 5,
             visited_pits: frame.player_in_pits,
             formation: frame.game_phase == 3,
             points: if started_at_line {
@@ -396,7 +418,11 @@ impl CurrentLap {
 
     fn observe(&mut self, frame: &TelemetryFrame) {
         let distance = frame.lap_progress * frame.track_length_meters;
-        self.valid &= frame.player_lap_valid && !frame.player_in_pits && frame.game_phase == 5;
+        self.scoring_laps_at_start = self.scoring_laps_at_start.max(frame.player_total_laps);
+        let validity_is_synchronized = frame.current_lap_seconds >= 2.0 || distance >= 300.0;
+        self.valid &= (!validity_is_synchronized || frame.player_lap_valid)
+            && !frame.player_in_pits
+            && frame.game_phase == 5;
         self.visited_pits |= frame.player_in_pits;
         self.formation |= frame.game_phase == 3;
         if frame.player_sector != self.previous_sector {
@@ -405,12 +431,27 @@ impl CurrentLap {
                 0 => Some(1),
                 _ => None,
             };
-            if let Some(index) = boundary {
+            if let Some(index) = boundary.filter(|_| self.started_at_line) {
+                let official_end = match index {
+                    0 => frame.current_sector1_seconds,
+                    _ => frame.current_sector2_seconds,
+                };
+                let start_seconds = if index == 0 {
+                    0.0
+                } else {
+                    self.official_sector_ends[index - 1].unwrap_or(0.0)
+                };
+                let minimum_end = start_seconds + MIN_SECTOR_DURATION_SECONDS;
+                let end_seconds = if official_end.is_finite() && official_end > minimum_end {
+                    official_end
+                } else {
+                    frame.current_lap_seconds
+                };
                 if self.official_sector_ends[index].is_none()
-                    && frame.current_lap_seconds.is_finite()
-                    && frame.current_lap_seconds > 0.0
+                    && end_seconds.is_finite()
+                    && end_seconds > minimum_end
                 {
-                    self.official_sector_ends[index] = Some(frame.current_lap_seconds);
+                    self.official_sector_ends[index] = Some(end_seconds);
                 }
             }
             self.previous_sector = frame.player_sector;
@@ -626,7 +667,6 @@ pub(crate) struct DeltaEngine {
     last_session_elapsed: f64,
     last_lap_number: i32,
     generation: u64,
-    frozen: Option<(Instant, f64)>,
     timing_sector_freeze: Option<(Instant, f64)>,
     timing_results_until: Option<Instant>,
     timing_sectors: [Option<f64>; 3],
@@ -636,6 +676,8 @@ pub(crate) struct DeltaEngine {
     timing_history: Vec<TimingLapView>,
     smoothed_delta: f64,
     last_delta_update: Instant,
+    delta_trend: DeltaTrend,
+    delta_trend_anchor: Option<DeltaTrendAnchor>,
 }
 
 impl DeltaEngine {
@@ -656,7 +698,6 @@ impl DeltaEngine {
             last_session_elapsed: 0.0,
             last_lap_number: -1,
             generation: 0,
-            frozen: None,
             timing_sector_freeze: None,
             timing_results_until: None,
             timing_sectors: [None; 3],
@@ -666,6 +707,8 @@ impl DeltaEngine {
             timing_history: Vec::new(),
             smoothed_delta: 0.0,
             last_delta_update: Instant::now(),
+            delta_trend: DeltaTrend::Neutral,
+            delta_trend_anchor: None,
         }
     }
 
@@ -679,6 +722,7 @@ impl DeltaEngine {
             };
             self.current_lap = None;
             self.pending_lap = None;
+            self.reset_delta_trend();
             frame.timing_model = TimingViewModel::default();
             return;
         }
@@ -688,6 +732,7 @@ impl DeltaEngine {
                 mode,
                 ..DeltaViewModel::default()
             };
+            self.reset_delta_trend();
             frame.timing_model = TimingViewModel::default();
             return;
         };
@@ -713,6 +758,13 @@ impl DeltaEngine {
         if lap_changed {
             self.pending_lap = self.current_lap.take();
             self.current_lap = Some(CurrentLap::new(frame));
+            self.smoothed_delta = 0.0;
+            self.last_delta_update = Instant::now();
+            self.reset_delta_trend();
+            self.timing_results_until = None;
+            self.timing_sector_freeze = None;
+            self.timing_sectors = [None; 3];
+            self.timing_sector_states = ["pending"; 3];
         } else if self.current_lap.is_none() {
             self.current_lap = Some(CurrentLap::new(frame));
         }
@@ -741,6 +793,7 @@ impl DeltaEngine {
         self.last_session_type = -1;
         self.last_session_elapsed = 0.0;
         self.last_lap_number = -1;
+        self.reset_delta_trend();
     }
 
     fn poll_load(&mut self) {
@@ -773,7 +826,6 @@ impl DeltaEngine {
         self.current_lap = None;
         self.pending_lap = None;
         self.stint = None;
-        self.frozen = None;
         self.timing_sector_freeze = None;
         self.timing_results_until = None;
         self.timing_sectors = [None; 3];
@@ -833,7 +885,7 @@ impl DeltaEngine {
         };
 
         let coarse_sectors = three_sector_times(&completed.trace);
-        self.timing_results_until = Some(Instant::now() + FINISH_FREEZE);
+        self.timing_results_until = Some(Instant::now() + TIMING_RESULT_FREEZE);
         if let Some(sectors) = coarse_sectors {
             let mut states = ["neutral"; 3];
             for index in 0..3 {
@@ -887,13 +939,10 @@ impl DeltaEngine {
         );
         self.timing_history.truncate(5);
 
-        if let Some((delta, _)) = self.reference_delta_for_trace(&completed.trace, active_mode()) {
-            self.frozen = Some((Instant::now() + FINISH_FREEZE, delta));
-        }
         if let Some((delta, _)) =
             self.reference_delta_for_trace(&completed.trace, DeltaMode::OverallBest)
         {
-            self.timing_sector_freeze = Some((Instant::now() + FINISH_FREEZE, delta));
+            self.timing_sector_freeze = Some((Instant::now() + TIMING_RESULT_FREEZE, delta));
         }
 
         if let Some(stint) = self.stint.as_mut() {
@@ -1002,13 +1051,20 @@ impl DeltaEngine {
             }
         }
 
-        let live_delta = self
-            .reference_at(
-                DeltaMode::OverallBest,
-                frame.lap_progress * frame.track_length_meters,
-                frame.track_length_meters,
-            )
-            .map(|(reference, _)| frame.current_lap_seconds - reference);
+        let timed_lap_active = self
+            .current_lap
+            .as_ref()
+            .is_some_and(|lap| lap.started_at_line);
+        let live_delta = timed_lap_active
+            .then(|| {
+                self.reference_at(
+                    DeltaMode::OverallBest,
+                    frame.lap_progress * frame.track_length_meters,
+                    frame.track_length_meters,
+                )
+                .map(|(reference, _)| frame.current_lap_seconds - reference)
+            })
+            .flatten();
         let (delta_seconds, delta_frozen) = if let Some((until, value)) = self.timing_sector_freeze
         {
             if Instant::now() < until {
@@ -1022,7 +1078,11 @@ impl DeltaEngine {
         };
         TimingViewModel {
             available: true,
-            current_seconds: frame.current_lap_seconds,
+            current_seconds: if timed_lap_active {
+                frame.current_lap_seconds
+            } else {
+                0.0
+            },
             last_seconds: frame.last_lap_seconds,
             best_seconds: self
                 .session
@@ -1056,7 +1116,7 @@ impl DeltaEngine {
             0
         };
         if mode == DeltaMode::Off {
-            return DeltaViewModel {
+            let model = DeltaViewModel {
                 mode,
                 current_lap_valid: self.current_lap.as_ref().is_some_and(|lap| lap.valid),
                 sector_index,
@@ -1064,27 +1124,54 @@ impl DeltaEngine {
                 reference_generation: self.generation,
                 ..DeltaViewModel::default()
             };
+            return self.apply_delta_trend(frame, model);
         }
-        if let Some((until, value)) = self.frozen {
-            if Instant::now() < until {
-                return DeltaViewModel {
+        if !can_show_live_delta(self.current_lap.as_ref()) {
+            let model = DeltaViewModel {
+                mode,
+                current_lap_valid: self.current_lap.as_ref().is_some_and(|lap| lap.valid),
+                sector_index,
+                sector_count: count,
+                reference_generation: self.generation,
+                ..DeltaViewModel::default()
+            };
+            return self.apply_delta_trend(frame, model);
+        }
+        if should_reset_delta_at_lap_start(self.current_lap.as_ref(), distance) {
+            let model = DeltaViewModel {
+                available: true,
+                seconds: 0.0,
+                mode,
+                reference_seconds: self.reference_total(mode).unwrap_or(0.0),
+                current_lap_valid: self.current_lap.as_ref().is_some_and(|lap| lap.valid),
+                trend: DeltaTrend::Neutral,
+                sector_index,
+                sector_count: count,
+                reference_generation: self.generation,
+            };
+            return self.apply_delta_trend(frame, model);
+        }
+
+        if mode == DeltaMode::SessionBest {
+            if let Some((seconds, reference_seconds)) = native_session_delta(frame) {
+                let model = DeltaViewModel {
                     available: true,
-                    seconds: value,
+                    seconds,
                     mode,
-                    reference_seconds: self.reference_total(mode).unwrap_or(0.0),
-                    current_lap_valid: true,
-                    frozen: true,
+                    reference_seconds,
+                    current_lap_valid: self.current_lap.as_ref().is_some_and(|lap| lap.valid),
+                    trend: DeltaTrend::Neutral,
                     sector_index,
                     sector_count: count,
                     reference_generation: self.generation,
                 };
+                return self.apply_delta_trend(frame, model);
             }
-            self.frozen = None;
         }
 
         let reference = self.reference_at(mode, distance, frame.track_length_meters);
         let Some((reference_at, reference_total)) = reference else {
-            return DeltaViewModel {
+            let model = DeltaViewModel {
                 mode,
                 current_lap_valid: self.current_lap.as_ref().is_some_and(|lap| lap.valid),
                 sector_index,
@@ -1092,6 +1179,7 @@ impl DeltaEngine {
                 reference_generation: self.generation,
                 ..DeltaViewModel::default()
             };
+            return self.apply_delta_trend(frame, model);
         };
         let current_at = if mode.is_sector_reset() {
             let width = frame.track_length_meters / count.max(1) as f64;
@@ -1115,17 +1203,76 @@ impl DeltaEngine {
         } else {
             self.smoothed_delta += (raw - self.smoothed_delta) * alpha.clamp(0.0, 1.0);
         }
-        DeltaViewModel {
+        let model = DeltaViewModel {
             available: raw.is_finite(),
             seconds: self.smoothed_delta,
             mode,
             reference_seconds: reference_total,
             current_lap_valid: self.current_lap.as_ref().is_some_and(|lap| lap.valid),
-            frozen: false,
+            trend: DeltaTrend::Neutral,
             sector_index,
             sector_count: count,
             reference_generation: self.generation,
+        };
+        self.apply_delta_trend(frame, model)
+    }
+
+    fn apply_delta_trend(
+        &mut self,
+        frame: &TelemetryFrame,
+        mut model: DeltaViewModel,
+    ) -> DeltaViewModel {
+        if !model.available
+            || !model.current_lap_valid
+            || !model.seconds.is_finite()
+            || !frame.track_length_meters.is_finite()
+            || frame.track_length_meters <= 0.0
+        {
+            self.reset_delta_trend();
+            return model;
         }
+
+        let distance = frame.lap_progress * frame.track_length_meters;
+        let reset_at_sector = model.mode.is_sector_reset();
+        let anchor_matches = self.delta_trend_anchor.is_some_and(|anchor| {
+            anchor.lap_number == frame.lap_number
+                && anchor.mode == model.mode
+                && anchor.reference_generation == model.reference_generation
+                && (!reset_at_sector || anchor.sector_index == model.sector_index)
+                && distance >= anchor.distance
+        });
+
+        if !anchor_matches {
+            self.delta_trend = DeltaTrend::Neutral;
+            self.delta_trend_anchor = Some(DeltaTrendAnchor {
+                lap_number: frame.lap_number,
+                mode: model.mode,
+                reference_generation: model.reference_generation,
+                sector_index: model.sector_index,
+                distance,
+                seconds: model.seconds,
+            });
+        } else if let Some(anchor) = self.delta_trend_anchor {
+            if distance - anchor.distance >= DELTA_TREND_DISTANCE_METERS {
+                self.delta_trend = classify_delta_trend(model.seconds - anchor.seconds);
+                self.delta_trend_anchor = Some(DeltaTrendAnchor {
+                    lap_number: frame.lap_number,
+                    mode: model.mode,
+                    reference_generation: model.reference_generation,
+                    sector_index: model.sector_index,
+                    distance,
+                    seconds: model.seconds,
+                });
+            }
+        }
+
+        model.trend = self.delta_trend;
+        model
+    }
+
+    fn reset_delta_trend(&mut self) {
+        self.delta_trend = DeltaTrend::Neutral;
+        self.delta_trend_anchor = None;
     }
 
     fn reference_at(
@@ -1171,6 +1318,33 @@ impl DeltaEngine {
         let total = self.reference_total(mode)?;
         Some((trace.lap_time - total, total))
     }
+}
+
+fn classify_delta_trend(change_seconds: f64) -> DeltaTrend {
+    if change_seconds < -DELTA_TREND_DEADBAND_SECONDS {
+        DeltaTrend::Improving
+    } else if change_seconds > DELTA_TREND_DEADBAND_SECONDS {
+        DeltaTrend::Worsening
+    } else {
+        DeltaTrend::Neutral
+    }
+}
+
+fn native_session_delta(frame: &TelemetryFrame) -> Option<(f64, f64)> {
+    (frame.best_lap_seconds.is_finite()
+        && (20.0..900.0).contains(&frame.best_lap_seconds)
+        && frame.lap_delta_seconds.is_finite())
+    .then_some((frame.lap_delta_seconds, frame.best_lap_seconds))
+}
+
+fn can_show_live_delta(current_lap: Option<&CurrentLap>) -> bool {
+    current_lap.is_some_and(|lap| lap.started_at_line)
+}
+
+fn should_reset_delta_at_lap_start(current_lap: Option<&CurrentLap>, distance: f64) -> bool {
+    current_lap.is_some_and(|lap| lap.started_at_line)
+        && distance.is_finite()
+        && distance < SAMPLE_DISTANCE_METERS
 }
 
 fn trace_reference(trace: Option<&LapTrace>, distance: f64) -> Option<(f64, f64)> {
@@ -1466,9 +1640,11 @@ mod tests {
     use rusqlite::Connection;
 
     use super::{
-        build_sectors, handle_storage_command, initialize_database, interpolate, sector_count,
-        three_sector_times, CurrentLap, Identity, LapTrace, PersistentReferences, ReferenceSet,
-        SectorBank, StorageCommand, TracePoint, STORE_VERSION,
+        build_sectors, can_show_live_delta, classify_delta_trend, handle_storage_command,
+        initialize_database, interpolate, native_session_delta, sector_count,
+        should_reset_delta_at_lap_start, three_sector_times, CurrentLap, DeltaTrend, Identity,
+        LapTrace, PersistentReferences, ReferenceSet, SectorBank, StorageCommand, TracePoint,
+        STORE_VERSION,
     };
     use crate::telemetry::TelemetryFrame;
 
@@ -1498,6 +1674,15 @@ mod tests {
     }
 
     #[test]
+    fn delta_trend_uses_a_deadband_around_stable_segments() {
+        assert_eq!(classify_delta_trend(-0.009), DeltaTrend::Improving);
+        assert_eq!(classify_delta_trend(-0.008), DeltaTrend::Neutral);
+        assert_eq!(classify_delta_trend(0.0), DeltaTrend::Neutral);
+        assert_eq!(classify_delta_trend(0.008), DeltaTrend::Neutral);
+        assert_eq!(classify_delta_trend(0.009), DeltaTrend::Worsening);
+    }
+
+    #[test]
     fn completed_lap_waits_for_matching_scoring_result() {
         let start = active_frame();
         let lap = CurrentLap::new(&start);
@@ -1512,6 +1697,93 @@ mod tests {
         assert!(!lap.official_result_available(&boundary));
         boundary.last_lap_seconds = 100.0;
         assert!(lap.official_result_available(&boundary));
+    }
+
+    #[test]
+    fn new_lap_synchronizes_scoring_before_latching_validity_and_result_counter() {
+        let start = active_frame();
+        let mut lap = CurrentLap::new(&start);
+        let mut delayed_scoring = start;
+        delayed_scoring.current_lap_seconds = 0.12;
+        delayed_scoring.lap_progress = 0.001;
+        delayed_scoring.player_total_laps = 3;
+        delayed_scoring.player_lap_valid = false;
+        lap.observe(&delayed_scoring);
+
+        assert!(lap.valid);
+        assert_eq!(lap.scoring_laps_at_start, 3);
+
+        delayed_scoring.current_lap_seconds = 3.0;
+        delayed_scoring.lap_progress = 0.05;
+        lap.observe(&delayed_scoring);
+        assert!(!lap.valid);
+    }
+
+    #[test]
+    fn sector_crossings_prefer_official_scoring_partials() {
+        let start = active_frame();
+        let mut lap = CurrentLap::new(&start);
+        let mut crossing = start;
+        crossing.player_sector = 2;
+        crossing.current_lap_seconds = 26.0;
+        crossing.current_sector1_seconds = 25.9;
+        lap.observe(&crossing);
+        crossing.player_sector = 0;
+        crossing.current_lap_seconds = 69.5;
+        crossing.current_sector2_seconds = 69.358;
+        lap.observe(&crossing);
+
+        assert_eq!(lap.official_sector_ends, [Some(25.9), Some(69.358)]);
+    }
+
+    #[test]
+    fn sector_crossings_ignore_unset_one_second_partials_and_outlaps() {
+        let start = active_frame();
+        let mut lap = CurrentLap::new(&start);
+        let mut invalid_crossing = start.clone();
+        invalid_crossing.player_sector = 2;
+        invalid_crossing.current_lap_seconds = 25.9;
+        invalid_crossing.current_sector1_seconds = 1.0;
+        invalid_crossing.player_lap_valid = false;
+        lap.observe(&invalid_crossing);
+        assert_eq!(lap.official_sector_ends[0], Some(25.9));
+
+        let mut outlap_start = start;
+        outlap_start.current_lap_seconds = 60.0;
+        outlap_start.lap_progress = 0.5;
+        let mut outlap = CurrentLap::new(&outlap_start);
+        let mut outlap_crossing = outlap_start;
+        outlap_crossing.player_sector = 2;
+        outlap_crossing.current_sector1_seconds = 1.0;
+        outlap.observe(&outlap_crossing);
+        assert_eq!(outlap.official_sector_ends, [None; 2]);
+    }
+
+    #[test]
+    fn session_best_delta_uses_the_native_lmu_value_when_a_reference_exists() {
+        let mut frame = active_frame();
+        frame.best_lap_seconds = 95.033;
+        frame.lap_delta_seconds = -0.382;
+        assert_eq!(native_session_delta(&frame), Some((-0.382, 95.033)));
+
+        frame.best_lap_seconds = 0.0;
+        assert_eq!(native_session_delta(&frame), None);
+    }
+
+    #[test]
+    fn delta_resets_at_the_line_until_the_new_lap_has_started_sampling() {
+        let frame = active_frame();
+        let lap = CurrentLap::new(&frame);
+
+        assert!(can_show_live_delta(Some(&lap)));
+        assert!(should_reset_delta_at_lap_start(Some(&lap), 0.0));
+        assert!(!should_reset_delta_at_lap_start(Some(&lap), 5.0));
+
+        let mut outlap_frame = frame;
+        outlap_frame.current_lap_seconds = 60.0;
+        outlap_frame.lap_progress = 0.5;
+        let outlap = CurrentLap::new(&outlap_frame);
+        assert!(!can_show_live_delta(Some(&outlap)));
     }
 
     #[test]

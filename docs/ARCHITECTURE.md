@@ -138,7 +138,9 @@ blocking HTTP calls into `next_frame()`.
 ## Persistence
 
 - Control-panel position: `control-window.json` under
-  `%APPDATA%\BlackRack Overlay`.
+  `%APPDATA%\BlackRack Overlay`. Windows' synthetic minimized position is never
+  persisted or restored, so closing the application while minimized cannot make
+  the panel unreachable on the next launch.
 - Overlay position and size: composite-layout `localStorage`. The selected
   overlay monitor index persists as `overlay-monitor.json` under the application
   config directory.

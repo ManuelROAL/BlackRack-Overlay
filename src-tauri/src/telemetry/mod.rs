@@ -558,6 +558,10 @@ pub struct TelemetryFrame {
     track_map_model: track_map_model::TrackMapViewModel,
     consumption_profile_samples: u32,
     current_lap_seconds: f64,
+    #[serde(skip)]
+    current_sector1_seconds: f64,
+    #[serde(skip)]
+    current_sector2_seconds: f64,
     last_lap_seconds: f64,
     best_lap_seconds: f64,
     lap_delta_seconds: f64,
@@ -744,6 +748,8 @@ impl TelemetryFrame {
             track_map_model: track_map_model::TrackMapViewModel::default(),
             consumption_profile_samples: 0,
             current_lap_seconds: 0.0,
+            current_sector1_seconds: 0.0,
+            current_sector2_seconds: 0.0,
             last_lap_seconds: 0.0,
             best_lap_seconds: 0.0,
             lap_delta_seconds: 0.0,

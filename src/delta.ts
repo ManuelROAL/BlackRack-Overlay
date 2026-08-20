@@ -32,8 +32,9 @@ const render = (delta: DeltaViewModel): void => {
       : !delta.current_lap_valid
         ? "invalid"
         : delta.seconds <= 0 ? "gain" : "loss";
+  const barTrend = !delta.current_lap_valid ? "absolute" : delta.trend;
   if (card && card.dataset.state !== state) card.dataset.state = state;
-  card?.classList.toggle("frozen", delta.frozen);
+  if (card && card.dataset.trend !== barTrend) card.dataset.trend = barTrend;
   setText(value, available ? `${delta.seconds >= 0 ? "+" : "−"}${Math.abs(delta.seconds).toFixed(3)}` : "---.---");
   if (fill) {
     const ratio = available ? Math.min(1, Math.abs(delta.seconds) / settings.displayRange) : 0;

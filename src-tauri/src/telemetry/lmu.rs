@@ -212,6 +212,8 @@ struct LmuSnapshot {
     vehicle_class_id: u32,
     player_lap_valid: u32,
     current_lap_seconds: f64,
+    current_sector1_seconds: f64,
+    current_sector2_seconds: f64,
     best_lap_seconds: f64,
     lap_delta_seconds: f64,
     session_time_remaining: f64,
@@ -283,6 +285,8 @@ impl Default for LmuSnapshot {
             vehicle_class_id: u32::MAX,
             player_lap_valid: 0,
             current_lap_seconds: 0.0,
+            current_sector1_seconds: 0.0,
+            current_sector2_seconds: 0.0,
             best_lap_seconds: 0.0,
             lap_delta_seconds: 0.0,
             session_time_remaining: 0.0,
@@ -741,7 +745,86 @@ pub struct LmuTelemetrySource {
     last_valid_standings_at: Option<Instant>,
     last_valid_snapshot: Option<LmuSnapshot>,
     last_valid_snapshot_at: Option<Instant>,
+    player_lap_distance: PlayerLapDistanceEstimator,
     source_stage_performance: SourceStagePerformance,
+}
+
+#[derive(Default)]
+struct PlayerLapDistanceEstimator {
+    initialized: bool,
+    lap_number: i32,
+    last_raw_distance: f64,
+    estimated_distance: f64,
+    last_lap_seconds: f64,
+}
+
+impl PlayerLapDistanceEstimator {
+    fn reset(&mut self) {
+        *self = Self::default();
+    }
+
+    fn update(
+        &mut self,
+        raw_distance: f64,
+        current_lap_seconds: f64,
+        speed_kph: f64,
+        gear: i32,
+        lap_number: i32,
+        track_length: f64,
+        lap_changed: bool,
+    ) -> f64 {
+        if !raw_distance.is_finite()
+            || !current_lap_seconds.is_finite()
+            || !track_length.is_finite()
+            || track_length <= 1.0
+        {
+            self.reset();
+            return 0.0;
+        }
+
+        let raw_distance = raw_distance.clamp(0.0, track_length);
+        let must_initialize = !self.initialized
+            || lap_changed
+            || self.lap_number != lap_number
+            || current_lap_seconds < self.last_lap_seconds
+            || raw_distance + track_length * 0.5 < self.last_raw_distance;
+        if must_initialize {
+            self.initialized = true;
+            self.lap_number = lap_number;
+            self.last_raw_distance = raw_distance;
+            self.estimated_distance = raw_distance;
+            self.last_lap_seconds = current_lap_seconds;
+            return raw_distance;
+        }
+
+        let elapsed = (current_lap_seconds - self.last_lap_seconds).clamp(0.0, 0.25);
+        let signed_speed_mps = if gear < 0 {
+            -speed_kph.max(0.0) / 3.6
+        } else {
+            speed_kph.max(0.0) / 3.6
+        };
+        let predicted =
+            (self.estimated_distance + signed_speed_mps * elapsed).clamp(0.0, track_length);
+        let raw_changed = (raw_distance - self.last_raw_distance).abs() >= 0.05;
+
+        self.estimated_distance = if raw_changed {
+            let correction = raw_distance - predicted;
+            if correction.abs() > 10.0 {
+                raw_distance
+            } else {
+                // Scoring es autoritativo pero llega a menor cadencia. Aplicar
+                // parte de su pequeña corrección evita reintroducir un salto
+                // visible en cada actualización.
+                predicted + correction * 0.35
+            }
+        } else {
+            predicted
+        }
+        .clamp(0.0, track_length);
+        self.last_raw_distance = raw_distance;
+        self.last_lap_seconds = current_lap_seconds;
+        self.estimated_distance
+    }
 }
 
 struct DriverRankEstimateDiagnostic {
@@ -912,6 +995,7 @@ impl LmuTelemetrySource {
             last_valid_standings_at: None,
             last_valid_snapshot: None,
             last_valid_snapshot_at: None,
+            player_lap_distance: PlayerLapDistanceEstimator::default(),
             source_stage_performance: SourceStagePerformance::new(),
         }
     }
@@ -2586,6 +2670,7 @@ impl TelemetrySource for LmuTelemetrySource {
             self.last_valid_standings_at = None;
             self.last_valid_snapshot = None;
             self.last_valid_snapshot_at = None;
+            self.player_lap_distance.reset();
             return TelemetryFrame::waiting_for_lmu(false);
         }
 
@@ -2628,6 +2713,7 @@ impl TelemetrySource for LmuTelemetrySource {
             self.energy_added_this_lap = 0.0;
             self.consumption_profiler.reset_lap();
             self.tire_wear_tracker.reset();
+            self.player_lap_distance.reset();
             let mut frame = TelemetryFrame::waiting_for_lmu(true);
             frame.standings = standings;
             return frame;
@@ -2667,8 +2753,24 @@ impl TelemetrySource for LmuTelemetrySource {
         let (fuel_per_lap, estimated_fuel_laps) =
             self.update_fuel_estimate(&snapshot, lap_changed, completed_is_clean);
         self.update_qualifying_reference(&snapshot, lap_changed, completed_is_clean);
-        let lap_progress = if snapshot.track_length > 1.0 {
+        let raw_lap_progress = if snapshot.track_length > 1.0 {
             (snapshot.player_lap_distance / snapshot.track_length).clamp(0.0, 1.0)
+        } else {
+            0.0
+        };
+        let synchronized_progress =
+            synchronized_lap_progress(raw_lap_progress, snapshot.current_lap_seconds, lap_changed);
+        let lap_distance = self.player_lap_distance.update(
+            synchronized_progress * snapshot.track_length,
+            snapshot.current_lap_seconds,
+            snapshot.speed_kph,
+            snapshot.gear,
+            snapshot.lap_number,
+            snapshot.track_length,
+            lap_changed,
+        );
+        let lap_progress = if snapshot.track_length > 1.0 {
+            (lap_distance / snapshot.track_length).clamp(0.0, 1.0)
         } else {
             0.0
         };
@@ -3042,6 +3144,8 @@ impl TelemetrySource for LmuTelemetrySource {
             track_map_model: Default::default(),
             consumption_profile_samples: profile_estimate.samples,
             current_lap_seconds: snapshot.current_lap_seconds.max(0.0),
+            current_sector1_seconds: snapshot.current_sector1_seconds.max(0.0),
+            current_sector2_seconds: snapshot.current_sector2_seconds.max(0.0),
             last_lap_seconds: CarHistory::normalize_official_lap(snapshot.last_lap_seconds),
             best_lap_seconds: snapshot.best_lap_seconds.max(0.0),
             lap_delta_seconds: snapshot.lap_delta_seconds,
@@ -3064,16 +3168,63 @@ impl TelemetrySource for LmuTelemetrySource {
     }
 }
 
+fn synchronized_lap_progress(raw: f64, current_lap_seconds: f64, lap_changed: bool) -> f64 {
+    let stale_previous_lap = raw > 0.9
+        && (lap_changed
+            || (current_lap_seconds.is_finite() && (0.0..2.0).contains(&current_lap_seconds)));
+    if stale_previous_lap {
+        0.0
+    } else {
+        raw.clamp(0.0, 1.0)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
-        lmu_snapshot_size, rear_wing_detached, suspension_damage_by_wheel_percent, CarHistory,
-        LmuSnapshot, LmuStandingEntry, LmuTelemetrySource, TireWearTracker,
+        lmu_snapshot_size, rear_wing_detached, suspension_damage_by_wheel_percent,
+        synchronized_lap_progress, CarHistory, LmuSnapshot, LmuStandingEntry, LmuTelemetrySource,
+        PlayerLapDistanceEstimator, TireWearTracker,
     };
     use crate::telemetry::event_split::DriverRankSettings;
     use crate::telemetry::lmu_rest::{RestStanding, RestVehicleDamage};
     use crate::telemetry::StandingEntry;
     use std::collections::{HashMap, HashSet};
+
+    #[test]
+    fn lap_progress_suppresses_stale_finish_distance_after_telemetry_boundary() {
+        assert_eq!(synchronized_lap_progress(0.998, 0.02, true), 0.0);
+        assert_eq!(synchronized_lap_progress(0.999, 0.12, false), 0.0);
+        assert_eq!(synchronized_lap_progress(0.002, 0.22, false), 0.002);
+        assert_eq!(synchronized_lap_progress(0.95, 96.0, false), 0.95);
+    }
+
+    #[test]
+    fn player_lap_distance_advances_between_scoring_updates() {
+        let mut estimator = PlayerLapDistanceEstimator::default();
+        assert_eq!(estimator.update(0.0, 0.0, 180.0, 3, 4, 5_000.0, true), 0.0);
+        assert_eq!(
+            estimator.update(0.0, 0.02, 180.0, 3, 4, 5_000.0, false),
+            1.0
+        );
+        assert_eq!(
+            estimator.update(0.0, 0.04, 180.0, 3, 4, 5_000.0, false),
+            2.0
+        );
+
+        let refreshed = estimator.update(10.0, 0.2, 180.0, 3, 4, 5_000.0, false);
+        assert!((refreshed - 10.0).abs() < 0.001);
+        let held = estimator.update(10.0, 0.22, 180.0, 3, 4, 5_000.0, false);
+        assert!((held - 11.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn player_lap_distance_resets_at_the_lap_boundary() {
+        let mut estimator = PlayerLapDistanceEstimator::default();
+        estimator.update(4_990.0, 95.0, 180.0, 4, 3, 5_000.0, false);
+        let reset = estimator.update(0.0, 0.02, 180.0, 3, 4, 5_000.0, true);
+        assert_eq!(reset, 0.0);
+    }
 
     #[test]
     fn flat_spot_wear_only_accumulates_during_a_braking_lockup() {

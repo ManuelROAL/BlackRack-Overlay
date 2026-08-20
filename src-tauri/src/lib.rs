@@ -86,12 +86,50 @@ fn load_control_window_position() -> Option<ControlWindowPosition> {
     fs::read_to_string(control_window_position_path())
         .ok()
         .and_then(|contents| serde_json::from_str(&contents).ok())
+        .filter(|position: &ControlWindowPosition| !is_windows_minimized_position(position))
+}
+
+fn is_windows_minimized_position(position: &ControlWindowPosition) -> bool {
+    // Windows reports an iconic/minimized window around (-32000, -32000). It is
+    // not a real desktop position and restoring it makes the panel unreachable.
+    position.x <= -30_000 || position.y <= -30_000
+}
+
+#[cfg(test)]
+mod control_window_position_tests {
+    use super::{is_windows_minimized_position, ControlWindowPosition};
+
+    #[test]
+    fn rejects_windows_minimized_sentinel() {
+        assert!(is_windows_minimized_position(&ControlWindowPosition {
+            x: -32_000,
+            y: -32_000,
+        }));
+    }
+
+    #[test]
+    fn keeps_valid_negative_monitor_coordinates() {
+        assert!(!is_windows_minimized_position(&ControlWindowPosition {
+            x: -2_560,
+            y: 120,
+        }));
+    }
 }
 
 fn save_control_window_position(window: &tauri::Window) {
+    if window.is_minimized().unwrap_or(false) {
+        return;
+    }
     let Ok(position) = window.outer_position() else {
         return;
     };
+    let state = ControlWindowPosition {
+        x: position.x,
+        y: position.y,
+    };
+    if is_windows_minimized_position(&state) {
+        return;
+    }
     let path = control_window_position_path();
     let Some(directory) = path.parent() else {
         return;
@@ -99,10 +137,6 @@ fn save_control_window_position(window: &tauri::Window) {
     if fs::create_dir_all(directory).is_err() {
         return;
     }
-    let state = ControlWindowPosition {
-        x: position.x,
-        y: position.y,
-    };
     if let Ok(contents) = serde_json::to_vec_pretty(&state) {
         let _ = fs::write(path, contents);
     }
@@ -851,7 +885,7 @@ fn get_overlay_displays(app: AppHandle) -> Result<Vec<OverlayDisplay>, String> {
 fn default_overlay_geometry(label: &str) -> (f64, f64, f64, f64) {
     match label {
         "delta" => (610.0, 20.0, 420.0, 72.0),
-        "timing" => (610.0, 110.0, 366.0, 210.0),
+        "timing" => (610.0, 110.0, 318.0, 172.0),
         "driving" => (20.0, 380.0, 540.0, 120.0),
         "tires" => (588.0, 380.0, 174.0, 130.0),
         "damage" => (798.0, 380.0, 94.0, 94.0),

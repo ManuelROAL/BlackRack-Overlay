@@ -241,6 +241,8 @@ impl TelemetrySource for MockTelemetrySource {
             track_map_model: Default::default(),
             consumption_profile_samples: 5,
             current_lap_seconds,
+            current_sector1_seconds: 0.0,
+            current_sector2_seconds: 0.0,
             last_lap_seconds: 215.0,
             best_lap_seconds: 208.412,
             lap_delta_seconds: (elapsed * 0.31).sin() * 0.72,
