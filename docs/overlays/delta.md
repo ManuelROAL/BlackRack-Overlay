@@ -63,6 +63,13 @@ can improve best or optimal references. Invalid, pit and formation laps may stil
 be written to history when their trace is reconstructable. A backwards distance
 jump greater than 200 metres invalidates the candidate lap.
 
+LMU's telemetry lap counter and scoring result can cross the timing line on
+different source updates. The completed trace therefore remains pending until
+the scoring completed-lap counter advances and supplies that lap's official
+time. Signed official times are normalized to their duration while the observed
+validity state continues to determine the history category and reference
+eligibility.
+
 ## Persistence
 
 `lap-records.sqlite3` lives in the application data directory. `rusqlite` embeds

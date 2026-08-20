@@ -3042,7 +3042,7 @@ impl TelemetrySource for LmuTelemetrySource {
             track_map_model: Default::default(),
             consumption_profile_samples: profile_estimate.samples,
             current_lap_seconds: snapshot.current_lap_seconds.max(0.0),
-            last_lap_seconds: snapshot.last_lap_seconds.max(0.0),
+            last_lap_seconds: CarHistory::normalize_official_lap(snapshot.last_lap_seconds),
             best_lap_seconds: snapshot.best_lap_seconds.max(0.0),
             lap_delta_seconds: snapshot.lap_delta_seconds,
             delta_model: Default::default(),

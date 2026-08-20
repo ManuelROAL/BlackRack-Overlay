@@ -346,6 +346,7 @@ impl Identity {
 #[derive(Debug)]
 struct CurrentLap {
     number: i32,
+    scoring_laps_at_start: i32,
     started_at_line: bool,
     valid: bool,
     visited_pits: bool,
@@ -365,6 +366,7 @@ impl CurrentLap {
         let started_at_line = frame.current_lap_seconds < 2.0 && distance < 300.0;
         Self {
             number: frame.lap_number,
+            scoring_laps_at_start: frame.player_total_laps,
             started_at_line,
             valid: frame.player_lap_valid && !frame.player_in_pits && frame.game_phase == 5,
             visited_pits: frame.player_in_pits,
@@ -384,6 +386,12 @@ impl CurrentLap {
             start_energy: frame.virtual_energy_percent,
             start_tire: frame.player_tire_remaining_percent,
         }
+    }
+
+    fn official_result_available(&self, frame: &TelemetryFrame) -> bool {
+        frame.player_total_laps > self.scoring_laps_at_start
+            && frame.last_lap_seconds.is_finite()
+            && (20.0..900.0).contains(&frame.last_lap_seconds)
     }
 
     fn observe(&mut self, frame: &TelemetryFrame) {
@@ -611,6 +619,7 @@ pub(crate) struct DeltaEngine {
     stint_best: Option<LapTrace>,
     last_lap: Option<LapTrace>,
     current_lap: Option<CurrentLap>,
+    pending_lap: Option<CurrentLap>,
     stint: Option<StintAccumulator>,
     session_id: String,
     last_session_type: i32,
@@ -640,6 +649,7 @@ impl DeltaEngine {
             stint_best: None,
             last_lap: None,
             current_lap: None,
+            pending_lap: None,
             stint: None,
             session_id: String::new(),
             last_session_type: -1,
@@ -668,6 +678,7 @@ impl DeltaEngine {
                 ..DeltaViewModel::default()
             };
             self.current_lap = None;
+            self.pending_lap = None;
             frame.timing_model = TimingViewModel::default();
             return;
         }
@@ -700,11 +711,12 @@ impl DeltaEngine {
             .as_ref()
             .is_some_and(|lap| lap.number != frame.lap_number);
         if lap_changed {
-            self.finish_lap(frame);
+            self.pending_lap = self.current_lap.take();
             self.current_lap = Some(CurrentLap::new(frame));
         } else if self.current_lap.is_none() {
             self.current_lap = Some(CurrentLap::new(frame));
         }
+        self.finish_lap(frame);
         if let Some(lap) = self.current_lap.as_mut() {
             lap.observe(frame);
         }
@@ -721,6 +733,7 @@ impl DeltaEngine {
         self.stint_best = None;
         self.last_lap = None;
         self.current_lap = None;
+        self.pending_lap = None;
         self.timing_sectors = [None; 3];
         self.timing_sector_states = ["pending"; 3];
         self.overall_timing_sectors = [None; 3];
@@ -758,6 +771,7 @@ impl DeltaEngine {
         self.stint_best = None;
         self.last_lap = None;
         self.current_lap = None;
+        self.pending_lap = None;
         self.stint = None;
         self.frozen = None;
         self.timing_sector_freeze = None;
@@ -801,10 +815,17 @@ impl DeltaEngine {
     }
 
     fn finish_lap(&mut self, frame: &TelemetryFrame) {
+        if !self
+            .pending_lap
+            .as_ref()
+            .is_some_and(|lap| lap.official_result_available(frame))
+        {
+            return;
+        }
         let Some(identity) = self.identity.as_ref() else {
             return;
         };
-        let Some(current) = self.current_lap.take() else {
+        let Some(current) = self.pending_lap.take() else {
             return;
         };
         let Some(completed) = current.finish(frame, identity.track_length) else {
@@ -1446,9 +1467,10 @@ mod tests {
 
     use super::{
         build_sectors, handle_storage_command, initialize_database, interpolate, sector_count,
-        three_sector_times, Identity, LapTrace, PersistentReferences, ReferenceSet, SectorBank,
-        StorageCommand, TracePoint, STORE_VERSION,
+        three_sector_times, CurrentLap, Identity, LapTrace, PersistentReferences, ReferenceSet,
+        SectorBank, StorageCommand, TracePoint, STORE_VERSION,
     };
+    use crate::telemetry::TelemetryFrame;
 
     fn linear_lap(seconds: f64, length: f64) -> LapTrace {
         LapTrace {
@@ -1462,6 +1484,34 @@ mod tests {
                 .collect(),
             official_sector_ends: [None; 2],
         }
+    }
+
+    fn active_frame() -> TelemetryFrame {
+        let mut frame = TelemetryFrame::waiting_for_lmu(true);
+        frame.player_active = true;
+        frame.game_phase = 5;
+        frame.player_lap_valid = true;
+        frame.lap_number = 3;
+        frame.player_total_laps = 2;
+        frame.track_length_meters = 1_000.0;
+        frame
+    }
+
+    #[test]
+    fn completed_lap_waits_for_matching_scoring_result() {
+        let start = active_frame();
+        let lap = CurrentLap::new(&start);
+        let mut boundary = start;
+        boundary.lap_number = 4;
+        boundary.current_lap_seconds = 0.02;
+        boundary.last_lap_seconds = 95.0;
+
+        assert!(!lap.official_result_available(&boundary));
+        boundary.player_total_laps = 3;
+        boundary.last_lap_seconds = 0.0;
+        assert!(!lap.official_result_available(&boundary));
+        boundary.last_lap_seconds = 100.0;
+        assert!(lap.official_result_available(&boundary));
     }
 
     #[test]
