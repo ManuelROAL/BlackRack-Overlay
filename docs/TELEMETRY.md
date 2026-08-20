@@ -70,6 +70,8 @@ restore per-overlay native listeners or direct cross-realm object events.
 - `/rest/watch/standings/history`: 0.2 Hz for permitted late-start recovery.
 - `/rest/watch/trackmap`: fetch once per circuit for static type-0/type-1 geometry.
 - `/rest/strategy/pitstop-estimate`: 1 Hz for authoritative service estimates.
+- `/rest/garage/getPlayerGarageData`: 0.2 Hz for the active steering-wheel range
+  in `VM_STEER_LOCK`; shared memory can report the nominal vehicle range instead.
 - `/rest/garage/UIScreen/RepairAndRefuel`: 1 Hz for aero and per-wheel suspension
   wearables.
 - `/rest/profile/getAuthSessionTicket`: only when RaceOS authentication needs a

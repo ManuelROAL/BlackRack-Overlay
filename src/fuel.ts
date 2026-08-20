@@ -139,6 +139,8 @@ const render = (frame: TelemetryFrame): void => {
   text("fuel-autonomy", energyMode ? t("fuel.lapsValue", { value: format(fuelAutonomy, 1) }) : "--");
   text("fuel-required", energyMode && fuelStrategy ? `+${format(fuelStrategy.total_additional, 1)}L` : "--");
   text("fuel-stops", energyMode && fuelStrategy ? `${fuelStrategy.stops}` : "--");
+  text("fuel-ratio-assigned", energyMode ? format(frame.fuel_ratio_assigned) : "--");
+  text("fuel-ratio-average", energyMode ? format(frame.fuel_ratio_average) : "--");
 
   renderProfile("energy", "average", average, frame.fuel_strategies.average);
   renderProfile("energy", "qualifying", qualifying, frame.fuel_strategies.qualifying);

@@ -419,13 +419,12 @@ extern "C" int lmu_read_snapshot(LmuSnapshot* output) {
     output->track_limits_steps = static_cast<uint32_t>(vehicle.mTrackLimitsSteps);
     output->tc_active = vehicle.mTCActive ? 1u : 0u;
     output->abs_active = vehicle.mABSActive ? 1u : 0u;
-    // Match the wheel rendered by LMU: its animation uses the filtered steering
-    // input and visual rotation range. Keep the physical range as a fallback for
-    // vehicles that do not publish a visual range.
-    output->steering = vehicle.mFilteredSteering;
-    output->steering_range_degrees = vehicle.mVisualSteeringWheelRange > 0.0f
-        ? static_cast<double>(vehicle.mVisualSteeringWheelRange)
-        : static_cast<double>(vehicle.mPhysicalSteeringWheelRange);
+    // The cockpit wheel follows the physical controller input. Filtered steering
+    // can include the vehicle steering ratio and over-rotate the overlay.
+    output->steering = vehicle.mUnfilteredSteering;
+    output->steering_range_degrees = vehicle.mPhysicalSteeringWheelRange > 0.0f
+        ? static_cast<double>(vehicle.mPhysicalSteeringWheelRange)
+        : static_cast<double>(vehicle.mVisualSteeringWheelRange);
     output->force_feedback = static_cast<double>(copied_memory.generic.FFBTorque);
     output->fuel_liters = vehicle.mFuel;
     output->fuel_capacity_liters = vehicle.mFuelCapacity;

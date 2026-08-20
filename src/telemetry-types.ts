@@ -149,6 +149,8 @@ export interface TelemetryFrame {
   fuel_projected_lap: number;
   fuel_pit_cycle_consumption: number;
   fuel_pit_out_consumption: number;
+  fuel_ratio_assigned: number;
+  fuel_ratio_average: number;
   estimated_fuel_laps: number;
   session_laps_remaining: number;
   session_laps_remaining_estimated: number;

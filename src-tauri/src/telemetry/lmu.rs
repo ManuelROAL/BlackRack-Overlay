@@ -1133,17 +1133,21 @@ impl LmuTelemetrySource {
         (snapshot.tc_active != 0, snapshot.abs_active != 0)
     }
 
-    fn steering_and_force(snapshot: &LmuSnapshot) -> (f64, f64) {
+    fn steering_and_force(snapshot: &LmuSnapshot, rest_range_degrees: Option<f64>) -> (f64, f64) {
         let steering = if snapshot.steering.is_finite() {
             snapshot.steering.clamp(-1.0, 1.0)
         } else {
             0.0
         };
-        let range = if snapshot.steering_range_degrees.is_finite() {
-            snapshot.steering_range_degrees.max(0.0)
-        } else {
-            0.0
-        };
+        let range = rest_range_degrees
+            .filter(|range| range.is_finite() && *range > 0.0)
+            .unwrap_or_else(|| {
+                if snapshot.steering_range_degrees.is_finite() {
+                    snapshot.steering_range_degrees.max(0.0)
+                } else {
+                    0.0
+                }
+            });
         let force = if snapshot.force_feedback.is_finite() {
             snapshot.force_feedback.clamp(-1.0, 1.0)
         } else {
@@ -2793,7 +2797,8 @@ impl TelemetrySource for LmuTelemetrySource {
         let vehicle_name = Self::string_from_chars(&snapshot.vehicle_name);
         let track_name = Self::string_from_chars(&snapshot.track_name);
         let (tc_active, abs_active) = Self::driver_assists(&snapshot);
-        let (steering_angle_degrees, force_feedback) = Self::steering_and_force(&snapshot);
+        let (steering_angle_degrees, force_feedback) =
+            Self::steering_and_force(&snapshot, self.local_rest.steering_range_degrees());
         let rest_pit_stop = self.local_rest.pit_stop().cloned();
         let rest_vehicle_damage = self.local_rest.vehicle_damage();
         let session_split = self.session_split.value().clone();
@@ -3043,6 +3048,21 @@ impl TelemetrySource for LmuTelemetrySource {
             fuel_projected_lap: profile_estimate.fuel_projected,
             fuel_pit_cycle_consumption: profile_estimate.fuel_pit_cycle_consumption,
             fuel_pit_out_consumption: profile_estimate.fuel_pit_out_consumption,
+            fuel_ratio_assigned: if virtual_energy_active {
+                self.local_rest.fuel_ratio_assigned()
+            } else {
+                0.0
+            },
+            fuel_ratio_average: if virtual_energy_active
+                && fuel_per_lap.is_finite()
+                && fuel_per_lap > 0.0
+                && virtual_energy_per_lap.is_finite()
+                && virtual_energy_per_lap > 0.0
+            {
+                fuel_per_lap / virtual_energy_per_lap
+            } else {
+                0.0
+            },
             estimated_fuel_laps,
             session_laps_remaining,
             session_laps_remaining_estimated,
@@ -3907,8 +3927,12 @@ mod tests {
             ..LmuSnapshot::default()
         };
         assert_eq!(
-            LmuTelemetrySource::steering_and_force(&snapshot),
+            LmuTelemetrySource::steering_and_force(&snapshot, None),
             (-225.0, 1.0)
+        );
+        assert_eq!(
+            LmuTelemetrySource::steering_and_force(&snapshot, Some(360.0)),
+            (-90.0, 1.0)
         );
 
         let invalid = LmuSnapshot {
@@ -3917,7 +3941,10 @@ mod tests {
             force_feedback: f64::NAN,
             ..LmuSnapshot::default()
         };
-        assert_eq!(LmuTelemetrySource::steering_and_force(&invalid), (0.0, 0.0));
+        assert_eq!(
+            LmuTelemetrySource::steering_and_force(&invalid, Some(f64::NAN)),
+            (0.0, 0.0)
+        );
     }
 
     #[test]

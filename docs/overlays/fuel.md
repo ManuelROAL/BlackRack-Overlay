@@ -87,8 +87,9 @@ math belongs in Rust. `fuel.ts` only formats serialized plans.
 - Omit diagnostic context (confidence, pit-cycle delta, qualifying gain and
   pit-service estimate) from the driving overlay; those values are not needed for
   the immediate stop/save decision.
-- In energy mode, wrap the auxiliary fuel values across two rows beside the fuel
-  icon instead of shrinking or clipping them.
+- In energy mode, wrap the auxiliary fuel values across three compact rows beside
+  the fuel icon. Keep current use/range on the first row, refill/PIT on the
+  second and both fuel ratios on the third; values must not overlap or clip.
 - Label scenario-wide replenishment as `TOTAL +`; it is the sum still required
   over the remaining race, not necessarily the next pit load. The summary's
   `CARGA` value remains the next-stop load.
@@ -100,6 +101,10 @@ math belongs in Rust. `fuel.ts` only formats serialized plans.
   `ESTIMADO` row. The visible rows are `PROMEDIO`, `QUALY` and `ÚLTIMA`.
 - Hybrid cars show energy scenarios plus a compact fuel card while the global pit
   plan accounts for both resources.
+- Cars reporting both virtual energy and fuel show the fuel ratio selected in
+  LMU's official pit menu plus the clean-lap average ratio. The average is fuel
+  consumption divided by virtual-energy consumption; keep it unavailable until
+  both clean averages exist, and do not show either ratio in fuel-only mode.
 - The PIT indicator is neutral above three laps of autonomy and changes as the
   stop approaches. Show a distinct full-power state when qualifying caps target
   consumption. Label the target `MANTÉN` when an active pit stop, the parallel

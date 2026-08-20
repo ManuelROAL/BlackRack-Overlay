@@ -148,6 +148,8 @@ impl TelemetrySource for MockTelemetrySource {
             fuel_projected_lap: 12.1,
             fuel_pit_cycle_consumption: 20.6,
             fuel_pit_out_consumption: 10.1,
+            fuel_ratio_assigned: 0.97,
+            fuel_ratio_average: fuel_per_lap / virtual_energy_per_lap,
             estimated_fuel_laps: fuel_liters / fuel_per_lap,
             session_laps_remaining,
             session_laps_remaining_estimated: session_laps_remaining - 0.35,

@@ -247,7 +247,7 @@ body[data-overlay-fit="true"].fuel-body .fuel-shell {
 
 .fuel-compact-card {
   display: none;
-  flex: 0 0 30px;
+  flex: 0 0 42px;
   grid-template-columns: 16px 1fr;
   align-items: center;
   column-gap: 4px;
@@ -279,15 +279,27 @@ body[data-overlay-fit="true"].fuel-body .fuel-shell {
 .fuel-compact-values {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  grid-template-rows: repeat(2, 1fr);
+  grid-template-rows: repeat(3, 1fr);
   align-items: center;
-  gap: 2px 4px;
+  gap: 1px 4px;
 }
 
 .fuel-compact-values > div {
   min-width: 0;
+  overflow: hidden;
+  font-size: 9px;
   text-align: right;
   white-space: nowrap;
+}
+
+.fuel-compact-values > div:nth-child(6) {
+  grid-column: 1;
+  grid-row: 3;
+}
+
+.fuel-compact-values > div:nth-child(7) {
+  grid-column: 2;
+  grid-row: 3;
 }
 
 .fuel-compact-values span {

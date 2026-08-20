@@ -16,9 +16,12 @@
 - Plot TC at the throttle trace height and ABS at the brake trace height for each
   individual 50 Hz sample.
 - Normalize signed `FFBTorque` to `[-1, 1]` for the bipolar FFB bar.
-- Steering angle matches LMU's rendered in-game wheel: use `mFilteredSteering`
-  times half `mVisualSteeringWheelRange`, falling back to the physical wheel
-  range only when the visual range is unavailable.
+- Steering angle matches the physical and rendered in-game wheel: multiply
+  `mUnfilteredSteering` by half the active `VM_STEER_LOCK` range from
+  `/rest/garage/getPlayerGarageData`. LMU shared memory can expose the car's
+  nominal range instead of the active controller range; use its physical, then
+  visual range only while the REST value is unavailable. Do not use
+  `mFilteredSteering`, which can include vehicle steering processing.
 
 ## Layout and configuration
 

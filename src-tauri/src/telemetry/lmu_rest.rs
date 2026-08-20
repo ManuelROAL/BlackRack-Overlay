@@ -24,6 +24,8 @@ const SUPPLEMENT_INTERVAL: Duration = Duration::from_secs(1);
 const STANDINGS_MAX_AGE: Duration = Duration::from_secs(1);
 const SUPPLEMENT_MAX_AGE: Duration = Duration::from_secs(3);
 #[cfg(not(test))]
+const GARAGE_INTERVAL: Duration = Duration::from_secs(5);
+#[cfg(not(test))]
 const REQUEST_TIMEOUT: Duration = Duration::from_millis(400);
 
 #[derive(Clone, Debug, Default, Deserialize)]
@@ -81,6 +83,19 @@ struct RestSessionInfo {
     max_time: f64,
 }
 
+#[derive(Clone, Debug, Default, Deserialize)]
+#[serde(default)]
+struct RestGarageData {
+    #[serde(rename = "VM_STEER_LOCK")]
+    steering_lock: RestGarageSetting,
+}
+
+#[derive(Clone, Debug, Default, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+struct RestGarageSetting {
+    string_value: String,
+}
+
 #[derive(Clone, Copy, Debug, Default)]
 pub(super) struct RestVehicleDamage {
     pub aero: f64,
@@ -91,6 +106,28 @@ pub(super) struct RestVehicleDamage {
 #[serde(default)]
 struct RestRepairAndRefuel {
     wearables: RestWearables,
+    #[serde(rename = "pitMenu")]
+    pit_menu: RestPitMenu,
+}
+
+#[derive(Clone, Debug, Default, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+struct RestPitMenu {
+    pit_menu: Vec<RestPitMenuItem>,
+}
+
+#[derive(Clone, Debug, Default, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+struct RestPitMenuItem {
+    name: String,
+    current_setting: usize,
+    settings: Vec<RestPitMenuSetting>,
+}
+
+#[derive(Clone, Debug, Default, Deserialize)]
+#[serde(default)]
+struct RestPitMenuSetting {
+    text: String,
 }
 
 #[derive(Clone, Debug, Default, Deserialize)]
@@ -110,7 +147,9 @@ struct RestBodyWear {
 struct SupplementUpdate {
     pit_stop: Option<RestPitStopEstimate>,
     vehicle_damage: Option<RestVehicleDamage>,
+    fuel_ratio_assigned: Option<f64>,
     session_info: Option<RestSessionInfo>,
+    steering_range_degrees: Option<f64>,
 }
 
 #[derive(Default)]
@@ -130,6 +169,8 @@ pub(super) struct LocalRestResolver {
     pit_stop: RestPitStopEstimate,
     vehicle_damage: RestVehicleDamage,
     session_max_time_seconds: f64,
+    steering_range_degrees: Option<f64>,
+    fuel_ratio_assigned: f64,
     supplement_received_at: Option<Instant>,
     vehicle_damage_received_at: Option<Instant>,
     enabled: Arc<AtomicBool>,
@@ -181,24 +222,47 @@ impl LocalRestResolver {
             let Some(client) = http_client() else {
                 return;
             };
+            let mut garage_received_at: Option<Instant> = None;
             loop {
                 if !supplement_enabled.load(Ordering::Relaxed) {
                     thread::sleep(Duration::from_secs(1));
                     continue;
                 }
                 let started = Instant::now();
+                let steering_range_degrees = if garage_received_at
+                    .is_none_or(|received| received.elapsed() >= GARAGE_INTERVAL)
+                {
+                    let range =
+                        fetch_json::<RestGarageData>(&client, "/rest/garage/getPlayerGarageData")
+                            .ok()
+                            .and_then(|response| {
+                                steering_range(&response.steering_lock.string_value)
+                            });
+                    if range.is_some() {
+                        garage_received_at = Some(Instant::now());
+                    }
+                    range
+                } else {
+                    None
+                };
+                let repair_and_refuel = fetch_json::<RestRepairAndRefuel>(
+                    &client,
+                    "/rest/garage/UIScreen/RepairAndRefuel",
+                )
+                .ok();
                 let update = SupplementUpdate {
                     pit_stop: fetch_json(&client, "/rest/strategy/pitstop-estimate").ok(),
-                    vehicle_damage: fetch_json::<RestRepairAndRefuel>(
-                        &client,
-                        "/rest/garage/UIScreen/RepairAndRefuel",
-                    )
-                    .ok()
-                    .map(|response| RestVehicleDamage {
-                        aero: response.wearables.body.aero,
-                        suspension: response.wearables.suspension,
-                    }),
+                    vehicle_damage: repair_and_refuel
+                        .as_ref()
+                        .map(|response| RestVehicleDamage {
+                            aero: response.wearables.body.aero,
+                            suspension: response.wearables.suspension,
+                        }),
+                    fuel_ratio_assigned: repair_and_refuel
+                        .as_ref()
+                        .map(|response| fuel_ratio_assigned(response).unwrap_or(0.0)),
                     session_info: fetch_json(&client, "/rest/watch/sessionInfo").ok(),
+                    steering_range_degrees,
                 };
                 if supplement_sender.send(update).is_err() {
                     break;
@@ -218,6 +282,8 @@ impl LocalRestResolver {
             pit_stop: RestPitStopEstimate::default(),
             vehicle_damage: RestVehicleDamage::default(),
             session_max_time_seconds: 0.0,
+            steering_range_degrees: None,
+            fuel_ratio_assigned: 0.0,
             supplement_received_at: None,
             vehicle_damage_received_at: None,
             enabled,
@@ -237,6 +303,8 @@ impl LocalRestResolver {
             pit_stop: RestPitStopEstimate::default(),
             vehicle_damage: RestVehicleDamage::default(),
             session_max_time_seconds: 0.0,
+            steering_range_degrees: None,
+            fuel_ratio_assigned: 0.0,
             supplement_received_at: None,
             vehicle_damage_received_at: None,
             enabled: Arc::new(AtomicBool::new(false)),
@@ -286,6 +354,13 @@ impl LocalRestResolver {
             }
             if let Some(session_info) = update.session_info {
                 self.latch_session_max_time(session_info.max_time);
+            }
+            if let Some(fuel_ratio_assigned) = update.fuel_ratio_assigned {
+                self.fuel_ratio_assigned = fuel_ratio_assigned;
+                received = true;
+            }
+            if let Some(steering_range_degrees) = update.steering_range_degrees {
+                self.steering_range_degrees = Some(steering_range_degrees);
             }
             if received {
                 self.supplement_received_at = Some(Instant::now());
@@ -341,6 +416,8 @@ impl LocalRestResolver {
         self.history_by_slot.clear();
         self.history_by_name.clear();
         self.session_max_time_seconds = 0.0;
+        self.steering_range_degrees = None;
+        self.fuel_ratio_assigned = 0.0;
     }
 
     fn latch_session_max_time(&mut self, seconds: f64) {
@@ -433,6 +510,41 @@ impl LocalRestResolver {
     pub(super) fn session_max_time_seconds(&self) -> f64 {
         self.session_max_time_seconds
     }
+
+    pub(super) fn steering_range_degrees(&self) -> Option<f64> {
+        self.steering_range_degrees
+    }
+
+    pub(super) fn fuel_ratio_assigned(&self) -> f64 {
+        is_fresh(self.supplement_received_at, SUPPLEMENT_MAX_AGE)
+            .then_some(self.fuel_ratio_assigned)
+            .unwrap_or(0.0)
+    }
+}
+
+fn fuel_ratio_assigned(response: &RestRepairAndRefuel) -> Option<f64> {
+    let item = response
+        .pit_menu
+        .pit_menu
+        .iter()
+        .find(|item| item.name.trim().eq_ignore_ascii_case("FUEL RATIO:"))?;
+    let ratio = item
+        .settings
+        .get(item.current_setting)?
+        .text
+        .trim()
+        .parse::<f64>()
+        .ok()?;
+    (ratio.is_finite() && ratio > 0.0).then_some(ratio)
+}
+
+fn steering_range(value: &str) -> Option<f64> {
+    let range = value
+        .split(|character: char| !(character.is_ascii_digit() || character == '.'))
+        .find(|part| !part.is_empty())?
+        .parse::<f64>()
+        .ok()?;
+    (range.is_finite() && range > 0.0).then_some(range)
 }
 
 #[cfg(not(test))]
@@ -495,8 +607,9 @@ fn normalized_class(value: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::{
-        normalized_name, LocalRestResolver, RestPitStopEstimate, RestRepairAndRefuel,
-        RestSessionInfo, RestStanding, RestStandingHistory,
+        fuel_ratio_assigned, normalized_name, steering_range, LocalRestResolver, RestGarageData,
+        RestPitStopEstimate, RestRepairAndRefuel, RestSessionInfo, RestStanding,
+        RestStandingHistory,
     };
     use std::collections::HashMap;
 
@@ -532,6 +645,18 @@ mod tests {
     }
 
     #[test]
+    fn parses_active_steering_range_from_garage_text() {
+        let garage: RestGarageData =
+            serde_json::from_str(r#"{"VM_STEER_LOCK":{"stringValue":"360 (13.3) deg"}}"#).unwrap();
+        assert_eq!(
+            steering_range(&garage.steering_lock.string_value),
+            Some(360.0)
+        );
+        assert_eq!(steering_range("719 deg"), Some(719.0));
+        assert_eq!(steering_range("unavailable"), None);
+    }
+
+    #[test]
     fn session_max_time_is_latched_until_session_reset() {
         let mut resolver = LocalRestResolver::empty();
         resolver.latch_session_max_time(14_400.0);
@@ -551,6 +676,15 @@ mod tests {
         .unwrap();
         assert!((response.wearables.body.aero - 0.12).abs() < f64::EPSILON);
         assert_eq!(response.wearables.suspension, [0.01, 0.2, 0.03, 0.04]);
+    }
+
+    #[test]
+    fn parses_selected_official_fuel_ratio_from_pit_menu() {
+        let response: RestRepairAndRefuel = serde_json::from_str(
+            r#"{"pitMenu":{"pitMenu":[{"name":"FUEL RATIO:","currentSetting":2,"default":1,"settings":[{"text":"0.91"},{"text":"0.92"},{"text":"0.93"}]}]}}"#,
+        )
+        .unwrap();
+        assert_eq!(fuel_ratio_assigned(&response), Some(0.93));
     }
 
     #[test]
