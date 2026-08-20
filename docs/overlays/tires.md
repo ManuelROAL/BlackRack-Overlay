@@ -71,4 +71,5 @@ false positives and REST-unavailable fallback.
 
 Labels, detailed tyre/chassis tooltips and accessibility text use the bundled
 locale. Translation does not add catalog construction or DOM churn to the 50 Hz
-renderer.
+renderer. Its OBS route follows the shared saved locale or a page-local `?lang=`
+override.

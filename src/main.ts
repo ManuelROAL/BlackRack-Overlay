@@ -124,7 +124,8 @@ interface BrowserSourceStatus {
   running: boolean;
   url: string;
   clients: number;
-  error: string | null;
+  error_kind: "not_initialized" | "missing_assets" | "address_unavailable" | "server_configuration" | "server_startup" | "settings_persistence" | null;
+  error_detail: string | null;
 }
 
 interface OverlayConfigurationExport {
@@ -312,7 +313,8 @@ const syncBrowserSourcePreferences = (): void => {
       delta: deltaSettings,
       timing: timingSettings,
       trackMap: trackMapSettings,
-      transparency: effectiveOverlayTransparency(overlayTransparency, overlayTransparencyScope)
+      transparency: effectiveOverlayTransparency(overlayTransparency, overlayTransparencyScope),
+      locale: getLocale()
     }
   }).catch(() => undefined);
   void invoke("set_delta_settings", { settings: deltaSettings }).catch(() => undefined);
@@ -338,7 +340,7 @@ const renderShortcutSettings = (status: ShortcutSettingsStatus): void => {
     if (input) {
       input.value = binding.shortcut;
       input.dataset.state = binding.active ? "active" : "error";
-      input.title = binding.error ?? t(binding.active ? "shortcuts.active" : "shortcuts.unavailable");
+      input.title = t(binding.active ? "shortcuts.active" : "shortcuts.unavailable");
     }
   }
 
@@ -384,7 +386,16 @@ const saveShortcut = async (action: ShortcutAction, shortcut: string): Promise<v
     renderShortcutSettings(status);
     setShortcutMessage(t("shortcuts.saved", { shortcut }), "success");
   } catch (error) {
-    setShortcutMessage(String(error), "error");
+    const kind = String(error);
+    const key = kind === "invalid"
+      ? "shortcuts.invalid"
+      : kind === "duplicate"
+        ? "shortcuts.duplicate"
+        : kind === "persistence_failed"
+          ? "shortcuts.persistenceError"
+          : "shortcuts.unavailableFor";
+    setShortcutMessage(t(key, { shortcut }), "error");
+    console.error("Could not update global shortcut:", error);
     renderShortcutSettings(await invoke<ShortcutSettingsStatus>("get_shortcut_settings"));
   } finally {
     if (input) input.disabled = false;
@@ -1441,6 +1452,18 @@ loggingInput?.addEventListener("change", () => {
 
 const browserSourceInput = document.getElementById("browser-source-enabled") as HTMLInputElement | null;
 
+const browserSourceError = (kind: BrowserSourceStatus["error_kind"]): string => {
+  switch (kind) {
+    case "not_initialized": return t("browser.errorNotInitialized");
+    case "missing_assets": return t("browser.errorMissingAssets");
+    case "address_unavailable": return t("browser.errorAddress");
+    case "server_configuration": return t("browser.errorConfiguration");
+    case "server_startup": return t("browser.errorStartup");
+    case "settings_persistence": return t("browser.errorPersistence");
+    default: return t("browser.offSub");
+  }
+};
+
 const renderBrowserSourceStatus = (status: BrowserSourceStatus): void => {
   if (browserSourceInput) browserSourceInput.checked = status.enabled && status.running;
   document.getElementById("browser-source-card")?.classList.toggle("active", status.running);
@@ -1451,14 +1474,14 @@ const renderBrowserSourceStatus = (status: BrowserSourceStatus): void => {
   if (description) {
     description.textContent = status.running
       ? t("browser.onSub")
-      : status.error ?? t("browser.offSub");
+      : browserSourceError(status.error_kind);
   }
   const label = document.getElementById("browser-source-status");
   if (label) {
     label.textContent = status.running
       ? t("browser.clients", { count: status.clients })
-      : status.error ? t("browser.error") : t("browser.disabled");
-    label.title = status.error ?? status.url;
+      : status.error_kind ? t("browser.error") : t("browser.disabled");
+    label.title = status.error_detail ?? status.url;
   }
 
   document.querySelectorAll<HTMLElement>("[data-browser-overlay]").forEach((row) => {
@@ -1540,7 +1563,8 @@ void listen<InteractionMode>("overlay://interaction-mode", ({ payload }) => rend
 
 document.getElementById("toggle-interaction-mode")?.addEventListener("click", () => {
   void invoke<InteractionMode>("toggle_interaction_mode_command").catch((error) => {
-    setShortcutMessage(t("mode.error", { detail: String(error) }), "error");
+    console.error("Could not toggle interaction mode:", error);
+    setShortcutMessage(t("mode.error"), "error");
   });
 });
 

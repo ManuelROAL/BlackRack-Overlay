@@ -46,12 +46,12 @@ These are hypotheses, not approved changes; use measurements first.
 
 ## Product roadmap
 
-- Continue bundled Spanish/English localization with phase 3 (OBS preferences,
-  route overrides and backend-facing UI). Phases 1 and 2 now cover the control
-  panel, every native overlay, composite edit chrome, typed catalogs and schema-7
-  locale persistence; fresh profiles start in English. Preserve stable
-  telemetry/persistence IDs and avoid work in hot render paths. See
-  `docs/LOCALIZATION.md`.
+- Harden the completed Spanish/English localization rollout with phase 4:
+  parameter-compatible catalog validation, hard-coded visible-copy auditing,
+  visual checks at supported scaling and contributor documentation. Phases 1–3
+  cover the control panel, native and OBS overlays, composite edit chrome,
+  page-local `?lang=` overrides and stable browser-server error kinds; fresh
+  profiles start in English. See `docs/LOCALIZATION.md`.
 - Validate and implement live telemetry under Proton/Linux.
 - Add repeatable session capture/replay fixtures for development without LMU.
 - Expand Rust model tests for Standings/Relative selection and frontend tests for

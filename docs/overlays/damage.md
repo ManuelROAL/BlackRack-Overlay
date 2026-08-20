@@ -41,4 +41,5 @@ healthy tyre selection, threshold boundaries and fitted compact width.
 ## Localization
 
 Static labels, the document title and accessibility text use the bundled locale;
-percentages and telemetry semantics remain language-neutral.
+percentages and telemetry semantics remain language-neutral. Its OBS route follows
+the shared saved locale or a page-local `?lang=` override.

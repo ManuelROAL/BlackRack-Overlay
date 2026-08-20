@@ -90,3 +90,4 @@ and Standings reuse.
 Empty states, tooltips, lap relations, session header and accessibility text use
 the bundled locale. Translations are resolved only when cached cells or headers
 change, preserving the 20 Hz presentation path.
+The OBS route follows the shared saved locale or a page-local `?lang=` override.

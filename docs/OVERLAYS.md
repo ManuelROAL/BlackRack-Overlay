@@ -81,6 +81,9 @@ telemetry semantics and file ownership live under `docs/overlays/`; use
   restore per-overlay native listeners or direct cross-realm object events.
 - The optional browser server listens only on `http://127.0.0.1:47636`, uses a
   single SSE endpoint, and remains completely inactive when disabled.
+- OBS routes receive the application locale before their modules render. A valid
+  `?lang=es` or `?lang=en` query overrides the locale for that page without
+  changing the saved browser-source preference or another scene.
 - Its route catalog must match `docs/overlays/README.md`. Mirror every configurable
   preference that an OBS page needs because browser pages do not share the Tauri
   WebView's `localStorage`.

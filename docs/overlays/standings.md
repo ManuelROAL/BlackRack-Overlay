@@ -154,3 +154,4 @@ Confirm 10 Hz requested cycles and reuse with Relative rather than a 50 Hz roste
 Session names, empty states, counts, tooltips, table header and accessibility text
 use the bundled locale. Cached rows translate only when their visible cell or
 header changes; domain IDs and roster calculations remain stable.
+The OBS route follows the shared saved locale or a page-local `?lang=` override.

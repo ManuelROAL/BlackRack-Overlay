@@ -90,4 +90,5 @@ excluded from configuration import/export and configuration reset.
 ## Localization
 
 The document title and accessibility text use the bundled locale. Delta values,
-reference IDs and lap-time notation remain stable telemetry presentation.
+reference IDs and lap-time notation remain stable telemetry presentation. Its OBS
+route follows the shared saved locale or a page-local `?lang=` override.

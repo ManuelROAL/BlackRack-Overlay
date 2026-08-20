@@ -53,4 +53,5 @@ history, all visibility combinations, compact sizing and OBS preference parity.
 ## Localization
 
 Static labels, tooltips and accessibility text use the bundled locale. Pedal IDs,
-units and telemetry sampling remain unchanged.
+units and telemetry sampling remain unchanged. Its OBS route follows the shared
+saved locale or a page-local `?lang=` override.

@@ -79,3 +79,4 @@ behavior on at least one additional circuit.
 The learning state, pit prediction tooltip, document title and accessibility text
 use the bundled locale. Circuit geometry, category IDs and marker calculations
 remain language-neutral.
+Its OBS route follows the shared saved locale or a page-local `?lang=` override.

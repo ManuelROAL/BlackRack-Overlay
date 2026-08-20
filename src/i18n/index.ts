@@ -12,6 +12,8 @@ export const isLocale = (value: unknown): value is Locale =>
   typeof value === "string" && (SUPPORTED_LOCALES as readonly string[]).includes(value);
 
 export const resolveLocale = (): Locale => {
+  const override = document.documentElement.dataset.localeOverride;
+  if (isLocale(override)) return override;
   const stored = localStorage.getItem(LOCALE_STORAGE_KEY);
   return isLocale(stored) ? stored : "en";
 };
@@ -72,5 +74,5 @@ export const applyTranslations = (root: ParentNode = document): void => {
   applyAttribute(root, "data-i18n-placeholder", "placeholder");
 };
 
-setLocale(locale);
+document.documentElement.lang = locale;
 export type { TranslationKey };

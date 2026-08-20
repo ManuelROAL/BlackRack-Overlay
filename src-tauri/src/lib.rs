@@ -1206,7 +1206,7 @@ fn set_shortcut(
 ) -> Result<ShortcutSettingsStatus, String> {
     let shortcut = shortcut.trim().replace(' ', "");
     if shortcut.is_empty() || shortcut.len() > 64 {
-        return Err("La combinacion no es valida".into());
+        return Err("invalid".into());
     }
 
     let (old_active, other_shortcut, old_settings) = {
@@ -1225,12 +1225,12 @@ fn set_shortcut(
                 runtime.settings.interaction_mode.clone(),
                 runtime.settings.clone(),
             ),
-            _ => return Err(format!("Accion de atajo desconocida: {action}")),
+            _ => return Err("unknown_action".into()),
         }
     };
 
     if shortcut.eq_ignore_ascii_case(&other_shortcut) {
-        return Err("Cada funcion necesita una combinacion distinta".into());
+        return Err("duplicate".into());
     }
     if old_active
         .as_ref()
@@ -1244,9 +1244,10 @@ fn set_shortcut(
     }
 
     if let Some(old) = &old_active {
-        app.global_shortcut()
-            .unregister(old.as_str())
-            .map_err(|error| format!("No se pudo liberar el atajo anterior: {error}"))?;
+        if let Err(error) = app.global_shortcut().unregister(old.as_str()) {
+            startup_log::record(format!("could not unregister shortcut {old}: {error}"));
+            return Err("unregister_failed".into());
+        }
     }
 
     let register = if action == "interaction_mode" {
@@ -1268,9 +1269,8 @@ fn set_shortcut(
                 ));
             }
         }
-        return Err(format!(
-            "La combinacion {shortcut} no esta disponible: {error}"
-        ));
+        startup_log::record(format!("shortcut {shortcut} is unavailable: {error}"));
+        return Err("unavailable".into());
     }
 
     let mut new_settings = old_settings;
@@ -1288,7 +1288,8 @@ fn set_shortcut(
                 register_panel_shortcut(&app, old)
             };
         }
-        return Err(error);
+        startup_log::record(format!("could not save shortcut settings: {error}"));
+        return Err("persistence_failed".into());
     }
 
     let mut runtime = control

@@ -78,7 +78,7 @@ or enlarge grouped telemetry payloads.
 
 ### Current rollout state
 
-Phases 1 and 2 are implemented. `src/i18n/` owns the bundled Spanish and English
+Phases 1, 2 and 3 are implemented. `src/i18n/` owns the bundled Spanish and English
 catalogs, typed lookup/interpolation/plural helpers, cached locale formatters,
 DOM attribute translation and the persisted `lmu-overlay.locale.v1` choice. The
 complete control panel, including generated settings, dialogs, accessibility
@@ -89,9 +89,17 @@ its static HTML, dynamic status, tooltip and accessibility text; ordinary number
 and the real-world clock follow the selected locale. The composite edit chrome
 and its mounted documents reload together after a language change.
 
+The control panel mirrors the selected locale into the optional browser-source
+preferences before an OBS page loads. Each route accepts `?lang=es` or `?lang=en`
+as a page-local override that does not rewrite the shared saved preference, and
+the localized browser-source index preserves its resolved language in every link.
+Known browser-server failures cross the Rust boundary as stable error kinds;
+known shortcut failures use stable codes as well. Localized UI copy is selected
+in TypeScript while raw operating-system details remain diagnostic.
+
 `npm.cmd run build` validates catalog keys and bindings across all 14 HTML
-documents before TypeScript and Vite. Phase 3 remains: OBS preference injection,
-per-route query overrides and backend-facing user messages.
+documents before TypeScript and Vite. Phase 4 remains: stricter catalog parameter
+checks, hard-coded-copy auditing, visual scaling checks and the contributor guide.
 
 ### 1. Infrastructure and control panel
 

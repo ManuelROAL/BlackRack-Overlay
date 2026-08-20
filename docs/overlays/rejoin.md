@@ -34,3 +34,4 @@ closing versus non-closing cars, candidate preference and automatic visibility.
 
 Warning reasons, safety states, document title and accessibility text use the
 bundled locale. Distances and arrival times use its ordinary number formatting.
+Its OBS route follows the shared saved locale or a page-local `?lang=` override.

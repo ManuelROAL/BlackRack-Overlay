@@ -114,4 +114,5 @@ and the limiting-resource choice. Run Rust tests and the frontend build.
 
 Static and dynamic strategy labels use the bundled locale. Decimal formatting and
 lap abbreviations follow it, while strategy calculations and resource IDs remain
-unchanged and outside the renderer.
+unchanged and outside the renderer. Its OBS route follows the shared saved locale
+or a page-local `?lang=` override.

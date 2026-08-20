@@ -42,3 +42,4 @@ active cadence.
 
 The document title, accessibility text and car-count plural use the bundled
 locale. Flag kinds, category names and compact motorsport notation stay semantic.
+Its OBS route follows the shared saved locale or a page-local `?lang=` override.
