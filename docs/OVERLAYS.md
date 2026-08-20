@@ -52,6 +52,20 @@ telemetry semantics and file ownership live under `docs/overlays/`; use
 - Keep top-level separation between overlays, general settings and integrations.
   Visibility stays immediately accessible. Per-overlay monitor, transparency,
   reset and content options live in that overlay's single settings disclosure.
+- Present general settings as a single compact, full-width group with consistently
+  aligned controls. Preserve readable secondary copy and stack fields on narrow
+  windows instead of leaving partial rows or unused columns.
+- Keep the overlay catalog scannable in two columns at the normal control-panel
+  width: descriptions may use two lines, configuration must read as an action,
+  and enabled state should remain clear without turning every card into a bright
+  outline. Collapse the catalog to one column when the window is narrow.
+- Use the same hierarchy and help-text treatment in every overlay configuration
+  disclosure. Expanded controls and reorder grids must reflow without horizontal
+  overflow at the narrow control-panel breakpoint.
+- Present integrations as a clearly introduced pair of local tools, with matching
+  section headers, explicit status badges and a visible disclosure affordance.
+  On short integration views, keep the support card and shortcut footer anchored
+  at the bottom of the control panel instead of leaving unused space below them.
 - General and per-overlay modes for monitor assignment and transparency remain
   independent. General mode must preserve saved individual values.
 - Monitor selectors use the Windows-reported friendly model name and resolution;

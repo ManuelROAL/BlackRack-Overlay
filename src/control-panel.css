@@ -26,9 +26,11 @@ select {
 }
 
 .control-panel {
+  display: flex;
+  flex-direction: column;
   min-height: 100vh;
   background:
-    radial-gradient(circle at 85% -15%, rgb(216 255 62 / 9%), transparent 35%),
+    radial-gradient(circle at 85% -15%, rgb(216 255 62 / 8%), transparent 34%),
     linear-gradient(145deg, #0e141d, #080b10 65%);
 }
 
@@ -36,7 +38,7 @@ select {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 76px;
+  height: 68px;
   padding: 0 28px;
   border-bottom: 1px solid rgb(255 255 255 / 8%);
 }
@@ -125,7 +127,7 @@ select {
   position: relative;
   display: grid;
   gap: 3px;
-  padding: 13px 10px 11px;
+  padding: 11px 10px 10px;
   border: 0;
   color: #687482;
   background: transparent;
@@ -160,6 +162,7 @@ select {
 }
 
 .control-navigation small {
+  color: #7b8794;
   font-size: 8px;
 }
 
@@ -171,7 +174,7 @@ select {
   display: flex;
   align-items: end;
   justify-content: space-between;
-  padding: 27px 28px 18px;
+  padding: 23px 28px 14px;
 }
 
 .control-intro p {
@@ -211,9 +214,11 @@ select {
 
 .global-overlay-settings {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 9px;
-  padding: 0 28px 14px;
+  margin: 14px 28px 12px;
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255 / 9%);
+  border-radius: 10px;
+  background: rgb(255 255 255 / 2.5%);
 }
 
 .configuration-export {
@@ -221,8 +226,8 @@ select {
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 7px 18px;
-  margin: 0 28px 14px;
-  padding: 14px;
+  margin: 0 28px 12px;
+  padding: 13px 14px;
   border: 1px solid rgb(255 255 255 / 8%);
   border-radius: 9px;
   background: rgb(255 255 255 / 2.5%);
@@ -251,8 +256,9 @@ select {
 
 .configuration-export small,
 .configuration-export p {
-  color: #697582;
-  font-size: 8px;
+  color: #7b8794;
+  font-size: 9px;
+  line-height: 1.3;
 }
 
 .configuration-export button {
@@ -285,6 +291,8 @@ select {
 
 .overlay-toolbar {
   display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
   gap: 10px;
   padding: 0 28px 14px;
 }
@@ -293,7 +301,7 @@ select {
   display: grid;
   grid-template-columns: 24px 1fr;
   align-items: center;
-  min-height: 38px;
+  min-height: 36px;
   padding: 0 10px;
   border: 1px solid rgb(255 255 255 / 10%);
   border-radius: 7px;
@@ -324,13 +332,14 @@ select {
 }
 
 .overlay-filters button {
+  min-height: 28px;
   padding: 6px 9px;
   border: 1px solid rgb(255 255 255 / 9%);
   border-radius: 5px;
   color: #717d8a;
   background: rgb(255 255 255 / 2.5%);
   cursor: pointer;
-  font-size: 7px;
+  font-size: 8px;
   font-weight: 900;
   letter-spacing: .08em;
 }
@@ -352,19 +361,17 @@ select {
 
 .global-setting-group {
   display: grid;
-  grid-template-columns: minmax(105px, 1fr) minmax(118px, auto);
-  align-items: end;
-  gap: 10px 14px;
-  min-height: 106px;
-  padding: 13px 14px;
-  border: 1px solid rgb(255 255 255 / 8%);
-  border-radius: 9px;
-  background: rgb(255 255 255 / 2.5%);
+  grid-template-columns: minmax(0, 1fr) minmax(140px, 170px);
+  align-items: center;
+  gap: 10px 18px;
+  min-height: 72px;
+  padding: 12px 14px;
+  border-bottom: 1px solid rgb(255 255 255 / 7%);
+  background: transparent;
 }
 
-.language-setting-group {
-  grid-column: 1 / -1;
-  min-height: 76px;
+.global-setting-group:last-child {
+  border-bottom: 0;
 }
 
 .global-setting-copy {
@@ -375,17 +382,19 @@ select {
 
 .global-setting-copy span {
   color: #d8ff3e;
-  font-size: 8px;
+  font-size: 9px;
   font-weight: 900;
   letter-spacing: 0.14em;
 }
 
 .global-setting-copy strong {
-  font-size: 11px;
+  color: #edf1f4;
+  font-size: 12px;
 }
 
 .global-setting-group .select-field select {
-  min-width: 118px;
+  width: 100%;
+  min-width: 0;
 }
 
 .global-transparency-control {
@@ -394,8 +403,8 @@ select {
   grid-template-columns: 1fr 34px;
   align-items: center;
   gap: 4px 8px;
-  color: #687482;
-  font-size: 7px;
+  color: #7b8794;
+  font-size: 8px;
   font-weight: 900;
   letter-spacing: 0.08em;
 }
@@ -428,7 +437,12 @@ select {
 }
 
 .logging-section {
-  padding: 0 28px 24px;
+  margin: 0 28px 12px;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255 / 9%);
+  border-radius: 9px;
+  background: rgb(255 255 255 / 2.5%);
 }
 
 .strategy-settings-section {
@@ -436,25 +450,28 @@ select {
 }
 
 .shortcut-settings-section {
-  margin: 0 28px 14px;
+  margin: 0 28px 12px;
   border: 1px solid rgb(255 255 255 / 8%);
   border-radius: 9px;
   background: rgb(255 255 255 / 2.5%);
 }
 
 .browser-source-section {
-  margin: 0 28px 18px;
-  border: 1px solid rgb(255 255 255 / 8%);
+  margin: 0 28px 12px;
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255 / 9%);
   border-radius: 9px;
   background: rgb(255 255 255 / 2.5%);
 }
 
 .browser-source-section summary {
   display: grid;
+  grid-template-columns: 1fr auto;
   gap: 4px;
-  padding: 13px 16px;
+  padding: 13px 16px 12px;
   cursor: pointer;
   list-style: none;
+  background: linear-gradient(90deg, rgb(216 255 62 / 4%), transparent 55%);
 }
 
 .browser-source-section summary::-webkit-details-marker {
@@ -462,6 +479,7 @@ select {
 }
 
 .browser-source-section summary span {
+  grid-column: 1;
   color: #d8ff3e;
   font-size: 8px;
   font-weight: 900;
@@ -469,6 +487,39 @@ select {
 }
 
 .browser-source-section summary strong {
+  grid-column: 1;
+  font-size: 12px;
+}
+
+.browser-source-section summary::after {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: center;
+  color: #82909d;
+  content: "\2212";
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.browser-source-section:not([open]) summary::after {
+  content: "+";
+}
+
+.integration-section-heading {
+  display: grid;
+  gap: 4px;
+  padding: 13px 16px 12px;
+  background: linear-gradient(90deg, rgb(114 203 255 / 5%), transparent 55%);
+}
+
+.integration-section-heading span {
+  color: #72cbff;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .14em;
+}
+
+.integration-section-heading strong {
   font-size: 12px;
 }
 
@@ -479,11 +530,39 @@ select {
 }
 
 .browser-source-option {
-  min-height: 86px;
+  min-height: 82px;
 }
 
 .browser-source-option .overlay-icon {
   font-size: 9px;
+}
+
+.logging-section .logging-option {
+  min-height: 82px;
+  margin: 0 10px 10px;
+}
+
+.browser-source-option .overlay-copy small,
+.logging-option .overlay-copy small {
+  width: max-content;
+  padding: 2px 5px;
+  border: 1px solid rgb(255 255 255 / 8%);
+  border-radius: 4px;
+  color: #7e8a96;
+  background: rgb(255 255 255 / 3%);
+  font-size: 7px;
+}
+
+.browser-source-option.active .overlay-copy small,
+.logging-option.active .overlay-copy small {
+  border-color: rgb(105 231 148 / 22%);
+  color: #69e794;
+  background: rgb(105 231 148 / 6%);
+}
+
+.control-panel[data-active-view="general"] .support-section,
+.control-panel[data-active-view="integrations"] .support-section {
+  margin-top: auto;
 }
 
 .browser-source-urls {
@@ -534,7 +613,7 @@ select {
 .shortcut-settings-section summary {
   display: grid;
   gap: 4px;
-  padding: 13px 16px;
+  padding: 12px 14px;
   cursor: pointer;
   list-style: none;
 }
@@ -545,7 +624,7 @@ select {
 
 .shortcut-settings-section summary span {
   color: #d8ff3e;
-  font-size: 8px;
+  font-size: 9px;
   font-weight: 900;
   letter-spacing: 0.14em;
 }
@@ -557,7 +636,7 @@ select {
 .shortcut-settings-list {
   display: grid;
   gap: 8px;
-  padding: 2px 16px 14px;
+  padding: 1px 14px 13px;
 }
 
 .shortcut-setting {
@@ -574,13 +653,13 @@ select {
 }
 
 .shortcut-setting b {
-  color: #cdd4dc;
-  font-size: 10px;
+  color: #dce2e7;
+  font-size: 11px;
 }
 
 .shortcut-setting small {
-  color: #64707e;
-  font-size: 8px;
+  color: #7b8794;
+  font-size: 9px;
 }
 
 .shortcut-setting input {
@@ -610,8 +689,8 @@ select {
 .shortcut-message {
   min-height: 12px;
   margin: 2px 0 0;
-  color: #687482;
-  font-size: 8px;
+  color: #7b8794;
+  font-size: 9px;
   font-weight: 700;
 }
 
@@ -626,15 +705,17 @@ select {
 .standings-settings-section {
   grid-column: 1 / -1;
   margin: 0;
+  overflow: hidden;
   border: 1px solid rgb(255 255 255 / 8%);
   border-radius: 9px;
-  background: rgb(255 255 255 / 2.5%);
+  background: #0d1219;
 }
 
 .settings-section-heading {
   display: grid;
   gap: 4px;
-  padding: 13px 16px;
+  padding: 13px 16px 12px;
+  background: linear-gradient(90deg, rgb(216 255 62 / 4%), transparent 55%);
 }
 
 .settings-section-heading span {
@@ -650,11 +731,16 @@ select {
 
 .standings-content-settings {
   display: grid;
-  padding: 2px 16px 14px;
-  grid-template-columns: minmax(150px, 1fr) auto auto;
+  padding: 10px 16px 14px;
+  grid-template-columns: minmax(145px, 1fr) auto auto 132px;
   align-items: end;
   gap: 10px;
   border-bottom: 1px solid rgb(255 255 255 / 7%);
+}
+
+.compact-settings-controls {
+  grid-template-columns: repeat(auto-fit, minmax(132px, 180px));
+  justify-content: start;
 }
 
 .relative-content-settings {
@@ -772,8 +858,8 @@ select {
 
 .settings-subtitle {
   padding: 12px 16px 0;
-  color: #8f9ba7;
-  font-size: 8px;
+  color: #a0abb6;
+  font-size: 9px;
   font-weight: 950;
   letter-spacing: 0.1em;
 }
@@ -838,7 +924,7 @@ select {
 .column-order-item {
   display: grid;
   min-width: 0;
-  min-height: 28px;
+  min-height: 30px;
   grid-template-columns: 15px minmax(0, 1fr) 22px 22px;
   align-items: center;
   gap: 3px;
@@ -882,7 +968,7 @@ select {
 
 .column-order-label {
   overflow: hidden;
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 800;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -902,6 +988,20 @@ select {
   font: 900 10px/1 "Roboto Condensed", sans-serif;
 }
 
+.settings-note {
+  margin: 0;
+  padding: 11px 16px 13px;
+  color: #85929f;
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+[data-settings-for="trackmap"] .standings-columns {
+  grid-template-columns: 1fr;
+  padding-bottom: 12px;
+}
+
 .column-order-button:hover:not(:disabled) {
   border-color: rgb(216 255 62 / 45%);
   color: #d8ff3e;
@@ -919,7 +1019,7 @@ select {
 .select-field {
   display: grid;
   gap: 5px;
-  color: #687482;
+  color: #7b8794;
   font-size: 8px;
   font-weight: 900;
   letter-spacing: 0.08em;
@@ -927,6 +1027,7 @@ select {
 
 .select-field select {
   min-width: 132px;
+  min-height: 34px;
   padding: 7px 9px;
   border: 1px solid rgb(255 255 255 / 12%);
   border-radius: 5px;
@@ -982,14 +1083,17 @@ select {
 
 .overlay-list > .overlay-option {
   grid-template-columns: 34px minmax(0, 1fr) auto;
-  gap: 10px;
-  min-height: 66px;
-  padding: 11px 12px;
+  grid-template-rows: auto auto;
+  column-gap: 10px;
+  row-gap: 6px;
+  min-height: 94px;
+  padding: 11px 12px 9px;
 }
 
 .overlay-list > .overlay-option > .overlay-icon {
   grid-column: 1;
-  grid-row: 1;
+  grid-row: 1 / span 2;
+  align-self: start;
   width: 34px;
   height: 34px;
 }
@@ -1007,6 +1111,7 @@ select {
 .overlay-list > .overlay-option > .switch {
   grid-column: 3;
   grid-row: 1;
+  align-self: center;
 }
 
 .overlay-list > .overlay-option.expanded {
@@ -1052,6 +1157,25 @@ select {
   color: #d8ff3e;
 }
 
+.overlay-list > .overlay-option:not(.expanded) > .overlay-details-toggle {
+  display: flex;
+  grid-column: 2 / 4;
+  grid-row: 2;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 7px 0 2px;
+  border-top: 1px solid rgb(255 255 255 / 7%);
+  color: #82909e;
+  text-align: left;
+}
+
+.overlay-list > .overlay-option:not(.expanded) > .overlay-details-toggle::after {
+  color: #667482;
+  content: "\2192";
+  font-size: 11px;
+}
+
 .overlay-list > .overlay-option.expanded > .overlay-details-toggle {
   grid-column: 2;
   grid-row: 2;
@@ -1068,9 +1192,12 @@ select {
 }
 
 .overlay-list > .overlay-option:not(.expanded) .overlay-copy span {
+  display: -webkit-box;
   overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
   text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
 }
 
 .overlay-option[hidden],
@@ -1242,8 +1369,18 @@ select {
 }
 
 .overlay-option.active {
+  border-color: rgb(216 255 62 / 20%);
+  background: linear-gradient(90deg, rgb(216 255 62 / 6%), rgb(255 255 255 / 2.5%) 68%);
+  box-shadow: inset 2px 0 0 #d8ff3e;
+}
+
+.overlay-list > .overlay-option:hover {
+  border-color: rgb(255 255 255 / 15%);
+  background-color: rgb(255 255 255 / 4%);
+}
+
+.overlay-list > .overlay-option.active:hover {
   border-color: rgb(216 255 62 / 28%);
-  background: linear-gradient(90deg, rgb(216 255 62 / 7%), rgb(255 255 255 / 2.5%));
 }
 
 .overlay-icon {
@@ -1332,7 +1469,7 @@ select {
   display: flex;
   align-items: center;
   gap: 18px;
-  min-height: 54px;
+  min-height: 48px;
   padding: 0 28px;
   border-top: 1px solid rgb(255 255 255 / 7%);
   color: #5f6a77;
@@ -1387,9 +1524,9 @@ select {
 .support-section {
   display: flex;
   align-items: center;
-  gap: 22px;
-  margin: 14px 28px 24px;
-  padding: 20px;
+  gap: 20px;
+  margin: 12px 28px 16px;
+  padding: 16px 18px;
   border: 1px solid rgb(114 203 255 / 20%);
   border-radius: 7px;
   background:
@@ -1416,7 +1553,7 @@ select {
 
 .support-copy small {
   max-width: 340px;
-  color: #8793a0;
+  color: #96a2ae;
   font-size: 10px;
   line-height: 1.35;
 }
@@ -1441,7 +1578,7 @@ select {
 
 .mode-action {
   width: max-content;
-  margin-top: 8px;
+  margin-top: 5px;
   padding: 6px 9px;
   border: 1px solid rgb(216 255 62 / 35%);
   border-radius: 4px;
@@ -1451,4 +1588,140 @@ select {
   font-size: 9px;
   font-weight: 800;
   letter-spacing: .08em;
+}
+
+@media (max-width: 470px) {
+  .control-header,
+  .control-navigation,
+  .control-footer {
+    padding-right: 18px;
+    padding-left: 18px;
+  }
+
+  .global-overlay-settings,
+  .configuration-export,
+  .shortcut-settings-section,
+  .browser-source-section,
+  .logging-section,
+  .support-section {
+    margin-right: 18px;
+    margin-left: 18px;
+  }
+
+  .control-intro {
+    align-items: start;
+    flex-direction: column;
+    gap: 12px;
+    padding-right: 18px;
+    padding-left: 18px;
+  }
+
+  .overlay-toolbar {
+    grid-template-columns: 1fr;
+    padding-right: 18px;
+    padding-left: 18px;
+  }
+
+  .overlay-list {
+    grid-template-columns: 1fr;
+    padding-right: 18px;
+    padding-left: 18px;
+  }
+
+  .overlay-list > .overlay-option.expanded {
+    grid-template-columns: 42px minmax(0, 1fr) auto;
+    grid-template-rows: auto auto auto;
+  }
+
+  .overlay-list > .overlay-option.expanded > .overlay-copy {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .overlay-list > .overlay-option.expanded > .overlay-transparency {
+    grid-column: 2 / 4;
+    grid-row: 2;
+  }
+
+  .overlay-list > .overlay-option.expanded > .switch {
+    grid-column: 3;
+    grid-row: 1;
+  }
+
+  .overlay-list > .overlay-option.expanded > .overlay-details-toggle {
+    grid-column: 2;
+    grid-row: 3;
+  }
+
+  .overlay-list > .overlay-option.expanded > .overlay-reset-actions {
+    grid-column: 3;
+    grid-row: 3;
+  }
+
+  .standings-content-settings {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .standings-setting-toggle,
+  .standings-name-format-setting {
+    grid-column: 1 / -1;
+  }
+
+  .standings-name-format-setting select {
+    width: 100%;
+  }
+
+  .standings-columns,
+  .column-order-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .compact-settings-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .overlay-filters {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .global-setting-group,
+  .configuration-export {
+    grid-template-columns: 1fr;
+  }
+
+  .global-setting-group {
+    gap: 9px;
+  }
+
+  .configuration-export {
+    align-items: start;
+  }
+
+  .configuration-transfer-actions,
+  #open-kofi {
+    width: 100%;
+  }
+
+  .configuration-transfer-actions button {
+    flex: 1;
+  }
+
+  .support-section {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  #open-kofi {
+    justify-content: center;
+  }
+
+  .shortcut-setting {
+    grid-template-columns: 1fr;
+    gap: 7px;
+  }
+
+  .shortcut-setting input {
+    width: 100%;
+  }
 }

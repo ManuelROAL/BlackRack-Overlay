@@ -345,7 +345,7 @@
             <span data-i18n="settings.delta">CONFIGURACIÓN DE DELTA</span>
             <strong data-i18n="settings.deltaSub">Referencia y escala visual</strong>
           </header>
-          <div class="standings-content-settings">
+          <div class="standings-content-settings compact-settings-controls">
             <label class="standings-name-format-setting">
               <span data-i18n="settings.reference">REFERENCIA</span>
               <select id="delta-mode"></select>
@@ -380,7 +380,7 @@
             <span data-i18n="settings.timing">CONFIGURACIÓN DE TIMING COMPACTO</span>
             <strong data-i18n="settings.timingSub">Historial reciente</strong>
           </header>
-          <div class="standings-content-settings">
+          <div class="standings-content-settings compact-settings-controls">
             <label class="standings-name-format-setting">
               <span data-i18n="settings.lastLaps">ÚLTIMAS VUELTAS</span>
               <select id="timing-history-laps">
@@ -419,6 +419,13 @@
           <p class="settings-note" data-i18n="settings.mapNote">El mapa contin&uacute;a aprendiendo el tr&aacute;nsito por boxes aunque se oculte la predicci&oacute;n.</p>
         </section>
 
+      </section>
+
+      <section class="control-intro integrations-intro" data-view-section="integrations">
+        <div>
+          <p data-i18n="integrations.heading">CAPTURA Y DIAGNÓSTICO</p>
+          <h1 data-i18n="integrations.title">Captura overlays y analiza el rendimiento</h1>
+        </div>
       </section>
 
       <details id="browser-source-section" class="browser-source-section" data-view-section="integrations" open>
@@ -460,6 +467,10 @@
       </details>
       
       <section class="logging-section" data-view-section="integrations" aria-label="Registro de telemetría" data-i18n-aria-label="logging.aria">
+        <header class="integration-section-heading">
+          <span data-i18n="logging.heading">DIAGNÓSTICO</span>
+          <strong data-i18n="logging.sub">Análisis y registro local</strong>
+        </header>
         <article id="logging-card" class="overlay-option logging-option">
           <div class="overlay-icon logging-icon">REC</div>
           <div class="overlay-copy">
