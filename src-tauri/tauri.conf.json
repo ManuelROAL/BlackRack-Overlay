@@ -13,24 +13,7 @@
     "security": {
       "csp": "default-src 'self'; connect-src ipc: http://ipc.localhost ws://localhost:6398; img-src 'self' asset: data:; style-src 'self'"
     },
-    "windows": [
-      {
-        "label": "control",
-        "title": "BlackRack Overlay · Panel de control",
-        "width": 590,
-        "height": 910,
-        "minWidth": 560,
-        "minHeight": 880,
-        "transparent": false,
-        "decorations": true,
-        "shadow": true,
-        "alwaysOnTop": false,
-        "skipTaskbar": false,
-        "resizable": false,
-        "devtools": false,
-        "center": true
-      }
-    ]
+    "windows": []
   },
   "bundle": {
     "active": true,

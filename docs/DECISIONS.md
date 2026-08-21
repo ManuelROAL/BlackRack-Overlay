@@ -7,7 +7,9 @@ in `docs/overlays/` and should not be duplicated here.
 
 - The product name is **BlackRack Overlay**. Its technical bundle identifier is
   `com.blackrack.overlay`, while user-owned backend data uses the readable
-  `%APPDATA%\BlackRack Overlay` directory on Windows.
+  `%APPDATA%\BlackRack Overlay` directory on Windows. The WebView2 user data
+  profile (`EBWebView`) is set explicitly on every webview window to
+  `%LOCALAPPDATA%\BlackRackOverlay`, independent of the bundle identifier.
 - Windows is the primary platform. Linux UI support remains desired, while live
   telemetry under Proton still needs validation.
 - Information density and legibility while driving take priority over decoration.

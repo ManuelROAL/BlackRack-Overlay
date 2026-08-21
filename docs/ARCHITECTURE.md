@@ -137,6 +137,9 @@ blocking HTTP calls into `next_frame()`.
 
 ## Persistence
 
+- Shared WebView2 user data (the `EBWebView` profile): `%LOCALAPPDATA%\BlackRackOverlay`,
+  set explicitly on every webview window so it does not follow the technical
+  bundle identifier. All Tauri WebViews share this one user data folder.
 - Control-panel position: `control-window.json` under
   `%APPDATA%\BlackRack Overlay`. Windows' synthetic minimized position is never
   persisted or restored, so closing the application while minimized cannot make

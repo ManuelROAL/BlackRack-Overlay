@@ -652,6 +652,25 @@ fn save_overlay_monitor_index(app: &AppHandle, index: usize) -> Result<(), Strin
         .map_err(|error| format!("No se pudo guardar la configuracion: {error}"))
 }
 
+fn create_control_window(app: &AppHandle) -> Result<(), String> {
+    WebviewWindowBuilder::new(app, "control", WebviewUrl::App("index.html".into()))
+        .data_directory(app_paths::webview_data_directory())
+        .title("BlackRack Overlay · Panel de control")
+        .inner_size(590.0, 910.0)
+        .min_inner_size(560.0, 880.0)
+        .transparent(false)
+        .decorations(true)
+        .shadow(true)
+        .always_on_top(false)
+        .skip_taskbar(false)
+        .resizable(false)
+        .devtools(false)
+        .center()
+        .build()
+        .map_err(|error| format!("No se pudo crear el panel de control: {error}"))?;
+    Ok(())
+}
+
 fn create_overlay_host(app: &AppHandle) -> Result<(), String> {
     let monitors = sorted_monitors(app)?;
     if monitors.is_empty() {
@@ -665,6 +684,7 @@ fn create_overlay_host(app: &AppHandle) -> Result<(), String> {
     let label = format!("{OVERLAY_HOST_PREFIX}0");
     let logical_size = monitor.size().to_logical::<f64>(monitor.scale_factor());
     let window = WebviewWindowBuilder::new(app, &label, WebviewUrl::App("composite.html".into()))
+        .data_directory(app_paths::webview_data_directory())
         .title(format!("BlackRack Overlay · Monitor {}", host_index + 1))
         .inner_size(logical_size.width, logical_size.height)
         .transparent(true)
@@ -1398,6 +1418,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             startup_log::record("Tauri setup started");
+            create_control_window(app.handle())?;
             if let Some(panel) = app.get_webview_window("control") {
                 startup_log::record("control window available");
                 if let Some(position) = load_control_window_position() {

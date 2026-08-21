@@ -50,7 +50,9 @@ remove enrichment such as DR/SR or split data, but must not stop the overlays.
 
 - The product is published as **BlackRack Overlay**, with bundle identifier
   `com.blackrack.overlay`; backend configuration, learned data and diagnostics
-  live under `%APPDATA%\BlackRack Overlay` on Windows.
+  live under `%APPDATA%\BlackRack Overlay` on Windows. The WebView2 user data
+  profile (`EBWebView`) lives under `%LOCALAPPDATA%\BlackRackOverlay`, set
+  explicitly and independently of the bundle identifier.
 - Version is defined in `package.json`, `src-tauri/Cargo.toml` and
   `src-tauri/tauri.conf.json`; keep all three synchronized.
 - Windows distribution uses a current-user NSIS installer and embeds the WebView2
