@@ -347,7 +347,7 @@ const rowCache = new Map<string, CachedRow>();
 
 const pitTimeLabel = (seconds: number): string => Math.floor(Math.max(0, seconds)).toString();
 
-const cellSignature = (entry: StandingEntry, column: RelativeColumnId, trackLimit: number): string => {
+const cellSignature = (entry: StandingEntry, column: RelativeColumnId, trackLimit: number, relativeGapSeconds = entry.relative_gap_seconds): string => {
   switch (column) {
     case "position": return `${entry.position}|${entry.position_change}|${relativeSettings.options.positionChange}`;
     case "number": return liveCarNumbers.get(entry.vehicle_id) || entry.car_number || "--";
@@ -355,7 +355,7 @@ const cellSignature = (entry: StandingEntry, column: RelativeColumnId, trackLimi
     case "badge": return entry.driver_badge;
     case "driver": return `${entry.driver_name}|${entry.nationality}|${relativeSettings.driverNameFormat}`;
     case "ranks": return `${entry.driver_rank}|${Math.round(entry.driver_rank_progress)}|${Math.round(entry.estimated_driver_rank_gain)}|${entry.estimated_driver_rank_gain_available}|${entry.safety_rank}`;
-    case "relative": return entry.relative_gap_seconds.toFixed(2);
+    case "relative": return relativeGapSeconds.toFixed(2);
     case "lap": return entry.total_laps.toString();
     case "best": return `${formatLapTime(entry.best_lap_seconds)}|${entry.best_lap_seconds > 0}|${entry.has_fastest_lap}`;
     case "last": return `${entry.is_out_lap ? "OUT" : formatLapTime(entry.last_lap_seconds)}|${formatLapTime(entry.best_lap_seconds)}|${entry.has_fastest_lap}|${entry.last_lap_valid}`;
@@ -374,7 +374,7 @@ const cellSignature = (entry: StandingEntry, column: RelativeColumnId, trackLimi
   }
 };
 
-const createCell = (entry: StandingEntry, column: RelativeColumnId, trackLimit: number): HTMLElement => {
+const createCell = (entry: StandingEntry, column: RelativeColumnId, trackLimit: number, relativeGapSeconds = entry.relative_gap_seconds): HTMLElement => {
   switch (column) {
     case "position": {
       const cell = node("div", "standing-position-cell");
@@ -408,7 +408,7 @@ const createCell = (entry: StandingEntry, column: RelativeColumnId, trackLimit: 
       return cell;
     }
     case "relative": {
-      const gap = entry.is_player ? decimal(0, 1) : `${entry.relative_gap_seconds > 0 ? "+" : ""}${decimal(entry.relative_gap_seconds, 1)}`;
+      const gap = entry.is_player ? decimal(0, 1) : `${relativeGapSeconds > 0 ? "+" : ""}${decimal(relativeGapSeconds, 1)}`;
       return node("b", "standing-relative", gap);
     }
     case "lap": return node("b", "standing-lap-number", entry.total_laps.toString());
@@ -500,7 +500,8 @@ const renderRow = (
   trackLimit: number,
   instanceKey: string,
   lapRelation: RelativeLapRelation,
-  rowKind: RelativeRowKind
+  rowKind: RelativeRowKind,
+  relativeGapSeconds = entry.relative_gap_seconds
 ): HTMLElement => {
   const columns = activeColumns().map(({ id }) => id);
   const columnsKey = columns.join("|");
@@ -523,10 +524,10 @@ const renderRow = (
   else cached.element.removeAttribute("aria-label");
 
   for (const column of columns) {
-    const signature = cellSignature(entry, column, trackLimit);
+    const signature = cellSignature(entry, column, trackLimit, relativeGapSeconds);
     const previous = cached.cells.get(column);
     if (!previous || previous.signature !== signature) {
-      const element = createCell(entry, column, trackLimit);
+      const element = createCell(entry, column, trackLimit, relativeGapSeconds);
       if (previous && cached.columns === columnsKey) previous.element.replaceWith(element);
       cached.cells.set(column, { element, signature });
     }
@@ -642,7 +643,7 @@ const render = (frame: TelemetryFrame): void => {
     const selected = frame.relative_model.rows
       .map((model) => {
         const entry = entriesById.get(model.vehicle_id);
-        return entry ? { model, entry: { ...entry, relative_gap_seconds: model.relative_gap_seconds } } : null;
+        return entry ? { model, entry } : null;
       })
       .filter((row): row is { model: typeof frame.relative_model.rows[number]; entry: StandingEntry } => row !== null);
     if (selected.length === 0) {
@@ -661,7 +662,8 @@ const render = (frame: TelemetryFrame): void => {
       frame.track_limits_steps_per_penalty,
       `relative-${model.kind}-${model.vehicle_id}`,
       model.lap_relation,
-      model.kind
+      model.kind,
+      model.relative_gap_seconds
     )));
     syncChildren(group, groupChildren);
     const children: HTMLElement[] = [];
