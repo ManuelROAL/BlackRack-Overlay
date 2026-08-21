@@ -17,7 +17,6 @@ const DELTA_TREND_DISTANCE_METERS: f64 = 20.0;
 const DELTA_TREND_DEADBAND_SECONDS: f64 = 0.008;
 const MIN_SECTOR_DURATION_SECONDS: f64 = 5.0;
 const TIMING_RESULT_FREEZE: Duration = Duration::from_secs(3);
-const SECTOR_FREEZE: Duration = Duration::from_secs(2);
 const STORE_VERSION: u32 = 1;
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, Eq)]
@@ -135,9 +134,6 @@ pub(crate) struct TimingViewModel {
     current_seconds: f64,
     last_seconds: f64,
     best_seconds: f64,
-    delta_available: bool,
-    delta_seconds: f64,
-    delta_frozen: bool,
     active_sector: usize,
     sectors: [TimingSectorView; 3],
     history: Vec<TimingLapView>,
@@ -150,9 +146,6 @@ impl Default for TimingViewModel {
             current_seconds: 0.0,
             last_seconds: 0.0,
             best_seconds: 0.0,
-            delta_available: false,
-            delta_seconds: 0.0,
-            delta_frozen: false,
             active_sector: 0,
             sectors: std::array::from_fn(|_| TimingSectorView::default()),
             history: Vec::new(),
@@ -667,7 +660,6 @@ pub(crate) struct DeltaEngine {
     last_session_elapsed: f64,
     last_lap_number: i32,
     generation: u64,
-    timing_sector_freeze: Option<(Instant, f64)>,
     timing_results_until: Option<Instant>,
     timing_sectors: [Option<f64>; 3],
     timing_sector_states: [&'static str; 3],
@@ -698,7 +690,6 @@ impl DeltaEngine {
             last_session_elapsed: 0.0,
             last_lap_number: -1,
             generation: 0,
-            timing_sector_freeze: None,
             timing_results_until: None,
             timing_sectors: [None; 3],
             timing_sector_states: ["pending"; 3],
@@ -762,7 +753,6 @@ impl DeltaEngine {
             self.last_delta_update = Instant::now();
             self.reset_delta_trend();
             self.timing_results_until = None;
-            self.timing_sector_freeze = None;
             self.timing_sectors = [None; 3];
             self.timing_sector_states = ["pending"; 3];
         } else if self.current_lap.is_none() {
@@ -826,7 +816,6 @@ impl DeltaEngine {
         self.current_lap = None;
         self.pending_lap = None;
         self.stint = None;
-        self.timing_sector_freeze = None;
         self.timing_results_until = None;
         self.timing_sectors = [None; 3];
         self.timing_sector_states = ["pending"; 3];
@@ -939,12 +928,6 @@ impl DeltaEngine {
         );
         self.timing_history.truncate(5);
 
-        if let Some((delta, _)) =
-            self.reference_delta_for_trace(&completed.trace, DeltaMode::OverallBest)
-        {
-            self.timing_sector_freeze = Some((Instant::now() + TIMING_RESULT_FREEZE, delta));
-        }
-
         if let Some(stint) = self.stint.as_mut() {
             stint.add(&completed);
         }
@@ -1040,13 +1023,6 @@ impl DeltaEngine {
                     };
                     self.timing_sectors[index] = Some(seconds);
                     self.timing_sector_states[index] = if lap.valid { state } else { "invalid" };
-                    let boundary_distance = frame.lap_progress * frame.track_length_meters;
-                    if let Some((reference_at, _)) =
-                        trace_reference(self.overall.best.as_ref(), boundary_distance)
-                    {
-                        self.timing_sector_freeze =
-                            Some((Instant::now() + SECTOR_FREEZE, end_time - reference_at));
-                    }
                 }
             }
         }
@@ -1055,27 +1031,6 @@ impl DeltaEngine {
             .current_lap
             .as_ref()
             .is_some_and(|lap| lap.started_at_line);
-        let live_delta = timed_lap_active
-            .then(|| {
-                self.reference_at(
-                    DeltaMode::OverallBest,
-                    frame.lap_progress * frame.track_length_meters,
-                    frame.track_length_meters,
-                )
-                .map(|(reference, _)| frame.current_lap_seconds - reference)
-            })
-            .flatten();
-        let (delta_seconds, delta_frozen) = if let Some((until, value)) = self.timing_sector_freeze
-        {
-            if Instant::now() < until {
-                (Some(value), true)
-            } else {
-                self.timing_sector_freeze = None;
-                (live_delta, false)
-            }
-        } else {
-            (live_delta, false)
-        };
         TimingViewModel {
             available: true,
             current_seconds: if timed_lap_active {
@@ -1089,9 +1044,6 @@ impl DeltaEngine {
                 .best
                 .as_ref()
                 .map_or(frame.best_lap_seconds, |lap| lap.lap_time),
-            delta_available: delta_seconds.is_some(),
-            delta_seconds: delta_seconds.unwrap_or(0.0),
-            delta_frozen,
             active_sector,
             sectors: std::array::from_fn(|index| TimingSectorView {
                 seconds: self.timing_sectors[index].unwrap_or(0.0),
@@ -1312,11 +1264,6 @@ impl DeltaEngine {
             DeltaMode::LastLap => self.last_lap.as_ref().map(|trace| trace.lap_time),
             DeltaMode::Off => None,
         }
-    }
-
-    fn reference_delta_for_trace(&self, trace: &LapTrace, mode: DeltaMode) -> Option<(f64, f64)> {
-        let total = self.reference_total(mode)?;
-        Some((trace.lap_time - total, total))
     }
 }
 

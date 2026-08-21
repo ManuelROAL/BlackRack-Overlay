@@ -88,9 +88,6 @@ export interface TimingViewModel {
   current_seconds: number;
   last_seconds: number;
   best_seconds: number;
-  delta_available: boolean;
-  delta_seconds: number;
-  delta_frozen: boolean;
   active_sector: number;
   sectors: TimingSectorView[];
   history: TimingLapView[];

@@ -2,17 +2,16 @@
 
 ## Propósito
 
-Timing compacto reúne en un único panel el delta dinámico contra la mejor vuelta
-global conocida, el tiempo actual, último y mejor de sesión, tres sectores y un
-historial corto. Evita dividir información estrechamente relacionada en varios
-micro-overlays.
+Timing compacto reúne en un único panel el tiempo actual, último y mejor de
+sesión, tres sectores y un historial corto. Evita dividir información
+estrechamente relacionada en varios micro-overlays.
 
 ## Archivos y propiedad
 
 - `timing.html`, `src/timing.ts`, `src/timing.css`: presentación.
 - `src/timing-settings.ts`: longitud visible del historial (oculto, 3 o 5 vueltas).
-- `src-tauri/src/telemetry/delta_records.rs`: reconstrucción, referencias, sectores,
-  historial y congelación.
+- `src-tauri/src/telemetry/delta_records.rs`: reconstrucción, referencias, sectores
+  e historial.
 - `src/composite.ts`, `src/composite-layout.ts`: proyección y geometría compartida.
 - `src-tauri/src/browser_source.rs`: ruta OBS `/timing` y preferencias reflejadas.
 
@@ -21,19 +20,16 @@ El panel consume el ciclo base de 50 Hz y no construye clasificaciones.
 
 ## Comportamiento
 
-- El delta compara la vuelta en curso con la mejor vuelta global persistida para
-  el mismo circuito, coche y longitud de pista.
 - S1, S2 y S3 usan los cruces de sector oficiales que LMU publica para el jugador.
   Un sector verde mejora el mejor de la sesión; uno morado mejora el mejor
   absoluto persistido.
-- El resultado del delta se congela durante 2 segundos al cruzar S1 o S2. La
-  congelación de meta reutiliza la referencia de vuelta y el historial registra
-  hasta cinco vueltas reconstruibles.
+- El historial registra hasta cinco vueltas reconstruibles. El panel no muestra
+  delta dinámico; el overlay Delta lo ofrece por separado cuando está visible.
 - Las vueltas inválidas se conservan en el historial y se marcan como tales, pero
   nunca mejoran referencias de vuelta o sector.
 - Al cambiar sesión se vacían historia y referencias personales de sesión. Los
   mejores absolutos permanecen en `lap-records.sqlite3`.
-- Durante la salida de boxes, `ACTUAL` y los deltas permanecen sin valor. LMU
+- Durante la salida de boxes, `ACTUAL` permanece sin valor. LMU
   conserva entonces un `mLapStartET` anterior que no representa el tiempo de la
   outlap; el contador empieza al primer paso por meta, cuando BlackRack observa
   el inicio real de una vuelta cronometrada.
@@ -64,5 +60,5 @@ El panel consume el ciclo base de 50 Hz y no construye clasificaciones.
 ## Localización
 
 Las etiquetas estáticas, el historial, el título y el texto accesible usan el
-idioma incluido seleccionado. Los tiempos y deltas conservan su notación compacta.
+idioma incluido seleccionado. Los tiempos conservan su notación compacta.
 La ruta OBS usa el idioma compartido guardado o un override local `?lang=`.

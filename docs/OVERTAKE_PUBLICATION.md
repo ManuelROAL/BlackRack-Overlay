@@ -37,7 +37,8 @@ optional service is unavailable, the overlays keep running.
   driver information.
 - Delta — live comparison against overall, session, stint or last-lap references,
   with persistent records.
-- Compact Timing — best-lap delta, three-sector feedback and recent laps.
+- Compact Timing — current/last/best lap times, three-sector feedback and
+  recent laps.
 - Fuel / Virtual Energy — endurance strategy, consumption, autonomy, pit demand
   and achievable saving references.
 - Trailing + Pedal — live inputs and driving traces.

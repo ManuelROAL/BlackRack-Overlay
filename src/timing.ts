@@ -13,10 +13,9 @@ bindOverlayTransparency("timing");
 bindOverlayInteractionMode();
 const performance = createOverlayPerformanceTracker("timing");
 let settings = readTimingSettings();
-const designHeight = (rows: number): number => rows === 0 ? 130 : rows === 5 ? 200 : 172;
+const designHeight = (rows: number): number => rows === 0 ? 100 : rows === 5 ? 170 : 142;
 const resizeOverlay = fitOverlay({ width: 318, height: designHeight(settings.historyLaps) });
 const card = document.getElementById("timing-card");
-const delta = document.getElementById("timing-delta");
 const current = document.getElementById("timing-current");
 const last = document.getElementById("timing-last");
 const best = document.getElementById("timing-best");
@@ -36,12 +35,6 @@ const sectorTime = (seconds: number): string =>
 
 const render = (model: TimingViewModel): void => {
   card?.setAttribute("data-state", model.available ? "active" : "waiting");
-  card?.classList.toggle("frozen", model.delta_frozen);
-  setText(delta, model.delta_available
-    ? `${model.delta_seconds >= 0 ? "+" : "−"}${Math.abs(model.delta_seconds).toFixed(3)}`
-    : "---.---");
-  delta?.classList.toggle("gain", model.delta_available && model.delta_seconds <= 0);
-  delta?.classList.toggle("loss", model.delta_available && model.delta_seconds > 0);
   setText(current, lapTime(model.current_seconds));
   setText(last, lapTime(model.last_seconds));
   setText(best, lapTime(model.best_seconds));

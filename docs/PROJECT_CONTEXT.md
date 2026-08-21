@@ -17,7 +17,8 @@ on their runtime or source code.
   one transparent WebView on the selected monitor.
 - iRacing-style delta bar with overall, session, stint and last-lap references,
   backed by persistent lap/stint records.
-- Compact timing panel with best-lap delta, three-sector feedback and recent laps.
+- Compact timing panel with current/last/best lap times, three-sector feedback
+  and recent laps.
 - Configurable multiclass standings.
 - Endurance fuel/virtual-energy calculator.
 - Yellow, blue and checkered flag overlay.
