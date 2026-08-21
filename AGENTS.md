@@ -113,3 +113,10 @@ successful compilation alone is not performance evidence.
   actual completed changes. Use a concise subject and add a body only when it
   provides useful context. Do not create the commit unless the user explicitly
   requests it.
+
+## Verbosidad
+
+- Sé extremadamente conciso. Respuestas de 1-2 líneas salvo que se pida detalle.
+- No expliques qué vas a hacer; solo hazlo.
+- No añadas resúmenes, conclusiones ni preámbulos.
+- Solo da explicaciones cuando el usuario las pida explícitamente.
