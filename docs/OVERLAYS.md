@@ -36,6 +36,10 @@ telemetry semantics and file ownership live under `docs/overlays/`; use
   underneath, including applications owned by another process. Native window
   style updates must run without holding the shared hit-test state lock because
   Windows may synchronously wait for the host UI thread while applying them.
+- Panel hit-test regions are reported by the composite host in physical pixels
+  using the WebView's own `devicePixelRatio`, so they match the rendered surface
+  on any display scale factor; the native side only adds the window origin and
+  clamps to the monitor.
 - Embedded panel content is inert: no clicks, focus, selection, native dragging or
   context menu. Edit-mode pointer input moves panels or operates resize handles.
 - A panel may be deliberately cropped at the monitor edge, but movement retains a

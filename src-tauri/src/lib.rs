@@ -292,7 +292,6 @@ fn set_native_overlay_click_through(click_through: bool) {
 
 fn physical_interaction_region(
     region: &OverlayInteractionRegion,
-    scale_factor: f64,
     window_width: i32,
     window_height: i32,
 ) -> Option<(i32, i32, i32, i32)> {
@@ -302,16 +301,17 @@ fn physical_interaction_region(
         || !region.height.is_finite()
         || region.width <= 0.0
         || region.height <= 0.0
-        || !scale_factor.is_finite()
-        || scale_factor <= 0.0
     {
         return None;
     }
 
-    let left = (region.x * scale_factor).floor() as i32;
-    let top = (region.y * scale_factor).floor() as i32;
-    let right = ((region.x + region.width) * scale_factor).ceil() as i32;
-    let bottom = ((region.y + region.height) * scale_factor).ceil() as i32;
+    // The frontend already converts CSS pixels to physical pixels with the
+    // WebView's own `devicePixelRatio`, so no extra scaling is applied here.
+    // Rounding outward keeps the region covering fractional panel edges.
+    let left = region.x.floor() as i32;
+    let top = region.y.floor() as i32;
+    let right = (region.x + region.width).ceil() as i32;
+    let bottom = (region.y + region.height).ceil() as i32;
     let left = left.clamp(0, window_width);
     let top = top.clamp(0, window_height);
     let right = right.clamp(0, window_width);
@@ -324,16 +324,17 @@ mod interaction_region_tests {
     use super::{physical_interaction_region, OverlayInteractionRegion};
 
     #[test]
-    fn scales_outward_to_cover_fractional_panel_edges() {
+    fn rounds_outward_to_cover_fractional_panel_edges() {
+        // Regions are already in physical pixels: CSS x 10.25 * 1.5 = 15.375.
         let region = OverlayInteractionRegion {
-            x: 10.25,
-            y: 20.5,
-            width: 100.25,
-            height: 50.25,
+            x: 15.375,
+            y: 30.75,
+            width: 150.375,
+            height: 75.375,
         };
 
         assert_eq!(
-            physical_interaction_region(&region, 1.5, 1920, 1080),
+            physical_interaction_region(&region, 1920, 1080),
             Some((15, 30, 166, 107))
         );
     }
@@ -348,7 +349,7 @@ mod interaction_region_tests {
         };
 
         assert_eq!(
-            physical_interaction_region(&region, 1.0, 800, 600),
+            physical_interaction_region(&region, 800, 600),
             Some((0, 40, 40, 130))
         );
     }
@@ -374,9 +375,9 @@ mod interaction_region_tests {
             height: 50.0,
         };
 
-        assert_eq!(physical_interaction_region(&empty, 1.0, 800, 600), None);
-        assert_eq!(physical_interaction_region(&invalid, 1.0, 800, 600), None);
-        assert_eq!(physical_interaction_region(&outside, 1.0, 800, 600), None);
+        assert_eq!(physical_interaction_region(&empty, 800, 600), None);
+        assert_eq!(physical_interaction_region(&invalid, 800, 600), None);
+        assert_eq!(physical_interaction_region(&outside, 800, 600), None);
     }
 }
 
@@ -392,7 +393,6 @@ fn set_overlay_interaction_regions(
     #[cfg(windows)]
     {
         let size = window.inner_size().map_err(|error| error.to_string())?;
-        let scale_factor = window.scale_factor().map_err(|error| error.to_string())?;
         let hwnd = window.hwnd().map_err(|error| error.to_string())?;
         let client_origin = window.inner_position().map_err(|error| error.to_string())?;
         let physical_regions = regions
@@ -400,7 +400,6 @@ fn set_overlay_interaction_regions(
             .filter_map(|region| {
                 physical_interaction_region(
                     region,
-                    scale_factor,
                     size.width.min(i32::MAX as u32) as i32,
                     size.height.min(i32::MAX as u32) as i32,
                 )

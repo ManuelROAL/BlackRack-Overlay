@@ -134,9 +134,18 @@ const synchronizeInteractionRegions = (): void => {
   interactionRegionFrame = undefined;
   if (interactionRegionSyncing) return;
   interactionRegionDirty = false;
+  // Convert the CSS-pixel panel boxes to physical pixels with the WebView's own
+  // devicePixelRatio so the native hit-test matches what is actually rendered
+  // regardless of the display scale factor.
+  const dpr = window.devicePixelRatio || 1;
   const regions: OverlayInteractionRegion[] = Array.from(panels.values(), (panel) => {
     const bounds = panel.getBoundingClientRect();
-    return { x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height };
+    return {
+      x: bounds.x * dpr,
+      y: bounds.y * dpr,
+      width: bounds.width * dpr,
+      height: bounds.height * dpr
+    };
   });
   interactionRegionSyncing = true;
   void invoke("set_overlay_interaction_regions", { regions })
