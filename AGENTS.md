@@ -117,6 +117,5 @@ successful compilation alone is not performance evidence.
 ## Verbosidad
 
 - Sé extremadamente conciso. Respuestas de 1-2 líneas salvo que se pida detalle.
-- No expliques qué vas a hacer; solo hazlo.
-- No añadas resúmenes, conclusiones ni preámbulos.
+- Resumenes muy breves.
 - Solo da explicaciones cuando el usuario las pida explícitamente.
