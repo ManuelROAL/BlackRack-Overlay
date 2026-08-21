@@ -62,27 +62,6 @@
   transform: skewX(-8deg);
 }
 
-.flag-count {
-  position: absolute;
-  z-index: 2;
-  top: 8px;
-  right: 8px;
-  padding: 4px 7px 3px;
-  border: 1px solid rgb(255 255 255 / 55%);
-  border-radius: 4px;
-  color: #fff;
-  background: rgb(4 28 70 / 48%);
-  font-size: 14px;
-  font-weight: 900;
-  line-height: 1;
-  letter-spacing: 0.045em;
-  text-shadow: 0 1px 2px rgb(0 0 0 / 55%);
-}
-
-.flag-count[hidden] {
-  display: none;
-}
-
 .flag-content {
   position: relative;
   z-index: 1;

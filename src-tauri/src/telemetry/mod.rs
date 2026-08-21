@@ -581,7 +581,6 @@ pub struct FlagWarning {
     distance_meters: f64,
     car_position: i32,
     vehicle_class: String,
-    car_count: u32,
 }
 
 impl Default for FlagWarning {
@@ -592,7 +591,6 @@ impl Default for FlagWarning {
             distance_meters: 0.0,
             car_position: 0,
             vehicle_class: String::new(),
-            car_count: 0,
         }
     }
 }

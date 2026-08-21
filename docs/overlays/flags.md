@@ -15,9 +15,7 @@
 - Yellow and blue show distance, class position and category. Yellow includes an
   ahead/behind arrow.
 - Blue uses the player's official flag state and nearest plausible faster/lapping
-  car behind. When several plausible blue-flag cars are within the 2 km rear
-  search range, a compact `N COCHES` badge warns that the visible lead car is not
-  alone. Cars in pitlane, in the garage or already finished are excluded.
+  car behind. Cars in pitlane, in the garage or already finished are excluded.
 
 ## Yellow semantics
 
@@ -35,11 +33,10 @@ causation, so describe the result honestly as a stabilized inference.
 ## Verification focus
 
 Test priority changes, sector-yellow gating, front/rear thresholds, stabilization,
-pit exclusion, blue selection and multi-car counting, and responsiveness at
-active cadence.
+pit exclusion, blue selection, and responsiveness at active cadence.
 
 ## Localization
 
-The document title, accessibility text and car-count plural use the bundled
-locale. Flag kinds, category names and compact motorsport notation stay semantic.
+The document title and accessibility text use the bundled locale. Flag kinds,
+category names and compact motorsport notation stay semantic.
 Its OBS route follows the shared saved locale or a page-local `?lang=` override.

@@ -2169,7 +2169,6 @@ impl LmuTelemetrySource {
                 distance_meters: 0.0,
                 car_position: player.position,
                 vehicle_class: String::new(),
-                car_count: 0,
             };
         }
 
@@ -2194,7 +2193,7 @@ impl LmuTelemetrySource {
                 .min_by(|left, right| left.1.total_cmp(&right.1));
 
             if let Some((vehicle_id, distance)) = ahead {
-                return Self::warning_for_car("yellow", vehicle_id, distance, 1, snapshot);
+                return Self::warning_for_car("yellow", vehicle_id, distance, snapshot);
             }
 
             let behind = raw
@@ -2215,7 +2214,7 @@ impl LmuTelemetrySource {
 
             if let Some((vehicle_id, distance)) = behind {
                 // Igual que TinyPedal: positivo indica delante y negativo detrás.
-                return Self::warning_for_car("yellow", vehicle_id, -distance, 1, snapshot);
+                return Self::warning_for_car("yellow", vehicle_id, -distance, snapshot);
             }
         }
 
@@ -2250,23 +2249,13 @@ impl LmuTelemetrySource {
                     && player.best_lap_seconds > 0.0
                     && entry.best_lap_seconds < player.best_lap_seconds * 0.98)
         };
-        let plausible_car_count = candidates
-            .iter()
-            .filter(|(entry, _)| is_plausible_blue_car(entry))
-            .count() as u32;
         let target = candidates
             .iter()
             .find(|(entry, _)| is_plausible_blue_car(entry))
             .or_else(|| candidates.first());
 
         target.map_or_else(super::FlagWarning::default, |(entry, distance)| {
-            Self::warning_for_car(
-                "blue",
-                entry.vehicle_id,
-                *distance,
-                plausible_car_count.max(1),
-                snapshot,
-            )
+            Self::warning_for_car("blue", entry.vehicle_id, *distance, snapshot)
         })
     }
 
@@ -2274,7 +2263,6 @@ impl LmuTelemetrySource {
         kind: &'static str,
         vehicle_id: i32,
         distance_meters: f64,
-        car_count: u32,
         snapshot: &LmuSnapshot,
     ) -> super::FlagWarning {
         let (car_position, vehicle_class) = Self::warning_car_details(snapshot, vehicle_id);
@@ -2288,7 +2276,6 @@ impl LmuTelemetrySource {
             },
             car_position,
             vehicle_class,
-            car_count,
         }
     }
 
@@ -4207,7 +4194,7 @@ mod tests {
     }
 
     #[test]
-    fn blue_flag_counts_only_plausible_approaching_cars() {
+    fn blue_flag_selects_nearest_plausible_faster_car_behind() {
         let mut snapshot = LmuSnapshot {
             standings_count: 5,
             game_phase: 5,
@@ -4269,7 +4256,6 @@ mod tests {
         assert_eq!(warning.kind, "blue");
         assert_eq!(warning.distance_meters, 100.0);
         assert_eq!(warning.car_position, 2);
-        assert_eq!(warning.car_count, 2);
     }
 
     #[test]

@@ -283,7 +283,6 @@ export interface FlagWarning {
   distance_meters: number;
   car_position: number;
   vehicle_class: string;
-  car_count: number;
 }
 
 export interface RejoinWarning {
