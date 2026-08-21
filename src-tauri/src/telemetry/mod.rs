@@ -30,7 +30,9 @@ use tauri::{AppHandle, Emitter, Manager};
 
 use fuel_strategy::FuelStrategies;
 
-pub(crate) use delta_records::{set_settings as set_delta_settings, DeltaSettings};
+pub(crate) use delta_records::{
+    set_settings as set_delta_settings, set_timing_settings, DeltaSettings, TimingSettings,
+};
 pub(crate) use standings_models::{set_overlay_view_settings, OverlayViewSettings};
 pub(crate) use track_geometry::{track_map_geometry, TrackMapGeometry};
 pub(crate) use track_map_model::{migrate_legacy_track_map_learning, LearnedTrackPoint};

@@ -1009,6 +1009,11 @@ fn set_delta_settings(settings: telemetry::DeltaSettings) {
 }
 
 #[tauri::command]
+fn set_timing_settings(settings: telemetry::TimingSettings) {
+    telemetry::set_timing_settings(settings);
+}
+
+#[tauri::command]
 fn get_lmu_dependency_status() -> LmuDependencyStatus {
     let plugin = lmu_install::telemetry_plugin();
     LmuDependencyStatus {
@@ -1381,6 +1386,7 @@ pub fn run() {
             set_browser_source_preferences,
             set_overlay_view_settings,
             set_delta_settings,
+            set_timing_settings,
             get_lmu_dependency_status,
             open_support_page,
             get_shortcut_settings,

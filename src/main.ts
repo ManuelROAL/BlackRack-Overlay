@@ -58,7 +58,9 @@ import {
 } from "./delta-settings";
 import {
   defaultTimingSettings,
+  isTimingSectorReference,
   readTimingSettings,
+  TIMING_SECTOR_REFERENCES,
   TIMING_SETTINGS_KEY,
   type TimingSettings
 } from "./timing-settings";
@@ -320,6 +322,7 @@ const syncBrowserSourcePreferences = (): void => {
     }
   }).catch(() => undefined);
   void invoke("set_delta_settings", { settings: deltaSettings }).catch(() => undefined);
+  void invoke("set_timing_settings", { settings: timingSettings }).catch(() => undefined);
 };
 
 const shortcutInputs: Record<ShortcutAction, HTMLInputElement | null> = {
@@ -499,7 +502,23 @@ if (timingHistorySelect) {
   timingHistorySelect.addEventListener("change", () => {
     const historyLaps = Number(timingHistorySelect.value);
     if (historyLaps !== 0 && historyLaps !== 3 && historyLaps !== 5) return;
-    timingSettings = { historyLaps } as TimingSettings;
+    timingSettings = { ...timingSettings, historyLaps };
+    persistTimingSettings();
+  });
+}
+
+const timingSectorReferenceSelect = document.getElementById("timing-sector-reference") as HTMLSelectElement | null;
+if (timingSectorReferenceSelect) {
+  timingSectorReferenceSelect.replaceChildren(...TIMING_SECTOR_REFERENCES.map(({ value, labelKey }) => {
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = t(labelKey);
+    return option;
+  }));
+  timingSectorReferenceSelect.value = timingSettings.sectorReference;
+  timingSectorReferenceSelect.addEventListener("change", () => {
+    if (!isTimingSectorReference(timingSectorReferenceSelect.value)) return;
+    timingSettings = { ...timingSettings, sectorReference: timingSectorReferenceSelect.value };
     persistTimingSettings();
   });
 }
@@ -910,6 +929,9 @@ const parseOverlayConfiguration = (contents: string): OverlayConfigurationExport
   if (normalizedTiming.historyLaps !== 0
     && normalizedTiming.historyLaps !== 3
     && normalizedTiming.historyLaps !== 5) {
+    throw new Error(t("config.invalidTiming"));
+  }
+  if (!isTimingSectorReference(normalizedTiming.sectorReference)) {
     throw new Error(t("config.invalidTiming"));
   }
   const normalizedTrackMap = trackMap ?? defaultTrackMapSettings();

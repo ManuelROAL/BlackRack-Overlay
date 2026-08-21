@@ -83,6 +83,76 @@ fn active_mode() -> DeltaMode {
     DeltaMode::from_u8(DELTA_MODE.load(Ordering::Relaxed))
 }
 
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+#[repr(u8)]
+pub(crate) enum TimingSectorReference {
+    Lmu = 0,
+    Session = 1,
+    Overall = 2,
+}
+
+impl TimingSectorReference {
+    fn from_u8(value: u8) -> Self {
+        match value {
+            1 => Self::Session,
+            2 => Self::Overall,
+            _ => Self::Lmu,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct TimingSettings {
+    sector_reference: TimingSectorReference,
+}
+
+impl Default for TimingSettings {
+    fn default() -> Self {
+        Self {
+            sector_reference: TimingSectorReference::Lmu,
+        }
+    }
+}
+
+static TIMING_SECTOR_REFERENCE: AtomicU8 = AtomicU8::new(TimingSectorReference::Lmu as u8);
+
+pub(crate) fn set_timing_settings(settings: TimingSettings) {
+    TIMING_SECTOR_REFERENCE.store(settings.sector_reference as u8, Ordering::Relaxed);
+}
+
+fn active_sector_reference() -> TimingSectorReference {
+    TimingSectorReference::from_u8(TIMING_SECTOR_REFERENCE.load(Ordering::Relaxed))
+}
+
+fn sector_state(
+    reference: TimingSectorReference,
+    seconds: f64,
+    overall: Option<f64>,
+    session: Option<f64>,
+) -> &'static str {
+    match reference {
+        TimingSectorReference::Lmu => "neutral",
+        TimingSectorReference::Session => {
+            if overall.is_none_or(|best| seconds + 0.000_5 < best) {
+                "overall"
+            } else if session.is_none_or(|best| seconds + 0.000_5 < best) {
+                "personal"
+            } else {
+                "neutral"
+            }
+        }
+        TimingSectorReference::Overall => {
+            if overall.is_none_or(|best| seconds + 0.000_5 < best) {
+                "overall"
+            } else {
+                "neutral"
+            }
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, Default, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub(crate) enum DeltaTrend {
@@ -876,31 +946,40 @@ impl DeltaEngine {
         let coarse_sectors = three_sector_times(&completed.trace);
         self.timing_results_until = Some(Instant::now() + TIMING_RESULT_FREEZE);
         if let Some(sectors) = coarse_sectors {
-            let mut states = ["neutral"; 3];
+            let reference = active_sector_reference();
+            let mut learning_states = ["neutral"; 3];
+            let mut display_states = ["neutral"; 3];
             for index in 0..3 {
-                states[index] = if self.overall_timing_sectors[index]
-                    .is_none_or(|best| sectors[index] + 0.000_5 < best)
+                let seconds = sectors[index];
+                learning_states[index] = if self.overall_timing_sectors[index]
+                    .is_none_or(|best| seconds + 0.000_5 < best)
                 {
                     "overall"
                 } else if self.session_timing_sectors[index]
-                    .is_none_or(|best| sectors[index] + 0.000_5 < best)
+                    .is_none_or(|best| seconds + 0.000_5 < best)
                 {
                     "personal"
                 } else {
                     "neutral"
                 };
+                display_states[index] = sector_state(
+                    reference,
+                    seconds,
+                    self.overall_timing_sectors[index],
+                    self.session_timing_sectors[index],
+                );
                 if completed.eligible {
-                    if states[index] == "overall" {
-                        self.overall_timing_sectors[index] = Some(sectors[index]);
+                    if learning_states[index] == "overall" {
+                        self.overall_timing_sectors[index] = Some(seconds);
                     }
-                    if states[index] != "neutral" {
-                        self.session_timing_sectors[index] = Some(sectors[index]);
+                    if learning_states[index] != "neutral" {
+                        self.session_timing_sectors[index] = Some(seconds);
                     }
                 }
             }
             self.timing_sectors = sectors.map(Some);
             self.timing_sector_states = if completed.eligible {
-                states
+                display_states
             } else {
                 ["invalid"; 3]
             };
@@ -997,6 +1076,7 @@ impl DeltaEngine {
             0 => 2,
             _ => 0,
         };
+        let reference = active_sector_reference();
         if let Some(lap) = self.current_lap.as_ref() {
             for index in 0..active_sector {
                 if self.timing_sectors[index].is_some() {
@@ -1010,17 +1090,12 @@ impl DeltaEngine {
                 };
                 if let (Some(end_time), Some(start_time)) = (end_time, start_time) {
                     let seconds = end_time - start_time;
-                    let state = if self.overall_timing_sectors[index]
-                        .is_none_or(|best| seconds + 0.000_5 < best)
-                    {
-                        "overall"
-                    } else if self.session_timing_sectors[index]
-                        .is_none_or(|best| seconds + 0.000_5 < best)
-                    {
-                        "personal"
-                    } else {
-                        "neutral"
-                    };
+                    let state = sector_state(
+                        reference,
+                        seconds,
+                        self.overall_timing_sectors[index],
+                        self.session_timing_sectors[index],
+                    );
                     self.timing_sectors[index] = Some(seconds);
                     self.timing_sector_states[index] = if lap.valid { state } else { "invalid" };
                 }
@@ -1051,6 +1126,14 @@ impl DeltaEngine {
                     && self.current_lap.as_ref().is_some_and(|lap| !lap.valid)
                 {
                     "invalid"
+                } else if reference == TimingSectorReference::Lmu
+                    && self.timing_sectors[index].is_some()
+                {
+                    if frame.lap_delta_seconds.is_finite() && frame.lap_delta_seconds < 0.0 {
+                        "personal"
+                    } else {
+                        "neutral"
+                    }
                 } else {
                     self.timing_sector_states[index]
                 },
@@ -1588,10 +1671,10 @@ mod tests {
 
     use super::{
         build_sectors, can_show_live_delta, classify_delta_trend, handle_storage_command,
-        initialize_database, interpolate, native_session_delta, sector_count,
+        initialize_database, interpolate, native_session_delta, sector_count, sector_state,
         should_reset_delta_at_lap_start, three_sector_times, CurrentLap, DeltaTrend, Identity,
-        LapTrace, PersistentReferences, ReferenceSet, SectorBank, StorageCommand, TracePoint,
-        STORE_VERSION,
+        LapTrace, PersistentReferences, ReferenceSet, SectorBank, StorageCommand,
+        TimingSectorReference, TracePoint, STORE_VERSION,
     };
     use crate::telemetry::TelemetryFrame;
 
@@ -1715,6 +1798,36 @@ mod tests {
 
         frame.best_lap_seconds = 0.0;
         assert_eq!(native_session_delta(&frame), None);
+    }
+
+    #[test]
+    fn sector_state_follows_the_selected_reference() {
+        let overall = Some(30.0);
+        let session = Some(31.0);
+        assert_eq!(
+            sector_state(TimingSectorReference::Session, 30.5, overall, session),
+            "personal"
+        );
+        assert_eq!(
+            sector_state(TimingSectorReference::Session, 29.9, overall, session),
+            "overall"
+        );
+        assert_eq!(
+            sector_state(TimingSectorReference::Session, 31.5, overall, session),
+            "neutral"
+        );
+        assert_eq!(
+            sector_state(TimingSectorReference::Overall, 30.5, overall, session),
+            "neutral"
+        );
+        assert_eq!(
+            sector_state(TimingSectorReference::Overall, 29.9, overall, session),
+            "overall"
+        );
+        assert_eq!(
+            sector_state(TimingSectorReference::Lmu, 30.5, overall, session),
+            "neutral"
+        );
     }
 
     #[test]
