@@ -423,22 +423,12 @@ Var AppStartMenuFolder
 Var KofiCheckbox
 
 Function FinishPageShow
-  ; Add a third, unchecked option below Tauri's desktop-shortcut and run-app
-  ; checkboxes. Coordinates are scaled for the current window DPI.
-  FindWindow $1 "#32770" "" $HWNDPARENT
-  System::Call "user32::GetDpiForWindow(p r1) i .r2"
-  IntOp $3 120 * $2
-  IntOp $4 166 * $2
-  IntOp $5 250 * $2
-  IntOp $6 16 * $2
-  IntOp $3 $3 / 96
-  IntOp $4 $4 / 96
-  IntOp $5 $5 / 96
-  IntOp $6 $6 / 96
-  System::Call 'user32::CreateWindowEx(i ${__NSD_CheckBox_EXSTYLE}, w "$(kofiFinishCheckbox)", i ${__NSD_CheckBox_STYLE}, i r3, i r4, i r5, i r6, p r1, i0, i0, i0) i .s'
+  ; Ko-fi checkbox right below Tauri's desktop-shortcut and run-app checkboxes.
+  ; MUI places run-app at y=90u and desktop-shortcut at y=110u, so Ko-fi goes at
+  ; y=130u in dialog units, which scale automatically with the window DPI.
+  ${NSD_CreateCheckbox} 120u 130u 195u 10u "$(kofiFinishCheckbox)"
   Pop $KofiCheckbox
-  SendMessage $HWNDPARENT ${WM_GETFONT} 0 0 $0
-  SendMessage $KofiCheckbox ${WM_SETFONT} $0 1
+  SetCtlColors $KofiCheckbox "${MUI_TEXTCOLOR}" "${MUI_BGCOLOR}"
   SendMessage $KofiCheckbox ${BM_SETCHECK} ${BST_CHECKED} 0
 FunctionEnd
 
