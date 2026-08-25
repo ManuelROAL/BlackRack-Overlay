@@ -11,12 +11,12 @@ SimHub package.
 ## Resource fields
 
 - Title: `BlackRack Overlay`
-- Version: `0.5.2`
+- Version: `0.7.0`
 - Category: `Le Mans Ultimate`
 - Tag line: `Lightweight, configurable LMU telemetry overlays — no SimHub required.`
 - Tags: `le mans ultimate`, `lmu`, `overlay`, `standings`, `relative`,
   `delta bar`, `fuel calculator`, `virtual energy`, `track map`, `obs`
-- Download: `release/0.5.2/BlackRack Overlay_0.5.2_x64-setup.exe`
+- Download: `release/0.7.0/BlackRack Overlay_0.7.0_x64-setup.exe`
 - Support URL: `https://ko-fi.com/blackrack`
 
 ## Overview copy
@@ -48,6 +48,8 @@ optional service is unavailable, the overlays keep running.
 - Track Map — learned circuit path with live multiclass vehicle positions.
 - Flags — yellow, blue and checkered flag notifications.
 - Safe Rejoin — approaching-car and pit-exit warnings.
+- Weather Forecast — upcoming conditions using LMU's official weather icons.
+- Current Conditions — temperatures, wind, humidity, rain, grip and track state.
 
 ### Key features
 
@@ -63,7 +65,7 @@ optional service is unavailable, the overlays keep running.
 
 ### Installation
 
-1. Download and run `BlackRack Overlay_0.5.2_x64-setup.exe`.
+1. Download and run `BlackRack Overlay_0.7.0_x64-setup.exe`.
 2. Start Le Mans Ultimate in windowed or borderless-windowed mode.
 3. Open BlackRack Overlay and enable the panels you want to use.
 
@@ -94,15 +96,14 @@ https://ko-fi.com/blackrack.
 
 ## Version update copy
 
-### 0.5.2 — BlackRack identity and complete localization
+### 0.7.0 — Weather and telemetry refinements
 
-- Renamed the application to BlackRack Overlay and moved user data to the readable
-  `%APPDATA%\BlackRack Overlay` directory.
-- Completed Spanish and English localization across the control panel, native
-  overlays and OBS browser sources.
-- Improved control-panel layouts and overlay option legibility.
-- Refined achievable fuel-saving plan references.
-- Kept the single transparent host and embedded production assets.
+- Added Weather Forecast and Current Conditions overlays with official LMU icons.
+- Added tyre compound and pit-state telemetry refinements for Standings, Relative
+  and Damage + Tyres.
+- Improved Relative hot-path performance and compact Timing sector references.
+- Moved WebView2 data to `%LOCALAPPDATA%\BlackRackOverlay`.
+- Preserved the optional Ko-fi choice on the NSIS finish page.
 
 ## Decisions required before submission
 
@@ -123,7 +124,7 @@ Prepare at least one real in-game hero image before publishing. Recommended set:
 
 ## Final checklist
 
-- [x] Version synchronized at `0.5.2` in npm, Cargo and Tauri.
+- [x] Version synchronized at `0.7.0` in npm, Cargo and Tauri.
 - [x] Frontend production build and localization checks pass.
 - [x] Rust library tests pass with the official LMU SDK detected.
 - [x] Production NSIS installer generated under the BlackRack name.

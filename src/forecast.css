@@ -1,0 +1,121 @@
+@import "./fonts.css";
+@import "./styles.css";
+
+body.forecast-body {
+  min-width: 120px;
+  min-height: 70px;
+  padding: 6px;
+}
+
+.forecast-shell {
+  position: relative;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255 / 10%);
+  border-radius: 8px;
+  background: linear-gradient(
+    145deg,
+    rgb(12 16 22 / var(--overlay-background-opacity)),
+    rgb(5 8 12 / var(--overlay-background-opacity))
+  );
+  box-shadow: 0 8px 20px rgb(0 0 0 / 35%);
+  color: #dce3ea;
+  font-family: "Roboto Condensed", sans-serif;
+  font-variant-numeric: tabular-nums;
+  user-select: none;
+}
+
+.forecast-shell::before {
+  position: absolute;
+  z-index: 2;
+  inset: 0 auto auto 0;
+  width: 2px;
+  height: 100%;
+  background: #d8ff3e;
+  content: "";
+  opacity: 0.82;
+}
+
+.forecast-shell header {
+  padding: 6px 10px 4px;
+  border-bottom: 1px solid rgb(255 255 255 / 9%);
+}
+
+.forecast-shell h1 {
+  margin: 0;
+  color: #aeb8c4;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .08em;
+}
+
+.forecast-strip {
+  display: flex;
+  gap: 4px;
+  padding: 6px 8px 7px;
+  min-height: 0;
+}
+
+.forecast-node {
+  display: grid;
+  grid-template-rows: auto 1fr auto auto;
+  place-items: center;
+  flex: 0 0 64px;
+  width: 64px;
+  min-height: 0;
+  padding: 2px 0;
+  border-radius: 5px;
+}
+
+.forecast-node[hidden] {
+  display: none;
+}
+
+.forecast-node-label {
+  color: #7f8a97;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: .06em;
+  white-space: nowrap;
+}
+
+.forecast-node-icon {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+}
+
+.forecast-node-icon[hidden] {
+  display: none;
+}
+
+.forecast-node-temp {
+  color: #e7edf3;
+  font-size: 14px;
+  font-weight: 900;
+  line-height: 1.1;
+}
+
+.forecast-node-rain {
+  color: #6fa8dc;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.forecast-node[data-rain="low"] .forecast-node-rain {
+  color: #7f8a97;
+}
+
+body[data-available="false"] .forecast-node-temp,
+body[data-available="false"] .forecast-node-rain {
+  color: #687481;
+}
+
+.click-through .forecast-shell {
+  border-color: transparent;
+}

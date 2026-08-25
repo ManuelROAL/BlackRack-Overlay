@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title data-i18n="title.conditions">LMU · Condiciones</title>
+  </head>
+  <body class="conditions-body">
+    <main class="conditions-shell" data-tauri-drag-region>
+      <section class="conditions-status" data-tauri-drag-region>
+        <img id="conditions-icon" alt="" aria-hidden="true" />
+        <span id="conditions-state" class="conditions-state" data-state="dry" data-i18n="conditions.dry">SECO</span>
+      </section>
+      <dl class="conditions-grid" data-tauri-drag-region>
+        <div class="conditions-cell"><dt data-i18n="conditions.air">AIRE</dt><dd data-conditions-value="air">--°</dd></div>
+        <div class="conditions-cell"><dt data-i18n="conditions.track">PISTA</dt><dd data-conditions-value="track">--°</dd></div>
+        <div class="conditions-cell"><dt data-i18n="conditions.wind">VIENTO</dt><dd data-conditions-value="wind">--</dd></div>
+        <div class="conditions-cell"><dt data-i18n="conditions.humidity">HUM.</dt><dd data-conditions-value="humidity">--%</dd></div>
+        <div class="conditions-cell"><dt data-i18n="conditions.rain">LLUVIA</dt><dd data-conditions-value="rain">--%</dd></div>
+        <div class="conditions-cell"><dt data-i18n="conditions.grip">GRIP</dt><dd data-conditions-value="grip">--%</dd></div>
+        <div class="conditions-cell"><dt data-i18n="conditions.wetness">MOJADO</dt><dd data-conditions-value="wetness">--%</dd></div>
+      </dl>
+    </main>
+    <script type="module" src="/src/conditions.ts"></script>
+  </body>
+</html>

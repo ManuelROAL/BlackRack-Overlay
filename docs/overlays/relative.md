@@ -56,7 +56,8 @@ the prepared vehicle IDs and formats them; it must not repeat domain selection.
 - Keep full header visibility separate from air/track temperature, brake bias,
   player track-limit counter/threshold and local clock toggles.
 - Apply the same asset, NRG, damage, tyre, pit, DR/SR and track-limit semantics as
-  Standings; do not create divergent formatting rules for shared cells.
+  Standings, including the sidewall-style uniform-compound SVGs; do not create
+  divergent formatting rules for shared cells.
 - Reuse Standings' event-roster fallback for missing/`XX` nationality and badges.
 - If a resolved country asset fails to load, replace it with the bundled `XX`
   marker; remove the image if that fallback also fails instead of leaving a

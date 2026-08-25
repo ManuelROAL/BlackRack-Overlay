@@ -170,7 +170,7 @@ if (localeSelect) {
   });
 }
 
-const overlayIds: OverlayId[] = ["delta", "timing", "driving", "tires", "damage", "standings", "relative", "fuel", "pitstop", "flags", "rejoin", "trackmap"];
+const overlayIds: OverlayId[] = ["delta", "timing", "driving", "tires", "damage", "standings", "relative", "fuel", "pitstop", "flags", "rejoin", "trackmap", "forecast", "conditions"];
 const storageKey = "blackrack-overlay.visible-windows.v1";
 
 const readPreferences = (): Record<OverlayId, boolean> => {
@@ -186,7 +186,9 @@ const readPreferences = (): Record<OverlayId, boolean> => {
     pitstop: false,
     flags: false,
     rejoin: false,
-    trackmap: false
+    trackmap: false,
+    forecast: false,
+    conditions: false
   };
 
   try {

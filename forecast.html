@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title data-i18n="title.forecast">LMU · Previsión meteorológica</title>
+  </head>
+  <body class="forecast-body">
+    <main class="forecast-shell" data-tauri-drag-region>
+      <header data-tauri-drag-region>
+        <h1 data-i18n="forecast.heading">PREVISIÓN</h1>
+      </header>
+      <section class="forecast-strip" id="forecast-strip"
+        aria-label="Previsión meteorológica" data-i18n-aria-label="forecast.aria"></section>
+    </main>
+    <script type="module" src="/src/forecast.ts"></script>
+  </body>
+</html>

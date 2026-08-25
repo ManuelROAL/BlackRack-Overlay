@@ -37,7 +37,9 @@ export default defineConfig({
         pitstop: "pitstop.html",
         flags: "flags.html",
         rejoin: "rejoin.html",
-        trackmap: "trackmap.html"
+        trackmap: "trackmap.html",
+        forecast: "forecast.html",
+        conditions: "conditions.html"
       }
     }
   },

@@ -35,8 +35,8 @@ duplicate selection or timing semantics.
   configurable as full name, initial plus surname, name plus surname initial,
   surname only, name only or surname plus name initial. Prefer bundled
   manufacturer, nationality, badge and tyre assets.
-- A uniform tyre set uses the bundled compound SVG; mixed sets use four compact
-  colored circles.
+- A uniform tyre set uses the bundled sidewall-style compound SVG with a fixed
+  color and letter glyph; mixed sets use four compact colored circles.
 
 ## Timing and history semantics
 

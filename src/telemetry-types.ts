@@ -69,6 +69,23 @@ export interface TrackMapViewModel {
   pit_prediction_lap_distance: number | null;
 }
 
+export interface WeatherForecastNode {
+  sky: number;
+  sky_label: string;
+  temperature_c: number;
+  rain_chance_percent: number;
+  humidity_percent: number;
+  minutes_from_now: number | null;
+}
+
+export interface WeatherForecastModel {
+  available: boolean;
+  session: string;
+  current_index: number;
+  next_index: number;
+  nodes: WeatherForecastNode[];
+}
+
 export interface DeltaViewModel {
   available: boolean;
   seconds: number;
@@ -118,6 +135,13 @@ export interface TelemetryFrame {
   track_wetness_percent: number;
   track_wetness_min_percent: number;
   track_wetness_max_percent: number;
+  weather_forecast: WeatherForecastModel;
+  current_humidity_percent: number;
+  wind_speed_ms: number;
+  wind_direction_degrees: number;
+  player_grip_percent: number;
+  track_grip_state: "dry" | "damp" | "wet" | "saturated";
+  cloud_coverage: number;
   lap_number: number;
   player_sector: number;
   player_total_laps: number;

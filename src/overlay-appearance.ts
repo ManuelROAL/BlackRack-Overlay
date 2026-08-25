@@ -1,6 +1,6 @@
 import { isTauriRuntime, listenRuntimeEvent } from "./runtime-events";
 
-export type OverlayId = "delta" | "timing" | "driving" | "tires" | "damage" | "standings" | "relative" | "fuel" | "pitstop" | "flags" | "rejoin" | "trackmap";
+export type OverlayId = "delta" | "timing" | "driving" | "tires" | "damage" | "standings" | "relative" | "fuel" | "pitstop" | "flags" | "rejoin" | "trackmap" | "forecast" | "conditions";
 
 export type OverlayTransparencySettings = Record<OverlayId, number>;
 
@@ -31,7 +31,9 @@ export const DEFAULT_OVERLAY_TRANSPARENCY: OverlayTransparencySettings = {
   pitstop: 5,
   flags: 0,
   rejoin: 5,
-  trackmap: 100
+  trackmap: 100,
+  forecast: 5,
+  conditions: 5
 };
 
 const percentage = (value: unknown, fallback: number): number => {

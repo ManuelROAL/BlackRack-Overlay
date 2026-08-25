@@ -1,10 +1,1 @@
-<svg width="24" height="64" viewBox="0 0 24 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <linearGradient id="tire-center-gradient" x1="3" y1="32" x2="21" y2="32" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#4B4D54"/>
-      <stop offset="0.5" stop-color="#F3F4F8"/>
-      <stop offset="1" stop-color="#4B4D54"/>
-    </linearGradient>
-  </defs>
-  <path d="M4 4H20V60H4V4Z" fill="url(#tire-center-gradient)"/>
-</svg>
+<svg width="24" height="64" viewBox="0 0 24 64" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="4" width="16" height="56" rx="7" fill="#F3F4F8"/><path d="M12 12v40" stroke="#89939D" stroke-width="2" stroke-dasharray="4 4"/></svg>

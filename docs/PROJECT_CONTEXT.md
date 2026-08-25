@@ -31,6 +31,8 @@ on their runtime or source code.
 - Compact tyre/damage schematic plus an independent detailed damage overlay.
 - Compact pit-stop estimate with LMU's official total and service breakdown.
 - Circuit map with live multiclass vehicle positions and a learned per-track path.
+- Weather forecast with the game's condition icons and a current-conditions panel
+  for temperatures, wind, humidity, rain, grip and track state.
 - Startup diagnostics for failures on other computers.
 
 ## Current data sources

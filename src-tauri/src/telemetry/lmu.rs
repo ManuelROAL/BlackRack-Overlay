@@ -218,6 +218,7 @@ struct LmuSnapshot {
     lap_delta_seconds: f64,
     session_time_remaining: f64,
     session_elapsed_seconds: f64,
+    session_end_seconds: f64,
     estimated_lap_time: f64,
     last_lap_seconds: f64,
     leader_lap_time: f64,
@@ -231,6 +232,11 @@ struct LmuSnapshot {
     track_wetness_percent: f64,
     track_wetness_min_percent: f64,
     track_wetness_max_percent: f64,
+    track_grip_level: u8,
+    cloud_coverage: u8,
+    wind_x: f64,
+    wind_y: f64,
+    wind_z: f64,
     player_tire_remaining_percent: f64,
     player_damage_percent: f64,
     player_tire_temperature_c: [f64; 4],
@@ -292,6 +298,7 @@ impl Default for LmuSnapshot {
             lap_delta_seconds: 0.0,
             session_time_remaining: 0.0,
             session_elapsed_seconds: 0.0,
+            session_end_seconds: 0.0,
             estimated_lap_time: 0.0,
             last_lap_seconds: 0.0,
             leader_lap_time: 0.0,
@@ -305,6 +312,11 @@ impl Default for LmuSnapshot {
             track_wetness_percent: 0.0,
             track_wetness_min_percent: 0.0,
             track_wetness_max_percent: 0.0,
+            track_grip_level: 0,
+            cloud_coverage: 0,
+            wind_x: 0.0,
+            wind_y: 0.0,
+            wind_z: 0.0,
             player_tire_remaining_percent: -1.0,
             player_damage_percent: 0.0,
             player_tire_temperature_c: [-1.0; 4],
@@ -350,6 +362,7 @@ impl TireWearTracker {
         remaining: [f64; 4],
         slip_ratio: [f64; 4],
         sliding_fraction: [f64; 4],
+        brake: f64,
         in_pits: bool,
     ) -> [f64; 4] {
         for index in 0..4 {
@@ -363,7 +376,7 @@ impl TireWearTracker {
                 let wear = previous - current;
                 if wear > 0.0
                     && slip_ratio[index] < Self::LOCK_SLIP_RATIO
-                    && sliding_fraction[index] >= Self::MIN_SLIDING_FRACTION
+                    && (brake > 0.02 || sliding_fraction[index] >= Self::MIN_SLIDING_FRACTION)
                 {
                     self.flat_spot_wear[index] += wear;
                 }
@@ -942,6 +955,45 @@ struct SourceStageSample {
 }
 
 impl LmuTelemetrySource {
+    fn weather_session_key(session_type: i32) -> &'static str {
+        if (0..=4).contains(&session_type) {
+            "PRACTICE"
+        } else if (5..=8).contains(&session_type) {
+            "QUALIFY"
+        } else {
+            "RACE"
+        }
+    }
+
+    fn live_weather_icon(cloud_coverage: u8, rain_percent: f64) -> i32 {
+        if !rain_percent.is_finite() || rain_percent <= 0.0 {
+            return i32::from(cloud_coverage.min(4));
+        }
+        if rain_percent <= 10.0 {
+            5
+        } else if rain_percent <= 15.0 {
+            6
+        } else if rain_percent <= 20.0 {
+            7
+        } else if rain_percent <= 40.0 {
+            8
+        } else if rain_percent <= 60.0 {
+            9
+        } else {
+            10
+        }
+    }
+
+    fn track_grip_percent(track_grip_level: u8) -> f64 {
+        match track_grip_level {
+            1 => 25.0,
+            2 => 50.0,
+            3 => 75.0,
+            4 => 90.0,
+            _ => 0.0,
+        }
+    }
+
     #[cfg(test)]
     pub fn new() -> Self {
         let mut source = Self::with_profile_directory(None);
@@ -2648,7 +2700,10 @@ impl TelemetrySource for LmuTelemetrySource {
         }
         let snapshot_us = snapshot_started.elapsed().as_micros();
         let rest_started = Instant::now();
-        self.local_rest.refresh(snapshot.connected != 0);
+        self.local_rest.refresh(
+            snapshot.connected != 0,
+            Self::weather_session_key(snapshot.session_type),
+        );
         let rest_us = rest_started.elapsed().as_micros();
 
         if snapshot.connected == 0 {
@@ -2731,6 +2786,7 @@ impl TelemetrySource for LmuTelemetrySource {
             snapshot.player_tire_remaining_by_wheel_percent,
             snapshot.player_tire_slip_ratio,
             snapshot.player_tire_sliding_fraction,
+            snapshot.brake,
             in_pits,
         );
         let formation = (10..=13).contains(&snapshot.session_type) && snapshot.game_phase == 3;
@@ -2981,6 +3037,70 @@ impl TelemetrySource for LmuTelemetrySource {
         } else {
             Vec::new()
         };
+        let weather_forecast = self.local_rest.weather_forecast().map(|session| {
+            let mut nodes = session.forecast_nodes();
+            let session_length = if snapshot.session_end_seconds > snapshot.session_elapsed_seconds
+            {
+                snapshot.session_end_seconds
+            } else {
+                self.local_rest.session_max_time_seconds()
+            };
+            let progress = if session_length > 0.0 {
+                (snapshot.session_elapsed_seconds / session_length).clamp(0.0, 1.0)
+            } else if snapshot.session_time_remaining > 0.0 {
+                (snapshot.session_elapsed_seconds
+                    / (snapshot.session_elapsed_seconds + snapshot.session_time_remaining))
+                    .clamp(0.0, 1.0)
+            } else {
+                0.0
+            };
+            let current_index = if nodes.is_empty() {
+                0
+            } else {
+                ((progress / 0.2).floor().min((nodes.len() - 1) as f64)) as i32
+            };
+            let next_index = (current_index + 1).min(nodes.len() as i32);
+            if session_length > 0.0 {
+                for (index, node) in nodes.iter_mut().enumerate() {
+                    if index as i32 >= next_index {
+                        let minutes = ((index as f64 * 0.2 * session_length
+                            - snapshot.session_elapsed_seconds)
+                            / 60.0)
+                            .round();
+                        node.minutes_from_now = Some(minutes.max(0.0) as i32);
+                    }
+                }
+            }
+            super::WeatherForecastModel {
+                available: true,
+                session: Self::weather_session_key(snapshot.session_type).to_owned(),
+                current_index,
+                next_index,
+                nodes,
+            }
+        });
+        let current_humidity_percent = weather_forecast
+            .as_ref()
+            .and_then(|model| {
+                usize::try_from(model.current_index)
+                    .ok()
+                    .and_then(|index| model.nodes.get(index))
+            })
+            .map(|node| node.humidity_percent)
+            .unwrap_or(0.0);
+        let wind_speed_ms = f64::hypot(snapshot.wind_x, snapshot.wind_z);
+        let wind_direction_degrees =
+            (snapshot.wind_z.atan2(snapshot.wind_x).to_degrees() + 360.0) % 360.0;
+        let player_grip_percent = Self::track_grip_percent(snapshot.track_grip_level);
+        let track_grip_state = if snapshot.track_wetness_percent < 15.0 {
+            "dry"
+        } else if snapshot.track_wetness_percent < 40.0 {
+            "damp"
+        } else if snapshot.track_wetness_percent < 70.0 {
+            "wet"
+        } else {
+            "saturated"
+        };
         let frame = TelemetryFrame {
             source: "lmu",
             connected: true,
@@ -3007,6 +3127,13 @@ impl TelemetrySource for LmuTelemetrySource {
             track_wetness_percent: snapshot.track_wetness_percent.clamp(0.0, 100.0),
             track_wetness_min_percent: snapshot.track_wetness_min_percent.clamp(0.0, 100.0),
             track_wetness_max_percent: snapshot.track_wetness_max_percent.clamp(0.0, 100.0),
+            weather_forecast: weather_forecast.unwrap_or_default(),
+            current_humidity_percent,
+            wind_speed_ms,
+            wind_direction_degrees,
+            player_grip_percent,
+            track_grip_state,
+            cloud_coverage: Self::live_weather_icon(snapshot.cloud_coverage, snapshot.rain_percent),
             lap_number: snapshot.lap_number,
             player_sector: snapshot.player_sector,
             player_total_laps: snapshot.player_total_laps,
@@ -3240,20 +3367,41 @@ mod tests {
     }
 
     #[test]
+    fn live_weather_icon_combines_cloud_cover_and_rain_intensity() {
+        assert_eq!(LmuTelemetrySource::live_weather_icon(3, 0.0), 3);
+        assert_eq!(LmuTelemetrySource::live_weather_icon(9, 0.0), 4);
+        assert_eq!(LmuTelemetrySource::live_weather_icon(2, 8.0), 5);
+        assert_eq!(LmuTelemetrySource::live_weather_icon(2, 18.0), 7);
+        assert_eq!(LmuTelemetrySource::live_weather_icon(2, 55.0), 9);
+        assert_eq!(LmuTelemetrySource::live_weather_icon(2, 75.0), 10);
+    }
+
+    #[test]
+    fn track_grip_level_maps_to_lmu_grip_fraction() {
+        assert_eq!(LmuTelemetrySource::track_grip_percent(0), 0.0);
+        assert_eq!(LmuTelemetrySource::track_grip_percent(1), 25.0);
+        assert_eq!(LmuTelemetrySource::track_grip_percent(2), 50.0);
+        assert_eq!(LmuTelemetrySource::track_grip_percent(3), 75.0);
+        assert_eq!(LmuTelemetrySource::track_grip_percent(4), 90.0);
+        assert_eq!(LmuTelemetrySource::track_grip_percent(5), 0.0);
+    }
+
+    #[test]
     fn flat_spot_wear_only_accumulates_during_a_localized_slide() {
         let mut tracker = TireWearTracker::default();
-        tracker.update([100.0; 4], [0.0; 4], [0.0; 4], false);
+        tracker.update([100.0; 4], [0.0; 4], [0.0; 4], 0.0, false);
 
-        let normal_wear = tracker.update([99.9; 4], [-0.1; 4], [0.8; 4], false);
+        let normal_wear = tracker.update([99.9; 4], [-0.1; 4], [0.8; 4], 0.0, false);
         assert_eq!(normal_wear, [0.0; 4]);
 
-        let low_grip_wear = tracker.update([99.8; 4], [-0.5; 4], [0.4; 4], false);
+        let low_grip_wear = tracker.update([99.8; 4], [-0.5; 4], [0.4; 4], 0.0, false);
         assert_eq!(low_grip_wear, [0.0; 4]);
 
         let slide_wear = tracker.update(
             [99.6, 99.7, 99.8, 99.8],
             [-0.5, -0.5, 0.0, 0.0],
             [0.8, 0.6, 0.8, 0.8],
+            0.0,
             false,
         );
         assert!((slide_wear[0] - 0.2).abs() < 0.001);
@@ -3263,12 +3411,31 @@ mod tests {
     }
 
     #[test]
+    fn flat_spot_wear_uses_braking_as_a_fallback_when_sliding_fraction_is_missing() {
+        let mut tracker = TireWearTracker::default();
+        tracker.update([100.0; 4], [0.0; 4], [0.0; 4], 0.0, false);
+
+        let lock_wear = tracker.update(
+            [99.8, 99.9, 100.0, 100.0],
+            [-0.5, -0.5, 0.0, 0.0],
+            [0.0; 4],
+            0.7,
+            false,
+        );
+
+        assert!((lock_wear[0] - 0.2).abs() < 0.001);
+        assert!((lock_wear[1] - 0.1).abs() < 0.001);
+        assert_eq!(lock_wear[2], 0.0);
+        assert_eq!(lock_wear[3], 0.0);
+    }
+
+    #[test]
     fn flat_spot_wear_resets_when_tyres_are_changed_in_pits() {
         let mut tracker = TireWearTracker::default();
-        tracker.update([90.0; 4], [0.0; 4], [0.0; 4], false);
-        tracker.update([89.5; 4], [-0.5; 4], [0.8; 4], false);
+        tracker.update([90.0; 4], [0.0; 4], [0.0; 4], 0.0, false);
+        tracker.update([89.5; 4], [-0.5; 4], [0.8; 4], 0.0, false);
 
-        let after_change = tracker.update([100.0; 4], [0.0; 4], [0.0; 4], true);
+        let after_change = tracker.update([100.0; 4], [0.0; 4], [0.0; 4], 0.0, true);
         assert_eq!(after_change, [0.0; 4]);
     }
 

@@ -423,6 +423,30 @@
           <p class="settings-note" data-i18n="settings.mapNote">El mapa contin&uacute;a aprendiendo el tr&aacute;nsito por boxes aunque se oculte la predicci&oacute;n.</p>
         </section>
 
+        <article class="overlay-option" data-overlay-card="forecast" data-overlay-category="race">
+          <div class="overlay-icon">☁</div>
+          <div class="overlay-copy">
+            <strong data-i18n="card.forecast">Previsión</strong>
+            <span data-i18n="card.forecastSub">Condición, temperatura y lluvia de los próximos tramos de la sesión.</span>
+          </div>
+          <label class="switch">
+            <input type="checkbox" data-overlay="forecast" aria-label="Mostrar Previsión" />
+            <span></span>
+          </label>
+        </article>
+
+        <article class="overlay-option" data-overlay-card="conditions" data-overlay-category="race">
+          <div class="overlay-icon">⛅</div>
+          <div class="overlay-copy">
+            <strong data-i18n="card.conditions">Condiciones</strong>
+            <span data-i18n="card.conditionsSub">Temperaturas, viento, humedad, lluvia, grip y estado de la pista.</span>
+          </div>
+          <label class="switch">
+            <input type="checkbox" data-overlay="conditions" aria-label="Mostrar Condiciones" />
+            <span></span>
+          </label>
+        </article>
+
       </section>
 
       <section class="control-intro integrations-intro" data-view-section="integrations">
@@ -466,6 +490,8 @@
             <div data-browser-overlay="tires"><code></code><button type="button" data-i18n="browser.copy">COPIAR</button></div>
             <div data-browser-overlay="damage"><code></code><button type="button" data-i18n="browser.copy">COPIAR</button></div>
             <div data-browser-overlay="trackmap"><code></code><button type="button" data-i18n="browser.copy">COPIAR</button></div>
+            <div data-browser-overlay="forecast"><code></code><button type="button" data-i18n="browser.copy">COPIAR</button></div>
+            <div data-browser-overlay="conditions"><code></code><button type="button" data-i18n="browser.copy">COPIAR</button></div>
           </div>
         </div>
       </details>

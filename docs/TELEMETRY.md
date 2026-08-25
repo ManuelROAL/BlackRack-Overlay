@@ -65,6 +65,9 @@ restore per-overlay native listeners or direct cross-realm object events.
 ## Local REST endpoints
 
 - `/rest/watch/sessionInfo`: 1 Hz for the official configured session `maxTime`.
+- `/rest/sessions/weather`: 1 Hz for the three five-slot session forecasts;
+  BlackRack selects PRACTICE, QUALIFY or RACE according to shared-memory session
+  type and consumes sky, temperature, rain chance and humidity.
 - `/rest/watch/standings`: 1 Hz for assigned number, qualification and
   supplementary pit/finish fields.
 - `/rest/watch/standings/history`: 0.2 Hz for permitted late-start recovery.

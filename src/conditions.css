@@ -1,0 +1,121 @@
+@import "./fonts.css";
+@import "./styles.css";
+
+body.conditions-body {
+  min-width: 260px;
+  min-height: 70px;
+  padding: 6px;
+}
+
+.conditions-shell {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255 / 10%);
+  border-radius: 8px;
+  background: linear-gradient(
+    145deg,
+    rgb(12 16 22 / var(--overlay-background-opacity)),
+    rgb(5 8 12 / var(--overlay-background-opacity))
+  );
+  box-shadow: 0 8px 20px rgb(0 0 0 / 35%);
+  color: #dce3ea;
+  font-family: "Roboto Condensed", sans-serif;
+  font-variant-numeric: tabular-nums;
+  user-select: none;
+}
+
+.conditions-shell::before {
+  position: absolute;
+  z-index: 2;
+  inset: 0 auto auto 0;
+  width: 2px;
+  height: 100%;
+  background: #d8ff3e;
+  content: "";
+  opacity: 0.82;
+}
+
+.conditions-status {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  flex: 0 0 52px;
+  padding: 0 6px;
+  border-right: 1px solid rgb(255 255 255 / 9%);
+}
+
+.conditions-status img {
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
+}
+
+.conditions-status img[hidden] {
+  display: none;
+}
+
+.conditions-state {
+  color: #3ec3a6;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  white-space: nowrap;
+}
+
+.conditions-state[data-state="damp"] { color: #ffb84d; }
+.conditions-state[data-state="wet"] { color: #6fa8dc; }
+.conditions-state[data-state="saturated"] { color: #4a6ea8; }
+
+.conditions-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  flex: 1 1 auto;
+  margin: 0;
+  padding: 4px 8px;
+  gap: 2px;
+  min-width: 0;
+}
+
+.conditions-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  min-width: 0;
+}
+
+.conditions-cell + .conditions-cell {
+  border-left: 1px solid rgb(255 255 255 / 8%);
+}
+
+.conditions-cell dt {
+  color: #84909d;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  white-space: nowrap;
+}
+
+.conditions-cell dd {
+  margin: 0;
+  color: #e7edf3;
+  font-size: 13px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+body[data-available="false"] .conditions-cell dd {
+  color: #687481;
+}
+
+.click-through .conditions-shell {
+  border-color: transparent;
+}

@@ -102,6 +102,7 @@ struct LmuSnapshot {
     double lap_delta_seconds;
     double session_time_remaining;
     double session_elapsed_seconds;
+    double session_end_seconds;
     double estimated_lap_time;
     double last_lap_seconds;
     double leader_lap_time;
@@ -115,6 +116,11 @@ struct LmuSnapshot {
     double track_wetness_percent;
     double track_wetness_min_percent;
     double track_wetness_max_percent;
+    uint8_t track_grip_level;
+    uint8_t cloud_coverage;
+    double wind_x;
+    double wind_y;
+    double wind_z;
     double player_tire_remaining_percent;
     double player_damage_percent;
     double player_tire_temperature_c[4];
@@ -231,6 +237,7 @@ extern "C" int lmu_read_snapshot(LmuSnapshot* output) {
     }
     output->session_time_remaining = scoring.scoringInfo.mSessionTimeRemaining;
     output->session_elapsed_seconds = scoring.scoringInfo.mCurrentET;
+    output->session_end_seconds = scoring.scoringInfo.mEndET;
     output->track_limits_steps_per_penalty = static_cast<uint32_t>(scoring.scoringInfo.mTrackLimitsStepsPerPenalty);
     output->track_length = scoring.scoringInfo.mLapDist;
     output->ambient_temperature_c = scoring.scoringInfo.mAmbientTemp;
@@ -239,6 +246,11 @@ extern "C" int lmu_read_snapshot(LmuSnapshot* output) {
     output->track_wetness_percent = scoring.scoringInfo.mAvgPathWetness * 100.0;
     output->track_wetness_min_percent = scoring.scoringInfo.mMinPathWetness * 100.0;
     output->track_wetness_max_percent = scoring.scoringInfo.mMaxPathWetness * 100.0;
+    output->track_grip_level = scoring.scoringInfo.mTrackGripLevel;
+    output->cloud_coverage = scoring.scoringInfo.mCloudCoverage;
+    output->wind_x = scoring.scoringInfo.mWind.x;
+    output->wind_y = scoring.scoringInfo.mWind.y;
+    output->wind_z = scoring.scoringInfo.mWind.z;
     output->player_tire_remaining_percent = -1.0;
     std::fill_n(output->player_tire_temperature_c, 4, -1.0);
     std::fill_n(output->player_brake_temperature_c, 4, -1.0);

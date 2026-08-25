@@ -286,6 +286,8 @@ struct PerformanceMonitor {
     emitted_relative: u64,
     emitted_flags: u64,
     emitted_rejoin: u64,
+    emitted_forecast: u64,
+    emitted_conditions: u64,
     max_standings_rows: usize,
 }
 
@@ -319,6 +321,8 @@ impl PerformanceMonitor {
             emitted_relative: 0,
             emitted_flags: 0,
             emitted_rejoin: 0,
+            emitted_forecast: 0,
+            emitted_conditions: 0,
             max_standings_rows: 0,
         }
     }
@@ -363,6 +367,8 @@ impl PerformanceMonitor {
                 "relative": self.emitted_relative,
                 "flags": self.emitted_flags,
                 "rejoin": self.emitted_rejoin,
+                "forecast": self.emitted_forecast,
+                "conditions": self.emitted_conditions,
             },
             "max_standings_rows": self.max_standings_rows,
         }));
@@ -474,6 +480,13 @@ pub struct TelemetryFrame {
     track_wetness_percent: f64,
     track_wetness_min_percent: f64,
     track_wetness_max_percent: f64,
+    weather_forecast: WeatherForecastModel,
+    current_humidity_percent: f64,
+    wind_speed_ms: f64,
+    wind_direction_degrees: f64,
+    player_grip_percent: f64,
+    track_grip_state: &'static str,
+    cloud_coverage: i32,
     lap_number: i32,
     player_sector: i32,
     player_total_laps: i32,
@@ -624,6 +637,25 @@ impl Default for RejoinWarning {
     }
 }
 
+#[derive(Clone, Serialize)]
+pub struct WeatherForecastNode {
+    sky: i32,
+    sky_label: String,
+    temperature_c: f64,
+    rain_chance_percent: f64,
+    humidity_percent: f64,
+    minutes_from_now: Option<i32>,
+}
+
+#[derive(Clone, Default, Serialize)]
+pub struct WeatherForecastModel {
+    available: bool,
+    session: String,
+    current_index: i32,
+    next_index: i32,
+    nodes: Vec<WeatherForecastNode>,
+}
+
 trait TelemetrySource: Send + 'static {
     fn next_frame(&mut self, include_standings: bool, include_track_map: bool) -> TelemetryFrame;
 }
@@ -664,6 +696,13 @@ impl TelemetryFrame {
             track_wetness_percent: 0.0,
             track_wetness_min_percent: 0.0,
             track_wetness_max_percent: 0.0,
+            weather_forecast: WeatherForecastModel::default(),
+            current_humidity_percent: 0.0,
+            wind_speed_ms: 0.0,
+            wind_direction_degrees: 0.0,
+            player_grip_percent: 0.0,
+            track_grip_state: "dry",
+            cloud_coverage: 0,
             lap_number: 0,
             player_sector: 0,
             player_total_laps: 0,
@@ -778,6 +817,7 @@ pub fn spawn_source(app: AppHandle) {
         const TRACK_MAP_INTERVAL: Duration = Duration::from_millis(33);
         const DAMAGE_INTERVAL: Duration = Duration::from_millis(50);
         const PITSTOP_INTERVAL: Duration = Duration::from_millis(50);
+        const WEATHER_INTERVAL: Duration = Duration::from_millis(500);
         const ACTIVE_REJOIN_INTERVAL: Duration = Duration::from_millis(50);
         const IDLE_WARNING_INTERVAL: Duration = Duration::from_millis(250);
         const VISIBILITY_INTERVAL: Duration = Duration::from_millis(250);
@@ -795,6 +835,7 @@ pub fn spawn_source(app: AppHandle) {
         let mut last_track_map = now.checked_sub(TRACK_MAP_INTERVAL).unwrap_or(now);
         let mut last_damage = now.checked_sub(DAMAGE_INTERVAL).unwrap_or(now);
         let mut last_pitstop = now.checked_sub(PITSTOP_INTERVAL).unwrap_or(now);
+        let mut last_weather = now.checked_sub(WEATHER_INTERVAL).unwrap_or(now);
         let mut last_flags = now.checked_sub(IDLE_WARNING_INTERVAL).unwrap_or(now);
         let mut last_rejoin = now.checked_sub(IDLE_WARNING_INTERVAL).unwrap_or(now);
         let mut last_visibility = now.checked_sub(VISIBILITY_INTERVAL).unwrap_or(now);
@@ -882,6 +923,9 @@ pub fn spawn_source(app: AppHandle) {
                 && super::overlay_is_active(&app, "damage");
             let emit_pitstop = interval_due(&mut last_pitstop, now, PITSTOP_INTERVAL)
                 && super::overlay_is_active(&app, "pitstop");
+            let weather_due = interval_due(&mut last_weather, now, WEATHER_INTERVAL);
+            let emit_forecast = weather_due && super::overlay_is_active(&app, "forecast");
+            let emit_conditions = weather_due && super::overlay_is_active(&app, "conditions");
             let emit_fuel = interval_due(&mut last_fuel, now, FUEL_INTERVAL)
                 && super::overlay_is_active(&app, "fuel");
             let flag_interval = if frame.flag_warning.active {
@@ -909,8 +953,10 @@ pub fn spawn_source(app: AppHandle) {
                 ("fuel", emit_fuel),
                 ("flags", emit_flags),
                 ("rejoin", emit_rejoin),
+                ("forecast", emit_forecast),
+                ("conditions", emit_conditions),
             ];
-            let mut base_targets = [""; 9];
+            let mut base_targets = [""; 11];
             let mut base_target_count = 0;
             for (label, should_emit) in base_emissions {
                 if should_emit {
@@ -928,6 +974,8 @@ pub fn spawn_source(app: AppHandle) {
                 performance.emitted_fuel += u64::from(emit_fuel);
                 performance.emitted_flags += u64::from(emit_flags);
                 performance.emitted_rejoin += u64::from(emit_rejoin);
+                performance.emitted_forecast += u64::from(emit_forecast);
+                performance.emitted_conditions += u64::from(emit_conditions);
             }
             if interval_due(&mut last_control, now, CONTROL_INTERVAL) {
                 let _ = app.emit_to("control", "telemetry://frame", &frame);

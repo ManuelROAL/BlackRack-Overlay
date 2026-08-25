@@ -1,4 +1,4 @@
-import profileIconUrl from "./assets/lmu-icons/profile.svg";
+import profileIconUrl from "./assets/lmu-icons/helmet-race-svgrepo-com.svg";
 import timingIconUrl from "./assets/lmu-icons/timing.svg";
 import fuelIconUrl from "./assets/lmu-icons/fuel.svg";
 import tiresIconUrl from "./assets/lmu-icons/tires.svg";

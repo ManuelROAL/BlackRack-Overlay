@@ -166,12 +166,12 @@ body.tires-body {
 .wheel-fl .suspension-arm,
 .wheel-rl .suspension-arm {
   left: 9px;
-  mask-image: url("./assets/lmu-icons/damage/suspension-left.svg");
+  mask-image: url("./assets/lmu-icons/damage/suspension-svgrepo-com.svg");
 }
 .wheel-fr .suspension-arm,
 .wheel-rr .suspension-arm {
   right: 9px;
-  mask-image: url("./assets/lmu-icons/damage/suspension-right.svg");
+  mask-image: url("./assets/lmu-icons/damage/suspension-svgrepo-com.svg");
 }
 
 .wheel.flat .wheel-wear,

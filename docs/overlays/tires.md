@@ -25,6 +25,8 @@ Detailed Damage (`damage.md`).
   contact patch is sliding and the tyre's peripheral speed is at least 30% below
   its per-wheel ground speed. This detects localized dragging during both braking
   lockups and unbraked spins without counting a freely rotating lateral slide.
+  Because LMU may leave the contact-patch fraction unavailable, active braking is
+  the fallback qualifier for a wheel already below the same slip-ratio threshold.
   Reset after a pit tyre change or new session.
 - Compound, puncture and detached-wheel states come from each telemetry wheel.
 

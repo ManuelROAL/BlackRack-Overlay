@@ -1,3 +1,1 @@
-<svg width="20" height="64" viewBox="0 0 20 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <path d="M7 5V59" stroke="#F3F4F8" stroke-width="6" stroke-linecap="square"/>
-</svg>
+<svg width="64" height="32" viewBox="0 0 64 32" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 6h56v16l-10 6H14L4 22V6Z" fill="#F3F4F8"/><path d="M16 7v19M48 7v19" stroke="#89939D" stroke-width="2"/></svg>

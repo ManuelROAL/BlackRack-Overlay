@@ -8,7 +8,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 #[cfg(not(test))]
 use std::sync::mpsc;
 use std::sync::mpsc::Receiver;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 #[cfg(not(test))]
 use std::thread;
 use std::time::{Duration, Instant};
@@ -23,8 +23,11 @@ const HISTORY_INTERVAL: Duration = Duration::from_secs(5);
 const SUPPLEMENT_INTERVAL: Duration = Duration::from_secs(1);
 const STANDINGS_MAX_AGE: Duration = Duration::from_secs(1);
 const SUPPLEMENT_MAX_AGE: Duration = Duration::from_secs(3);
+const WEATHER_MAX_AGE: Duration = Duration::from_secs(5);
 #[cfg(not(test))]
 const GARAGE_INTERVAL: Duration = Duration::from_secs(5);
+#[cfg(not(test))]
+const WEATHER_INTERVAL: Duration = Duration::from_secs(1);
 #[cfg(not(test))]
 const REQUEST_TIMEOUT: Duration = Duration::from_millis(400);
 
@@ -143,6 +146,63 @@ struct RestBodyWear {
     aero: f64,
 }
 
+#[derive(Clone, Debug, Default, Deserialize)]
+#[serde(default)]
+pub(super) struct RestWeatherSession {
+    #[serde(rename = "START")]
+    pub start: RestWeatherNode,
+    #[serde(rename = "NODE_25")]
+    pub node_25: RestWeatherNode,
+    #[serde(rename = "NODE_50")]
+    pub node_50: RestWeatherNode,
+    #[serde(rename = "NODE_75")]
+    pub node_75: RestWeatherNode,
+    #[serde(rename = "FINISH")]
+    pub finish: RestWeatherNode,
+}
+
+impl RestWeatherSession {
+    pub(super) fn forecast_nodes(&self) -> Vec<super::WeatherForecastNode> {
+        [
+            &self.start,
+            &self.node_25,
+            &self.node_50,
+            &self.node_75,
+            &self.finish,
+        ]
+        .iter()
+        .map(|node| super::WeatherForecastNode {
+            sky: node.sky.current_value.round() as i32,
+            sky_label: node.sky.string_value.clone(),
+            temperature_c: node.temperature.current_value,
+            rain_chance_percent: node.rain_chance.current_value.clamp(0.0, 100.0),
+            humidity_percent: node.humidity.current_value.clamp(0.0, 100.0),
+            minutes_from_now: None,
+        })
+        .collect()
+    }
+}
+
+#[derive(Clone, Debug, Default, Deserialize)]
+#[serde(default)]
+pub(super) struct RestWeatherNode {
+    #[serde(rename = "WNV_TEMPERATURE")]
+    pub temperature: RestWeatherMetric,
+    #[serde(rename = "WNV_RAIN_CHANCE")]
+    pub rain_chance: RestWeatherMetric,
+    #[serde(rename = "WNV_SKY")]
+    pub sky: RestWeatherMetric,
+    #[serde(rename = "WNV_HUMIDITY")]
+    pub humidity: RestWeatherMetric,
+}
+
+#[derive(Clone, Debug, Default, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub(super) struct RestWeatherMetric {
+    pub current_value: f64,
+    pub string_value: String,
+}
+
 #[derive(Default)]
 struct SupplementUpdate {
     pit_stop: Option<RestPitStopEstimate>,
@@ -161,6 +221,8 @@ struct StandingsUpdate {
 pub(super) struct LocalRestResolver {
     standings_receiver: Option<Receiver<StandingsUpdate>>,
     supplement_receiver: Option<Receiver<SupplementUpdate>>,
+    weather_receiver: Option<Receiver<(String, RestWeatherSession)>>,
+    weather_session: Arc<Mutex<String>>,
     standings_by_slot: HashMap<i32, RestStanding>,
     standings_by_name: HashMap<String, RestStanding>,
     history_by_slot: HashMap<i32, Vec<RestStandingHistory>>,
@@ -173,6 +235,8 @@ pub(super) struct LocalRestResolver {
     fuel_ratio_assigned: f64,
     supplement_received_at: Option<Instant>,
     vehicle_damage_received_at: Option<Instant>,
+    weather_nodes: RestWeatherSession,
+    weather_received_at: Option<Instant>,
     enabled: Arc<AtomicBool>,
 }
 
@@ -271,9 +335,47 @@ impl LocalRestResolver {
             }
         });
 
+        let (weather_sender, weather_receiver) = mpsc::channel();
+        let weather_enabled = Arc::clone(&enabled);
+        let weather_session = Arc::new(Mutex::new(String::new()));
+        let weather_session_slot = Arc::clone(&weather_session);
+        thread::spawn(move || {
+            let Some(client) = http_client() else {
+                return;
+            };
+            loop {
+                if !weather_enabled.load(Ordering::Relaxed) {
+                    thread::sleep(Duration::from_secs(1));
+                    continue;
+                }
+                let session = weather_session_slot
+                    .lock()
+                    .unwrap_or_else(|poisoned| poisoned.into_inner())
+                    .clone();
+                if session.is_empty() {
+                    thread::sleep(Duration::from_secs(1));
+                    continue;
+                }
+                let started = Instant::now();
+                if let Ok(weather_sessions) = fetch_json::<HashMap<String, RestWeatherSession>>(
+                    &client,
+                    "/rest/sessions/weather",
+                ) {
+                    if let Some(weather) = weather_sessions.get(&session) {
+                        if weather_sender.send((session, weather.clone())).is_err() {
+                            break;
+                        }
+                    }
+                }
+                sleep_remaining(started, WEATHER_INTERVAL);
+            }
+        });
+
         Self {
             standings_receiver: Some(standings_receiver),
             supplement_receiver: Some(supplement_receiver),
+            weather_receiver: Some(weather_receiver),
+            weather_session,
             standings_by_slot: HashMap::new(),
             standings_by_name: HashMap::new(),
             history_by_slot: HashMap::new(),
@@ -286,6 +388,8 @@ impl LocalRestResolver {
             fuel_ratio_assigned: 0.0,
             supplement_received_at: None,
             vehicle_damage_received_at: None,
+            weather_nodes: RestWeatherSession::default(),
+            weather_received_at: None,
             enabled,
         }
     }
@@ -295,6 +399,8 @@ impl LocalRestResolver {
         Self {
             standings_receiver: None,
             supplement_receiver: None,
+            weather_receiver: None,
+            weather_session: Arc::new(Mutex::new(String::new())),
             standings_by_slot: HashMap::new(),
             standings_by_name: HashMap::new(),
             history_by_slot: HashMap::new(),
@@ -307,12 +413,34 @@ impl LocalRestResolver {
             fuel_ratio_assigned: 0.0,
             supplement_received_at: None,
             vehicle_damage_received_at: None,
+            weather_nodes: RestWeatherSession::default(),
+            weather_received_at: None,
             enabled: Arc::new(AtomicBool::new(false)),
         }
     }
 
-    pub(super) fn refresh(&mut self, active: bool) {
+    pub(super) fn refresh(&mut self, active: bool, weather_session: &str) {
         self.enabled.store(active, Ordering::Relaxed);
+        {
+            let mut slot = self
+                .weather_session
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner());
+            if *slot != weather_session {
+                *slot = weather_session.to_owned();
+            }
+        }
+        let weather_updates = self
+            .weather_receiver
+            .as_ref()
+            .map(|receiver| receiver.try_iter().collect::<Vec<_>>())
+            .unwrap_or_default();
+        for (session, nodes) in weather_updates {
+            if session == weather_session {
+                self.weather_nodes = nodes;
+                self.weather_received_at = Some(Instant::now());
+            }
+        }
         let standings_updates = self
             .standings_receiver
             .as_ref()
@@ -418,6 +546,8 @@ impl LocalRestResolver {
         self.session_max_time_seconds = 0.0;
         self.steering_range_degrees = None;
         self.fuel_ratio_assigned = 0.0;
+        self.weather_nodes = RestWeatherSession::default();
+        self.weather_received_at = None;
     }
 
     fn latch_session_max_time(&mut self, seconds: f64) {
@@ -520,6 +650,10 @@ impl LocalRestResolver {
             .then_some(self.fuel_ratio_assigned)
             .unwrap_or(0.0)
     }
+
+    pub(super) fn weather_forecast(&self) -> Option<&RestWeatherSession> {
+        is_fresh(self.weather_received_at, WEATHER_MAX_AGE).then_some(&self.weather_nodes)
+    }
 }
 
 fn fuel_ratio_assigned(response: &RestRepairAndRefuel) -> Option<f64> {
@@ -609,7 +743,7 @@ mod tests {
     use super::{
         fuel_ratio_assigned, normalized_name, steering_range, LocalRestResolver, RestGarageData,
         RestPitStopEstimate, RestRepairAndRefuel, RestSessionInfo, RestStanding,
-        RestStandingHistory,
+        RestStandingHistory, RestWeatherSession,
     };
     use std::collections::HashMap;
 
@@ -685,6 +819,28 @@ mod tests {
         )
         .unwrap();
         assert_eq!(fuel_ratio_assigned(&response), Some(0.93));
+    }
+
+    #[test]
+    fn parses_weather_forecast_nodes_into_serialized_nodes() {
+        let weather: RestWeatherSession = serde_json::from_str(
+            r#"{
+              "START": {"WNV_SKY": {"currentValue": 0, "stringValue": "Sunny"}, "WNV_TEMPERATURE": {"currentValue": 22.4, "stringValue": "22.4 C"}, "WNV_RAIN_CHANCE": {"currentValue": 5, "stringValue": "5 %"}, "WNV_HUMIDITY": {"currentValue": 40, "stringValue": "40 %"}},
+              "NODE_25": {"WNV_SKY": {"currentValue": 2, "stringValue": "Cloudy"}, "WNV_TEMPERATURE": {"currentValue": 21.1, "stringValue": "21.1 C"}, "WNV_RAIN_CHANCE": {"currentValue": 30, "stringValue": "30 %"}, "WNV_HUMIDITY": {"currentValue": 55, "stringValue": "55 %"}},
+              "NODE_50": {"WNV_SKY": {"currentValue": 4, "stringValue": "Rain"}, "WNV_TEMPERATURE": {"currentValue": 19.6, "stringValue": "19.6 C"}, "WNV_RAIN_CHANCE": {"currentValue": 85, "stringValue": "85 %"}, "WNV_HUMIDITY": {"currentValue": 90, "stringValue": "90 %"}},
+              "NODE_75": {"WNV_SKY": {"currentValue": 5, "stringValue": "Storm"}, "WNV_TEMPERATURE": {"currentValue": 18.2, "stringValue": "18.2 C"}, "WNV_RAIN_CHANCE": {"currentValue": 95, "stringValue": "95 %"}, "WNV_HUMIDITY": {"currentValue": 95, "stringValue": "95 %"}},
+              "FINISH": {"WNV_SKY": {"currentValue": 1, "stringValue": "Partly Cloudy"}, "WNV_TEMPERATURE": {"currentValue": 20.1, "stringValue": "20.1 C"}, "WNV_RAIN_CHANCE": {"currentValue": 20, "stringValue": "20 %"}, "WNV_HUMIDITY": {"currentValue": 60, "stringValue": "60 %"}}
+            }"#,
+        )
+        .unwrap();
+        let nodes = weather.forecast_nodes();
+        assert_eq!(nodes.len(), 5);
+        assert_eq!(nodes[0].sky, 0);
+        assert_eq!(nodes[0].temperature_c, 22.4);
+        assert_eq!(nodes[0].rain_chance_percent, 5.0);
+        assert_eq!(nodes[2].sky, 4);
+        assert_eq!(nodes[2].rain_chance_percent, 85.0);
+        assert_eq!(nodes[4].humidity_percent, 60.0);
     }
 
     #[test]

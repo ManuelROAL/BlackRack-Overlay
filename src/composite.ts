@@ -54,7 +54,8 @@ interface TelemetryBatch {
 
 const overlayIds: OverlayId[] = [
   "delta", "timing", "driving", "tires", "damage", "standings",
-  "relative", "fuel", "pitstop", "flags", "rejoin", "trackmap"
+  "relative", "fuel", "pitstop", "flags", "rejoin", "trackmap",
+  "forecast", "conditions"
 ];
 const telemetryFields: Record<OverlayId, readonly (keyof TelemetryFrame)[]> = {
   delta: ["delta_model"],
@@ -109,12 +110,20 @@ const telemetryFields: Record<OverlayId, readonly (keyof TelemetryFrame)[]> = {
   ],
   flags: ["flag_warning"],
   rejoin: ["rejoin_warning"],
-  trackmap: ["track_name", "track_length_meters", "track_map_vehicles", "track_map_model"]
+  trackmap: ["track_name", "track_length_meters", "track_map_vehicles", "track_map_model"],
+  forecast: ["rest_weather_available", "ambient_temperature_c", "rain_percent", "cloud_coverage", "weather_forecast"],
+  conditions: [
+    "rest_weather_available", "ambient_temperature_c", "track_temperature_c",
+    "rain_percent", "track_wetness_percent", "wind_speed_ms", "wind_direction_degrees",
+    "player_grip_percent", "track_grip_state", "cloud_coverage", "current_humidity_percent",
+    "weather_forecast"
+  ]
 };
 const overlayTitleKeys: Record<OverlayId, import("./i18n").TranslationKey> = {
   delta: "card.delta", timing: "card.timing", driving: "card.driving", tires: "card.tires",
   damage: "card.damage", standings: "card.standings", relative: "card.relative", fuel: "card.fuel",
-  pitstop: "card.pitstop", flags: "card.flags", rejoin: "card.rejoin", trackmap: "card.trackmap"
+  pitstop: "card.pitstop", flags: "card.flags", rejoin: "card.rejoin", trackmap: "card.trackmap",
+  forecast: "card.forecast", conditions: "card.conditions"
 };
 const overlayTitle = (overlay: OverlayId): string => t(overlayTitleKeys[overlay]).toLocaleUpperCase(getLocale());
 
