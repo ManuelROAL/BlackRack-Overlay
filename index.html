@@ -90,6 +90,24 @@
             <output id="global-transparency-output">5%</output>
           </label>
         </div>
+        <div class="global-setting-group language-setting-group">
+          <div class="global-setting-copy">
+            <span data-i18n="general.fontSize">TAMAÑO DEL TEXTO</span>
+            <strong data-i18n="general.fontSizeSub">General o por overlay</strong>
+          </div>
+          <label class="select-field">
+            <span data-i18n="general.apply">APLICAR</span>
+            <select id="font-size-mode" aria-label="Modo de tamaño del texto" data-i18n-aria-label="general.fontSizeModeAria">
+              <option value="individual" data-i18n="general.individual">Por overlay</option>
+              <option value="global" data-i18n="general.global">General</option>
+            </select>
+          </label>
+          <label id="global-font-size-control" class="global-transparency-control">
+            <span data-i18n="general.globalValue">VALOR GENERAL</span>
+            <input id="global-font-size" type="range" min="75" max="150" step="5" />
+            <output id="global-font-size-output">100%</output>
+          </label>
+        </div>
         <div class="global-setting-group">
           <div class="global-setting-copy">
             <span data-i18n="general.monitor">MONITOR</span>

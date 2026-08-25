@@ -98,6 +98,8 @@ struct LmuSnapshot {
     double current_lap_seconds;
     double current_sector1_seconds;
     double current_sector2_seconds;
+    double player_best_sector_ends[3];
+    double session_best_sector_ends[3];
     double best_lap_seconds;
     double lap_delta_seconds;
     double session_time_remaining;
@@ -283,6 +285,23 @@ extern "C" int lmu_read_snapshot(LmuSnapshot* output) {
         destination.estimated_lap_time = source.mEstimatedLapTime;
         destination.best_lap_seconds = source.mBestLapTime;
         destination.last_lap_seconds = source.mLastLapTime;
+
+        const double best_sector_ends[3] = {
+            std::abs(source.mBestSector1),
+            std::abs(source.mBestSector2),
+            source.mBestLapTime,
+        };
+        const double minimum_sector_end[3] = {5.0, 10.0, 20.0};
+        const double maximum_sector_end[3] = {300.0, 600.0, 900.0};
+        for (size_t sector_index = 0; sector_index < 3; ++sector_index) {
+            const double candidate = best_sector_ends[sector_index];
+            if (candidate >= minimum_sector_end[sector_index]
+                && candidate <= maximum_sector_end[sector_index]
+                && (output->session_best_sector_ends[sector_index] <= 0.0
+                    || candidate < output->session_best_sector_ends[sector_index])) {
+                output->session_best_sector_ends[sector_index] = candidate;
+            }
+        }
         destination.speed_kph = std::sqrt(
             source.mLocalVel.x * source.mLocalVel.x +
             source.mLocalVel.y * source.mLocalVel.y +
@@ -405,6 +424,7 @@ extern "C" int lmu_read_snapshot(LmuSnapshot* output) {
             output->last_lap_seconds = source.mLastLapTime;
             output->current_sector1_seconds = std::abs(source.mCurSector1);
             output->current_sector2_seconds = std::abs(source.mCurSector2);
+            std::copy_n(best_sector_ends, 3, output->player_best_sector_ends);
             output->player_time_into_lap = source.mTimeIntoLap;
             output->player_lap_distance = source.mLapDist;
         }

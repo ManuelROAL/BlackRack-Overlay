@@ -48,7 +48,7 @@ body.forecast-body {
 .forecast-shell h1 {
   margin: 0;
   color: #aeb8c4;
-  font-size: 11px;
+  font-size: calc(11px * var(--overlay-font-scale, 1));
   font-weight: 900;
   letter-spacing: .08em;
 }
@@ -77,7 +77,7 @@ body.forecast-body {
 
 .forecast-node-label {
   color: #7f8a97;
-  font-size: 8px;
+  font-size: calc(8px * var(--overlay-font-scale, 1));
   font-weight: 800;
   letter-spacing: .06em;
   white-space: nowrap;
@@ -95,14 +95,14 @@ body.forecast-body {
 
 .forecast-node-temp {
   color: #e7edf3;
-  font-size: 14px;
+  font-size: calc(14px * var(--overlay-font-scale, 1));
   font-weight: 900;
   line-height: 1.1;
 }
 
 .forecast-node-rain {
   color: #6fa8dc;
-  font-size: 10px;
+  font-size: calc(10px * var(--overlay-font-scale, 1));
   font-weight: 700;
   line-height: 1.1;
 }

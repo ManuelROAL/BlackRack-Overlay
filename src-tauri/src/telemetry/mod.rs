@@ -579,6 +579,10 @@ pub struct TelemetryFrame {
     current_sector1_seconds: f64,
     #[serde(skip)]
     current_sector2_seconds: f64,
+    #[serde(skip)]
+    player_best_sector_ends: [f64; 3],
+    #[serde(skip)]
+    session_best_sector_ends: [f64; 3],
     last_lap_seconds: f64,
     best_lap_seconds: f64,
     lap_delta_seconds: f64,
@@ -793,6 +797,8 @@ impl TelemetryFrame {
             current_lap_seconds: 0.0,
             current_sector1_seconds: 0.0,
             current_sector2_seconds: 0.0,
+            player_best_sector_ends: [0.0; 3],
+            session_best_sector_ends: [0.0; 3],
             last_lap_seconds: 0.0,
             best_lap_seconds: 0.0,
             lap_delta_seconds: 0.0,

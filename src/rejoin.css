@@ -45,13 +45,13 @@
   align-items: center;
   justify-content: space-between;
   border-bottom: 1px solid currentColor;
-  font-size: 14px;
+  font-size: calc(14px * var(--overlay-font-scale, 1));
   font-weight: 900;
   letter-spacing: 0.055em;
 }
 
 .rejoin-card header strong {
-  font-size: 15px;
+  font-size: calc(15px * var(--overlay-font-scale, 1));
 }
 
 .rejoin-card section {
@@ -63,7 +63,7 @@
 }
 
 .rejoin-card section > strong {
-  font-size: 38px;
+  font-size: calc(38px * var(--overlay-font-scale, 1));
   font-weight: 900;
   letter-spacing: -0.04em;
   font-variant-numeric: tabular-nums;
@@ -73,7 +73,7 @@
   display: grid;
   gap: 9px;
   justify-items: end;
-  font-size: 14px;
+  font-size: calc(14px * var(--overlay-font-scale, 1));
   font-weight: 900;
   font-variant-numeric: tabular-nums;
 }

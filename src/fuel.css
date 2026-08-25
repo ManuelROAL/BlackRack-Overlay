@@ -16,7 +16,7 @@
   box-shadow: 0 7px 24px rgb(0 0 0 / 38%);
   cursor: move;
   font-family: "Roboto Condensed", sans-serif;
-  font-size: 10px;
+  font-size: calc(10px * var(--overlay-font-scale, 1));
   font-weight: 850;
   line-height: 1;
   text-rendering: optimizeLegibility;
@@ -287,7 +287,7 @@ body[data-overlay-fit="true"].fuel-body .fuel-shell {
 .fuel-compact-values > div {
   min-width: 0;
   overflow: hidden;
-  font-size: 9px;
+  font-size: calc(9px * var(--overlay-font-scale, 1));
   text-align: right;
   white-space: nowrap;
 }

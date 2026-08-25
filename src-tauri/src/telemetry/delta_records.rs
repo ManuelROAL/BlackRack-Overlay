@@ -129,15 +129,28 @@ fn active_sector_reference() -> TimingSectorReference {
 fn sector_state(
     reference: TimingSectorReference,
     seconds: f64,
+    official_end: f64,
+    session_best_end: f64,
+    player_best_end: f64,
     overall: Option<f64>,
     session: Option<f64>,
 ) -> &'static str {
+    let matches_official = |current: f64, best: f64| {
+        current.is_finite() && best.is_finite() && best > 0.0 && current <= best + 0.000_5
+    };
+    if matches_official(official_end, session_best_end) {
+        return "overall";
+    }
     match reference {
-        TimingSectorReference::Lmu => "neutral",
+        TimingSectorReference::Lmu => {
+            if matches_official(official_end, player_best_end) {
+                "personal"
+            } else {
+                "neutral"
+            }
+        }
         TimingSectorReference::Session => {
-            if overall.is_none_or(|best| seconds + 0.000_5 < best) {
-                "overall"
-            } else if session.is_none_or(|best| seconds + 0.000_5 < best) {
+            if session.is_none_or(|best| seconds + 0.000_5 < best) {
                 "personal"
             } else {
                 "neutral"
@@ -145,7 +158,7 @@ fn sector_state(
         }
         TimingSectorReference::Overall => {
             if overall.is_none_or(|best| seconds + 0.000_5 < best) {
-                "overall"
+                "personal"
             } else {
                 "neutral"
             }
@@ -947,6 +960,11 @@ impl DeltaEngine {
         self.timing_results_until = Some(Instant::now() + TIMING_RESULT_FREEZE);
         if let Some(sectors) = coarse_sectors {
             let reference = active_sector_reference();
+            let sector_ends = [
+                sectors[0],
+                sectors[0] + sectors[1],
+                completed.trace.lap_time,
+            ];
             let mut learning_states = ["neutral"; 3];
             let mut display_states = ["neutral"; 3];
             for index in 0..3 {
@@ -965,6 +983,9 @@ impl DeltaEngine {
                 display_states[index] = sector_state(
                     reference,
                     seconds,
+                    sector_ends[index],
+                    frame.session_best_sector_ends[index],
+                    frame.player_best_sector_ends[index],
                     self.overall_timing_sectors[index],
                     self.session_timing_sectors[index],
                 );
@@ -1093,6 +1114,9 @@ impl DeltaEngine {
                     let state = sector_state(
                         reference,
                         seconds,
+                        end_time,
+                        frame.session_best_sector_ends[index],
+                        frame.player_best_sector_ends[index],
                         self.overall_timing_sectors[index],
                         self.session_timing_sectors[index],
                     );
@@ -1126,14 +1150,6 @@ impl DeltaEngine {
                     && self.current_lap.as_ref().is_some_and(|lap| !lap.valid)
                 {
                     "invalid"
-                } else if reference == TimingSectorReference::Lmu
-                    && self.timing_sectors[index].is_some()
-                {
-                    if frame.lap_delta_seconds.is_finite() && frame.lap_delta_seconds < 0.0 {
-                        "personal"
-                    } else {
-                        "neutral"
-                    }
                 } else {
                     self.timing_sector_states[index]
                 },
@@ -1805,27 +1821,75 @@ mod tests {
         let overall = Some(30.0);
         let session = Some(31.0);
         assert_eq!(
-            sector_state(TimingSectorReference::Session, 30.5, overall, session),
+            sector_state(
+                TimingSectorReference::Session,
+                29.8,
+                29.8,
+                29.8,
+                30.2,
+                overall,
+                session,
+            ),
+            "overall"
+        );
+        assert_eq!(
+            sector_state(
+                TimingSectorReference::Session,
+                30.5,
+                30.5,
+                29.8,
+                30.2,
+                overall,
+                session,
+            ),
             "personal"
         );
         assert_eq!(
-            sector_state(TimingSectorReference::Session, 29.9, overall, session),
-            "overall"
-        );
-        assert_eq!(
-            sector_state(TimingSectorReference::Session, 31.5, overall, session),
+            sector_state(
+                TimingSectorReference::Session,
+                31.5,
+                31.5,
+                29.8,
+                30.2,
+                overall,
+                session,
+            ),
             "neutral"
         );
         assert_eq!(
-            sector_state(TimingSectorReference::Overall, 30.5, overall, session),
-            "neutral"
+            sector_state(
+                TimingSectorReference::Overall,
+                29.9,
+                30.5,
+                29.8,
+                30.2,
+                overall,
+                session,
+            ),
+            "personal"
         );
         assert_eq!(
-            sector_state(TimingSectorReference::Overall, 29.9, overall, session),
-            "overall"
+            sector_state(
+                TimingSectorReference::Lmu,
+                30.2,
+                30.2,
+                29.8,
+                30.2,
+                overall,
+                session,
+            ),
+            "personal"
         );
         assert_eq!(
-            sector_state(TimingSectorReference::Lmu, 30.5, overall, session),
+            sector_state(
+                TimingSectorReference::Lmu,
+                30.5,
+                30.5,
+                29.8,
+                30.2,
+                overall,
+                session,
+            ),
             "neutral"
         );
     }

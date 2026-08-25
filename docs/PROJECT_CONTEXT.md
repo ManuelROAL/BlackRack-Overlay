@@ -26,6 +26,7 @@ on their runtime or source code.
 - Optional localhost browser source for OBS.
 - Configurable global shortcuts and click-through game mode.
 - Background transparency selectable as one general value or per overlay.
+- Text size selectable from 75% to 150% as one general value or per overlay.
 - All overlays share one host on a single selected monitor.
 - Optional telemetry/performance analysis logging.
 - Compact tyre/damage schematic plus an independent detailed damage overlay.

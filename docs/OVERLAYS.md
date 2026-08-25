@@ -70,8 +70,10 @@ telemetry semantics and file ownership live under `docs/overlays/`; use
   section headers, explicit status badges and a visible disclosure affordance.
   On short integration views, keep the support card and shortcut footer anchored
   at the bottom of the control panel instead of leaving unused space below them.
-- General and per-overlay modes for monitor assignment and transparency remain
-  independent. General mode must preserve saved individual values.
+- General and per-overlay transparency and text-size modes remain independent.
+  General mode must preserve saved individual values. Text size ranges from 75%
+  to 150%; increases may expand the design surface without scaling non-text
+  elements, while composite layout preserves the user's visual scale.
 - Monitor selectors use the Windows-reported friendly model name and resolution;
   they do not expose an app ordinal as though it were the unrelated number shown
   by the Windows Settings Identify action. Fall back to the native display name
@@ -105,7 +107,7 @@ telemetry semantics and file ownership live under `docs/overlays/`; use
   `?lang=es` or `?lang=en` query overrides the locale for that page without
   changing the saved browser-source preference or another scene.
 - Its route catalog must match `docs/overlays/README.md`. Mirror every configurable
-  preference that an OBS page needs because browser pages do not share the Tauri
+  preference that an OBS page needs, including effective text size, because browser pages do not share the Tauri
   WebView's `localStorage`.
 - The `/` route serves the catalog-driven `browser.html` entry. Keep its links in
   sync with this route catalog; do not duplicate translated labels in Rust.

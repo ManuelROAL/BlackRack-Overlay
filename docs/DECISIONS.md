@@ -28,6 +28,9 @@ in `docs/overlays/` and should not be duplicated here.
   transparent flag alone is insufficient in release WebView2 builds.
 - General/per-overlay transparency preserves its independent saved values while a
   common value is active.
+- General/per-overlay text size preserves its independent saved values while a
+  common value is active. Increasing text may expand the reported design surface
+  so compact panels do not clip while preserving the user's visual scale.
 - All overlays share one host on a single selected monitor. Per-overlay monitor
   assignment was removed because an empty transparent host on a secondary monitor
   forced DWM alpha-composition at that monitor's refresh rate and degraded game

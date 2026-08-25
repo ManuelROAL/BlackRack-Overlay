@@ -22,15 +22,13 @@ El panel consume el ciclo base de 50 Hz y no construye clasificaciones.
 ## Comportamiento
 
 - S1, S2 y S3 usan los cruces de sector oficiales que LMU publica para el jugador.
-  El color de cada sector depende de la referencia configurada:
-  - `lmu` (por defecto): usa el delta nativo de LMU (`mDeltaBest`, delta de vuelta
-    frente a la mejor vuelta). Los sectores cruzados se marcan en verde mientras la
-    vuelta en curso mejora su mejor (`mDeltaBest < 0`); en caso contrario quedan
-    neutros. Al ser un valor de vuelta, los tres sectores comparten la tendencia.
-  - `session`: un sector verde mejora el mejor de sesión; uno morado mejora el mejor
-    absoluto persistido.
-  - `overall`: solo el morado, cuando el cruce mejora el mejor sector absoluto
-    persistido.
+  El morado siempre identifica el mejor parcial global de la sesión entre todos
+  los coches. El verde identifica una mejora personal según la referencia elegida:
+  - `lmu` (por defecto): mejores parciales personales oficiales de LMU.
+  - `session`: mejores sectores personales reconstruidos durante la sesión.
+  - `overall`: mejores sectores personales absolutos persistidos.
+  La comparación oficial usa los finales acumulados de S1/S2 y el tiempo de vuelta
+  para S3, tal como los publica el SDK de LMU.
 - Las referencias por sector (`overall`/`session`) se siguen aprendiendo en todos los
   modos aunque no se muestren, de modo que cambiar de referencia no pierde historial.
 - El historial registra hasta cinco vueltas reconstruibles. El panel no muestra

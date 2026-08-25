@@ -3,7 +3,7 @@
 }
 
 .overlay-shell.standings-shell {
-  --standing-row-font-size: 11px;
+  --standing-row-font-size: calc(11px * var(--overlay-font-scale, 1));
   --standings-grid-columns: 36px 28px 120px;
   --standings-content-width: 192px;
   --standings-row-background-width: 192px;
@@ -52,7 +52,7 @@
 
 .standing-relative {
   color: #fff;
-  font-size: 13px;
+  font-size: calc(13px * var(--overlay-font-scale, 1));
   font-weight: inherit;
   letter-spacing: .1px;
   text-shadow: 0 1px 3px rgb(0 0 0 / 75%);
@@ -90,7 +90,7 @@ body[data-overlay-fit="true"].relative-body .standings-shell {
     linear-gradient(90deg, rgb(216 255 62 / 7%), transparent 36%),
     rgb(5 8 12 / var(--overlay-background-opacity));
   box-shadow: 0 5px 16px rgb(0 0 0 / 32%);
-  font-size: 10px;
+  font-size: calc(10px * var(--overlay-font-scale, 1));
   font-weight: 950;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -196,7 +196,7 @@ body[data-overlay-fit="true"].relative-body .standings-shell {
 
 .relative-local-time {
   color: #f6f8fa;
-  font-size: 10px;
+  font-size: calc(10px * var(--overlay-font-scale, 1));
   font-weight: 950;
 }
 
@@ -507,7 +507,7 @@ body[data-overlay-fit="true"].relative-body .standings-shell {
 
 .driver-badge-fallback {
   color: #4e9fec;
-  font-size: 17px;
+  font-size: calc(17px * var(--overlay-font-scale, 1));
   line-height: 1;
 }
 
@@ -865,6 +865,6 @@ body[data-overlay-fit="true"].relative-body .standings-shell {
 .empty-state {
   margin: 45px 15px;
   color: #697481;
-  font-size: 10px;
+  font-size: calc(10px * var(--overlay-font-scale, 1));
   text-align: center;
 }

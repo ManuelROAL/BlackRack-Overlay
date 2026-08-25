@@ -40,7 +40,7 @@ body.pitstop-body {
   padding: 7px 10px 5px;
   border-bottom: 1px solid rgb(255 255 255 / 9%);
   color: #aeb8c4;
-  font-size: 12px;
+  font-size: calc(12px * var(--overlay-font-scale, 1));
   font-weight: 900;
   letter-spacing: .08em;
 }
@@ -62,19 +62,19 @@ body.pitstop-body {
 
 .pitstop-shell dl div { min-height: 15px; }
 .pitstop-shell dl div[hidden] { display: none; }
-.pitstop-shell dt { color: #bec7d1; font-size: 13px; font-weight: 600; }
-.pitstop-shell dd { margin: 0; color: #e7edf3; font-size: 14px; font-weight: 800; }
+.pitstop-shell dt { color: #bec7d1; font-size: calc(13px * var(--overlay-font-scale, 1)); font-weight: 600; }
+.pitstop-shell dd { margin: 0; color: #e7edf3; font-size: calc(14px * var(--overlay-font-scale, 1)); font-weight: 800; }
 
 .pitstop-shell footer {
   margin: 0 10px;
   padding: 4px 0 6px;
   border-top: 1px solid rgb(255 255 255 / 14%);
   color: #e7edf3;
-  font-size: 15px;
+  font-size: calc(15px * var(--overlay-font-scale, 1));
   font-weight: 900;
 }
 
-.pitstop-shell footer strong { color: #d4a928; font-size: 17px; }
+.pitstop-shell footer strong { color: #d4a928; font-size: calc(17px * var(--overlay-font-scale, 1)); }
 body[data-available="false"] .pitstop-shell dd,
 body[data-available="false"] .pitstop-shell footer strong { color: #687481; }
 .click-through .pitstop-shell { border-color: transparent; }

@@ -7,17 +7,17 @@ html, body { width: fit-content; min-width: 100%; min-height: 100%; margin: 0; o
 .timing-times, .timing-sectors { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
 .timing-times { margin-top: 5px; }
 .timing-times div, .timing-sectors div { display: grid; gap: 1px; padding: 4px; background: rgb(255 255 255 / 5%); line-height: 1; }
-.timing-times span, .timing-sectors span { color: #747f8b; font-size: 8px; font-weight: 800; letter-spacing: .09em; }
-.timing-times b { font-size: 14px; }
+.timing-times span, .timing-sectors span { color: #747f8b; font-size: calc(8px * var(--overlay-font-scale, 1)); font-weight: 800; letter-spacing: .09em; }
+.timing-times b { font-size: calc(14px * var(--overlay-font-scale, 1)); }
 .timing-sectors { margin-top: 4px; }
 .timing-sectors div { border-bottom: 2px solid transparent; }
 .timing-sectors div.active { border-bottom-color: #d8ff3e; }
-.timing-sectors b { color: #aeb6bf; font-size: 13px; }
+.timing-sectors b { color: #aeb6bf; font-size: calc(13px * var(--overlay-font-scale, 1)); }
 .timing-sectors [data-state="personal"] b { color: #61e98a; }
 .timing-sectors [data-state="overall"] b { color: #c77dff; }
 .timing-sectors [data-state="invalid"] b { color: #ffad4d; }
 .timing-history { display: grid; gap: 2px; margin: 5px 0 0; padding: 0; list-style: none; }
-.timing-history li { display: flex; justify-content: space-between; padding: 1px 5px; color: #7d8793; font-size: 10px; line-height: 1; background: rgb(255 255 255 / 3%); }
+.timing-history li { display: flex; justify-content: space-between; padding: 1px 5px; color: #7d8793; font-size: calc(10px * var(--overlay-font-scale, 1)); line-height: 1; background: rgb(255 255 255 / 3%); }
 .timing-history li[data-state="best"] b { color: #61e98a; }
 .timing-history li[data-state="invalid"] b { color: #ffad4d; }
 .timing-card[data-state="waiting"] { opacity: .72; }

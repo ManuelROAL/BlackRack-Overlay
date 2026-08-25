@@ -111,7 +111,7 @@
   border-radius: 50%;
   color: #111820;
   background: #f5f7f8;
-  font-size: 12px;
+  font-size: calc(12px * var(--overlay-font-scale, 1));
   font-weight: 900;
   line-height: 1;
   will-change: transform;
@@ -136,7 +136,7 @@
 
 .vehicle-label {
   color: #0b1015;
-  font-size: 13px;
+  font-size: calc(13px * var(--overlay-font-scale, 1));
   font-weight: 900;
   line-height: 1;
 }
@@ -173,7 +173,7 @@
   color: rgb(255 255 255 / 72%);
   background: rgb(8 12 17 / 58%);
   border-radius: 3px;
-  font-size: 10px;
+  font-size: calc(10px * var(--overlay-font-scale, 1));
   font-weight: 800;
   letter-spacing: 0.08em;
   pointer-events: none;

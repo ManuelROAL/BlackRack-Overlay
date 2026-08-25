@@ -63,7 +63,7 @@ body.conditions-body {
 
 .conditions-state {
   color: #3ec3a6;
-  font-size: 9px;
+  font-size: calc(9px * var(--overlay-font-scale, 1));
   font-weight: 900;
   letter-spacing: .08em;
   white-space: nowrap;
@@ -98,7 +98,7 @@ body.conditions-body {
 
 .conditions-cell dt {
   color: #84909d;
-  font-size: 8px;
+  font-size: calc(8px * var(--overlay-font-scale, 1));
   font-weight: 800;
   letter-spacing: .08em;
   white-space: nowrap;
@@ -107,7 +107,7 @@ body.conditions-body {
 .conditions-cell dd {
   margin: 0;
   color: #e7edf3;
-  font-size: 13px;
+  font-size: calc(13px * var(--overlay-font-scale, 1));
   font-weight: 900;
   white-space: nowrap;
 }

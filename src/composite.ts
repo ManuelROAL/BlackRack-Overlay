@@ -406,6 +406,7 @@ for (const event of [
   "timing://settings",
   "trackmap://settings",
   "overlay://background-transparency",
+  "overlay://font-size",
   "performance://logging"
 ]) {
   void listen<unknown>(event, ({ payload }) => {

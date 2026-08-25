@@ -7,8 +7,8 @@
 .flag-card {
   position: relative;
   display: grid;
-  width: 344px;
-  height: 104px;
+  width: 100%;
+  height: 100%;
   overflow: hidden;
   place-items: center;
   border: 1px solid rgb(255 255 255 / 30%);
@@ -73,7 +73,7 @@
 }
 
 .flag-content strong {
-  font-size: 36px;
+  font-size: calc(36px * var(--overlay-font-scale, 1));
   font-weight: 900;
   letter-spacing: -0.035em;
   font-variant-numeric: tabular-nums;
@@ -81,7 +81,7 @@
 
 .flag-content span {
   margin-top: 9px;
-  font-size: 18px;
+  font-size: calc(18px * var(--overlay-font-scale, 1));
   font-weight: 900;
   letter-spacing: 0.035em;
 }

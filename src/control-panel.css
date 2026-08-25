@@ -1104,7 +1104,8 @@ select {
   min-width: 0;
 }
 
-.overlay-list > .overlay-option > .overlay-transparency {
+.overlay-list > .overlay-option > .overlay-transparency,
+.overlay-list > .overlay-option > .overlay-font-size {
   display: none;
 }
 
@@ -1117,12 +1118,12 @@ select {
 .overlay-list > .overlay-option.expanded {
   grid-column: 1 / -1;
   grid-template-columns: 42px minmax(180px, 1fr) 150px auto;
-  min-height: 108px;
+  min-height: 132px;
   padding: 13px 16px;
 }
 
 .overlay-list > .overlay-option.expanded > .overlay-icon {
-  grid-row: 1 / span 2;
+  grid-row: 1 / span 3;
   width: 42px;
   height: 42px;
 }
@@ -1157,6 +1158,12 @@ select {
   color: #d8ff3e;
 }
 
+.overlay-list > .overlay-option.expanded > .overlay-font-size {
+  display: grid;
+  grid-column: 3;
+  grid-row: 2;
+}
+
 .overlay-list > .overlay-option:not(.expanded) > .overlay-details-toggle {
   display: flex;
   grid-column: 2 / 4;
@@ -1178,7 +1185,7 @@ select {
 
 .overlay-list > .overlay-option.expanded > .overlay-details-toggle {
   grid-column: 2;
-  grid-row: 2;
+  grid-row: 3;
   align-self: end;
 }
 
@@ -1188,7 +1195,7 @@ select {
 
 .overlay-list > .overlay-option.expanded > .overlay-reset-actions {
   grid-column: 3;
-  grid-row: 2;
+  grid-row: 3;
 }
 
 .overlay-list > .overlay-option:not(.expanded) .overlay-copy span {
@@ -1331,7 +1338,8 @@ select {
   background: #e2ff70;
 }
 
-.overlay-transparency {
+.overlay-transparency,
+.overlay-font-size {
   display: grid;
   grid-template-columns: 1fr 34px;
   align-items: center;
@@ -1342,11 +1350,13 @@ select {
   letter-spacing: 0.08em;
 }
 
-.overlay-transparency span {
+.overlay-transparency span,
+.overlay-font-size span {
   grid-column: 1;
 }
 
-.overlay-transparency output {
+.overlay-transparency output,
+.overlay-font-size output {
   grid-column: 2;
   grid-row: 1;
   color: #b8c2cc;
@@ -1354,7 +1364,8 @@ select {
   text-align: right;
 }
 
-.overlay-transparency input {
+.overlay-transparency input,
+.overlay-font-size input {
   grid-column: 1 / -1;
   width: 100%;
   height: 4px;
@@ -1363,7 +1374,8 @@ select {
   cursor: pointer;
 }
 
-.overlay-transparency input:disabled {
+.overlay-transparency input:disabled,
+.overlay-font-size input:disabled {
   cursor: not-allowed;
   opacity: 0.3;
 }
@@ -1630,7 +1642,7 @@ select {
 
   .overlay-list > .overlay-option.expanded {
     grid-template-columns: 42px minmax(0, 1fr) auto;
-    grid-template-rows: auto auto auto;
+    grid-template-rows: auto auto auto auto;
   }
 
   .overlay-list > .overlay-option.expanded > .overlay-copy {
@@ -1643,6 +1655,11 @@ select {
     grid-row: 2;
   }
 
+  .overlay-list > .overlay-option.expanded > .overlay-font-size {
+    grid-column: 2 / 4;
+    grid-row: 3;
+  }
+
   .overlay-list > .overlay-option.expanded > .switch {
     grid-column: 3;
     grid-row: 1;
@@ -1650,12 +1667,12 @@ select {
 
   .overlay-list > .overlay-option.expanded > .overlay-details-toggle {
     grid-column: 2;
-    grid-row: 3;
+    grid-row: 4;
   }
 
   .overlay-list > .overlay-option.expanded > .overlay-reset-actions {
     grid-column: 3;
-    grid-row: 3;
+    grid-row: 4;
   }
 
   .standings-content-settings {

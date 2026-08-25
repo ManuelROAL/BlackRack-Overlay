@@ -71,12 +71,20 @@ import {
   type TrackMapSettings
 } from "./trackmap-settings";
 import {
+  DEFAULT_OVERLAY_FONT_SIZE,
   DEFAULT_OVERLAY_TRANSPARENCY,
+  effectiveOverlayFontSize,
   effectiveOverlayTransparency,
+  OVERLAY_FONT_SIZE_KEY,
+  OVERLAY_FONT_SIZE_SCOPE_KEY,
   OVERLAY_TRANSPARENCY_KEY,
   OVERLAY_TRANSPARENCY_SCOPE_KEY,
+  readOverlayFontSize,
+  readOverlayFontSizeScope,
   readOverlayTransparency,
   readOverlayTransparencyScope,
+  type OverlayFontSizeChange,
+  type OverlayFontSizeScope,
   type OverlayId,
   type OverlayTransparencyChange,
   type OverlayTransparencyScope
@@ -133,13 +141,17 @@ interface BrowserSourceStatus {
 
 interface OverlayConfigurationExport {
   format: "blackrack-overlay-configuration";
-  schemaVersion: 7;
+  schemaVersion: 8;
   exportedAt: string;
   ui: { locale: Locale };
   overlays: {
     visibility: Record<OverlayId, boolean>;
     transparency: {
       scope: OverlayTransparencyScope;
+      values: Record<OverlayId, number>;
+    };
+    fontSize: {
+      scope: OverlayFontSizeScope;
       values: Record<OverlayId, number>;
     };
     monitor: number;
@@ -295,6 +307,8 @@ let timingSettings: TimingSettings = readTimingSettings();
 let trackMapSettings: TrackMapSettings = readTrackMapSettings();
 const overlayTransparency = readOverlayTransparency();
 let overlayTransparencyScope: OverlayTransparencyScope = readOverlayTransparencyScope();
+const overlayFontSize = readOverlayFontSize();
+let overlayFontSizeScope: OverlayFontSizeScope = readOverlayFontSizeScope();
 
 const syncBrowserSourcePreferences = (): void => {
   void invoke("set_overlay_view_settings", {
@@ -319,6 +333,7 @@ const syncBrowserSourcePreferences = (): void => {
       timing: timingSettings,
       trackMap: trackMapSettings,
       transparency: effectiveOverlayTransparency(overlayTransparency, overlayTransparencyScope),
+      fontSize: effectiveOverlayFontSize(overlayFontSize, overlayFontSizeScope),
       locale: getLocale(),
       supportedLocales: SUPPORTED_LOCALES
     }
@@ -577,6 +592,11 @@ const globalTransparencyControl = document.getElementById("global-transparency-c
 const globalTransparency = document.getElementById("global-transparency") as HTMLInputElement | null;
 const globalTransparencyOutput = document.getElementById("global-transparency-output");
 const transparencyRanges = new Map<OverlayId, HTMLInputElement>();
+const fontSizeMode = document.getElementById("font-size-mode") as HTMLSelectElement | null;
+const globalFontSizeControl = document.getElementById("global-font-size-control");
+const globalFontSize = document.getElementById("global-font-size") as HTMLInputElement | null;
+const globalFontSizeOutput = document.getElementById("global-font-size-output");
+const fontSizeRanges = new Map<OverlayId, HTMLInputElement>();
 
 const persistTransparencyScope = (): void => {
   localStorage.setItem(OVERLAY_TRANSPARENCY_SCOPE_KEY, JSON.stringify(overlayTransparencyScope));
@@ -603,6 +623,27 @@ const renderTransparencyMode = (): void => {
   }
 };
 
+const persistFontSizeScope = (): void => {
+  localStorage.setItem(OVERLAY_FONT_SIZE_SCOPE_KEY, JSON.stringify(overlayFontSizeScope));
+};
+
+const emitEffectiveFontSize = (): void => {
+  const effective = effectiveOverlayFontSize(overlayFontSize, overlayFontSizeScope);
+  for (const overlay of overlayIds) {
+    const change: OverlayFontSizeChange = { overlay, fontSize: effective[overlay] };
+    void emit("overlay://font-size", change);
+  }
+  syncBrowserSourcePreferences();
+};
+
+const renderFontSizeMode = (): void => {
+  if (fontSizeMode) fontSizeMode.value = overlayFontSizeScope.mode;
+  if (globalFontSize) globalFontSize.value = String(overlayFontSizeScope.globalFontSize);
+  if (globalFontSizeOutput) globalFontSizeOutput.textContent = `${overlayFontSizeScope.globalFontSize}%`;
+  if (globalFontSizeControl) globalFontSizeControl.hidden = overlayFontSizeScope.mode !== "global";
+  for (const range of fontSizeRanges.values()) range.disabled = overlayFontSizeScope.mode === "global";
+};
+
 const confirmReset = (message: string): Promise<boolean> => {
   const dialog = document.getElementById("reset-confirmation") as HTMLDialogElement | null;
   const messageElement = document.getElementById("reset-confirmation-message");
@@ -626,6 +667,8 @@ const resetOverlayConfiguration = async (id: OverlayId): Promise<void> => {
   )) return;
   overlayTransparency[id] = DEFAULT_OVERLAY_TRANSPARENCY[id];
   localStorage.setItem(OVERLAY_TRANSPARENCY_KEY, JSON.stringify(overlayTransparency));
+  overlayFontSize[id] = DEFAULT_OVERLAY_FONT_SIZE[id];
+  localStorage.setItem(OVERLAY_FONT_SIZE_KEY, JSON.stringify(overlayFontSize));
 
   const events: Promise<unknown>[] = [];
   if (id === "standings") {
@@ -659,6 +702,11 @@ const resetOverlayConfiguration = async (id: OverlayId): Promise<void> => {
     overlay: id,
     transparency: effective[id]
   } satisfies OverlayTransparencyChange));
+  const effectiveFontSize = effectiveOverlayFontSize(overlayFontSize, overlayFontSizeScope);
+  events.push(emit("overlay://font-size", {
+    overlay: id,
+    fontSize: effectiveFontSize[id]
+  } satisfies OverlayFontSizeChange));
   syncBrowserSourcePreferences();
   await Promise.all(events);
   window.location.reload();
@@ -723,6 +771,23 @@ for (const id of overlayIds) {
     card.insertBefore(control, switchElement);
     transparencyRanges.set(id, range);
 
+    const fontSizeControl = document.createElement("label");
+    fontSizeControl.className = "overlay-font-size";
+    const fontSizeCaption = document.createElement("span");
+    fontSizeCaption.textContent = t("overlay.fontSize");
+    const fontSizeRange = document.createElement("input");
+    fontSizeRange.type = "range";
+    fontSizeRange.min = "75";
+    fontSizeRange.max = "150";
+    fontSizeRange.step = "5";
+    fontSizeRange.value = String(overlayFontSize[id]);
+    fontSizeRange.setAttribute("aria-label", t("overlay.fontSizeAria", { overlay: overlayDisplayName(id) }));
+    const fontSizeOutput = document.createElement("output");
+    fontSizeOutput.textContent = `${overlayFontSize[id]}%`;
+    fontSizeControl.append(fontSizeCaption, fontSizeRange, fontSizeOutput);
+    card.insertBefore(fontSizeControl, switchElement);
+    fontSizeRanges.set(id, fontSizeRange);
+
     const resetActions = document.createElement("div");
     resetActions.className = "overlay-reset-actions";
     const resetConfiguration = document.createElement("button");
@@ -749,6 +814,15 @@ for (const id of overlayIds) {
       void emit("overlay://background-transparency", change);
       syncBrowserSourcePreferences();
     });
+    fontSizeRange.addEventListener("input", () => {
+      const fontSize = Math.max(75, Math.min(150, Number(fontSizeRange.value)));
+      overlayFontSize[id] = fontSize;
+      fontSizeOutput.textContent = `${fontSize}%`;
+      localStorage.setItem(OVERLAY_FONT_SIZE_KEY, JSON.stringify(overlayFontSize));
+      const change: OverlayFontSizeChange = { overlay: id, fontSize };
+      void emit("overlay://font-size", change);
+      syncBrowserSourcePreferences();
+    });
   }
 }
 
@@ -773,6 +847,28 @@ globalTransparency?.addEventListener("input", () => {
 });
 
 renderTransparencyMode();
+
+fontSizeMode?.addEventListener("change", () => {
+  overlayFontSizeScope = {
+    ...overlayFontSizeScope,
+    mode: fontSizeMode.value === "global" ? "global" : "individual"
+  };
+  persistFontSizeScope();
+  renderFontSizeMode();
+  emitEffectiveFontSize();
+});
+
+globalFontSize?.addEventListener("input", () => {
+  overlayFontSizeScope = {
+    ...overlayFontSizeScope,
+    globalFontSize: Math.max(75, Math.min(150, Number(globalFontSize.value)))
+  };
+  persistFontSizeScope();
+  renderFontSizeMode();
+  emitEffectiveFontSize();
+});
+
+renderFontSizeMode();
 
 const bindMonitorSelector = async (): Promise<void> => {
   const [displays, monitor] = await Promise.all([getOverlayDisplays(), resolveOverlayMonitor()]);
@@ -822,6 +918,9 @@ const parseOverlayConfiguration = (contents: string): OverlayConfigurationExport
   const transparency = configurationObject(overlays?.transparency);
   const transparencyScope = configurationObject(transparency?.scope);
   const transparencyValues = configurationObject(transparency?.values);
+  const fontSize = configurationObject(overlays?.fontSize);
+  const fontSizeScope = configurationObject(fontSize?.scope);
+  const fontSizeValues = configurationObject(fontSize?.values);
   const monitorSelection = configurationObject(overlays?.monitorSelection);
   const layout = configurationObject(overlays?.layout);
   const standings = configurationObject(overlays?.standings);
@@ -843,8 +942,9 @@ const parseOverlayConfiguration = (contents: string): OverlayConfigurationExport
   const percentageIsValid = (value: unknown): value is number =>
     typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 100;
   if (root?.format !== "blackrack-overlay-configuration"
-    || ![1, 2, 3, 4, 5, 6, 7].includes(Number(schemaVersion))
+    || ![1, 2, 3, 4, 5, 6, 7, 8].includes(Number(schemaVersion))
     || !overlays || !visibility || !transparency || !transparencyScope || !transparencyValues
+    || (Number(schemaVersion) >= 8 && (!fontSize || !fontSizeScope || !fontSizeValues))
     || !layout || !standings || !relative
     || (Number(schemaVersion) >= 2 && !driving)
     || (Number(schemaVersion) >= 3 && !delta) || (Number(schemaVersion) >= 4 && !timing)
@@ -853,6 +953,10 @@ const parseOverlayConfiguration = (contents: string): OverlayConfigurationExport
   }
   if (transparencyScope.mode !== "global" && transparencyScope.mode !== "individual") {
     throw new Error(t("config.invalidTransparency"));
+  }
+  if (Number(schemaVersion) >= 8
+    && fontSizeScope?.mode !== "global" && fontSizeScope?.mode !== "individual") {
+    throw new Error(t("config.invalidFontSize"));
   }
   if (Number(schemaVersion) >= 5) {
     if (schemaMonitor === null) {
@@ -864,6 +968,11 @@ const parseOverlayConfiguration = (contents: string): OverlayConfigurationExport
     throw new Error(t("config.invalidMonitorMode"));
   }
   if (!percentageIsValid(transparencyScope.globalTransparency)) {
+    throw new Error(t("config.invalidGeneral"));
+  }
+  const fontSizeIsValid = (value: unknown): value is number =>
+    typeof value === "number" && Number.isFinite(value) && value >= 75 && value <= 150;
+  if (Number(schemaVersion) >= 8 && !fontSizeIsValid(fontSizeScope?.globalFontSize)) {
     throw new Error(t("config.invalidGeneral"));
   }
   if (Number(schemaVersion) < 3) {
@@ -944,6 +1053,7 @@ const parseOverlayConfiguration = (contents: string): OverlayConfigurationExport
   for (const id of overlayIds) {
     const placement = configurationObject(layout[id]);
     if (typeof visibility[id] !== "boolean" || !percentageIsValid(transparencyValues[id])
+      || (Number(schemaVersion) >= 8 && !fontSizeIsValid(fontSizeValues?.[id]))
       || !placement || placement.overlay !== id
       || ![placement.x, placement.y, placement.width, placement.height]
         .every((value) => typeof value === "number" && Number.isFinite(value))
@@ -957,14 +1067,24 @@ const parseOverlayConfiguration = (contents: string): OverlayConfigurationExport
     return [id, placement];
   })) as unknown as OverlayConfigurationExport["overlays"]["layout"];
   const normalized = parsed as OverlayConfigurationExport;
+  const normalizedFontSize = Number(schemaVersion) >= 8
+    ? {
+        scope: fontSizeScope as unknown as OverlayFontSizeScope,
+        values: fontSizeValues as unknown as Record<OverlayId, number>
+      }
+    : {
+        scope: { mode: "individual", globalFontSize: 100 } as OverlayFontSizeScope,
+        values: { ...DEFAULT_OVERLAY_FONT_SIZE }
+      };
   return {
     ...normalized,
-    schemaVersion: 7,
+    schemaVersion: 8,
     ui: { locale: isLocale(ui?.locale) ? ui.locale : getLocale() },
     overlays: {
       ...normalized.overlays,
       monitor,
       layout: cleanedLayout,
+      fontSize: normalizedFontSize,
       driving: driving ? driving as unknown as DrivingSettings : defaultDriving,
       delta: normalizedDelta as unknown as DeltaSettings,
       timing: normalizedTiming as unknown as TimingSettings,
@@ -990,6 +1110,8 @@ const applyImportedConfiguration = (configuration: OverlayConfigurationExport): 
     [storageKey, configuration.overlays.visibility],
     [OVERLAY_TRANSPARENCY_KEY, configuration.overlays.transparency.values],
     [OVERLAY_TRANSPARENCY_SCOPE_KEY, configuration.overlays.transparency.scope],
+    [OVERLAY_FONT_SIZE_KEY, configuration.overlays.fontSize.values],
+    [OVERLAY_FONT_SIZE_SCOPE_KEY, configuration.overlays.fontSize.scope],
     [COMPOSITE_LAYOUT_KEY, configuration.overlays.layout],
     [STANDINGS_SETTINGS_KEY, configuration.overlays.standings],
     [RELATIVE_SETTINGS_KEY, configuration.overlays.relative],
@@ -1028,7 +1150,7 @@ exportConfigurationButton?.addEventListener("click", () => {
     const monitor = await resolveOverlayMonitor();
     const configuration: OverlayConfigurationExport = {
       format: "blackrack-overlay-configuration",
-      schemaVersion: 7,
+      schemaVersion: 8,
       exportedAt: now.toISOString(),
       ui: { locale: getLocale() },
       overlays: {
@@ -1036,6 +1158,10 @@ exportConfigurationButton?.addEventListener("click", () => {
         transparency: {
           scope: { ...overlayTransparencyScope },
           values: { ...overlayTransparency }
+        },
+        fontSize: {
+          scope: { ...overlayFontSizeScope },
+          values: { ...overlayFontSize }
         },
         monitor,
         layout,

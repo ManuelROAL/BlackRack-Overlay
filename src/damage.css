@@ -39,7 +39,7 @@ body.damage-body {
   padding: 4px 7px 3px;
   border-bottom: 1px solid rgb(255 255 255 / 9%);
   color: #aeb8c4;
-  font-size: 9px;
+  font-size: calc(9px * var(--overlay-font-scale, 1));
   font-weight: 900;
   letter-spacing: .11em;
 }
@@ -57,8 +57,8 @@ body.damage-body {
   align-items: baseline;
   min-height: 14px;
 }
-.damage-shell dt { color: #bec7d1; font-size: 11px; font-weight: 600; }
-.damage-shell dd { margin: 0; color: #eef2f6; font-size: 12px; font-weight: 900; text-align: right; }
+.damage-shell dt { color: #bec7d1; font-size: calc(11px * var(--overlay-font-scale, 1)); font-weight: 600; }
+.damage-shell dd { margin: 0; color: #eef2f6; font-size: calc(12px * var(--overlay-font-scale, 1)); font-weight: 900; text-align: right; }
 .damage-shell [data-state="warning"] dd { color: #ebcf38; }
 .damage-shell [data-state="heavy"] dd { color: #f08a3c; }
 .damage-shell [data-state="critical"] dd { color: #ff5367; }

@@ -45,11 +45,13 @@ Detailed Damage (`damage.md`).
 
 ## Rear wing and alerts
 
-- Keep the rear-wing SVG neutral gray while attached.
-- Paint it critical only when shared-memory `mDetached` coincides with raw REST
-  aero wear of at least 1.5 (150%). Actual loss has been observed near 2.0.
-- Use rear-centre `mDentSeverity05` only while REST is unavailable; `mDetached`
-  alone covers every non-wheel detachable part and cannot identify the wing.
+- Keep the rear-wing SVG neutral gray. Do not infer its loss from shared-memory
+  `mDetached`, rear-centre dent severity or aggregate REST aero wear: `mDetached`
+  covers every non-wheel detachable part and aero wear can exceed 200% while the
+  rear wing remains attached. LMU's REST `detachableParts[]` is vehicle-specific
+  and does not provide stable semantic part identifiers.
+- Continue exposing aggregate REST aero wear through the wing tooltip without
+  presenting it as a detached rear wing.
 - Blink only the affected tyre shape: orange for puncture, red for detachment,
   with detachment taking priority. Numeric readings stay continuously visible.
 

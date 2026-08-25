@@ -29,14 +29,14 @@ fn suspension_damage_by_wheel_percent(
 }
 
 fn rear_wing_detached(
-    damage: Option<RestVehicleDamage>,
-    part_detached: bool,
-    rear_center_severity: u8,
+    _damage: Option<RestVehicleDamage>,
+    _part_detached: bool,
+    _rear_center_severity: u8,
 ) -> bool {
-    part_detached
-        && damage
-            .map(|value| value.aero >= 1.5)
-            .unwrap_or(rear_center_severity > 0)
+    // LMU's shared-memory flag covers every detachable body part, while REST
+    // aero wear is an aggregate that can exceed 200% with the wing attached.
+    // Neither source identifies the rear wing reliably.
+    false
 }
 
 #[repr(C)]
@@ -214,6 +214,8 @@ struct LmuSnapshot {
     current_lap_seconds: f64,
     current_sector1_seconds: f64,
     current_sector2_seconds: f64,
+    player_best_sector_ends: [f64; 3],
+    session_best_sector_ends: [f64; 3],
     best_lap_seconds: f64,
     lap_delta_seconds: f64,
     session_time_remaining: f64,
@@ -294,6 +296,8 @@ impl Default for LmuSnapshot {
             current_lap_seconds: 0.0,
             current_sector1_seconds: 0.0,
             current_sector2_seconds: 0.0,
+            player_best_sector_ends: [0.0; 3],
+            session_best_sector_ends: [0.0; 3],
             best_lap_seconds: 0.0,
             lap_delta_seconds: 0.0,
             session_time_remaining: 0.0,
@@ -3286,6 +3290,8 @@ impl TelemetrySource for LmuTelemetrySource {
             current_lap_seconds: snapshot.current_lap_seconds.max(0.0),
             current_sector1_seconds: snapshot.current_sector1_seconds.max(0.0),
             current_sector2_seconds: snapshot.current_sector2_seconds.max(0.0),
+            player_best_sector_ends: snapshot.player_best_sector_ends,
+            session_best_sector_ends: snapshot.session_best_sector_ends,
             last_lap_seconds: CarHistory::normalize_official_lap(snapshot.last_lap_seconds),
             best_lap_seconds: snapshot.best_lap_seconds.max(0.0),
             lap_delta_seconds: snapshot.lap_delta_seconds,
@@ -3457,20 +3463,14 @@ mod tests {
     }
 
     #[test]
-    fn rear_wing_loss_requires_the_detached_flag_and_out_of_range_aero_wear() {
-        let attached_false_positive = RestVehicleDamage {
-            aero: 0.294,
-            suspension: [0.0; 4],
-        };
-        let missing_rear_wing = RestVehicleDamage {
-            aero: 1.999,
+    fn rear_wing_loss_is_not_inferred_from_aggregate_damage() {
+        let severe_aero_damage = RestVehicleDamage {
+            aero: 2.016,
             suspension: [0.0; 4],
         };
 
-        assert!(!rear_wing_detached(Some(attached_false_positive), true, 0));
-        assert!(rear_wing_detached(Some(missing_rear_wing), true, 0));
-        assert!(!rear_wing_detached(Some(missing_rear_wing), false, 0));
-        assert!(rear_wing_detached(None, true, 1));
+        assert!(!rear_wing_detached(Some(severe_aero_damage), true, 2));
+        assert!(!rear_wing_detached(None, true, 2));
     }
     use std::ffi::c_char;
     use std::time::{Duration, Instant};

@@ -82,7 +82,7 @@ Phases 1–4 are implemented. `src/i18n/` owns the bundled Spanish and English
 catalogs, typed lookup/interpolation/plural helpers, cached locale formatters,
 DOM attribute translation and the persisted `blackrack-overlay.locale.v1` choice. The
 complete control panel, including generated settings, dialogs, accessibility
-labels and native file-dialog titles, uses that catalog. Configuration schema 7
+labels and native file-dialog titles, uses that catalog. Configuration schema 8
 round-trips the choice as `ui.locale` and imports schemas 1–6 using the current
 local choice. Fresh profiles default to English. Every native overlay translates
 its static HTML, dynamic status, tooltip and accessibility text; ordinary numbers

@@ -3,7 +3,7 @@
 }
 
 .overlay-shell.standings-shell {
-  --standing-row-font-size: 11px;
+  --standing-row-font-size: calc(11px * var(--overlay-font-scale, 1));
   --standings-grid-columns: 36px 28px 120px;
   --standings-content-width: 192px;
   --standings-row-background-width: 192px;
@@ -108,7 +108,7 @@ body[data-overlay-fit="true"].standings-body .standings-shell {
   background: rgb(5 8 12 / var(--overlay-background-opacity));
   box-shadow: 0 5px 16px rgb(0 0 0 / 32%);
   color: #f4f7f9;
-  font-size: 10px;
+  font-size: calc(10px * var(--overlay-font-scale, 1));
   font-weight: 900;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -133,13 +133,13 @@ body[data-overlay-fit="true"].standings-body .standings-shell {
 
 .standings-session-type {
   color: #d8ff3e;
-  font-size: 12px;
+  font-size: calc(12px * var(--overlay-font-scale, 1));
   letter-spacing: 0.035em;
 }
 
 .standings-session-split {
   color: #aeb7c1;
-  font-size: 9px;
+  font-size: calc(9px * var(--overlay-font-scale, 1));
   letter-spacing: 0.035em;
 }
 
@@ -147,7 +147,7 @@ body[data-overlay-fit="true"].standings-body .standings-shell {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 12px;
+  font-size: calc(12px * var(--overlay-font-scale, 1));
 }
 
 .standings-session-timing-icon {
@@ -157,7 +157,7 @@ body[data-overlay-fit="true"].standings-body .standings-shell {
 }
 
 .standings-session-lap {
-  font-size: 12px;
+  font-size: calc(12px * var(--overlay-font-scale, 1));
 }
 
 .standings-session-lap::before {
@@ -184,7 +184,7 @@ body[data-overlay-fit="true"].standings-body .standings-shell {
 .standings-header-track-limits,
 .standings-header-local-time {
   color: #d8dde2;
-  font-size: 10px;
+  font-size: calc(10px * var(--overlay-font-scale, 1));
   font-weight: 900;
 }
 
@@ -219,7 +219,7 @@ body[data-overlay-fit="true"].standings-body .standings-shell {
   border: 0;
   background: transparent;
   color: #aab3bd;
-  font-size: 7.5px;
+  font-size: calc(7.5px * var(--overlay-font-scale, 1));
   font-weight: 900;
   letter-spacing: 0.05em;
 }
@@ -258,14 +258,14 @@ body[data-overlay-fit="true"].standings-body .standings-shell {
 
 .class-heading-inline strong {
   color: #071014;
-  font-size: 14px;
+  font-size: calc(14px * var(--overlay-font-scale, 1));
   font-weight: 900;
   letter-spacing: 0.04em;
 }
 
 .class-heading-inline span {
   color: rgb(7 16 20 / 78%);
-  font-size: 9px;
+  font-size: calc(9px * var(--overlay-font-scale, 1));
   font-weight: 800;
   letter-spacing: 0.08em;
 }
@@ -293,7 +293,7 @@ body[data-overlay-fit="true"].standings-body .standings-shell {
   border-radius: 4px;
   background: rgb(7 16 20 / 18%);
   color: #071014;
-  font-size: 9px;
+  font-size: calc(9px * var(--overlay-font-scale, 1));
   letter-spacing: 0.025em;
   white-space: nowrap;
 }
@@ -594,7 +594,7 @@ body[data-overlay-fit="true"].standings-body .standings-shell {
 
 .driver-badge-fallback {
   color: #4e9fec;
-  font-size: 17px;
+  font-size: calc(17px * var(--overlay-font-scale, 1));
   line-height: 1;
 }
 
@@ -920,6 +920,6 @@ body[data-overlay-fit="true"].standings-body .standings-shell {
 .empty-state {
   margin: 45px 15px;
   color: #697481;
-  font-size: 10px;
+  font-size: calc(10px * var(--overlay-font-scale, 1));
   text-align: center;
 }

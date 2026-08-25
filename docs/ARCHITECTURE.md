@@ -99,7 +99,7 @@ Tauri events       analysis JSONL      browser-source SSE
   retaining the original browser-console output and bounding duplicate reports.
 - `src/overlay-fit.ts`: scales the complete design when a window is resized.
 - `src/overlay-interaction.ts`: drag/click-through behavior.
-- `src/overlay-appearance.ts`: transparency persistence and application.
+- `src/overlay-appearance.ts`: transparency and text-size persistence and application.
 - `src/overlay-performance.ts`: optional five-second frontend render metrics.
 
 Every overlay has a separate CSS file. `src/styles.css` contains only genuinely
@@ -148,10 +148,11 @@ blocking HTTP calls into `next_frame()`.
   overlay monitor index persists as `overlay-monitor.json` under the application
   config directory.
 - Browser source and shortcuts: JSON under the application config directory.
-- Overlay choices, columns and transparency: WebView `localStorage`. Transparency
-  stores individual values separately from its general/individual scope.
+- Overlay choices, columns, transparency and text size: WebView `localStorage`.
+  Transparency and text size store individual values separately from their
+  general/individual scopes.
 - The selected UI locale: WebView `localStorage` under
-  `blackrack-overlay.locale.v1`; configuration schema 7 also exports it as
+  `blackrack-overlay.locale.v1`; configuration schema 8 also exports it as
   `ui.locale`.
 - Learned consumption profiles: application data `consumption-profiles/`.
 - Current and previous startup/frontend failure logs, plus optional JSONL analysis

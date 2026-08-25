@@ -89,7 +89,7 @@ footer {
   align-items: center;
   gap: 8px;
   color: #9aa4b2;
-  font-size: 11px;
+  font-size: calc(11px * var(--overlay-font-scale, 1));
   font-weight: 800;
   letter-spacing: 0.22em;
 }
@@ -99,7 +99,7 @@ footer {
   padding: 5px 6px 4px;
   border-radius: 4px;
   background: #d8ff3e;
-  font-size: 10px;
+  font-size: calc(10px * var(--overlay-font-scale, 1));
   letter-spacing: 0.05em;
 }
 
@@ -109,7 +109,7 @@ footer {
   gap: 7px;
   margin-left: auto;
   color: #7f8997;
-  font-size: 10px;
+  font-size: calc(10px * var(--overlay-font-scale, 1));
   font-weight: 700;
   letter-spacing: 0.12em;
 }
@@ -150,7 +150,7 @@ footer {
   border-radius: 5px;
   color: #aeb7c2;
   background: rgb(255 255 255 / 4%);
-  font-size: 9px;
+  font-size: calc(9px * var(--overlay-font-scale, 1));
   font-weight: 700;
   letter-spacing: 0.08em;
 }
@@ -162,7 +162,7 @@ footer {
   padding: 0 15px;
   border-top: 1px solid rgb(255 255 255 / 7%);
   color: #59636f;
-  font-size: 8px;
+  font-size: calc(8px * var(--overlay-font-scale, 1));
   font-weight: 700;
   letter-spacing: 0.1em;
 }
