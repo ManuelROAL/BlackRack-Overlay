@@ -257,10 +257,12 @@ body[data-overlay-fit="true"].standings-body .standings-shell {
 }
 
 .class-heading-inline strong {
+  flex: 0 0 calc(50px * var(--overlay-font-width-expansion, 1));
   color: #071014;
   font-size: calc(14px * var(--overlay-font-scale, 1));
   font-weight: 900;
   letter-spacing: 0.04em;
+  line-height: 1;
 }
 
 .class-heading-inline span {
@@ -268,6 +270,7 @@ body[data-overlay-fit="true"].standings-body .standings-shell {
   font-size: calc(9px * var(--overlay-font-scale, 1));
   font-weight: 800;
   letter-spacing: 0.08em;
+  line-height: 1;
 }
 
 .class-heading-inline .class-car-count[data-retired="true"] {
@@ -278,11 +281,15 @@ body[data-overlay-fit="true"].standings-body .standings-shell {
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  font-size: calc(11px * var(--overlay-font-scale, 1));
 }
 
 .class-car-icon {
+  display: block;
   width: 12px;
   height: 12px;
+  flex: 0 0 auto;
+  filter: brightness(0);
   object-fit: contain;
 }
 

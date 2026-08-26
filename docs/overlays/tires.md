@@ -67,6 +67,7 @@ Detailed Damage (`damage.md`).
   chassis centered on both axes of the adaptive panel instead of anchoring it to
   fixed top or left offsets.
 - Suspension damage is color-only on its SVG. Keep compound in the wheel tooltip.
+  Keep each suspension glyph subordinate to its tyre and brake graphic.
   Do not restore corner cards, suspension percentages, compound icons or repeated
   corner/value abbreviations.
 - Cache nodes and skip unchanged text, attributes, datasets and CSS variables in

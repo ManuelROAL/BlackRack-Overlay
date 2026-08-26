@@ -137,6 +137,10 @@ duplicate selection or timing semantics.
 
 - Group each class in an outlined card with an angled filled category tab and
   separated row surfaces. Keep category accents/gradients aligned with Relative.
+- In each category tab, render the helmet in black, enlarge the car count and
+  center the class name, helmet and count from their real flex boxes. Reserve a
+  compact shared class-name track so every helmet/count pair aligns in one
+  vertical column without leaving excess space after the longest class name.
 - Player tint is translucent lime with lime edge markers over the category layer;
   pit state remains distinguishable. Stop the player background before signals.
 - Compact NRG, damage, track-limit and pit cells are neutral until a meaningful

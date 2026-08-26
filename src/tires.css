@@ -160,7 +160,9 @@ body.tires-body {
 
 .suspension-arm {
   z-index: 1;
-  width: 10px;
+  top: 9px;
+  width: 7px;
+  height: 24px;
   background: var(--suspension-color);
 }
 .wheel-fl .suspension-arm,
