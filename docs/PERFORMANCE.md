@@ -18,6 +18,10 @@ file writes add overhead. Use separate internal-diagnostic passes.
 
 Analysis JSONL records five-second Rust/frontend samples:
 
+Its control is collapsed under advanced diagnostics in the normal interface. It
+remains accessible for requested support and development captures, separate from
+the visible per-lap strategy CSV.
+
 - `performance_sample`: cycle frequency, source/logging/visibility/emission/work
   timing, overruns and per-overlay emission counts.
 - `standings_source`: due/requested/skipped cycles and average cycles with/without

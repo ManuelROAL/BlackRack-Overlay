@@ -49,7 +49,9 @@ telemetry semantics and file ownership live under `docs/overlays/`; use
   updating host geometry.
 - Automatically hide overlays when LMU is not foreground, the player is inactive,
   the game is not realtime, the player is in the garage or the session has ended.
-  Do not capture Escape for visibility.
+  Keep overlays visible while the control panel has focus so configuration changes
+  can be previewed; the remaining automatic visibility conditions still apply. Do
+  not capture Escape for visibility.
 
 ## Control panel and persistence
 
@@ -73,7 +75,11 @@ telemetry semantics and file ownership live under `docs/overlays/`; use
 - General and per-overlay transparency and text-size modes remain independent.
   General mode must preserve saved individual values. Text size ranges from 75%
   to 150%; increases may expand the design surface without scaling non-text
-  elements, while composite layout preserves the user's visual scale.
+  elements, while composite layout preserves the user's visual scale. Expand
+  column spacing and row height independently: columns retain a minimum margin,
+  while vertical growth remains limited to the space required by larger lines.
+  Each overlay declares only the horizontal and vertical text space it needs;
+  non-tabular overlays must retain their compact base surface.
 - Monitor selectors use the Windows-reported friendly model name and resolution;
   they do not expose an app ordinal as though it were the unrelated number shown
   by the Windows Settings Identify action. Fall back to the native display name

@@ -1,6 +1,7 @@
 #[cfg(all(target_os = "windows", lmu_sdk))]
 mod consumption_profile;
 mod delta_records;
+mod dr_estimate_log;
 #[cfg(all(target_os = "windows", lmu_sdk))]
 mod driver_ranks;
 #[cfg(all(target_os = "windows", lmu_sdk))]
@@ -15,6 +16,7 @@ mod mock;
 #[cfg(all(target_os = "windows", lmu_sdk))]
 mod racecontrol;
 mod standings_models;
+mod strategy_log;
 mod track_geometry;
 mod track_map_model;
 
@@ -33,7 +35,14 @@ use fuel_strategy::FuelStrategies;
 pub(crate) use delta_records::{
     set_settings as set_delta_settings, set_timing_settings, DeltaSettings, TimingSettings,
 };
+pub(crate) use dr_estimate_log::{
+    set_enabled as set_driver_rank_estimate_logging, status as driver_rank_estimate_logging_status,
+    DriverRankEstimateLoggingStatus,
+};
 pub(crate) use standings_models::{set_overlay_view_settings, OverlayViewSettings};
+pub(crate) use strategy_log::{
+    set_enabled as set_strategy_logging, status as strategy_logging_status, StrategyLoggingStatus,
+};
 pub(crate) use track_geometry::{track_map_geometry, TrackMapGeometry};
 pub(crate) use track_map_model::{migrate_legacy_track_map_learning, LearnedTrackPoint};
 
@@ -665,13 +674,13 @@ trait TelemetrySource: Send + 'static {
 }
 
 impl TelemetryFrame {
-    pub(crate) fn should_hide_overlays(&self, overlay_has_focus: bool) -> bool {
+    pub(crate) fn should_hide_overlays(&self, app_has_focus: bool) -> bool {
         !self.connected
             || !self.player_active
             || self.player_in_garage
             || !self.game_in_realtime
             || self.game_phase == 9
-            || (!self.game_in_foreground && !overlay_has_focus)
+            || (!self.game_in_foreground && !app_has_focus)
     }
 
     fn waiting_for_lmu(connected: bool) -> Self {
@@ -814,6 +823,8 @@ impl TelemetryFrame {
 pub fn spawn_source(app: AppHandle) {
     let app_data_directory = crate::app_paths::data_directory();
     configure_logging(&app_data_directory);
+    dr_estimate_log::configure(&app_data_directory);
+    strategy_log::configure(&app_data_directory);
     track_map_model::configure_track_map_storage(&app_data_directory);
     thread::spawn(move || {
         const SOURCE_INTERVAL: Duration = Duration::from_millis(20);
@@ -830,6 +841,8 @@ pub fn spawn_source(app: AppHandle) {
         const CONTROL_INTERVAL: Duration = Duration::from_millis(500);
 
         let mut analysis_logger = AnalysisLogger::new();
+        let mut driver_rank_estimate_logger = dr_estimate_log::DriverRankEstimateLogger::new();
+        let mut strategy_logger = strategy_log::StrategyLogger::new();
         let mut performance = PerformanceMonitor::new();
         let mut track_map_model = track_map_model::TrackMapModelState::default();
         let mut delta_engine = delta_records::DeltaEngine::new(app_data_directory.clone());
@@ -866,7 +879,8 @@ pub fn spawn_source(app: AppHandle) {
             let relative_visible = super::overlay_is_active(&app, "relative");
             let track_map_visible = super::overlay_is_active(&app, "trackmap");
             let browser_clients = crate::browser_source::has_clients();
-            let standings_requested = (standings_due && (standings_visible || browser_clients))
+            let standings_requested = (standings_due
+                && (standings_visible || browser_clients || dr_estimate_log::enabled()))
                 || (relative_due && relative_visible);
             let source_started = Instant::now();
             let track_map_requested = track_map_due && (track_map_visible || browser_clients);
@@ -990,6 +1004,8 @@ pub fn spawn_source(app: AppHandle) {
 
             let logging_started = Instant::now();
             analysis_logger.record(&frame);
+            driver_rank_estimate_logger.record();
+            strategy_logger.record(&frame);
             let logging_elapsed = logging_started.elapsed();
             let work_elapsed = cycle_started.elapsed();
 

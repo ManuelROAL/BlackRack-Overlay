@@ -60,7 +60,7 @@ body.pitstop-body {
   justify-content: space-between;
 }
 
-.pitstop-shell dl div { min-height: 15px; }
+.pitstop-shell dl div { min-height: calc(15px * var(--overlay-font-height-expansion, 1)); }
 .pitstop-shell dl div[hidden] { display: none; }
 .pitstop-shell dt { color: #bec7d1; font-size: calc(13px * var(--overlay-font-scale, 1)); font-weight: 600; }
 .pitstop-shell dd { margin: 0; color: #e7edf3; font-size: calc(14px * var(--overlay-font-scale, 1)); font-weight: 800; }
@@ -72,6 +72,7 @@ body.pitstop-body {
   color: #e7edf3;
   font-size: calc(15px * var(--overlay-font-scale, 1));
   font-weight: 900;
+  line-height: 1.1;
 }
 
 .pitstop-shell footer strong { color: #d4a928; font-size: calc(17px * var(--overlay-font-scale, 1)); }

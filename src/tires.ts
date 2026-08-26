@@ -159,7 +159,10 @@ const previewFrame = {
   player_rear_wing_detached: false
 } as TelemetryFrame;
 
-fitOverlay({ width: 174, height: 130 });
+fitOverlay(
+  { width: 174, height: 130 },
+  { widthTextRatio: 0.5, heightTextRatio: 0.6 }
+);
 bindOverlayTransparency("tires");
 bindOverlayInteractionMode();
 if (!isTauriRuntime()) render(previewFrame);

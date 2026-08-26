@@ -29,30 +29,35 @@ const relativeBaseWidth = (): number => Math.max(
 const updateOverlayFit = fitOverlay({
   width: relativeBaseWidth(),
   height: relativeBaseHeight()
-});
+}, { widthTextRatio: 1, heightTextRatio: 0.15 });
 bindOverlayTransparency("relative");
 const renderPerformance = createOverlayPerformanceTracker("relative");
 
 let lastFrame: TelemetryFrame | null = null;
 
 const activeColumns = () => visibleRelativeColumns(relativeSettings);
+const expandedLength = (pixels: number): string =>
+  `calc(${pixels}px * var(--overlay-font-width-expansion, 1))`;
 
 const applyColumnLayout = (): void => {
   const columns = activeColumns();
   const shell = document.querySelector<HTMLElement>(".standings-shell");
   shell?.style.setProperty(
     "--standings-grid-columns",
-    columns.map(({ width }) => `${width}px`).join(" ")
+    columns.map(({ width }) => expandedLength(width)).join(" ")
   );
   const totalWidth = columns.reduce((total, { width }) => total + width, 0);
   const signalsVisible = columns.some(({ id }) => id === "signals");
   const signalsLast = columns.at(-1)?.id === "signals";
   const signalsWidth = columns.find(({ id }) => id === "signals")?.width ?? 0;
   const dataWidth = signalsLast ? totalWidth - signalsWidth : totalWidth;
-  shell?.style.setProperty("--standings-content-width", `${dataWidth + 8}px`);
+  shell?.style.setProperty(
+    "--standings-content-width",
+    `calc(${expandedLength(dataWidth)} + 8px)`
+  );
   shell?.style.setProperty(
     "--standings-row-background-width",
-    `${dataWidth + (signalsVisible && signalsLast ? 4 : 8)}px`
+    `calc(${expandedLength(dataWidth)} + ${signalsVisible && signalsLast ? 4 : 8}px)`
   );
 };
 
@@ -310,15 +315,6 @@ const signals = (entry: StandingEntry): HTMLElement => {
   if (entry.in_garage) container.append(node("span", "race-flag garage-flag", "GAR"));
   else if (entry.in_pits) container.append(node("span", "race-flag pit-flag", "PIT"));
   else if (entry.is_out_lap) container.append(node("span", "race-flag out-lap-flag", "OUT"));
-  if (entry.damage_percent > 0) {
-    const damage = node(
-      "span",
-      `race-flag damage-flag${entry.damage_percent >= 50 ? " damage-flag--heavy" : ""}`,
-      entry.damage_percent >= 50 ? "DMG!" : "DMG"
-    );
-    damage.title = t("relative.damage", { value: Math.round(entry.damage_percent) });
-    container.append(damage);
-  }
   if (entry.causing_yellow) container.append(node("span", "race-flag yellow-flag", "Y"));
   const penalties = livePenalties.get(entry.vehicle_id);
   if ((penalties?.DT ?? 0) > 0) container.append(node("span", "race-flag penalty-flag", "DT"));
@@ -369,7 +365,7 @@ const cellSignature = (entry: StandingEntry, column: RelativeColumnId, trackLimi
     case "tire": return entry.tire_compounds.join("/");
     case "signals": {
       const penalties = livePenalties.get(entry.vehicle_id);
-      return `${entry.finish_status}|${entry.in_garage}|${entry.in_pits}|${entry.is_out_lap}|${Math.round(entry.damage_percent)}|${entry.causing_yellow}|${entry.penalty_count}|${entry.flag}|${penalties?.DT ?? 0}|${penalties?.SG ?? 0}`;
+      return `${entry.finish_status}|${entry.in_garage}|${entry.in_pits}|${entry.is_out_lap}|${entry.causing_yellow}|${entry.penalty_count}|${entry.flag}|${penalties?.DT ?? 0}|${penalties?.SG ?? 0}`;
     }
   }
 };

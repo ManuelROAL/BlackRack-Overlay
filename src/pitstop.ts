@@ -18,7 +18,10 @@ const values = Object.fromEntries(
 const resourceLabel = document.querySelector<HTMLElement>("[data-pitstop-resource]")!;
 const penaltyRow = document.querySelector<HTMLElement>("[data-pitstop-penalty]")!;
 const renderPerformance = createOverlayPerformanceTracker("pitstop");
-const setOverlaySize = fitOverlay({ width: 210, height: 150 });
+const setOverlaySize = fitOverlay(
+  { width: 210, height: 150 },
+  { heightTextRatio: 0.65 }
+);
 
 const formatSeconds = (seconds: number, available = true): string =>
   available && Number.isFinite(seconds) ? `+${Math.max(0, seconds).toFixed(1)}s` : "--.-s";

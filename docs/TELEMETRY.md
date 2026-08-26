@@ -126,6 +126,12 @@ persisted.
 
 - Optional JSONL analysis may record derived diagnostic fields and performance
   samples, never authentication material.
+- The independent DR-estimate JSONL records only the player's derived estimate
+  sample once per second during a race. Enabling it requests the 10 Hz standings
+  model even when Standings is hidden; it never records telemetry frames,
+  performance samples or complete third-party responses. All sessions in one
+  application run append to `dr-estimate.jsonl`; toggling the logger continues
+  that file, and the next application launch truncates it.
 - Keep bounded/non-blocking delivery for browser clients and skip serialization
   when no client exists.
 - Add focused Rust tests for shared telemetry semantics, especially session reset,

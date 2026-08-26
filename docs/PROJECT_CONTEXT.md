@@ -29,6 +29,7 @@ on their runtime or source code.
 - Text size selectable from 75% to 150% as one general value or per overlay.
 - All overlays share one host on a single selected monitor.
 - Optional telemetry/performance analysis logging.
+- Optional per-lap strategy CSV with consumption, tyre wear and track conditions.
 - Compact tyre/damage schematic plus an independent detailed damage overlay.
 - Compact pit-stop estimate with LMU's official total and service breakdown.
 - Circuit map with live multiclass vehicle positions and a learned per-track path.

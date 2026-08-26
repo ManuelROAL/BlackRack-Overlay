@@ -1759,7 +1759,7 @@ impl LmuTelemetrySource {
         if log_gap_sample {
             self.last_gap_log_at = Some(now);
         }
-        let log_driver_rank_sample = super::analysis_logging_generation().is_some()
+        let log_driver_rank_sample = super::dr_estimate_log::enabled()
             && self
                 .last_driver_rank_log_at
                 .is_none_or(|previous| now.duration_since(previous) >= Duration::from_secs(1));
@@ -2036,7 +2036,7 @@ impl LmuTelemetrySource {
         if log_driver_rank_sample {
             let split = self.session_split.value();
             if let Some(sample) = driver_rank_diagnostic {
-                super::queue_analysis_event(serde_json::json!({
+                super::dr_estimate_log::queue(serde_json::json!({
                     "event": "driver_rank_estimate_sample",
                     "event_id": split.event_id,
                     "session_type": snapshot.session_type,

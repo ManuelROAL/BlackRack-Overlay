@@ -85,6 +85,12 @@ duplicate selection or timing semantics.
   or `XX` nationality and missing badges without replacing valid `/players` data.
 - The DR estimate is same-class and event-parameter aware. Convert it back from
   the three-times internal rating scale before serializing visible progress.
+- Its dedicated diagnostic switch writes one player estimate sample per second to
+  `dr-estimate-logs/dr-estimate.jsonl`. That JSONL contains only the estimate
+  inputs, coverage, calculation and event settings; it remains separate from
+  general analysis telemetry and keeps the 10 Hz standings model active while
+  enabled. It accumulates all sessions and enable/disable cycles in one app run,
+  then resets on the next app launch.
 - During the live race, DR head-to-head results follow the responsive class order
   from shared memory. After the checkered flag, prefer LMU REST `position` only
   when `serverScored` is true and every car in that class has a positive scored
@@ -137,8 +143,13 @@ duplicate selection or timing semantics.
   warning or active state applies. The pit request uses green; an active pit
   timer uses the same amber/orange semantic family as PIT and OUT.
 - Cache row/header nodes and replace only changed cells/signatures.
-- Grow the design from its 450 px height minimum for configured rows. Scale the
-  complete table without clipping.
+- Derive the design height from the currently visible header, class sections and
+  rows, retaining only the shared 72 px empty-state minimum. Scale the complete
+  table without clipping so the edit border follows the rendered content.
+- Expand configured column tracks together with the text-size design surface so
+  enlarged labels and values cannot overlap neighboring columns.
+- Keep GAP, INT, lap-time, NRG, damage and pit tracks at their compact measured
+  minimums; retain a small internal gutter and let text scaling grow those tracks.
 - The entry-specific transparent `.overlay-shell` override must have greater
   specificity than the shared rule because production CSS extraction reverses the
   apparent development cascade.

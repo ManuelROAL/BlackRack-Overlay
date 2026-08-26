@@ -31,8 +31,8 @@
 .standing-team { padding-inline: 2px 0; }
 .driver-ranks { padding-inline: 0 8px; }
 .standing-gap,
-.standing-interval { padding-inline: 6px; }
-.lap-time { padding-inline: 7px; }
+.standing-interval { padding-inline: 4px; }
+.lap-time { padding-inline: 4px; }
 .standing-energy { padding-inline: 7px 5px; }
 .standing-damage { padding-inline: 5px; }
 .standing-track-limits { padding-inline: 3px; }
@@ -323,7 +323,7 @@ body[data-overlay-fit="true"].standings-body .standings-shell {
 }
 
 .class-table-header > .column-label:nth-of-type(n + 3) {
-  padding-inline: 7px;
+  padding-inline: 4px;
 }
 
 .standing-row {

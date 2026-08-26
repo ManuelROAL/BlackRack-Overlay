@@ -12,11 +12,16 @@ const MAX_NODES = 5;
 const COLUMN_WIDTH = 64;
 const GAP = 4;
 const PADDING = 8;
+const BODY_CHROME = 14;
 const MIN_WIDTH = 120;
 const HEIGHT = 112;
-const BASE_WIDTH = PADDING * 2 + MAX_NODES * COLUMN_WIDTH + (MAX_NODES - 1) * GAP;
+const BASE_WIDTH = BODY_CHROME + PADDING * 2
+  + MAX_NODES * COLUMN_WIDTH + (MAX_NODES - 1) * GAP;
 
-const setOverlaySize = fitOverlay({ width: BASE_WIDTH, height: HEIGHT });
+const setOverlaySize = fitOverlay(
+  { width: BASE_WIDTH, height: HEIGHT },
+  { heightTextRatio: 0.5 }
+);
 bindOverlayTransparency("forecast");
 const renderPerformance = createOverlayPerformanceTracker("forecast");
 
@@ -112,7 +117,8 @@ const render = (frame: TelemetryFrame): void => {
   // Keep the forecast surface stable while the first REST snapshot is pending.
   const count = available ? 1 + futureNodes.length : 0;
   const width = available
-    ? Math.max(MIN_WIDTH, PADDING * 2 + count * COLUMN_WIDTH + (count - 1) * GAP)
+    ? Math.max(MIN_WIDTH, BODY_CHROME + PADDING * 2
+      + count * COLUMN_WIDTH + (count - 1) * GAP)
     : BASE_WIDTH;
   if (width !== lastWidth) {
     lastWidth = width;

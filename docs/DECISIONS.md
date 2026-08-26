@@ -53,6 +53,9 @@ in `docs/overlays/` and should not be duplicated here.
   asynchronously at semantic boundaries.
 - Telemetry cadence follows information needs rather than host grouping. Heavy
   work does not enter the 50 Hz loop without comparable measurement.
+- User-facing strategy capture is a separate opt-in per-lap CSV. It keeps invalid,
+  non-green and pit laps marked, skips partial laps and never exposes internal
+  performance diagnostics as strategy data.
 - Composite hosts retain grouped native batches and same-origin `postMessage`
   field projection; measured direct cross-realm object events were slower.
 - TinyPedal is a behavioral/performance reference only and GPL source is not

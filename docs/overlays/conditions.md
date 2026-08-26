@@ -35,6 +35,10 @@
   direction arrow), humidity, rain, grip and wetness.
 - Cells share the restrained visual language and a thin divider between them;
   the state is color-coded by surface condition.
+- Keep equal compact tracks except for Wind, which receives the minimum extra
+  width needed for the arrow and speed when text size increases.
+- Use a 350 × 70 px base surface with narrow status and grid gutters; text-size
+  expansion remains responsible for adding only the space needed by larger text.
 - Keep the shared 2 px translucent lime accent along the shell's left edge.
 
 ## Verification focus

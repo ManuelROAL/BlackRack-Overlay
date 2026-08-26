@@ -64,8 +64,8 @@ body.forecast-body {
   display: grid;
   grid-template-rows: auto 1fr auto auto;
   place-items: center;
-  flex: 0 0 64px;
-  width: 64px;
+  flex: 0 0 calc(64px * var(--overlay-font-width-expansion, 1));
+  width: calc(64px * var(--overlay-font-width-expansion, 1));
   min-height: 0;
   padding: 2px 0;
   border-radius: 5px;

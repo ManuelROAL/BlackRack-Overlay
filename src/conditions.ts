@@ -10,7 +10,10 @@ import { weatherIconUrl } from "./weather-icons";
 
 type ConditionValue = "air" | "track" | "wind" | "humidity" | "rain" | "grip" | "wetness";
 
-const setOverlaySize = fitOverlay({ width: 500, height: 96 });
+const setOverlaySize = fitOverlay(
+  { width: 350, height: 70 },
+  { widthTextRatio: 0.7, heightTextRatio: 0.1 }
+);
 bindOverlayTransparency("conditions");
 const renderPerformance = createOverlayPerformanceTracker("conditions");
 

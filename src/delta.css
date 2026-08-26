@@ -89,7 +89,7 @@
   font-size: calc(11.25px * var(--overlay-font-scale, 1));
   font-weight: 800;
   letter-spacing: -0.035em;
-  line-height: 11px;
+  line-height: calc(11px * var(--overlay-font-scale, 1));
   text-align: center;
   text-shadow: 0 1px 5px rgb(0 0 0 / 95%);
 }

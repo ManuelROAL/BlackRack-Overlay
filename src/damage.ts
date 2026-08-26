@@ -55,7 +55,10 @@ const previewFrame = {
   player_tire_detached: [false, false, false, false]
 } as TelemetryFrame;
 
-fitOverlay({ width: 94, height: 94 });
+fitOverlay(
+  { width: 94, height: 94 },
+  { widthTextRatio: 1, heightTextRatio: 0.8 }
+);
 bindOverlayTransparency("damage");
 bindOverlayInteractionMode();
 if (!isTauriRuntime()) render(previewFrame);

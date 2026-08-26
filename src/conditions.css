@@ -46,8 +46,8 @@ body.conditions-body {
   align-items: center;
   justify-content: center;
   gap: 3px;
-  flex: 0 0 52px;
-  padding: 0 6px;
+  flex: 0 0 calc(44px * var(--overlay-font-width-expansion, 1));
+  padding: 0 3px;
   border-right: 1px solid rgb(255 255 255 / 9%);
 }
 
@@ -75,11 +75,11 @@ body.conditions-body {
 
 .conditions-grid {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(2, minmax(38px, 1fr)) minmax(52px, 1.25fr) repeat(4, minmax(38px, 1fr));
   flex: 1 1 auto;
   margin: 0;
-  padding: 4px 8px;
-  gap: 2px;
+  padding: 1px 2px;
+  gap: 0;
   min-width: 0;
 }
 

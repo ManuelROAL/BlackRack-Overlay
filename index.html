@@ -514,11 +514,30 @@
         </div>
       </details>
       
-      <section class="logging-section" data-view-section="integrations" aria-label="Registro de telemetría" data-i18n-aria-label="logging.aria">
-        <header class="integration-section-heading">
+      <details class="logging-section diagnostic-details" data-view-section="integrations" aria-label="Análisis de estrategia" data-i18n-aria-label="strategyLog.aria">
+        <summary class="integration-section-heading">
+          <span data-i18n="strategyLog.heading">ESTRATEGIA</span>
+          <strong data-i18n="strategyLog.sub">Datos por vuelta para analizar stints</strong>
+        </summary>
+        <article id="strategy-logging-card" class="overlay-option logging-option">
+          <div class="overlay-icon logging-icon">CSV</div>
+          <div class="overlay-copy">
+            <strong data-i18n="strategyLog.name">Registro estratégico</strong>
+            <span id="strategy-logging-description" data-i18n="strategyLog.offSub">Guarda consumo, neumáticos y condiciones en un CSV por sesión.</span>
+            <small id="strategy-logging-path" data-i18n="browser.disabled">DESACTIVADO</small>
+          </div>
+          <label class="switch">
+            <input id="strategy-logging" type="checkbox" aria-label="Activar registro estratégico" data-i18n-aria-label="strategyLog.toggleAria" />
+            <span></span>
+          </label>
+        </article>
+      </details>
+
+      <details class="logging-section diagnostic-details" data-view-section="integrations" aria-label="Registro de telemetría" data-i18n-aria-label="logging.aria">
+        <summary class="integration-section-heading">
           <span data-i18n="logging.heading">DIAGNÓSTICO</span>
           <strong data-i18n="logging.sub">Análisis y registro local</strong>
-        </header>
+        </summary>
         <article id="logging-card" class="overlay-option logging-option">
           <div class="overlay-icon logging-icon">REC</div>
           <div class="overlay-copy">
@@ -531,7 +550,19 @@
             <span></span>
           </label>
         </article>
-      </section>
+        <article id="dr-estimate-logging-card" class="overlay-option logging-option">
+          <div class="overlay-icon logging-icon">DR</div>
+          <div class="overlay-copy">
+            <strong data-i18n="drEstimateLog.name">Estimación de DR</strong>
+            <span id="dr-estimate-logging-description" data-i18n="drEstimateLog.offSub">Guarda exclusivamente las muestras usadas para estimar el cambio de DR.</span>
+            <small id="dr-estimate-logging-path" data-i18n="browser.disabled">DESACTIVADO</small>
+          </div>
+          <label class="switch">
+            <input id="dr-estimate-logging" type="checkbox" aria-label="Activar registro de estimación de DR" data-i18n-aria-label="drEstimateLog.toggleAria" />
+            <span></span>
+          </label>
+        </article>
+      </details>
 
       <section class="support-section" aria-label="Apoyar el proyecto" data-i18n-aria-label="support.aria">
         <div class="support-copy">

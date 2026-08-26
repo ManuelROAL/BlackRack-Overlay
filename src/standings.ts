@@ -26,35 +26,44 @@ import { formatDriverName } from "./driver-name-format";
 import { formatClock as formatRealClock, formatNumber, t, type TranslationKey } from "./i18n";
 
 let settings = readStandingsSettings();
+const STANDINGS_EMPTY_HEIGHT = 72;
 const standingsBaseWidth = (): number => Math.max(
   760,
   visibleStandingsColumns(settings).reduce((total, { width }) => total + width, 0) + 8
 );
-const updateOverlayFit = fitOverlay({ width: standingsBaseWidth(), height: 450 });
-let fittedOverlayHeight = 450;
+const updateOverlayFit = fitOverlay(
+  { width: standingsBaseWidth(), height: STANDINGS_EMPTY_HEIGHT },
+  { widthTextRatio: 1, heightTextRatio: 0.15 }
+);
+let fittedOverlayHeight = STANDINGS_EMPTY_HEIGHT;
 bindOverlayTransparency("standings");
 const renderPerformance = createOverlayPerformanceTracker("standings");
 
 let lastFrame: TelemetryFrame | null = null;
 
 const activeColumns = () => visibleStandingsColumns(settings);
+const expandedLength = (pixels: number): string =>
+  `calc(${pixels}px * var(--overlay-font-width-expansion, 1))`;
 
 const applyColumnLayout = (): void => {
   const columns = activeColumns();
   const shell = document.querySelector<HTMLElement>(".standings-shell");
   shell?.style.setProperty(
     "--standings-grid-columns",
-    columns.map(({ width }) => `${width}px`).join(" ")
+    columns.map(({ width }) => expandedLength(width)).join(" ")
   );
   const totalWidth = columns.reduce((total, { width }) => total + width, 0);
   const signalsVisible = columns.some(({ id }) => id === "signals");
   const signalsLast = columns.at(-1)?.id === "signals";
   const signalsWidth = columns.find(({ id }) => id === "signals")?.width ?? 0;
   const dataWidth = signalsLast ? totalWidth - signalsWidth : totalWidth;
-  shell?.style.setProperty("--standings-content-width", `${dataWidth + 8}px`);
+  shell?.style.setProperty(
+    "--standings-content-width",
+    `calc(${expandedLength(dataWidth)} + 8px)`
+  );
   shell?.style.setProperty(
     "--standings-row-background-width",
-    `${dataWidth + (signalsVisible && signalsLast ? 4 : 8)}px`
+    `calc(${expandedLength(dataWidth)} + ${signalsVisible && signalsLast ? 4 : 8}px)`
   );
 };
 
@@ -771,7 +780,7 @@ const render = (frame: TelemetryFrame): void => {
     + rowCount * 23
     + (groupIndex < visibleRowCounts.length - 1 ? 6 : 0)
   ), 20 + (settings.showHeader ? 25 : 0));
-  const nextOverlayHeight = Math.max(450, contentHeight);
+  const nextOverlayHeight = Math.max(STANDINGS_EMPTY_HEIGHT, contentHeight);
   if (nextOverlayHeight !== fittedOverlayHeight) {
     fittedOverlayHeight = nextOverlayHeight;
     updateOverlayFit({ width: standingsBaseWidth(), height: nextOverlayHeight });

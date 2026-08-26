@@ -14,7 +14,10 @@ bindOverlayInteractionMode();
 const performance = createOverlayPerformanceTracker("timing");
 let settings = readTimingSettings();
 const designHeight = (rows: number): number => rows === 0 ? 100 : rows === 5 ? 170 : 142;
-const resizeOverlay = fitOverlay({ width: 318, height: designHeight(settings.historyLaps) });
+const resizeOverlay = fitOverlay(
+  { width: 318, height: designHeight(settings.historyLaps) },
+  { heightTextRatio: 0.3 }
+);
 const card = document.getElementById("timing-card");
 const current = document.getElementById("timing-current");
 const last = document.getElementById("timing-last");

@@ -8,7 +8,10 @@ import type { ResourceStrategy, TelemetryFrame } from "./telemetry-types";
 import { listenTelemetry } from "./runtime-events";
 import { formatNumber, t } from "./i18n";
 
-fitOverlay({ width: 252, height: 188 });
+fitOverlay(
+  { width: 252, height: 188 },
+  { widthTextRatio: 0.5, heightTextRatio: 0.3 }
+);
 bindOverlayTransparency("fuel");
 const renderPerformance = createOverlayPerformanceTracker("fuel");
 

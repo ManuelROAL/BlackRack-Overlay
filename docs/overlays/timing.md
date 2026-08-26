@@ -47,7 +47,8 @@ El panel consume el ciclo base de 50 Hz y no construye clasificaciones.
   presenta con el estado inválido.
 - El panel usa una superficie compacta de 318 px de ancho, separaciones reducidas
   y el acento lima vertical izquierdo compartido con los demás overlays compactos.
-  Al cambiar entre 0, 3 o 5 vueltas, conserva la escala visual elegida.
+  Al cambiar entre 0, 3 o 5 vueltas, conserva la escala visual elegida. Un texto
+  mayor añade solo la altura de línea necesaria, sin ensanchar el panel.
 
 ## Invariantes
 

@@ -130,7 +130,7 @@
 }
 
 .pedal-column b {
-  height: 14px;
+  height: max(14px, calc(10px * var(--overlay-font-scale, 1)));
   color: #f1f4f6;
   font-size: calc(10px * var(--overlay-font-scale, 1));
   line-height: 1;

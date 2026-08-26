@@ -75,17 +75,17 @@ export const STANDINGS_COLUMNS: StandingsColumnDefinition[] = [
   { id: "badge", labelKey: "column.badge", header: "", width: 27, configurable: true, identity: true },
   { id: "driver", labelKey: "column.driver", header: "", width: 130, configurable: false, identity: true },
   { id: "ranks", labelKey: "column.ranks", header: "", width: 95, configurable: true, identity: true },
-  { id: "gap", labelKey: "column.gap", header: "GAP", width: 50, configurable: true, identity: false },
-  { id: "interval", labelKey: "column.interval", header: "INT", width: 50, configurable: true, identity: false },
-  { id: "best", labelKey: "column.best", header: "BEST", width: 68, configurable: true, identity: false },
-  { id: "last", labelKey: "column.last", header: "LAST", width: 68, configurable: true, identity: false },
-  { id: "average", labelKey: "column.average", header: "AVG 5", width: 68, configurable: true, identity: false },
-  { id: "energy", labelKey: "column.energy", header: "NRG", width: 90, configurable: true, identity: false },
-  { id: "damage", labelKey: "column.damage", header: "DMG", width: 42, configurable: true, identity: false },
+  { id: "gap", labelKey: "column.gap", header: "GAP", width: 46, configurable: true, identity: false },
+  { id: "interval", labelKey: "column.interval", header: "INT", width: 46, configurable: true, identity: false },
+  { id: "best", labelKey: "column.best", header: "BEST", width: 60, configurable: true, identity: false },
+  { id: "last", labelKey: "column.last", header: "LAST", width: 60, configurable: true, identity: false },
+  { id: "average", labelKey: "column.average", header: "AVG 5", width: 60, configurable: true, identity: false },
+  { id: "energy", labelKey: "column.energy", header: "NRG", width: 62, configurable: true, identity: false },
+  { id: "damage", labelKey: "column.damage", header: "DMG", width: 34, configurable: true, identity: false },
   { id: "trackLimits", labelKey: "column.trackLimits", header: "TL", width: 30, configurable: true, identity: false },
-  { id: "pitStops", labelKey: "column.pitStops", header: "PIT", width: 42, configurable: true, identity: false },
+  { id: "pitStops", labelKey: "column.pitStops", header: "PIT", width: 34, configurable: true, identity: false },
   { id: "tire", labelKey: "column.tire", header: "NEU", width: 30, configurable: true, identity: false },
-  { id: "signals", labelKey: "column.signals", header: "", width: 115, configurable: true, identity: false }
+  { id: "signals", labelKey: "column.signals", header: "", width: 96, configurable: true, identity: false }
 ];
 
 export const defaultStandingsSettings = (): StandingsSettings => {

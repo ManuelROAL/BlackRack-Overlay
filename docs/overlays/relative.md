@@ -36,9 +36,10 @@ the prepared vehicle IDs and formats them; it must not repeat domain selection.
 - Derive the lap relationship in Rust from completed laps plus continuous lap
   phase. Do not flash a false lapping event while only one car has crossed the
   timing line.
-- Show compact, cumulative `OUT`, `PIT` and `DMG`/`DMG!` chips in Signals. Damage
-  becomes heavy at the shared 50% threshold. The driver name also receives a
-  restrained state treatment so the row remains useful when Signals is hidden.
+- Show compact, cumulative `OUT` and `PIT` chips in Signals. Damage is represented
+  only by a restrained underline on the driver name, becoming red at the shared
+  50% heavy-damage threshold. Keep the underline inside the name bounds so text
+  scaling cannot clip it.
 - For a red car physically behind, describe the state as about to lap the player;
   for a red car ahead, describe it as having lapped the player. Blue consistently
   means the player has lapped that car.
@@ -74,6 +75,8 @@ the prepared vehicle IDs and formats them; it must not repeat domain selection.
   reset configurations default to number, driver, physical time and Signals;
   advanced identity, timing and strategy columns remain configurable. Reserve
   23 px for every selected row so the last card is not clipped.
+- Expand configured column tracks together with the text-size design surface so
+  enlarged labels and values cannot overlap neighboring columns.
 - Cache DOM rows and update at 20 Hz. Cycles coinciding with Standings reuse the
   same constructed roster.
 - Give the transparent `.overlay-shell` override greater specificity than the

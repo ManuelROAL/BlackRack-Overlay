@@ -13,7 +13,7 @@ lmu_bridge.cpp -> LmuSnapshot -> LmuTelemetrySource <- async/cached enrichments
                                       |
                   +-------------------+-------------------+
                   |                   |                   |
-Tauri events       analysis JSONL      browser-source SSE
+Tauri events    analysis JSONL/strategy CSV    browser-source SSE
                    |                                       |
         one composite host on the selected monitor      OBS browser
                    |
@@ -31,7 +31,8 @@ Tauri events       analysis JSONL      browser-source SSE
   - Forces both the native window and WebView backgrounds to transparent RGBA;
     this is explicit because release WebView2 builds must not fall back to an
     opaque black surface.
-  - Tracks desired visibility separately from automatic hiding.
+  - Tracks desired visibility separately from automatic hiding. Losing LMU focus
+    to the control panel keeps the host visible so configuration can be previewed.
   - Applies click-through interaction mode.
   - Registers configurable global shortcuts without crashing if a binding is
     already occupied.
@@ -46,6 +47,9 @@ Tauri events       analysis JSONL      browser-source SSE
     Standings/Relative share one batch when due, Track Map uses its stripped batch,
     and the remaining active overlays share the base-frame batch.
   - Owns JSONL analysis logging and top-level performance samples.
+- `src-tauri/src/telemetry/strategy_log.rs`
+  - Aggregates the existing player frame in memory and writes one user-facing CSV
+    row per complete lap for external stint and strategy analysis.
 - `src-tauri/src/telemetry/delta_records.rs`
   - Reconstructs distance-sampled laps and selects best/optimal references for
     overall, session, stint and last-lap comparisons.

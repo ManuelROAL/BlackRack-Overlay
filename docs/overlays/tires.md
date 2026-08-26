@@ -62,6 +62,10 @@ Detailed Damage (`damage.md`).
 - Each label-free corner stack has fixed order: tyre temperature, remaining tread,
   flat spot and disc temperature. Give all four readings the same large, heavy
   numeric treatment.
+- At larger text sizes, widen and separate the four corner stacks while keeping
+  the chassis and tyre graphics at their established visual size. Keep the
+  chassis centered on both axes of the adaptive panel instead of anchoring it to
+  fixed top or left offsets.
 - Suspension damage is color-only on its SVG. Keep compound in the wheel tooltip.
   Do not restore corner cards, suspension percentages, compound icons or repeated
   corner/value abbreviations.

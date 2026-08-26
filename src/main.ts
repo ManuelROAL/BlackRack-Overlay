@@ -114,6 +114,9 @@ interface TelemetryLoggingStatus {
   active_file: string | null;
 }
 
+type StrategyLoggingStatus = TelemetryLoggingStatus;
+type DriverRankEstimateLoggingStatus = TelemetryLoggingStatus;
+
 interface LmuDependencyStatus {
   telemetry_plugin_available: boolean;
   telemetry_plugin_path: string | null;
@@ -1560,6 +1563,96 @@ for (const [key, label] of [
 }
 
 const loggingInput = document.getElementById("telemetry-logging") as HTMLInputElement | null;
+
+const driverRankEstimateLoggingInput = document.getElementById("dr-estimate-logging") as HTMLInputElement | null;
+
+const strategyLoggingInput = document.getElementById("strategy-logging") as HTMLInputElement | null;
+
+const renderStrategyLoggingStatus = (status: StrategyLoggingStatus): void => {
+  if (strategyLoggingInput) strategyLoggingInput.checked = status.enabled;
+  document.getElementById("strategy-logging-card")?.classList.toggle("active", status.enabled);
+  const description = document.getElementById("strategy-logging-description");
+  if (description) description.textContent = t(status.enabled ? "strategyLog.onSub" : "strategyLog.offSub");
+  const path = document.getElementById("strategy-logging-path");
+  if (path) {
+    const location = status.active_file ?? status.directory;
+    const name = location.split(/[\\/]/).filter(Boolean).at(-1) ?? location;
+    path.textContent = t(status.enabled ? "strategyLog.active" : "strategyLog.disabled", { name });
+    path.title = location;
+  }
+};
+
+const refreshStrategyLoggingStatus = async (): Promise<void> => {
+  renderStrategyLoggingStatus(await invoke<StrategyLoggingStatus>("get_strategy_logging"));
+};
+
+strategyLoggingInput?.addEventListener("change", () => {
+  const enabled = strategyLoggingInput.checked;
+  strategyLoggingInput.disabled = true;
+  void invoke<StrategyLoggingStatus>("set_strategy_logging", { enabled })
+    .then(renderStrategyLoggingStatus)
+    .then(() => new Promise((resolve) => window.setTimeout(resolve, 200)))
+    .then(refreshStrategyLoggingStatus)
+    .catch((error) => {
+      console.error("No se pudo cambiar el registro estratégico:", error);
+      strategyLoggingInput.checked = !enabled;
+    })
+    .finally(() => {
+      strategyLoggingInput.disabled = false;
+    });
+});
+
+void refreshStrategyLoggingStatus().catch((error) =>
+  console.error("No se pudo leer el estado del registro estratégico:", error)
+);
+
+window.setInterval(() => {
+  void refreshStrategyLoggingStatus().catch(() => undefined);
+}, 5_000);
+
+const renderDriverRankEstimateLoggingStatus = (status: DriverRankEstimateLoggingStatus): void => {
+  if (driverRankEstimateLoggingInput) driverRankEstimateLoggingInput.checked = status.enabled;
+  document.getElementById("dr-estimate-logging-card")?.classList.toggle("active", status.enabled);
+  const description = document.getElementById("dr-estimate-logging-description");
+  if (description) description.textContent = t(status.enabled ? "drEstimateLog.onSub" : "drEstimateLog.offSub");
+  const path = document.getElementById("dr-estimate-logging-path");
+  if (path) {
+    const location = status.active_file ?? status.directory;
+    const name = location.split(/[\\/]/).filter(Boolean).at(-1) ?? location;
+    path.textContent = t(status.enabled ? "drEstimateLog.active" : "drEstimateLog.disabled", { name });
+    path.title = location;
+  }
+};
+
+const refreshDriverRankEstimateLoggingStatus = async (): Promise<void> => {
+  renderDriverRankEstimateLoggingStatus(
+    await invoke<DriverRankEstimateLoggingStatus>("get_driver_rank_estimate_logging")
+  );
+};
+
+driverRankEstimateLoggingInput?.addEventListener("change", () => {
+  const enabled = driverRankEstimateLoggingInput.checked;
+  driverRankEstimateLoggingInput.disabled = true;
+  void invoke<DriverRankEstimateLoggingStatus>("set_driver_rank_estimate_logging", { enabled })
+    .then(renderDriverRankEstimateLoggingStatus)
+    .then(() => new Promise((resolve) => window.setTimeout(resolve, 200)))
+    .then(refreshDriverRankEstimateLoggingStatus)
+    .catch((error) => {
+      console.error("No se pudo cambiar el registro de estimación de DR:", error);
+      driverRankEstimateLoggingInput.checked = !enabled;
+    })
+    .finally(() => {
+      driverRankEstimateLoggingInput.disabled = false;
+    });
+});
+
+void refreshDriverRankEstimateLoggingStatus().catch((error) =>
+  console.error("No se pudo leer el estado del registro de estimación de DR:", error)
+);
+
+window.setInterval(() => {
+  void refreshDriverRankEstimateLoggingStatus().catch(() => undefined);
+}, 5_000);
 
 const renderLoggingStatus = (status: TelemetryLoggingStatus): void => {
   void emit("performance://logging", { enabled: status.enabled });

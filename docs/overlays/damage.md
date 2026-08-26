@@ -33,6 +33,8 @@ brake and tyre SVGs belong only to Damage + Tyres (`tires.md`).
   for `100%`, align it right and leave no padding after the values.
 - Keep the Spanish bodywork label abbreviated as `Carroc.` so both bundled
   locales fit the fixed 41 px label column at minimum size.
+- Preserve the compact label/value proportions while letting both tracks and row
+  heights consume the surface added for larger text.
 - Preserve the intentionally compact square width and lower host minimum.
 
 ## Verification focus

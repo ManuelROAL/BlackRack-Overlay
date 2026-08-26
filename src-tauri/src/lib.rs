@@ -806,11 +806,14 @@ fn is_overlay_host_target(target: &EventTarget) -> bool {
 }
 
 pub(crate) fn update_overlay_auto_visibility(app: &AppHandle, frame: &telemetry::TelemetryFrame) {
-    let mut overlay_has_focus = false;
+    let mut app_has_focus = app
+        .get_webview_window("control")
+        .and_then(|window| window.is_focused().ok())
+        .unwrap_or(false);
     for_each_overlay_host(app, |window| {
-        overlay_has_focus |= window.is_focused().unwrap_or(false);
+        app_has_focus |= window.is_focused().unwrap_or(false);
     });
-    let should_hide = frame.should_hide_overlays(overlay_has_focus);
+    let should_hide = frame.should_hide_overlays(app_has_focus);
     let control = app.state::<OverlayControl>();
     if control.auto_hidden.swap(should_hide, Ordering::Relaxed) == should_hide {
         return;
@@ -973,6 +976,28 @@ fn get_telemetry_logging() -> telemetry::TelemetryLoggingStatus {
 #[tauri::command]
 fn set_telemetry_logging(enabled: bool) -> Result<telemetry::TelemetryLoggingStatus, String> {
     telemetry::set_telemetry_logging(enabled)
+}
+
+#[tauri::command]
+fn get_driver_rank_estimate_logging() -> telemetry::DriverRankEstimateLoggingStatus {
+    telemetry::driver_rank_estimate_logging_status()
+}
+
+#[tauri::command]
+fn set_driver_rank_estimate_logging(
+    enabled: bool,
+) -> Result<telemetry::DriverRankEstimateLoggingStatus, String> {
+    telemetry::set_driver_rank_estimate_logging(enabled)
+}
+
+#[tauri::command]
+fn get_strategy_logging() -> telemetry::StrategyLoggingStatus {
+    telemetry::strategy_logging_status()
+}
+
+#[tauri::command]
+fn set_strategy_logging(enabled: bool) -> Result<telemetry::StrategyLoggingStatus, String> {
+    telemetry::set_strategy_logging(enabled)
 }
 
 #[tauri::command]
@@ -1401,6 +1426,10 @@ pub fn run() {
             toggle_interaction_mode_command,
             get_telemetry_logging,
             set_telemetry_logging,
+            get_driver_rank_estimate_logging,
+            set_driver_rank_estimate_logging,
+            get_strategy_logging,
+            set_strategy_logging,
             record_frontend_error,
             record_frontend_performance,
             get_track_map_geometry,

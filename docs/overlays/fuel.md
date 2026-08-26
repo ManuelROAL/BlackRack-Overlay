@@ -71,8 +71,12 @@ math belongs in Rust. `fuel.ts` only formats serialized plans.
   scale.
 - Let the scenario table define the panel width: its label column and three
   numeric columns fill the complete usable surface without empty side gutters.
-- Use fixed content-sized tracks and a tight 2 px horizontal gap between plan
-  and scenario columns; do not distribute them across surplus panel width.
+- When text size expands the design surface, distribute the added width and
+  only the required row height through the summary, plan and scenario tracks; do
+  not scale the complete height proportionally or leave added width unused.
+- Preserve the established track proportions and a tight 2 px horizontal gap
+  between plan and scenario columns; distribute only text-size expansion across
+  those tracks.
 - Center each scenario value horizontally under its numeric column heading while
   keeping the scenario names left-aligned.
 - Color the average scenario cyan as the prominent baseline, qualifying as an
