@@ -384,18 +384,18 @@
         <article class="overlay-option" data-overlay-card="timing" data-overlay-category="car">
           <div class="overlay-icon">T</div>
           <div class="overlay-copy">
-            <strong data-i18n="card.timing">Timing compacto</strong>
-            <span data-i18n="card.timingSub">Delta, tiempos, tres sectores e historial en un solo panel.</span>
+            <strong data-i18n="card.timing">Timing</strong>
+            <span data-i18n="card.timingSub">Tiempos, tres sectores e historial en un solo panel.</span>
           </div>
           <label class="switch">
-            <input type="checkbox" data-overlay="timing" aria-label="Mostrar Timing compacto" />
+            <input type="checkbox" data-overlay="timing" aria-label="Mostrar Timing" />
             <span></span>
           </label>
         </article>
 
 <section class="standings-settings-section" data-settings-for="timing">
           <header class="settings-section-heading">
-            <span data-i18n="settings.timing">CONFIGURACIÓN DE TIMING COMPACTO</span>
+            <span data-i18n="settings.timing">CONFIGURACIÓN DE TIMING</span>
             <strong data-i18n="settings.timingSub">Historial reciente</strong>
           </header>
           <div class="standings-content-settings compact-settings-controls">
@@ -412,6 +412,8 @@
               <select id="timing-sector-reference"></select>
             </label>
           </div>
+          <div class="settings-subtitle" data-i18n="settings.timingTimes">TIEMPOS VISIBLES</div>
+          <div id="timing-time-options" class="standings-columns driving-settings-grid" aria-label="Tiempos visibles" data-i18n-aria-label="settings.timingTimesAria"></div>
           <p class="settings-note" data-i18n="settings.timingNote">Verde indica mejora de sesión; morado, el mejor sector absoluto guardado.</p>
         </section>
 

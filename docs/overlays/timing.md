@@ -1,8 +1,8 @@
-# Timing compacto
+# Timing
 
 ## Propósito
 
-Timing compacto reúne en un único panel el tiempo actual, último, estimado,
+Timing reúne en un único panel el tiempo actual, último, estimado,
 mejor de clase en sesión, mejor personal de sesión y mejor personal absoluto,
 tres sectores y un historial corto. Evita dividir información
 estrechamente relacionada en varios micro-overlays.
@@ -10,8 +10,8 @@ estrechamente relacionada en varios micro-overlays.
 ## Archivos y propiedad
 
 - `timing.html`, `src/timing.ts`, `src/timing.css`: presentación.
-- `src/timing-settings.ts`: longitud visible del historial (oculto, 3 o 5 vueltas) y
-  referencia de sectores (`lmu`, `session` u `overall`).
+- `src/timing-settings.ts`: tiempos visibles, longitud del historial (oculto, 3 o
+  5 vueltas) y referencia de sectores (`lmu`, `session` u `overall`).
 - `src-tauri/src/telemetry/delta_records.rs`: reconstrucción, referencias, sectores,
   historial y el estado de color de cada sector según la referencia elegida.
 - `src/composite.ts`, `src/composite-layout.ts`: proyección y geometría compartida.
@@ -40,6 +40,9 @@ El panel consume el ciclo base de 50 Hz y no construye clasificaciones.
 - La estimación proyecta la vuelta actual sobre la mejor traza disponible, con
   prioridad stint, sesión y absoluto, y suaviza el delta vivo. No usa
   `mEstimatedLapTime`, que puede anticipar tiempos irreales.
+- Cada una de las seis filas de tiempo se puede ocultar de forma independiente.
+  Todas están visibles por defecto; el panel reduce su altura según las filas
+  activas sin ocultar los sectores ni el historial.
 - Las vueltas inválidas se conservan en el historial y se marcan como tales, pero
   nunca mejoran referencias de vuelta o sector. La validez retiene
   `mLapInvalidated` durante toda la vuelta y el tiempo oficial negativo confirma
@@ -54,7 +57,7 @@ El panel consume el ciclo base de 50 Hz y no construye clasificaciones.
   del valor oficial no inicializado `-1` de LMU se descarta; en una vuelta
   cronometrada invalidada se conserva en su lugar el tiempo real del cruce y se
   presenta con el estado inválido.
-- El panel usa una superficie compacta de 318 px de ancho, separaciones reducidas
+- El panel usa una superficie compacta de 250 px de ancho, separaciones reducidas
   y el acento lima vertical izquierdo compartido con los demás overlays compactos.
   Al cambiar entre 0, 3 o 5 vueltas, conserva la escala visual elegida. Un texto
   mayor añade solo la altura de línea necesaria, sin ensanchar el panel.
@@ -65,7 +68,7 @@ El panel consume el ciclo base de 50 Hz y no construye clasificaciones.
 - Una vuelta debe cumplir los mismos controles de reconstrucción que Delta antes
   de incorporarse al historial.
 - El historial aprendido no forma parte de importar/exportar configuración; sólo
-  se exportan las preferencias visuales de filas y la referencia de sectores.
+  se exportan los tiempos visibles, las filas de historial y la referencia de sectores.
 - Las referencias por sector se siguen aprendiendo en todos los modos de referencia.
 
 ## Verificación enfocada

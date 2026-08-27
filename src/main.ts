@@ -62,6 +62,7 @@ import {
   readTimingSettings,
   TIMING_SECTOR_REFERENCES,
   TIMING_SETTINGS_KEY,
+  TIMING_TIMES,
   type TimingSettings
 } from "./timing-settings";
 import {
@@ -986,7 +987,7 @@ const parseOverlayConfiguration = (contents: string): OverlayConfigurationExport
   if (Number(schemaVersion) < 4) {
     visibility.timing = false;
     transparencyValues.timing = 5;
-    layout.timing = { overlay: "timing", x: 610, y: 110, width: 318, height: 172 };
+    layout.timing = { overlay: "timing", x: 610, y: 110, width: 250, height: 222 };
   }
   const completeBooleanRecord = (value: unknown, keys: string[]): boolean => {
     const record = configurationObject(value);
@@ -1048,6 +1049,15 @@ const parseOverlayConfiguration = (contents: string): OverlayConfigurationExport
   if (!isTimingSectorReference(normalizedTiming.sectorReference)) {
     throw new Error(t("config.invalidTiming"));
   }
+  const timingTimeIds = TIMING_TIMES.map(({ id }) => id);
+  if (normalizedTiming.times !== undefined
+    && !completeBooleanRecord(normalizedTiming.times, timingTimeIds)) {
+    throw new Error(t("config.invalidTiming"));
+  }
+  const normalizedTimingWithTimes = {
+    ...normalizedTiming,
+    times: normalizedTiming.times ?? defaultTimingSettings().times
+  };
   const normalizedTrackMap = trackMap ?? defaultTrackMapSettings();
   if (typeof normalizedTrackMap.showPitPrediction !== "boolean") {
     throw new Error(t("config.invalidMap"));
@@ -1090,7 +1100,7 @@ const parseOverlayConfiguration = (contents: string): OverlayConfigurationExport
       fontSize: normalizedFontSize,
       driving: driving ? driving as unknown as DrivingSettings : defaultDriving,
       delta: normalizedDelta as unknown as DeltaSettings,
-      timing: normalizedTiming as unknown as TimingSettings,
+      timing: normalizedTimingWithTimes as unknown as TimingSettings,
       trackMap: normalizedTrackMap as unknown as TrackMapSettings
     }
   };
@@ -1414,6 +1424,17 @@ for (const option of STANDINGS_HEADER_OPTIONS) {
       header: { ...standingsSettings.header, [option.id]: checked }
     };
     persistStandingsSettings();
+  });
+}
+
+const timingTimeOptions = document.getElementById("timing-time-options");
+for (const option of TIMING_TIMES) {
+  appendToggle(timingTimeOptions, t(option.labelKey), timingSettings.times[option.id], (checked) => {
+    timingSettings = {
+      ...timingSettings,
+      times: { ...timingSettings.times, [option.id]: checked }
+    };
+    persistTimingSettings();
   });
 }
 

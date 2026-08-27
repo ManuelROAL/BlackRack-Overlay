@@ -17,7 +17,7 @@ on their runtime or source code.
   one transparent WebView on the selected monitor.
 - iRacing-style delta bar with overall, session, stint and last-lap references,
   backed by persistent lap/stint records.
-- Compact timing panel with current/last/best lap times, three-sector feedback
+- Timing panel with selectable lap-time rows, three-sector feedback
   and recent laps.
 - Configurable multiclass standings.
 - Endurance fuel/virtual-energy calculator.
@@ -79,7 +79,7 @@ The hot telemetry source runs at 50 Hz. Full standings construction has been
 removed from every source cycle: it is requested at 10 Hz for Standings or a local
 browser-source client, and at 20 Hz while the more time-sensitive Relative window
 is visible.
-Delta, Timing compacto, Trailing + Pedal, tyres, fuel and active flags consume
+Delta, Timing, Trailing + Pedal, tyres, fuel and active flags consume
 the 50 Hz raw snapshot. Delta also calculates and renders from that 50 Hz snapshot. Rejoin,
 Relative and detailed damage run at 20 Hz, while standings
 history/identity state is maintained at 10 Hz.

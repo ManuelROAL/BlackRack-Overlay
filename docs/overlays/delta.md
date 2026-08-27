@@ -85,7 +85,7 @@ lap in its scope.
   actionable feedback.
 - At the timing line the Delta overlay resets immediately to zero and begins
   showing the new lap once the car has moved beyond the first sample. It never
-  freezes the completed lap's final delta. Timing compacto retains its separate
+  freezes the completed lap's final delta. Timing retains its separate
   result freeze.
 
 A completed trace is accepted only with at least ten samples, an official lap

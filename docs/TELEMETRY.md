@@ -22,7 +22,7 @@ Network and REST work runs outside `next_frame()`.
 The source snapshot runs at 50 Hz. Rust schedules each consumer according to its
 documented cadence in `docs/overlays/README.md`:
 
-- Base overlays, including Delta and Timing compacto, share one serialized frame
+- Base overlays, including Delta and Timing, share one serialized frame
   per cycle. Distance interpolation, reference selection and the player's
   official scoring-sector transitions are calculated in Rust before delivery.
 - Standings and Relative share an enriched roster batch when due; coincident
@@ -58,7 +58,7 @@ restore per-overlay native listeners or direct cross-realm object events.
   cadence updates, advance that distance with telemetry speed and the telemetry
   lap clock, then reconcile small scoring corrections progressively. This keeps
   reconstructed 50 Hz deltas continuous without allowing integration drift.
-- Compact Timing uses LMU's official current-sector partials; it does not derive
+- Timing uses LMU's official current-sector partials; it does not derive
   sector duration from the asynchronously updated scoring-sector transition.
 - Delta's session-best mode consumes telemetry's native `mDeltaBest`; custom
   overall, optimal, stint and last-lap modes retain reconstructed traces.

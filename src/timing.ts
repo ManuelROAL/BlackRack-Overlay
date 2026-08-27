@@ -5,7 +5,7 @@ import { fitOverlay } from "./overlay-fit";
 import { bindOverlayInteractionMode } from "./overlay-interaction";
 import { createOverlayPerformanceTracker } from "./overlay-performance";
 import { isTauriRuntime, listenRuntimeEvent, listenTelemetry } from "./runtime-events";
-import { readTimingSettings, type TimingSettings } from "./timing-settings";
+import { readTimingSettings, TIMING_TIMES, type TimingSettings } from "./timing-settings";
 import type { TimingViewModel } from "./telemetry-types";
 import { t } from "./i18n";
 
@@ -13,12 +13,16 @@ bindOverlayTransparency("timing");
 bindOverlayInteractionMode();
 const performance = createOverlayPerformanceTracker("timing");
 let settings = readTimingSettings();
-const designHeight = (rows: number): number => rows === 0 ? 180 : rows === 5 ? 250 : 222;
+const designWidth = 250;
+const visibleTimeCount = (): number => TIMING_TIMES.filter(({ id }) => settings.times[id]).length;
+const designHeight = (): number => 65 + visibleTimeCount() * 19
+  + (settings.historyLaps === 0 ? 0 : settings.historyLaps === 5 ? 70 : 42);
 const resizeOverlay = fitOverlay(
-  { width: 318, height: designHeight(settings.historyLaps) },
+  { width: designWidth, height: designHeight() },
   { heightTextRatio: 0.3 }
 );
 const card = document.getElementById("timing-card");
+const times = document.getElementById("timing-times");
 const current = document.getElementById("timing-current");
 const last = document.getElementById("timing-last");
 const sessionBest = document.getElementById("timing-session-best");
@@ -27,6 +31,16 @@ const personalBest = document.getElementById("timing-personal-best");
 const estimated = document.getElementById("timing-estimated");
 const history = document.getElementById("timing-history");
 const sectorNodes = [...document.querySelectorAll<HTMLElement>("[data-sector]")];
+
+const applyTimingSettings = (): void => {
+  for (const { id } of TIMING_TIMES) {
+    const row = document.querySelector<HTMLElement>(`[data-time-id="${id}"]`);
+    if (row) row.hidden = !settings.times[id];
+  }
+  if (times) times.hidden = visibleTimeCount() === 0;
+  resizeOverlay({ width: designWidth, height: designHeight() });
+};
+applyTimingSettings();
 
 const setText = (element: Element | null, value: string): void => {
   if (element && element.textContent !== value) element.textContent = value;
@@ -77,6 +91,6 @@ void listenTelemetry((frame) => performance.measure(() => render(frame.timing_mo
 if (isTauriRuntime()) {
   void listenRuntimeEvent<TimingSettings>("timing://settings", (next) => {
     settings = next;
-    resizeOverlay({ width: 318, height: designHeight(settings.historyLaps) });
+    applyTimingSettings();
   });
 }

@@ -1,8 +1,10 @@
 export type TimingSectorReference = "lmu" | "session" | "overall";
+export type TimingTimeId = "current" | "sessionBest" | "sessionPersonalBest" | "personalBest" | "last" | "estimated";
 
 export interface TimingSettings {
   historyLaps: 0 | 3 | 5;
   sectorReference: TimingSectorReference;
+  times: Record<TimingTimeId, boolean>;
 }
 
 export const TIMING_SETTINGS_KEY = "blackrack-overlay.timing.v1";
@@ -13,13 +15,23 @@ export const TIMING_SECTOR_REFERENCES = [
   { value: "overall", labelKey: "timing.overall" }
 ] as const;
 
+export const TIMING_TIMES = [
+  { id: "current", labelKey: "timing.current" },
+  { id: "sessionBest", labelKey: "timing.sessionBest" },
+  { id: "sessionPersonalBest", labelKey: "timing.sessionPersonalBest" },
+  { id: "personalBest", labelKey: "timing.personalBest" },
+  { id: "last", labelKey: "timing.last" },
+  { id: "estimated", labelKey: "timing.estimated" }
+] as const satisfies readonly { id: TimingTimeId; labelKey: string }[];
+
 const sectorReferenceValues = new Set<TimingSectorReference>(
   TIMING_SECTOR_REFERENCES.map(({ value }) => value)
 );
 
 export const defaultTimingSettings = (): TimingSettings => ({
   historyLaps: 3,
-  sectorReference: "lmu"
+  sectorReference: "lmu",
+  times: Object.fromEntries(TIMING_TIMES.map(({ id }) => [id, true])) as Record<TimingTimeId, boolean>
 });
 
 export const isTimingSectorReference = (value: unknown): value is TimingSectorReference =>
@@ -30,11 +42,17 @@ export const normalizeTimingSettings = (value: unknown): TimingSettings => {
   if (!value || typeof value !== "object") return fallback;
   const stored = value as Partial<TimingSettings>;
   const historyLaps = Number(stored.historyLaps);
+  const times: Partial<Record<TimingTimeId, boolean>> =
+    stored.times && typeof stored.times === "object" ? stored.times : {};
   return {
     historyLaps: historyLaps === 0 || historyLaps === 5 ? historyLaps : fallback.historyLaps,
     sectorReference: isTimingSectorReference(stored.sectorReference)
       ? stored.sectorReference
-      : fallback.sectorReference
+      : fallback.sectorReference,
+    times: Object.fromEntries(TIMING_TIMES.map(({ id }) => [
+      id,
+      typeof times[id] === "boolean" ? times[id] : fallback.times[id]
+    ])) as Record<TimingTimeId, boolean>
   };
 };
 
