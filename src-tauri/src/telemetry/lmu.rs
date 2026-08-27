@@ -605,7 +605,8 @@ impl CarHistory {
                     self.last_lap_start_elapsed_seconds = Some(lap_start);
                     self.last_lap_seconds = official_last_lap;
                     self.last_lap_valid = !official_last_lap_invalid;
-                    self.current_lap_invalid = entry.in_garage == 0 && entry.lap_invalidated != 0;
+                    self.current_lap_invalid = entry.in_garage == 0
+                        && (entry.lap_invalidated != 0 || entry.lap_valid == 0);
                 }
                 Some(previous_start) if previous_start != lap_start => {
                     if previous_start > 0.0 && previous_start < lap_start {
@@ -648,7 +649,10 @@ impl CarHistory {
                         && entry.elapsed_seconds >= boundary
                         && entry.elapsed_seconds - boundary <= 2.0
                 });
-        if entry.in_garage == 0 && entry.lap_invalidated != 0 && !within_boundary_holdoff {
+        if entry.in_garage == 0
+            && (entry.lap_invalidated != 0 || entry.lap_valid == 0)
+            && !within_boundary_holdoff
+        {
             self.current_lap_invalid = true;
         }
     }
@@ -4034,6 +4038,35 @@ mod tests {
         entry.last_lap_seconds = -100.25;
         entry.lap_start_elapsed_seconds = 500.25;
         entry.elapsed_seconds = 500.8;
+        history.update(&entry, 59.0);
+
+        assert!(!history.is_last_lap_valid());
+        assert!((history.last_lap_seconds(entry.last_lap_seconds) - 100.25).abs() < 0.001);
+    }
+
+    #[test]
+    fn standings_history_latches_count_lap_flag_for_a_positive_invalid_last_lap() {
+        let mut history = CarHistory::default();
+        let mut entry = LmuStandingEntry {
+            total_laps: 4,
+            lap_valid: 1,
+            last_lap_seconds: 95.0,
+            best_lap_seconds: 95.0,
+            lap_start_elapsed_seconds: 400.0,
+            elapsed_seconds: 402.0,
+            ..LmuStandingEntry::default()
+        };
+
+        history.update(&entry, 60.0);
+        entry.lap_valid = 0;
+        entry.elapsed_seconds = 450.0;
+        history.update(&entry, 59.5);
+
+        entry.total_laps = 5;
+        entry.lap_valid = 1;
+        entry.last_lap_seconds = 100.25;
+        entry.lap_start_elapsed_seconds = 500.25;
+        entry.elapsed_seconds = 501.5;
         history.update(&entry, 59.0);
 
         assert!(!history.is_last_lap_valid());
