@@ -1021,6 +1021,11 @@ select {
   line-height: 1.4;
 }
 
+.timing-reference-note {
+  grid-column: 1 / -1;
+  padding: 0;
+}
+
 [data-settings-for="trackmap"] .standings-columns {
   grid-template-columns: 1fr;
   padding-bottom: 12px;

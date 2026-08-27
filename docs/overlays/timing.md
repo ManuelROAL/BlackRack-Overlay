@@ -43,8 +43,8 @@ El panel consume el ciclo base de 50 Hz y no construye clasificaciones.
 - Cada una de las seis filas de tiempo se puede ocultar de forma independiente.
   Todas están visibles por defecto; el panel reduce su altura según las filas
   activas sin ocultar los sectores ni el historial.
-- La nota sobre los colores de sector aparece junto a la referencia de sectores,
-  antes de las opciones de tiempos visibles.
+- La nota sobre los colores de sector aparece dentro del bloque de referencia de
+  sectores, antes del separador y de las opciones de tiempos visibles.
 - Las vueltas inválidas se conservan en el historial y se marcan como tales, pero
   nunca mejoran referencias de vuelta o sector. La validez retiene
   `mLapInvalidated` durante toda la vuelta y el tiempo oficial negativo confirma
