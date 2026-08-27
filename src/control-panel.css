@@ -641,11 +641,11 @@ select {
   display: grid;
   gap: 4px;
   padding: 13px 16px 12px;
-  background: linear-gradient(90deg, rgb(114 203 255 / 5%), transparent 55%);
+  background: linear-gradient(90deg, rgb(216 255 62 / 4%), transparent 55%);
 }
 
 .integration-section-heading span {
-  color: #72cbff;
+  color: #d8ff3e;
   font-size: 8px;
   font-weight: 900;
   letter-spacing: .14em;
