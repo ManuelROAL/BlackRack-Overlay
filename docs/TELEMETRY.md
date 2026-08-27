@@ -47,6 +47,10 @@ restore per-overlay native listeners or direct cross-realm object events.
   explicitly permits it.
 - Preserve unavailable values as unavailable rather than converting them to real
   zeroes.
+- Derive lap validity from telemetry's per-vehicle `mLapInvalidated` signal,
+  latched for the complete lap. A negative official `mLastLapTime` confirms an
+  invalid completed lap. Do not use scoring's `mCountLapFlag`: it also represents
+  laps that are uncounted or not timed and is not a track-limit validity signal.
 - At the timing line, suppress a stale near-finish scoring distance while the
   telemetry lap counter and new-lap timer have already advanced. Consumers must
   not observe that one-frame source disagreement as a backwards lap jump.

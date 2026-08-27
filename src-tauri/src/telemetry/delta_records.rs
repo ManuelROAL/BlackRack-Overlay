@@ -566,6 +566,7 @@ impl CurrentLap {
             distance: track_length,
             seconds: lap_time,
         });
+        self.valid &= frame.last_lap_valid;
         let eligible = self.valid && !self.visited_pits && !self.formation;
         let category = if self.formation {
             "formation"
@@ -1743,6 +1744,21 @@ mod tests {
         assert!(!lap.official_result_available(&boundary));
         boundary.last_lap_seconds = 100.0;
         assert!(lap.official_result_available(&boundary));
+    }
+
+    #[test]
+    fn negative_official_time_confirmation_invalidates_completed_lap() {
+        let start = active_frame();
+        let mut lap = CurrentLap::new(&start);
+        lap.points = linear_lap(100.0, 1_000.0).points;
+        let mut boundary = start;
+        boundary.last_lap_seconds = 100.0;
+        boundary.last_lap_valid = false;
+
+        let completed = lap.finish(&boundary, 1_000.0).unwrap();
+
+        assert!(!completed.eligible);
+        assert_eq!(completed.category, "invalid");
     }
 
     #[test]

@@ -61,7 +61,6 @@ struct LmuStandingEntry {
     is_player: u32,
     in_pits: u32,
     in_garage: u32,
-    lap_valid: u32,
     lap_invalidated: u32,
     flag: u32,
     pit_state: u32,
@@ -143,7 +142,6 @@ impl Default for LmuStandingEntry {
             is_player: 0,
             in_pits: 0,
             in_garage: 0,
-            lap_valid: 0,
             lap_invalidated: 0,
             flag: 0,
             pit_state: 0,
@@ -562,7 +560,7 @@ impl CarHistory {
                 self.last_total_laps = Some(entry.total_laps);
                 self.energy_at_lap_start = (current_energy > 0.0).then_some(current_energy);
                 self.lap_visited_pits = in_pits;
-                self.lap_valid = entry.lap_valid != 0;
+                self.lap_valid = !self.current_lap_invalid;
             }
             Some(previous_laps) if entry.total_laps != previous_laps => {
                 let completed_one_lap = entry.total_laps == previous_laps + 1;
@@ -577,11 +575,11 @@ impl CarHistory {
                 self.energy_at_lap_start = (current_energy > 0.0).then_some(current_energy);
                 self.energy_added_this_lap = 0.0;
                 self.lap_visited_pits = in_pits;
-                self.lap_valid = entry.lap_valid != 0;
+                self.lap_valid = !self.current_lap_invalid;
             }
             Some(_) => {
                 self.lap_visited_pits |= in_pits;
-                self.lap_valid &= entry.lap_valid != 0;
+                self.lap_valid &= !self.current_lap_invalid;
             }
         }
         self.energy_previous_sample = (current_energy > 0.0).then_some(current_energy);
@@ -605,8 +603,7 @@ impl CarHistory {
                     self.last_lap_start_elapsed_seconds = Some(lap_start);
                     self.last_lap_seconds = official_last_lap;
                     self.last_lap_valid = !official_last_lap_invalid;
-                    self.current_lap_invalid = entry.in_garage == 0
-                        && (entry.lap_invalidated != 0 || entry.lap_valid == 0);
+                    self.current_lap_invalid = entry.in_garage == 0 && entry.lap_invalidated != 0;
                 }
                 Some(previous_start) if previous_start != lap_start => {
                     if previous_start > 0.0 && previous_start < lap_start {
@@ -649,10 +646,7 @@ impl CarHistory {
                         && entry.elapsed_seconds >= boundary
                         && entry.elapsed_seconds - boundary <= 2.0
                 });
-        if entry.in_garage == 0
-            && (entry.lap_invalidated != 0 || entry.lap_valid == 0)
-            && !within_boundary_holdoff
-        {
+        if entry.in_garage == 0 && entry.lap_invalidated != 0 && !within_boundary_holdoff {
             self.current_lap_invalid = true;
         }
     }
@@ -2856,6 +2850,7 @@ impl TelemetrySource for LmuTelemetrySource {
         let completed_is_clean = lap_changed
             && self.last_lap >= 0
             && self.lap_was_valid
+            && !CarHistory::official_lap_is_invalid(snapshot.last_lap_seconds)
             && !self.lap_visited_pits
             && !self.lap_was_formation
             && self.lap_was_green;
@@ -2874,6 +2869,10 @@ impl TelemetrySource for LmuTelemetrySource {
         } else {
             0.0
         };
+        let player_validity_is_synchronized = snapshot.current_lap_seconds >= 2.0
+            || raw_lap_progress * snapshot.track_length >= 300.0;
+        let current_player_lap_valid =
+            !player_validity_is_synchronized || snapshot.player_lap_valid != 0;
         let synchronized_progress =
             synchronized_lap_progress(raw_lap_progress, snapshot.current_lap_seconds, lap_changed);
         let lap_distance = self.player_lap_distance.update(
@@ -2913,7 +2912,7 @@ impl TelemetrySource for LmuTelemetrySource {
             &track_name,
             snapshot.lap_number,
             lap_progress,
-            snapshot.player_lap_valid != 0 && snapshot.game_phase == 5,
+            current_player_lap_valid && snapshot.game_phase == 5,
             in_pits,
             formation,
             fuel_used_current_lap,
@@ -2925,12 +2924,12 @@ impl TelemetrySource for LmuTelemetrySource {
             self.last_lap = snapshot.lap_number;
             self.lap_visited_pits = in_pits;
             self.lap_was_formation = formation;
-            self.lap_was_valid = snapshot.player_lap_valid != 0;
+            self.lap_was_valid = true;
             self.lap_was_green = snapshot.game_phase == 5;
         } else {
             self.lap_visited_pits |= in_pits;
             self.lap_was_formation |= formation;
-            self.lap_was_valid &= snapshot.player_lap_valid != 0;
+            self.lap_was_valid &= current_player_lap_valid;
             self.lap_was_green &= snapshot.game_phase == 5;
         }
         let session_laps_remaining = Self::laps_remaining(&snapshot);
@@ -3208,7 +3207,7 @@ impl TelemetrySource for LmuTelemetrySource {
             lap_number: snapshot.lap_number,
             player_sector: snapshot.player_sector,
             player_total_laps: snapshot.player_total_laps,
-            player_lap_valid: snapshot.player_lap_valid != 0,
+            player_lap_valid: current_player_lap_valid,
             player_in_pits: in_pits,
             speed_kph: snapshot.speed_kph.max(0.0),
             gear: snapshot.gear.clamp(-1, i8::MAX as i32) as i8,
@@ -3361,6 +3360,7 @@ impl TelemetrySource for LmuTelemetrySource {
             player_best_sector_ends: snapshot.player_best_sector_ends,
             session_best_sector_ends: snapshot.session_best_sector_ends,
             last_lap_seconds: CarHistory::normalize_official_lap(snapshot.last_lap_seconds),
+            last_lap_valid: !CarHistory::official_lap_is_invalid(snapshot.last_lap_seconds),
             best_lap_seconds: snapshot.best_lap_seconds.max(0.0),
             lap_delta_seconds: snapshot.lap_delta_seconds,
             delta_model: Default::default(),
@@ -3814,7 +3814,6 @@ mod tests {
     fn standings_history_averages_the_last_five_plausible_completed_laps() {
         let mut history = CarHistory::default();
         let mut entry = LmuStandingEntry {
-            lap_valid: 1,
             best_lap_seconds: 100.0,
             lap_start_elapsed_seconds: 1_000.0,
             elapsed_seconds: 1_002.0,
@@ -3947,7 +3946,6 @@ mod tests {
     fn standings_history_uses_tinypedal_filters_for_invalid_and_pit_laps() {
         let mut history = CarHistory::default();
         let mut entry = LmuStandingEntry {
-            lap_valid: 1,
             best_lap_seconds: 100.0,
             lap_start_elapsed_seconds: 1_000.0,
             elapsed_seconds: 1_002.0,
@@ -3955,9 +3953,9 @@ mod tests {
         };
 
         history.update(&entry, 60.0);
-        entry.lap_valid = 0;
+        entry.lap_invalidated = 1;
         history.update(&entry, 59.5);
-        entry.lap_valid = 1;
+        entry.lap_invalidated = 0;
         entry.total_laps = 1;
         entry.last_lap_seconds = 105.0;
         entry.lap_start_elapsed_seconds = 1_105.0;
@@ -3983,7 +3981,6 @@ mod tests {
         let mut history = CarHistory::default();
         let mut entry = LmuStandingEntry {
             total_laps: 4,
-            lap_valid: 1,
             last_lap_seconds: 95.0,
             best_lap_seconds: 95.0,
             lap_start_elapsed_seconds: 400.0,
@@ -4025,7 +4022,6 @@ mod tests {
         let mut history = CarHistory::default();
         let mut entry = LmuStandingEntry {
             total_laps: 4,
-            lap_valid: 1,
             last_lap_seconds: 95.0,
             best_lap_seconds: 95.0,
             lap_start_elapsed_seconds: 400.0,
@@ -4045,40 +4041,10 @@ mod tests {
     }
 
     #[test]
-    fn standings_history_latches_count_lap_flag_for_a_positive_invalid_last_lap() {
-        let mut history = CarHistory::default();
-        let mut entry = LmuStandingEntry {
-            total_laps: 4,
-            lap_valid: 1,
-            last_lap_seconds: 95.0,
-            best_lap_seconds: 95.0,
-            lap_start_elapsed_seconds: 400.0,
-            elapsed_seconds: 402.0,
-            ..LmuStandingEntry::default()
-        };
-
-        history.update(&entry, 60.0);
-        entry.lap_valid = 0;
-        entry.elapsed_seconds = 450.0;
-        history.update(&entry, 59.5);
-
-        entry.total_laps = 5;
-        entry.lap_valid = 1;
-        entry.last_lap_seconds = 100.25;
-        entry.lap_start_elapsed_seconds = 500.25;
-        entry.elapsed_seconds = 501.5;
-        history.update(&entry, 59.0);
-
-        assert!(!history.is_last_lap_valid());
-        assert!((history.last_lap_seconds(entry.last_lap_seconds) - 100.25).abs() < 0.001);
-    }
-
-    #[test]
     fn standings_history_ignores_residual_invalid_flag_after_lap_boundary() {
         let mut history = CarHistory::default();
         let mut entry = LmuStandingEntry {
             total_laps: 4,
-            lap_valid: 1,
             last_lap_seconds: 95.0,
             best_lap_seconds: 95.0,
             lap_start_elapsed_seconds: 400.0,
@@ -4115,7 +4081,6 @@ mod tests {
         let mut history = CarHistory::default();
         let mut entry = LmuStandingEntry {
             total_laps: 4,
-            lap_valid: 1,
             last_lap_seconds: 95.0,
             best_lap_seconds: 95.0,
             estimated_lap_time: 96.0,

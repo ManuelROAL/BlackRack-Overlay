@@ -214,7 +214,7 @@ impl LapAccumulator {
             self.lap.to_string(),
             self.stint.to_string(),
             number(completed.last_lap_seconds),
-            self.valid.to_string(),
+            (self.valid && completed.last_lap_valid).to_string(),
             self.green.to_string(),
             self.pit_lap.to_string(),
             number(self.fuel_start),
@@ -427,6 +427,23 @@ mod tests {
         let row = lap.row(&frame);
         assert!(row.contains(";3;0;121.500;true;true;false;80.000;75.800;4.200"));
         assert!(row.contains(";0.500;0.600;0.700;0.800;"));
+    }
+
+    #[test]
+    fn completed_lap_row_applies_negative_official_time_confirmation() {
+        let mut frame = TelemetryFrame::waiting_for_lmu(true);
+        frame.track_name = "Spa".into();
+        frame.player_vehicle_name = "Hypercar".into();
+        frame.game_phase = 5;
+        frame.lap_number = 3;
+        frame.player_lap_valid = true;
+        let lap = LapAccumulator::new(&frame, true);
+        frame.last_lap_seconds = 121.5;
+        frame.last_lap_valid = false;
+
+        let row = lap.row(&frame);
+
+        assert!(row.contains(";3;0;121.500;false;true;false;"));
     }
 
     #[test]

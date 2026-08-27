@@ -303,6 +303,7 @@ impl TelemetrySource for MockTelemetrySource {
             current_sector1_seconds: 0.0,
             current_sector2_seconds: 0.0,
             last_lap_seconds: 215.0,
+            last_lap_valid: true,
             best_lap_seconds: 208.412,
             lap_delta_seconds: (elapsed * 0.31).sin() * 0.72,
             delta_model: Default::default(),

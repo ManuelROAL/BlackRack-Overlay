@@ -595,6 +595,8 @@ pub struct TelemetryFrame {
     #[serde(skip)]
     session_best_sector_ends: [f64; 3],
     last_lap_seconds: f64,
+    #[serde(skip)]
+    last_lap_valid: bool,
     best_lap_seconds: f64,
     lap_delta_seconds: f64,
     delta_model: delta_records::DeltaViewModel,
@@ -813,6 +815,7 @@ impl TelemetryFrame {
             player_best_sector_ends: [0.0; 3],
             session_best_sector_ends: [0.0; 3],
             last_lap_seconds: 0.0,
+            last_lap_valid: true,
             best_lap_seconds: 0.0,
             lap_delta_seconds: 0.0,
             delta_model: delta_records::DeltaViewModel::default(),

@@ -19,7 +19,6 @@ struct LmuStandingEntry {
     uint32_t is_player;
     uint32_t in_pits;
     uint32_t in_garage;
-    uint32_t lap_valid;
     uint32_t lap_invalidated;
     uint32_t flag;
     uint32_t pit_state;
@@ -269,7 +268,6 @@ extern "C" int lmu_read_snapshot(LmuSnapshot* output) {
         destination.is_player = source.mIsPlayer ? 1u : 0u;
         destination.in_pits = source.mInPits ? 1u : 0u;
         destination.in_garage = source.mInGarageStall ? 1u : 0u;
-        destination.lap_valid = source.mCountLapFlag == 2 ? 1u : 0u;
         destination.flag = static_cast<uint32_t>(source.mFlag);
         destination.pit_state = static_cast<uint32_t>(source.mPitState);
         destination.pit_stops = static_cast<uint32_t>(std::max<short>(source.mNumPitstops, 0));
@@ -417,7 +415,6 @@ extern "C" int lmu_read_snapshot(LmuSnapshot* output) {
         if (source.mIsPlayer) {
             output->player_in_garage = source.mInGarageStall ? 1u : 0u;
             output->player_sector = static_cast<int32_t>(source.mSector);
-            output->player_lap_valid = source.mCountLapFlag == 2 ? 1u : 0u;
             output->player_total_laps = static_cast<int32_t>(source.mTotalLaps);
             output->estimated_lap_time = source.mEstimatedLapTime;
             output->best_lap_seconds = source.mBestLapTime;
@@ -437,6 +434,7 @@ extern "C" int lmu_read_snapshot(LmuSnapshot* output) {
 
     const TelemInfoV01& vehicle = telemetry.telemInfo[telemetry.playerVehicleIdx];
     output->player_active = 1;
+    output->player_lap_valid = vehicle.mLapInvalidated ? 0u : 1u;
     output->lap_number = static_cast<int32_t>(vehicle.mLapNumber);
     output->gear = static_cast<int32_t>(vehicle.mGear);
     output->speed_kph = std::sqrt(

@@ -31,7 +31,8 @@ TypeScript fetches static geometry, interpolates and renders it.
   movement.
 - If official geometry is unavailable, sample the player every three metres and
   persist only a complete valid non-pit lap covering at least 88% of official
-  length. The circular projection is the final fallback.
+  length. Validity follows the shared latched `mLapInvalidated` signal, not
+  `mCountLapFlag`. The circular projection is the final fallback.
 - Persist Rust learning in `track-map-learning.json`; validate and migrate old
   browser `localStorage` learning once.
 

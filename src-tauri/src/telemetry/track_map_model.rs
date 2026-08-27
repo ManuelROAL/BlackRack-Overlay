@@ -271,6 +271,7 @@ impl TrackMapModelState {
                 .zip(self.samples.first())
                 .map_or(0.0, |(last, first)| last.distance - first.distance);
             if self.recording_valid
+                && frame.last_lap_valid
                 && frame.last_lap_seconds > 0.0
                 && self.samples.len() >= 40
                 && coverage >= frame.track_length_meters * 0.88

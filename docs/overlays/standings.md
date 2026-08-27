@@ -48,10 +48,10 @@ duplicate selection or timing semantics.
 - Lap times use three decimals; GAP/INT use one decimal. Personal best is green
   and session fastest is purple.
 - A completed invalid lap remains visible in gray. Latch the per-vehicle telemetry
-  `mLapInvalidated` signal and any `mCountLapFlag` value other than 2 across the
-  complete lap. Also treat a negative `mLastLapTime` between -900 and -20 seconds
+  `mLapInvalidated` signal across the complete lap. Also treat a negative
+  `mLastLapTime` between -900 and -20 seconds
   as official invalid confirmation and display its absolute duration. Ignore
-  residual invalidation/counting signals for two seconds after a stable lap
+  residual invalidation signals for two seconds after a stable lap
   boundary. If `mLastLapTime` is unavailable,
   reconstruct it from consecutive `mLapStartET` values only after the new lap has
   been active for more than one second. Discard stable partial resets below 50%
