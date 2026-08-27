@@ -13,8 +13,7 @@ const SECTOR_TARGET_METERS: f64 = 250.0;
 const MIN_SECTORS: usize = 12;
 const MAX_SECTORS: usize = 40;
 const DELTA_SMOOTHING_SECONDS: f64 = 0.10;
-const DELTA_TREND_DISTANCE_METERS: f64 = 20.0;
-const DELTA_TREND_DEADBAND_SECONDS: f64 = 0.008;
+const DELTA_TREND_INTERVAL: Duration = Duration::from_millis(500);
 const MIN_SECTOR_DURATION_SECONDS: f64 = 5.0;
 const TIMING_RESULT_FREEZE: Duration = Duration::from_secs(3);
 const STORE_VERSION: u32 = 1;
@@ -285,7 +284,7 @@ struct DeltaTrendAnchor {
     mode: DeltaMode,
     reference_generation: u64,
     sector_index: usize,
-    distance: f64,
+    observed_at: Instant,
     seconds: f64,
 }
 
@@ -1336,24 +1335,19 @@ impl DeltaEngine {
         frame: &TelemetryFrame,
         mut model: DeltaViewModel,
     ) -> DeltaViewModel {
-        if !model.available
-            || !model.current_lap_valid
-            || !model.seconds.is_finite()
-            || !frame.track_length_meters.is_finite()
-            || frame.track_length_meters <= 0.0
-        {
+        if !model.available || !model.current_lap_valid || !model.seconds.is_finite() {
             self.reset_delta_trend();
             return model;
         }
 
-        let distance = frame.lap_progress * frame.track_length_meters;
+        let observed_at = Instant::now();
+        let rounded_seconds = round_delta_for_trend(model.seconds);
         let reset_at_sector = model.mode.is_sector_reset();
         let anchor_matches = self.delta_trend_anchor.is_some_and(|anchor| {
             anchor.lap_number == frame.lap_number
                 && anchor.mode == model.mode
                 && anchor.reference_generation == model.reference_generation
                 && (!reset_at_sector || anchor.sector_index == model.sector_index)
-                && distance >= anchor.distance
         });
 
         if !anchor_matches {
@@ -1363,19 +1357,19 @@ impl DeltaEngine {
                 mode: model.mode,
                 reference_generation: model.reference_generation,
                 sector_index: model.sector_index,
-                distance,
-                seconds: model.seconds,
+                observed_at,
+                seconds: rounded_seconds,
             });
         } else if let Some(anchor) = self.delta_trend_anchor {
-            if distance - anchor.distance >= DELTA_TREND_DISTANCE_METERS {
-                self.delta_trend = classify_delta_trend(model.seconds - anchor.seconds);
+            if observed_at.duration_since(anchor.observed_at) >= DELTA_TREND_INTERVAL {
+                self.delta_trend = classify_delta_trend(anchor.seconds, rounded_seconds);
                 self.delta_trend_anchor = Some(DeltaTrendAnchor {
                     lap_number: frame.lap_number,
                     mode: model.mode,
                     reference_generation: model.reference_generation,
                     sector_index: model.sector_index,
-                    distance,
-                    seconds: model.seconds,
+                    observed_at,
+                    seconds: rounded_seconds,
                 });
             }
         }
@@ -1443,10 +1437,14 @@ fn average_timing_laps(history: &[TimingLapView]) -> f64 {
     }
 }
 
-fn classify_delta_trend(change_seconds: f64) -> DeltaTrend {
-    if change_seconds < -DELTA_TREND_DEADBAND_SECONDS {
+fn round_delta_for_trend(seconds: f64) -> f64 {
+    (seconds * 100.0).round() / 100.0
+}
+
+fn classify_delta_trend(previous_seconds: f64, current_seconds: f64) -> DeltaTrend {
+    if current_seconds < previous_seconds {
         DeltaTrend::Improving
-    } else if change_seconds > DELTA_TREND_DEADBAND_SECONDS {
+    } else if current_seconds > previous_seconds {
         DeltaTrend::Worsening
     } else {
         DeltaTrend::Neutral
@@ -1765,9 +1763,10 @@ mod tests {
     use super::{
         average_timing_laps, build_sectors, can_show_live_delta, classify_delta_trend,
         handle_storage_command, initialize_database, interpolate, native_session_delta,
-        sector_count, sector_state, should_reset_delta_at_lap_start, three_sector_times,
-        CurrentLap, DeltaTrend, Identity, LapTrace, PersistentReferences, ReferenceSet, SectorBank,
-        StorageCommand, TimingLapView, TimingSectorReference, TracePoint, STORE_VERSION,
+        round_delta_for_trend, sector_count, sector_state, should_reset_delta_at_lap_start,
+        three_sector_times, CurrentLap, DeltaTrend, Identity, LapTrace, PersistentReferences,
+        ReferenceSet, SectorBank, StorageCommand, TimingLapView, TimingSectorReference, TracePoint,
+        STORE_VERSION,
     };
     use crate::telemetry::TelemetryFrame;
 
@@ -1823,12 +1822,12 @@ mod tests {
     }
 
     #[test]
-    fn delta_trend_uses_a_deadband_around_stable_segments() {
-        assert_eq!(classify_delta_trend(-0.009), DeltaTrend::Improving);
-        assert_eq!(classify_delta_trend(-0.008), DeltaTrend::Neutral);
-        assert_eq!(classify_delta_trend(0.0), DeltaTrend::Neutral);
-        assert_eq!(classify_delta_trend(0.008), DeltaTrend::Neutral);
-        assert_eq!(classify_delta_trend(0.009), DeltaTrend::Worsening);
+    fn delta_trend_compares_values_at_dox_centisecond_precision() {
+        assert_eq!(round_delta_for_trend(0.004), 0.0);
+        assert_eq!(round_delta_for_trend(0.006), 0.01);
+        assert_eq!(classify_delta_trend(0.01, 0.0), DeltaTrend::Improving);
+        assert_eq!(classify_delta_trend(0.01, 0.01), DeltaTrend::Neutral);
+        assert_eq!(classify_delta_trend(0.01, 0.02), DeltaTrend::Worsening);
     }
 
     #[test]

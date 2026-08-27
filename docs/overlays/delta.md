@@ -7,9 +7,9 @@ the Rust-owned lap and stint record used by future overlays. Following Dox's
 visual behavior, the numeric value interpolates from green at -0.04 seconds
 through ice white at zero to red at +0.04 seconds, clamping beyond those stops.
 Independently, the bar is green when the driver is gaining time over the recent
-circuit segment, red when losing time and white when stable. The bar grows right
-for gains and left for losses, with its configured range clamped visually while
-the numeric value remains unclamped.
+half-second window, red when losing time and white when stable. The bar grows
+right for gains and left for losses, with its configured range clamped visually
+while the numeric value remains unclamped.
 
 The presentation contains only a transparent horizontal timing rail and the
 signed delta centred immediately below it. The visible numeral height matches
@@ -75,10 +75,11 @@ lap in its scope.
   bounded to 12-40 sectors, and retain the fastest trace for each sector.
 - The rendered value uses a 100 ms exponential response to reduce shared-memory
   jitter without adding a long perceptible delay.
-- Bar trend compares the delta at 20 metre distance intervals. A change below
-  8 ms is neutral; larger decreases are improving and larger increases are
-  worsening. The trend resets across laps, references, modes and reset-style
-  mini-sector boundaries so discontinuities cannot produce a false colour.
+- As in Dox, bar trend compares the delta every 500 ms after rounding both values
+  to centiseconds. A decrease is improving, an increase is worsening and an
+  unchanged value is neutral. The trend resets across laps, references, modes and
+  reset-style mini-sector boundaries so discontinuities cannot produce a false
+  colour.
 - Bar position and width ease toward each 50 Hz telemetry target over 180 ms so
   shared-memory noise does not become visible lateral oscillation. This visual
   easing does not filter or delay the numeric delta. Trend colors use Dox's solid
