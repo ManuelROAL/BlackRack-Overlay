@@ -58,22 +58,12 @@ const renderProfile = (
   resource: "energy" | "fuel",
   name: ProfileName,
   consumption: number,
-  plan: ResourceStrategy | null,
-  unit: "%" | "L"
+  plan: ResourceStrategy | null
 ): void => {
   const id = `${resource}-${name}`;
   text(`${id}-consumption`, plan ? format(consumption) : "--");
   text(`${id}-autonomy`, plan ? format(plan.autonomy) : "--");
-  text(`${id}-required`, plan ? format(plan.total_additional) : "--");
-  const balance = plan?.stint_end_balance;
-  const balanceAvailable = balance !== null && balance !== undefined && Number.isFinite(balance);
-  const displayedBalance = balanceAvailable && Math.abs(balance) >= 0.05
-    ? `${balance > 0 ? "+" : "−"}${format(Math.abs(balance), 1)}${unit}`
-    : balanceAvailable ? `0.0${unit}` : "--";
-  text(`${id}-stint-end`, displayedBalance);
-  tone(`${id}-stint-end`, !balanceAvailable
-    ? "neutral"
-    : balance < -0.05 ? "bad" : balance > 0.05 ? "good" : "neutral");
+  text(`${id}-required`, plan ? (plan.total_additional > 0 ? format(plan.total_additional) : "-") : "--");
 };
 
 const renderStatus = (frame: TelemetryFrame): void => {
@@ -163,9 +153,9 @@ const render = (frame: TelemetryFrame): void => {
   text("fuel-ratio-assigned", energyMode ? format(frame.fuel_ratio_assigned) : "--");
   text("fuel-ratio-average", energyMode ? format(frame.fuel_ratio_average) : "--");
   text("fuel-ratio-last", energyMode ? format(frame.fuel_ratio_last) : "--");
-  renderProfile("energy", "average", average, frame.fuel_strategies.average, unit);
-  renderProfile("energy", "qualifying", qualifying, frame.fuel_strategies.qualifying, unit);
-  renderProfile("energy", "last", last, frame.fuel_strategies.last, unit);
+  renderProfile("energy", "average", average, frame.fuel_strategies.average);
+  renderProfile("energy", "qualifying", qualifying, frame.fuel_strategies.qualifying);
+  renderProfile("energy", "last", last, frame.fuel_strategies.last);
 
   const level = document.getElementById("resource-level");
   if (level) {

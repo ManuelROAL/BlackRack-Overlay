@@ -87,8 +87,7 @@ impl TelemetrySource for MockTelemetrySource {
             last: energy_strategy(8.55),
             ..FuelStrategies::default()
         }
-        .with_qualifying_guidance()
-        .with_stint_end_balances(virtual_energy_percent, laps_remaining);
+        .with_qualifying_guidance();
 
         let mut frame = TelemetryFrame {
             source: "mock",

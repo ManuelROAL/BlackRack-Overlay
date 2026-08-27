@@ -29,7 +29,6 @@ pub(crate) struct ResourceStrategy {
     pub total_additional: f64,
     pub end_remaining: f64,
     pub autonomy_delta: f64,
-    pub stint_end_balance: Option<f64>,
 }
 
 #[derive(Clone, Debug, Default, Serialize)]
@@ -44,48 +43,7 @@ pub(crate) struct FuelStrategies {
     pub conservative_fill_active: bool,
 }
 
-fn calculate_stint_end_balance(
-    current: f64,
-    scenario_autonomy: f64,
-    active_autonomy: f64,
-    laps_remaining: f64,
-) -> Option<f64> {
-    if !valid_positive(current)
-        || !valid_positive(scenario_autonomy)
-        || !valid_positive(active_autonomy)
-        || !valid_positive(laps_remaining)
-    {
-        return None;
-    }
-    let stint_distance = active_autonomy.min(laps_remaining);
-    Some(current - current / scenario_autonomy * stint_distance)
-}
-
 impl FuelStrategies {
-    pub(super) fn with_stint_end_balances(mut self, current: f64, laps_remaining: f64) -> Self {
-        let Some(active) = self.active else {
-            return self;
-        };
-        for strategy in [
-            &mut self.active,
-            &mut self.estimated,
-            &mut self.average,
-            &mut self.qualifying,
-            &mut self.last,
-        ]
-        .into_iter()
-        .flatten()
-        {
-            strategy.stint_end_balance = calculate_stint_end_balance(
-                current,
-                strategy.autonomy,
-                active.autonomy,
-                laps_remaining,
-            );
-        }
-        self
-    }
-
     pub(super) fn with_qualifying_guidance(mut self) -> Self {
         self.conservative_next_fill = self.active.map_or(0.0, |strategy| strategy.next_fill);
 
@@ -259,7 +217,6 @@ pub(super) fn calculate_resource_strategy(
         total_additional,
         end_remaining,
         autonomy_delta: 0.0,
-        stint_end_balance: None,
     })
 }
 
@@ -279,23 +236,6 @@ mod tests {
             pit_out_consumption: 8.0,
             pit_out_lap: false,
         }
-    }
-
-    #[test]
-    fn stint_end_balance_reports_surplus_and_deficit_against_the_active_resource() {
-        assert_eq!(
-            calculate_stint_end_balance(50.0, 10.0, 8.0, 20.0),
-            Some(10.0)
-        );
-        assert_eq!(
-            calculate_stint_end_balance(50.0, 20.0 / 3.0, 8.0, 20.0),
-            Some(-10.0)
-        );
-        assert_eq!(
-            calculate_stint_end_balance(50.0, 10.0, 8.0, 4.0),
-            Some(30.0)
-        );
-        assert_eq!(calculate_stint_end_balance(50.0, 0.0, 8.0, 20.0), None);
     }
 
     #[test]

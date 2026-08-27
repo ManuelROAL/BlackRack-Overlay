@@ -257,7 +257,6 @@ export interface ResourceStrategy {
   total_additional: number;
   end_remaining: number;
   autonomy_delta: number;
-  stint_end_balance: number | null;
 }
 
 export interface FuelStrategies {

@@ -3051,15 +3051,7 @@ impl TelemetrySource for LmuTelemetrySource {
             }),
             ..FuelStrategies::default()
         }
-        .with_qualifying_guidance()
-        .with_stint_end_balances(
-            if virtual_energy_active {
-                virtual_energy_percent
-            } else {
-                snapshot.fuel_liters
-            },
-            session_lap_equivalents_remaining,
-        );
+        .with_qualifying_guidance();
         let fuel_needed_liters = fuel_strategy
             .map(|strategy| {
                 snapshot.fuel_liters + strategy.total_additional - strategy.end_remaining

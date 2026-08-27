@@ -363,7 +363,7 @@ body[data-overlay-fit="true"].fuel-body .fuel-shell {
 .strategy-columns,
 .strategy-row {
   display: grid;
-  grid-template-columns: 50fr repeat(4, 48fr);
+  grid-template-columns: 56fr repeat(3, 58fr);
   align-items: center;
   column-gap: 2px;
   padding: 0 5px;

@@ -71,7 +71,7 @@ math belongs in Rust. `fuel.ts` only formats serialized plans.
   intermediate `470 x 188`, `390 x 188`, `356 x 202` and `356 x 188` placements
   plus the former `252 x 188`, `252 x 216` and `292 x 216` defaults to the current
   size so deliberately resized user layouts keep their chosen scale.
-- Let the scenario table define the panel width: its label column and four
+- Let the scenario table define the panel width: its label column and three
   numeric columns fill the complete usable surface without empty side gutters.
 - When text size expands the design surface, distribute the added width and
   only the required row height through the summary, plan and scenario tracks; do
@@ -102,19 +102,16 @@ math belongs in Rust. `fuel.ts` only formats serialized plans.
   fractional autonomy, capacity and a proportional level bar, then show only the
   official assigned fuel ratio, the
   clean-lap average ratio and the last-lap ratio in one readable detail row.
-- Label scenario-wide replenishment as `TOTAL +`; it is the sum still required
-  over the remaining race, not necessarily the next pit load. The summary's
-  `CARGA` value remains the next-stop load.
+- Label scenario-wide replenishment as `REFUEL`; it is the sum still required
+  over the remaining race, not necessarily the next pit load. Show `-` when no
+  replenishment is required. The summary's `CARGA` value remains the next-stop
+  load.
 - When exactly one stop remains and the qualifying scenario can also finish with
   one stop, use the larger of the active and qualifying next-fill calculations
   and label it `CARGA Q`. This follows the conservative final-stint behavior of
   planning for full-power running without adding an arbitrary reserve.
-- Keep `TOTAL +` in the scenario table, but omit `Δ QUALY` and the redundant
-  `ESTIMADO` row. The visible rows are `PROMEDIO`, `QUALY` and `ÚLTIMA`. Each row
-  also shows the projected active-resource balance at the end of the current
-  planned stint, or at the race finish when it comes first. Positive values are
-  surplus and negative values are a deficit; use percent for NRG and litres for
-  fuel-only cars.
+- Keep `REFUEL` in the scenario table, but omit `Δ QUALY` and the redundant
+  `ESTIMADO` row. The visible rows are `PROMEDIO`, `QUALY` and `ÚLTIMA`.
 - Hybrid cars show energy scenarios plus a compact fuel card while the global pit
   plan accounts for both resources.
 - Cars reporting both virtual energy and fuel show the fuel ratio selected in
