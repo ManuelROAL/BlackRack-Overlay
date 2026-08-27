@@ -61,6 +61,43 @@
         <p id="overlay-filter-empty" class="overlay-filter-empty" hidden data-i18n="filter.empty">No hay overlays que coincidan.</p>
       </section>
 
+      <section class="performance-profile-settings" data-view-section="general" aria-label="Perfil de rendimiento" data-i18n-aria-label="performance.aria">
+        <div class="performance-profile-heading">
+          <div>
+            <span data-i18n="performance.heading">RENDIMIENTO</span>
+            <strong data-i18n="performance.title">Elige el equilibrio para tu equipo</strong>
+          </div>
+          <small data-i18n="performance.safe">Los cálculos críticos siempre conservan el muestreo a 50 Hz.</small>
+        </div>
+        <div class="performance-profile-list" role="group" aria-label="Perfiles de rendimiento" data-i18n-aria-label="performance.groupAria">
+          <button type="button" data-performance-profile="smooth" aria-pressed="false">
+            <span class="performance-profile-icon">50</span>
+            <span class="performance-profile-copy">
+              <b data-i18n="performance.smooth">Fluido</b>
+              <small data-i18n="performance.smoothSub">Respuesta visual máxima y mapa completo.</small>
+            </span>
+            <em data-i18n="performance.smoothMeta">MÁS SUAVE</em>
+          </button>
+          <button type="button" data-performance-profile="balanced" aria-pressed="false">
+            <span class="performance-profile-icon">25</span>
+            <span class="performance-profile-copy">
+              <b data-i18n="performance.balanced">Equilibrado</b>
+              <small data-i18n="performance.balancedSub">Menos renderizado sin perder lectura en carrera.</small>
+            </span>
+            <em data-i18n="performance.recommended">RECOMENDADO</em>
+          </button>
+          <button type="button" data-performance-profile="efficiency" aria-pressed="false">
+            <span class="performance-profile-icon">17</span>
+            <span class="performance-profile-copy">
+              <b data-i18n="performance.efficiency">Ahorro</b>
+              <small data-i18n="performance.efficiencySub">Cadencia reducida, 20 coches y mapa sin pulso.</small>
+            </span>
+            <em data-i18n="performance.efficiencyMeta">MENOR CARGA</em>
+          </button>
+        </div>
+        <p id="performance-profile-summary" class="performance-profile-summary" aria-live="polite"></p>
+      </section>
+
       <section class="global-overlay-settings" data-view-section="general" aria-label="Configuración general de overlays" data-i18n-aria-label="general.aria">
         <div class="global-setting-group language-setting-group">
           <div class="global-setting-copy">

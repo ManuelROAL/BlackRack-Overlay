@@ -99,6 +99,14 @@ import {
   resolveOverlayMonitor,
   setOverlayMonitor
 } from "./composite-layout";
+import {
+  DEFAULT_PERFORMANCE_PROFILE,
+  isPerformanceProfile,
+  PERFORMANCE_PROFILE_KEY,
+  readPerformanceProfile,
+  savePerformanceProfile,
+  type PerformanceProfile
+} from "./performance-settings";
 
 installFrontendDiagnostics("control", (diagnostic) =>
   invoke("record_frontend_error", { ...diagnostic })
@@ -145,7 +153,7 @@ interface BrowserSourceStatus {
 
 interface OverlayConfigurationExport {
   format: "blackrack-overlay-configuration";
-  schemaVersion: 8;
+  schemaVersion: 9;
   exportedAt: string;
   ui: { locale: Locale };
   overlays: {
@@ -166,6 +174,7 @@ interface OverlayConfigurationExport {
     delta: DeltaSettings;
     timing: TimingSettings;
     trackMap: TrackMapSettings;
+    performanceProfile: PerformanceProfile;
   };
 }
 
@@ -174,6 +183,46 @@ type ShortcutAction = "interaction_mode" | "show_panel";
 let lmuDependencyStatus: LmuDependencyStatus | null = null;
 
 applyTranslations();
+
+let performanceProfile = readPerformanceProfile();
+const performanceProfileButtons = [
+  ...document.querySelectorAll<HTMLButtonElement>("[data-performance-profile]")
+];
+const performanceProfileSummary = document.getElementById("performance-profile-summary");
+const performanceSummaryKey = (profile: PerformanceProfile): TranslationKey =>
+  `performance.${profile}Summary` as TranslationKey;
+const renderPerformanceProfile = (): void => {
+  for (const button of performanceProfileButtons) {
+    const selected = button.dataset.performanceProfile === performanceProfile;
+    button.classList.toggle("active", selected);
+    button.setAttribute("aria-pressed", String(selected));
+  }
+  if (performanceProfileSummary) {
+    performanceProfileSummary.textContent = t(performanceSummaryKey(performanceProfile));
+  }
+};
+
+renderPerformanceProfile();
+void invoke("set_performance_profile", { profile: performanceProfile });
+
+for (const button of performanceProfileButtons) {
+  button.addEventListener("click", () => {
+    const next = button.dataset.performanceProfile;
+    if (!isPerformanceProfile(next) || next === performanceProfile) return;
+    const previous = performanceProfile;
+    performanceProfile = next;
+    renderPerformanceProfile();
+    for (const profileButton of performanceProfileButtons) profileButton.disabled = true;
+    void invoke("set_performance_profile", { profile: next }).then(() => {
+      savePerformanceProfile(next);
+    }).catch(() => {
+      performanceProfile = previous;
+      renderPerformanceProfile();
+    }).finally(() => {
+      for (const profileButton of performanceProfileButtons) profileButton.disabled = false;
+    });
+  });
+}
 
 const localeSelect = document.getElementById("interface-locale") as HTMLSelectElement | null;
 if (localeSelect) {
@@ -933,6 +982,7 @@ const parseOverlayConfiguration = (contents: string): OverlayConfigurationExport
   const delta = configurationObject(overlays?.delta);
   const timing = configurationObject(overlays?.timing);
   const trackMap = configurationObject(overlays?.trackMap);
+  const importedPerformanceProfile = overlays?.performanceProfile;
   const schemaVersion = root?.schemaVersion;
   const schemaMonitor = typeof overlays?.monitor === "number"
     && Number.isInteger(overlays.monitor) && Number(overlays.monitor) >= 0
@@ -946,10 +996,11 @@ const parseOverlayConfiguration = (contents: string): OverlayConfigurationExport
   const percentageIsValid = (value: unknown): value is number =>
     typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 100;
   if (root?.format !== "blackrack-overlay-configuration"
-    || ![1, 2, 3, 4, 5, 6, 7, 8].includes(Number(schemaVersion))
+    || ![1, 2, 3, 4, 5, 6, 7, 8, 9].includes(Number(schemaVersion))
     || !overlays || !visibility || !transparency || !transparencyScope || !transparencyValues
     || (Number(schemaVersion) >= 8 && (!fontSize || !fontSizeScope || !fontSizeValues))
     || !layout || !standings || !relative
+    || (Number(schemaVersion) >= 9 && !isPerformanceProfile(importedPerformanceProfile))
     || (Number(schemaVersion) >= 2 && !driving)
     || (Number(schemaVersion) >= 3 && !delta) || (Number(schemaVersion) >= 4 && !timing)
     || (Number(schemaVersion) >= 6 && !trackMap)) {
@@ -1091,7 +1142,7 @@ const parseOverlayConfiguration = (contents: string): OverlayConfigurationExport
       };
   return {
     ...normalized,
-    schemaVersion: 8,
+    schemaVersion: 9,
     ui: { locale: isLocale(ui?.locale) ? ui.locale : getLocale() },
     overlays: {
       ...normalized.overlays,
@@ -1101,7 +1152,10 @@ const parseOverlayConfiguration = (contents: string): OverlayConfigurationExport
       driving: driving ? driving as unknown as DrivingSettings : defaultDriving,
       delta: normalizedDelta as unknown as DeltaSettings,
       timing: normalizedTimingWithTimes as unknown as TimingSettings,
-      trackMap: normalizedTrackMap as unknown as TrackMapSettings
+      trackMap: normalizedTrackMap as unknown as TrackMapSettings,
+      performanceProfile: isPerformanceProfile(importedPerformanceProfile)
+        ? importedPerformanceProfile
+        : DEFAULT_PERFORMANCE_PROFILE
     }
   };
 };
@@ -1131,7 +1185,8 @@ const applyImportedConfiguration = (configuration: OverlayConfigurationExport): 
     [DRIVING_SETTINGS_KEY, configuration.overlays.driving],
     [DELTA_SETTINGS_KEY, configuration.overlays.delta],
     [TIMING_SETTINGS_KEY, configuration.overlays.timing],
-    [TRACK_MAP_SETTINGS_KEY, configuration.overlays.trackMap]
+    [TRACK_MAP_SETTINGS_KEY, configuration.overlays.trackMap],
+    [PERFORMANCE_PROFILE_KEY, configuration.overlays.performanceProfile]
   ];
   const previous = entries.map(([key]) => [key, localStorage.getItem(key)] as const);
   const previousLocale = localStorage.getItem(LOCALE_STORAGE_KEY);
@@ -1163,7 +1218,7 @@ exportConfigurationButton?.addEventListener("click", () => {
     const monitor = await resolveOverlayMonitor();
     const configuration: OverlayConfigurationExport = {
       format: "blackrack-overlay-configuration",
-      schemaVersion: 8,
+      schemaVersion: 9,
       exportedAt: now.toISOString(),
       ui: { locale: getLocale() },
       overlays: {
@@ -1183,7 +1238,8 @@ exportConfigurationButton?.addEventListener("click", () => {
         driving: drivingSettings,
         delta: deltaSettings,
         timing: timingSettings,
-        trackMap: trackMapSettings
+        trackMap: trackMapSettings,
+        performanceProfile
       }
     };
     const timestamp = now.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");

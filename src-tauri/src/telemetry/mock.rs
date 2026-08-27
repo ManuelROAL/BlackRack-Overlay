@@ -91,6 +91,7 @@ impl TelemetrySource for MockTelemetrySource {
 
         let mut frame = TelemetryFrame {
             source: "mock",
+            performance_profile: "smooth",
             connected: true,
             player_active: true,
             game_in_foreground: true,
@@ -274,6 +275,7 @@ impl TelemetrySource for MockTelemetrySource {
                         TrackMapVehicle {
                             vehicle_id: index + 1,
                             overall_position: index + 1,
+                            class_position: 0,
                             vehicle_class: match index % 4 {
                                 0 => "HYPERCAR",
                                 1 => "LMP2",

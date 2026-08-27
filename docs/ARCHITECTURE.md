@@ -120,16 +120,20 @@ profile and diagnostics.
 
 ## Scheduling and freshness
 
-- Base source cycle, Delta, Timing, Trailing + Pedal and tyres:
-  20 ms (50 Hz).
-- Fuel overlay and active flags: 20 ms (50 Hz).
-- Full standings: 100 ms (10 Hz), and only when requested by an active Standings
+- Base source cycle and critical domain calculations always remain at 20 ms (50 Hz).
+  Performance profiles change only delivery/rendering: Smooth uses 20 ms for fast
+  overlays, Balanced 40 ms and Efficiency 60 ms.
+- Fuel follows the selected fast-overlay cadence. Active flags and rejoin warnings
+  retain their safety-oriented cadence independently of the profile.
+- Full standings: Smooth 100 ms, Balanced 160 ms, Efficiency 240 ms; it is only requested by an active Standings
   panel or a connected browser-source client.
-- Relative: 50 ms (20 Hz) while its panel is active. Cycles coinciding
+- Relative: Smooth 50 ms, Balanced 80 ms, Efficiency 120 ms while active. Cycles coinciding
   with Standings reuse the same constructed roster.
-- Track Map: 33 ms (approximately 30 Hz) with a lightweight coordinate-only roster; it does
-  not request the enriched Standings construction.
-- Detailed damage and pit-stop estimate: 50 ms (20 Hz).
+- Track Map: Smooth 33 ms with the complete lightweight roster, Balanced 60 ms
+  with up to 32 cars, and Efficiency 120 ms with up to 20 cars. Limited rosters
+  retain the player, overall leader and nearest traffic.
+- Detailed damage and pit-stop estimate: Smooth 50 ms, Balanced 80 ms and
+  Efficiency 120 ms.
 - Active Rejoin warning: 50 ms; inactive flag/rejoin warning: 250 ms.
 - Automatic visibility: 250 ms.
 - Control-panel status: 500 ms.
@@ -158,6 +162,8 @@ blocking HTTP calls into `next_frame()`.
 - The selected UI locale: WebView `localStorage` under
   `blackrack-overlay.locale.v1`; configuration schema 8 also exports it as
   `ui.locale`.
+- The selected performance profile: WebView `localStorage`; configuration schema
+  9 exports it with overlay settings and reapplies it to the Rust scheduler.
 - Learned consumption profiles: application data `consumption-profiles/`.
 - Current and previous startup/frontend failure logs, plus optional JSONL analysis
   logs: application data directory.

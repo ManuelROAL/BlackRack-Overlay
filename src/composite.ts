@@ -110,7 +110,7 @@ const telemetryFields: Record<OverlayId, readonly (keyof TelemetryFrame)[]> = {
   ],
   flags: ["flag_warning"],
   rejoin: ["rejoin_warning"],
-  trackmap: ["track_name", "track_length_meters", "track_map_vehicles", "track_map_model"],
+  trackmap: ["performance_profile", "track_name", "track_length_meters", "track_map_vehicles", "track_map_model"],
   forecast: ["rest_weather_available", "ambient_temperature_c", "rain_percent", "cloud_coverage", "weather_forecast"],
   conditions: [
     "rest_weather_available", "ambient_temperature_c", "track_temperature_c",

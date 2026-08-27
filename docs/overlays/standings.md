@@ -9,7 +9,8 @@
 - Timing/history/enrichment: `src-tauri/src/telemetry/lmu.rs`,
   `driver_ranks.rs`, `event_split.rs`, `lmu_rest.rs`
 - OBS route: `/standings`
-- Cadence: enriched roster and renderer at 10 Hz
+- Cadence: enriched roster and renderer at 10 Hz in Smooth, 6.25 Hz in Balanced
+  and approximately 4.2 Hz in Efficiency
 
 Rust owns class grouping, class order/counts, SOF and visible-row selection. The
 renderer resolves prepared vehicle IDs and owns presentation only; it must not
@@ -148,7 +149,8 @@ duplicate selection or timing semantics.
 - Compact NRG, damage, track-limit and pit cells are neutral until a meaningful
   warning or active state applies. The pit request uses green; an active pit
   timer uses the same amber/orange semantic family as PIT and OUT.
-- Cache row/header nodes and replace only changed cells/signatures.
+- Cache row/header nodes and replace only changed cells/signatures. The general
+  performance profile changes roster request and renderer cadence together.
 - Derive the design height from the currently visible header, class sections and
   rows, retaining only the shared 72 px empty-state minimum. Scale the complete
   table without clipping so the edit border follows the rendered content.

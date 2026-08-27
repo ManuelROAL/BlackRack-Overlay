@@ -52,6 +52,7 @@ export interface StandingEntry {
 export interface TrackMapVehicle {
   vehicle_id: number;
   overall_position: number;
+  class_position: number;
   vehicle_class: string;
   world_x: number;
   world_y: number;
@@ -118,6 +119,7 @@ export interface TimingViewModel {
 
 export interface TelemetryFrame {
   source: string;
+  performance_profile: "smooth" | "balanced" | "efficiency";
   connected: boolean;
   player_active: boolean;
   game_in_foreground: boolean;

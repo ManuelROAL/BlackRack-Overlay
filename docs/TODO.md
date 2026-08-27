@@ -11,6 +11,8 @@ can retain the development URL and is not a valid WebView2 measurement.
 
 1. Build/run the current code.
 2. Enable analysis logging only for the internal diagnostic pass.
+   Record the selected performance profile and use Smooth for comparison with the
+   full-cadence captures made before profiles existed.
 3. Keep standings and fuel enabled with the same row/column configuration used in
    the previous comparison.
 4. Generate a new external performance CSV using

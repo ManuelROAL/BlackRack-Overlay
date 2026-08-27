@@ -7,7 +7,8 @@
   `src/relative-settings.ts`
 - Rust selection model: `src-tauri/src/telemetry/standings_models.rs`
 - OBS route: `/relative`
-- Cadence: enriched roster and renderer at 20 Hz
+- Cadence: enriched roster and renderer at 20 Hz in Smooth, 12.5 Hz in Balanced
+  and approximately 8.3 Hz in Efficiency
 
 Rust owns physical row selection, row roles and selected gaps. TypeScript resolves
 the prepared vehicle IDs and formats them; it must not repeat domain selection.
@@ -79,8 +80,8 @@ the prepared vehicle IDs and formats them; it must not repeat domain selection.
   23 px for every selected row so the last card is not clipped.
 - Expand configured column tracks together with the text-size design surface so
   enlarged labels and values cannot overlap neighboring columns.
-- Cache DOM rows and update at 20 Hz. Cycles coinciding with Standings reuse the
-  same constructed roster.
+- Cache DOM rows and update at the selected performance-profile cadence. Cycles
+  coinciding with Standings reuse the same constructed roster.
 - Give the transparent `.overlay-shell` override greater specificity than the
   shared surface rule for production Vite extraction.
 

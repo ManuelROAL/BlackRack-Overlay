@@ -8,7 +8,8 @@
 - REST geometry: `src-tauri/src/telemetry/track_geometry.rs`
 - Shared-memory coordinates: `src-tauri/src/telemetry/lmu_bridge.cpp`
 - OBS route/API: `/trackmap`, `/api/trackmap`
-- Cadence: lightweight coordinate roster at approximately 30 Hz
+- Cadence: lightweight coordinate roster at approximately 30 Hz in Smooth,
+  16.7 Hz in Balanced and 8.3 Hz in Efficiency
 
 Track Map must not request the enriched Standings roster. Rust owns fallback
 learning, pit-passage validation/learning and post-stop lap-distance prediction;
@@ -63,8 +64,12 @@ TypeScript fetches static geometry, interpolates and renders it.
   SVG filters; these keep the WebView2 GPU process awake.
 - Vehicles use 24 px class-colored circles with their class position in black;
   pit cars remain at reduced opacity.
+- Smooth retains the complete roster. Balanced keeps up to 32 markers and
+  Efficiency up to 20, always preserving the player, overall leader and nearest
+  traffic. Rust assigns class positions before limiting the serialized roster.
 - The player keeps its class-position label in a 28 px circle and has a larger
-  pulsing lime halo advanced by telemetry events. Never replace its label with `P`.
+  lime halo advanced by telemetry events. It pulses in Smooth and Balanced and is
+  static in Efficiency. Never replace its label with `P`.
 - Only the overall leader receives a static gold star. Keep the complete leader
   marker above all others and distinct from the player's halo; class leaders have
   no special mark.

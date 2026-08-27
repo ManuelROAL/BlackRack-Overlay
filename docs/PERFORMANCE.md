@@ -4,6 +4,8 @@
 
 Compare BlackRack Overlay with TinyPedal under the same moving LMU replay/race segment
 and comparable visible content. Follow `tools/performance/README.md`.
+Record the selected performance profile and use the same one in every BlackRack
+comparison; Smooth is the full-cadence baseline for captures predating profiles.
 
 Primary external metrics include BlackRack Overlay's WebView2 child processes:
 

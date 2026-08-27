@@ -979,6 +979,11 @@ fn set_telemetry_logging(enabled: bool) -> Result<telemetry::TelemetryLoggingSta
 }
 
 #[tauri::command]
+fn set_performance_profile(profile: String) -> Result<(), String> {
+    telemetry::set_performance_profile(&profile)
+}
+
+#[tauri::command]
 fn get_driver_rank_estimate_logging() -> telemetry::DriverRankEstimateLoggingStatus {
     telemetry::driver_rank_estimate_logging_status()
 }
@@ -1426,6 +1431,7 @@ pub fn run() {
             toggle_interaction_mode_command,
             get_telemetry_logging,
             set_telemetry_logging,
+            set_performance_profile,
             get_driver_rank_estimate_logging,
             set_driver_rank_estimate_logging,
             get_strategy_logging,

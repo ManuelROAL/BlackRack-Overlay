@@ -21,10 +21,11 @@ mod track_geometry;
 mod track_map_model;
 
 use serde::{Deserialize, Serialize};
+use std::collections::{HashMap, HashSet};
 use std::fs::{self, File};
 use std::io::{BufWriter, Write};
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering};
 use std::sync::{Mutex, OnceLock};
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 use std::{thread, time::Duration};
@@ -393,6 +394,152 @@ fn interval_due(last: &mut Instant, now: Instant, interval: Duration) -> bool {
     true
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum PerformanceProfile {
+    Smooth = 0,
+    Balanced = 1,
+    Efficiency = 2,
+}
+
+#[derive(Clone, Copy)]
+struct PerformanceTuning {
+    profile: PerformanceProfile,
+    fast_overlay_interval: Duration,
+    standings_interval: Duration,
+    relative_interval: Duration,
+    track_map_interval: Duration,
+    secondary_overlay_interval: Duration,
+    track_map_vehicle_limit: usize,
+}
+
+static PERFORMANCE_PROFILE: AtomicU8 = AtomicU8::new(PerformanceProfile::Smooth as u8);
+
+impl PerformanceProfile {
+    fn current() -> Self {
+        match PERFORMANCE_PROFILE.load(Ordering::Relaxed) {
+            1 => Self::Balanced,
+            2 => Self::Efficiency,
+            _ => Self::Smooth,
+        }
+    }
+
+    fn name(self) -> &'static str {
+        match self {
+            Self::Smooth => "smooth",
+            Self::Balanced => "balanced",
+            Self::Efficiency => "efficiency",
+        }
+    }
+
+    fn tuning(self) -> PerformanceTuning {
+        match self {
+            Self::Smooth => PerformanceTuning {
+                profile: self,
+                fast_overlay_interval: Duration::from_millis(20),
+                standings_interval: Duration::from_millis(100),
+                relative_interval: Duration::from_millis(50),
+                track_map_interval: Duration::from_millis(33),
+                secondary_overlay_interval: Duration::from_millis(50),
+                track_map_vehicle_limit: usize::MAX,
+            },
+            Self::Balanced => PerformanceTuning {
+                profile: self,
+                fast_overlay_interval: Duration::from_millis(40),
+                standings_interval: Duration::from_millis(160),
+                relative_interval: Duration::from_millis(80),
+                track_map_interval: Duration::from_millis(60),
+                secondary_overlay_interval: Duration::from_millis(80),
+                track_map_vehicle_limit: 32,
+            },
+            Self::Efficiency => PerformanceTuning {
+                profile: self,
+                fast_overlay_interval: Duration::from_millis(60),
+                standings_interval: Duration::from_millis(240),
+                relative_interval: Duration::from_millis(120),
+                track_map_interval: Duration::from_millis(120),
+                secondary_overlay_interval: Duration::from_millis(120),
+                track_map_vehicle_limit: 20,
+            },
+        }
+    }
+}
+
+pub fn set_performance_profile(profile: &str) -> Result<(), String> {
+    let profile = match profile {
+        "smooth" => PerformanceProfile::Smooth,
+        "balanced" => PerformanceProfile::Balanced,
+        "efficiency" => PerformanceProfile::Efficiency,
+        _ => return Err("invalid_performance_profile".into()),
+    };
+    PERFORMANCE_PROFILE.store(profile as u8, Ordering::Relaxed);
+    Ok(())
+}
+
+fn prepare_track_map_vehicles(
+    vehicles: &mut Vec<TrackMapVehicle>,
+    track_length: f64,
+    limit: usize,
+) {
+    let mut order: Vec<usize> = (0..vehicles.len()).collect();
+    order.sort_by_key(|&index| vehicles[index].overall_position);
+    let mut class_positions = vec![0; vehicles.len()];
+    let mut class_counts: HashMap<&str, i32> = HashMap::new();
+    for index in order {
+        let count = class_counts
+            .entry(vehicles[index].vehicle_class.as_str())
+            .or_default();
+        *count += 1;
+        class_positions[index] = *count;
+    }
+    drop(class_counts);
+    for (vehicle, class_position) in vehicles.iter_mut().zip(class_positions) {
+        vehicle.class_position = class_position;
+    }
+
+    if vehicles.len() <= limit {
+        return;
+    }
+    let player_distance = vehicles
+        .iter()
+        .find(|vehicle| vehicle.is_player)
+        .map(|vehicle| vehicle.lap_distance)
+        .unwrap_or_default();
+    let mut selected: HashSet<usize> = vehicles
+        .iter()
+        .enumerate()
+        .filter_map(|(index, vehicle)| {
+            (vehicle.is_player || vehicle.overall_position == 1).then_some(index)
+        })
+        .collect();
+    let mut nearest: Vec<(usize, f64)> = vehicles
+        .iter()
+        .enumerate()
+        .filter(|(index, _)| !selected.contains(index))
+        .map(|(index, vehicle)| {
+            let direct = (vehicle.lap_distance - player_distance).abs();
+            let circular = if track_length > 0.0 {
+                direct.min((track_length - direct).abs())
+            } else {
+                direct
+            };
+            (index, circular)
+        })
+        .collect();
+    nearest.sort_by(|left, right| left.1.total_cmp(&right.1));
+    for (index, _) in nearest
+        .into_iter()
+        .take(limit.saturating_sub(selected.len()))
+    {
+        selected.insert(index);
+    }
+    let mut index = 0;
+    vehicles.retain(|_| {
+        let retain = selected.contains(&index);
+        index += 1;
+        retain
+    });
+}
+
 #[derive(Clone, Default, Serialize)]
 pub struct StandingEntry {
     vehicle_id: i32,
@@ -453,6 +600,7 @@ pub struct StandingEntry {
 pub struct TrackMapVehicle {
     vehicle_id: i32,
     overall_position: i32,
+    class_position: i32,
     vehicle_class: String,
     world_x: f64,
     world_y: f64,
@@ -466,6 +614,7 @@ pub struct TrackMapVehicle {
 #[derive(Clone, Serialize)]
 pub struct TelemetryFrame {
     source: &'static str,
+    performance_profile: &'static str,
     connected: bool,
     player_active: bool,
     game_in_foreground: bool,
@@ -690,6 +839,7 @@ impl TelemetryFrame {
     fn waiting_for_lmu(connected: bool) -> Self {
         Self {
             source: "lmu",
+            performance_profile: "smooth",
             connected,
             player_active: false,
             game_in_foreground: false,
@@ -835,12 +985,6 @@ pub fn spawn_source(app: AppHandle) {
     track_map_model::configure_track_map_storage(&app_data_directory);
     thread::spawn(move || {
         const SOURCE_INTERVAL: Duration = Duration::from_millis(20);
-        const FUEL_INTERVAL: Duration = Duration::from_millis(20);
-        const STANDINGS_INTERVAL: Duration = Duration::from_millis(100);
-        const RELATIVE_INTERVAL: Duration = Duration::from_millis(50);
-        const TRACK_MAP_INTERVAL: Duration = Duration::from_millis(33);
-        const DAMAGE_INTERVAL: Duration = Duration::from_millis(50);
-        const PITSTOP_INTERVAL: Duration = Duration::from_millis(50);
         const WEATHER_INTERVAL: Duration = Duration::from_millis(500);
         const ACTIVE_REJOIN_INTERVAL: Duration = Duration::from_millis(50);
         const IDLE_WARNING_INTERVAL: Duration = Duration::from_millis(250);
@@ -855,12 +999,12 @@ pub fn spawn_source(app: AppHandle) {
         let mut delta_engine = delta_records::DeltaEngine::new(app_data_directory.clone());
         let now = Instant::now();
         let mut last_driving = now.checked_sub(SOURCE_INTERVAL).unwrap_or(now);
-        let mut last_fuel = now.checked_sub(FUEL_INTERVAL).unwrap_or(now);
-        let mut last_standings = now.checked_sub(STANDINGS_INTERVAL).unwrap_or(now);
-        let mut last_relative = now.checked_sub(RELATIVE_INTERVAL).unwrap_or(now);
-        let mut last_track_map = now.checked_sub(TRACK_MAP_INTERVAL).unwrap_or(now);
-        let mut last_damage = now.checked_sub(DAMAGE_INTERVAL).unwrap_or(now);
-        let mut last_pitstop = now.checked_sub(PITSTOP_INTERVAL).unwrap_or(now);
+        let mut last_fuel = now.checked_sub(SOURCE_INTERVAL).unwrap_or(now);
+        let mut last_standings = now.checked_sub(SOURCE_INTERVAL).unwrap_or(now);
+        let mut last_relative = now.checked_sub(SOURCE_INTERVAL).unwrap_or(now);
+        let mut last_track_map = now.checked_sub(SOURCE_INTERVAL).unwrap_or(now);
+        let mut last_damage = now.checked_sub(SOURCE_INTERVAL).unwrap_or(now);
+        let mut last_pitstop = now.checked_sub(SOURCE_INTERVAL).unwrap_or(now);
         let mut last_weather = now.checked_sub(WEATHER_INTERVAL).unwrap_or(now);
         let mut last_flags = now.checked_sub(IDLE_WARNING_INTERVAL).unwrap_or(now);
         let mut last_rejoin = now.checked_sub(IDLE_WARNING_INTERVAL).unwrap_or(now);
@@ -879,9 +1023,13 @@ pub fn spawn_source(app: AppHandle) {
             }
             let cycle_started = Instant::now();
             let schedule_now = Instant::now();
-            let standings_due = interval_due(&mut last_standings, schedule_now, STANDINGS_INTERVAL);
-            let relative_due = interval_due(&mut last_relative, schedule_now, RELATIVE_INTERVAL);
-            let track_map_due = interval_due(&mut last_track_map, schedule_now, TRACK_MAP_INTERVAL);
+            let tuning = PerformanceProfile::current().tuning();
+            let standings_due =
+                interval_due(&mut last_standings, schedule_now, tuning.standings_interval);
+            let relative_due =
+                interval_due(&mut last_relative, schedule_now, tuning.relative_interval);
+            let track_map_due =
+                interval_due(&mut last_track_map, schedule_now, tuning.track_map_interval);
             let standings_visible = super::overlay_is_active(&app, "standings");
             let relative_visible = super::overlay_is_active(&app, "relative");
             let track_map_visible = super::overlay_is_active(&app, "trackmap");
@@ -892,10 +1040,16 @@ pub fn spawn_source(app: AppHandle) {
             let source_started = Instant::now();
             let track_map_requested = track_map_due && (track_map_visible || browser_clients);
             let mut frame = source.next_frame(standings_requested, track_map_requested);
+            frame.performance_profile = tuning.profile.name();
             delta_engine.update(&mut frame);
             standings_models::prepare_overlay_models(&mut frame);
             if track_map_requested {
                 track_map_model.update(&mut frame);
+                prepare_track_map_vehicles(
+                    &mut frame.track_map_vehicles,
+                    frame.track_length_meters,
+                    tuning.track_map_vehicle_limit,
+                );
             }
             let source_elapsed = source_started.elapsed();
             let now = Instant::now();
@@ -941,19 +1095,21 @@ pub fn spawn_source(app: AppHandle) {
             }
             frame.track_map_vehicles.clear();
 
-            let driving_due = interval_due(&mut last_driving, now, SOURCE_INTERVAL);
+            let driving_due = interval_due(&mut last_driving, now, tuning.fast_overlay_interval);
             let emit_delta = driving_due && super::overlay_is_active(&app, "delta");
             let emit_timing = driving_due && super::overlay_is_active(&app, "timing");
             let emit_driving = driving_due && super::overlay_is_active(&app, "driving");
             let emit_tires = driving_due && super::overlay_is_active(&app, "tires");
-            let emit_damage = interval_due(&mut last_damage, now, DAMAGE_INTERVAL)
-                && super::overlay_is_active(&app, "damage");
-            let emit_pitstop = interval_due(&mut last_pitstop, now, PITSTOP_INTERVAL)
-                && super::overlay_is_active(&app, "pitstop");
+            let emit_damage =
+                interval_due(&mut last_damage, now, tuning.secondary_overlay_interval)
+                    && super::overlay_is_active(&app, "damage");
+            let emit_pitstop =
+                interval_due(&mut last_pitstop, now, tuning.secondary_overlay_interval)
+                    && super::overlay_is_active(&app, "pitstop");
             let weather_due = interval_due(&mut last_weather, now, WEATHER_INTERVAL);
             let emit_forecast = weather_due && super::overlay_is_active(&app, "forecast");
             let emit_conditions = weather_due && super::overlay_is_active(&app, "conditions");
-            let emit_fuel = interval_due(&mut last_fuel, now, FUEL_INTERVAL)
+            let emit_fuel = interval_due(&mut last_fuel, now, tuning.fast_overlay_interval)
                 && super::overlay_is_active(&app, "fuel");
             let flag_interval = if frame.flag_warning.active {
                 SOURCE_INTERVAL
@@ -1050,7 +1206,10 @@ pub fn spawn_source(app: AppHandle) {
 
 #[cfg(test)]
 mod tests {
-    use super::{configure_logging, set_telemetry_logging, AnalysisLogger, TelemetryFrame};
+    use super::{
+        configure_logging, prepare_track_map_vehicles, set_telemetry_logging, AnalysisLogger,
+        PerformanceProfile, TelemetryFrame, TrackMapVehicle,
+    };
     use std::fs;
     use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -1078,6 +1237,55 @@ mod tests {
 
         frame.player_in_garage = true;
         assert!(frame.should_hide_overlays(true));
+    }
+
+    #[test]
+    fn performance_profiles_reduce_only_delivery_work() {
+        let smooth = PerformanceProfile::Smooth.tuning();
+        let balanced = PerformanceProfile::Balanced.tuning();
+        let efficiency = PerformanceProfile::Efficiency.tuning();
+
+        assert!(smooth.fast_overlay_interval < balanced.fast_overlay_interval);
+        assert!(balanced.fast_overlay_interval < efficiency.fast_overlay_interval);
+        assert!(smooth.standings_interval < balanced.standings_interval);
+        assert!(balanced.standings_interval < efficiency.standings_interval);
+        assert_eq!(smooth.track_map_vehicle_limit, usize::MAX);
+        assert_eq!(balanced.track_map_vehicle_limit, 32);
+        assert_eq!(efficiency.track_map_vehicle_limit, 20);
+    }
+
+    #[test]
+    fn track_map_limit_keeps_player_leader_and_nearby_cars() {
+        let mut vehicles: Vec<TrackMapVehicle> = (0..40)
+            .map(|index| TrackMapVehicle {
+                vehicle_id: index + 1,
+                overall_position: index + 1,
+                class_position: 0,
+                vehicle_class: "HYPERCAR".into(),
+                world_x: 0.0,
+                world_y: 0.0,
+                lap_distance: index as f64 * 100.0,
+                total_laps: 1,
+                in_pits: false,
+                in_garage: false,
+                is_player: index == 20,
+            })
+            .collect();
+
+        prepare_track_map_vehicles(&mut vehicles, 4_000.0, 5);
+
+        assert_eq!(vehicles.len(), 5);
+        assert!(vehicles.iter().any(|vehicle| vehicle.overall_position == 1));
+        assert!(vehicles.iter().any(|vehicle| vehicle.is_player));
+        assert!(vehicles
+            .iter()
+            .any(|vehicle| vehicle.overall_position == 20));
+        assert!(vehicles
+            .iter()
+            .any(|vehicle| vehicle.overall_position == 22));
+        assert!(vehicles
+            .iter()
+            .all(|vehicle| vehicle.class_position == vehicle.overall_position));
     }
 
     #[test]

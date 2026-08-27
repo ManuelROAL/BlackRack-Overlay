@@ -88,6 +88,10 @@ The backend optimizations are compiled and covered by the Rust regression suite,
 but still need a new real-race/replay performance capture to quantify the
 reduction. See `docs/PERFORMANCE.md` and `docs/TODO.md`.
 
+General settings provide Smooth, Balanced and Efficiency performance profiles.
+They reduce overlay delivery/rendering cadence and Track Map marker density while
+keeping the telemetry source and critical calculations at 50 Hz.
+
 Tauri creates one transparent full-monitor host WebView on the selected monitor
 and moves it when the selection changes. Active overlays are mounted inside that
 host and removed when disabled, so renderer count stays at one host. Layout is

@@ -3086,6 +3086,7 @@ impl TelemetrySource for LmuTelemetrySource {
                 .map(|entry| TrackMapVehicle {
                     vehicle_id: entry.vehicle_id,
                     overall_position: entry.position,
+                    class_position: 0,
                     vehicle_class: Self::string_from_chars(&entry.vehicle_class),
                     world_x: entry.world_x,
                     world_y: entry.world_y,
@@ -3164,6 +3165,7 @@ impl TelemetrySource for LmuTelemetrySource {
         let track_grip_state = Self::track_surface_state(snapshot.track_wetness_percent);
         let frame = TelemetryFrame {
             source: "lmu",
+            performance_profile: "smooth",
             connected: true,
             player_active: true,
             game_in_foreground: snapshot.game_in_foreground != 0,
