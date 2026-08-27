@@ -79,8 +79,9 @@ telemetry semantics and file ownership live under `docs/overlays/`; use
 - Use the same hierarchy and help-text treatment in every overlay configuration
   disclosure. Expanded controls and reorder grids must reflow without horizontal
   overflow at the narrow control-panel breakpoint.
-- Present integrations as a clearly introduced pair of local tools, with matching
-  section headers, explicit status badges and a visible disclosure affordance.
+- Present integrations as clearly introduced local tools, with matching section
+  headers, explicit status badges and a visible disclosure affordance. Start all
+  integration disclosures collapsed whenever the control panel opens.
   On short integration views, keep the support card and shortcut footer anchored
   at the bottom of the control panel instead of leaving unused space below them.
 - General and per-overlay transparency and text-size modes remain independent.
