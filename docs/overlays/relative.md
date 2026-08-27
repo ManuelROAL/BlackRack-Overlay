@@ -61,7 +61,8 @@ the prepared vehicle IDs and formats them; it must not repeat domain selection.
   Standings, including the sidewall-style uniform-compound SVGs; do not create
   divergent formatting rules for shared cells.
 - Apply Standings' completed-lap validity semantics to LAST, including the latched
-  `mLapInvalidated` and negative official-time signals.
+  `mLapInvalidated`, negative official-time signals and reconstructed invalid
+  durations when LMU omits the official time.
 - Reuse Standings' event-roster fallback for missing/`XX` nationality and badges.
 - If a resolved country asset fails to load, replace it with the bundled `XX`
   marker; remove the image if that fallback also fails instead of leaving a

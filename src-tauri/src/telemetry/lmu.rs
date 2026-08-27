@@ -610,6 +610,8 @@ impl CarHistory {
                         let reconstructed = lap_start - previous_start;
                         self.last_lap_seconds = if Self::valid_lap_time(official_last_lap) {
                             official_last_lap
+                        } else if self.current_lap_invalid && Self::valid_lap_time(reconstructed) {
+                            reconstructed
                         } else if Self::plausible_reconstructed_lap(entry, reconstructed) {
                             reconstructed
                         } else {
@@ -4167,6 +4169,34 @@ mod tests {
         assert!(history.is_last_lap_valid());
         assert_eq!(history.last_lap_seconds(entry.last_lap_seconds), 0.0);
         assert!(history.recent_lap_times.is_empty());
+    }
+
+    #[test]
+    fn standings_history_keeps_a_short_reconstructed_invalid_lap_visible() {
+        let mut history = CarHistory::default();
+        let mut entry = LmuStandingEntry {
+            total_laps: 4,
+            last_lap_seconds: 95.0,
+            best_lap_seconds: 100.0,
+            estimated_lap_time: 100.0,
+            lap_start_elapsed_seconds: 400.0,
+            elapsed_seconds: 402.0,
+            ..LmuStandingEntry::default()
+        };
+
+        history.update(&entry, 60.0);
+        entry.lap_invalidated = 1;
+        entry.elapsed_seconds = 430.0;
+        history.update(&entry, 59.5);
+        entry.total_laps = 5;
+        entry.lap_invalidated = 0;
+        entry.last_lap_seconds = -1.0;
+        entry.lap_start_elapsed_seconds = 445.0;
+        entry.elapsed_seconds = 446.5;
+        history.update(&entry, 59.0);
+
+        assert!(!history.is_last_lap_valid());
+        assert_eq!(history.last_lap_seconds(entry.last_lap_seconds), 45.0);
     }
 
     #[test]

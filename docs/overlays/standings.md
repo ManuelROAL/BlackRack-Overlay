@@ -56,7 +56,8 @@ duplicate selection or timing semantics.
   boundary. If `mLastLapTime` is unavailable,
   reconstruct it from consecutive `mLapStartET` values only after the new lap has
   been active for more than one second. Discard stable partial resets below 50%
-  of official best or estimated pace; keep plausible invalid slow laps.
+  of official best or estimated pace only for valid laps; retain every invalid
+  reconstructed duration between 20 and 900 seconds so LAST never becomes empty.
 - AVG 5 keeps the latest five completed plausible times, rejects values below the
   official valid best and excludes laps slower than 120% of the best plausible
   recent lap. Clean validity remains mandatory for consumption learning.
