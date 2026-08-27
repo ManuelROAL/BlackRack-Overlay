@@ -103,9 +103,9 @@ math belongs in Rust. `fuel.ts` only formats serialized plans.
   official assigned fuel ratio, the
   clean-lap average ratio and the last-lap ratio in one readable detail row.
 - Label scenario-wide replenishment as `REFUEL`; it is the sum still required
-  over the remaining race, not necessarily the next pit load. Show `-` when no
-  replenishment is required. The summary's `CARGA` value remains the next-stop
-  load.
+  over the remaining race, not necessarily the next pit load. When the current
+  resource already exceeds that requirement, show the calculated surplus as a
+  negative value. The summary's `CARGA` value remains the next-stop load.
 - When exactly one stop remains and the qualifying scenario can also finish with
   one stop, use the larger of the active and qualifying next-fill calculations
   and label it `CARGA Q`. This follows the conservative final-stint behavior of

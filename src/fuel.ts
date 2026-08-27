@@ -63,7 +63,12 @@ const renderProfile = (
   const id = `${resource}-${name}`;
   text(`${id}-consumption`, plan ? format(consumption) : "--");
   text(`${id}-autonomy`, plan ? format(plan.autonomy) : "--");
-  text(`${id}-required`, plan ? (plan.total_additional > 0 ? format(plan.total_additional) : "-") : "--");
+  const refuelBalance = plan
+    ? plan.total_additional > 0 ? plan.total_additional : -plan.end_remaining
+    : null;
+  text(`${id}-required`, refuelBalance === null
+    ? "--"
+    : `${refuelBalance < 0 ? "−" : ""}${format(Math.abs(refuelBalance))}`);
 };
 
 const renderStatus = (frame: TelemetryFrame): void => {
