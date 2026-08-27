@@ -130,9 +130,12 @@ persisted.
 
 - Optional JSONL analysis may record derived diagnostic fields and performance
   samples, never authentication material.
-- The independent DR-estimate JSONL records only changes to the player's derived
-  estimate during a race. Values are compared at the precision useful for
-  diagnosis, so floating-point noise and unchanged periodic samples are omitted.
+- The independent DR-estimate JSONL records the player's current DR when it
+  becomes available or changes during practice and qualifying, plus changes to
+  the derived estimate during a race. Practice and qualifying samples omit
+  positions and calculations.
+  Values are compared at the precision useful for diagnosis, so floating-point
+  noise and unchanged periodic samples are omitted.
   Enabling it requests the 10 Hz standings
   model even when Standings is hidden; it never records telemetry frames,
   performance samples or complete third-party responses. All sessions in one

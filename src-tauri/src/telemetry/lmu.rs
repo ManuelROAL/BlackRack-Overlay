@@ -1595,6 +1595,33 @@ impl LmuTelemetrySource {
         session_type: i32,
         settings: DriverRankSettings,
     ) -> Option<DriverRankEstimateDiagnostic> {
+        if (0..=8).contains(&session_type) {
+            let entry = entries.iter().find(|entry| entry.is_player)?;
+            let visual_score = rank_scores.get(&entry.vehicle_id).copied();
+            return Some(DriverRankEstimateDiagnostic {
+                status: if visual_score.is_some() {
+                    "current_rank"
+                } else {
+                    "player_rank_unavailable"
+                },
+                vehicle_id: entry.vehicle_id,
+                vehicle_class: entry.vehicle_class.clone(),
+                driver_rank: entry.driver_rank.clone(),
+                driver_rank_progress: entry.driver_rank_progress,
+                visual_score,
+                race_position: 0,
+                live_race_position: 0,
+                race_position_source: "not_applicable",
+                qualifying_position: 0,
+                same_class_rivals: 0,
+                rated_opponents: 0,
+                race_result_total: 0.0,
+                qualifying_result_total: 0.0,
+                gain_factor: 0.0,
+                internal_rating_gain: None,
+                estimated_gain: None,
+            });
+        }
         if !(10..=13).contains(&session_type) {
             return None;
         }
@@ -2089,44 +2116,61 @@ impl LmuTelemetrySource {
         if log_driver_rank_sample {
             let split = self.session_split.value();
             if let Some(sample) = driver_rank_diagnostic {
-                super::dr_estimate_log::queue(serde_json::json!({
-                    "event": "driver_rank_estimate_sample",
-                    "event_id": split.event_id,
-                    "session_type": snapshot.session_type,
-                    "game_phase": snapshot.game_phase,
-                    "status": sample.status,
-                    "player": {
-                        "vehicle_id": sample.vehicle_id,
-                        "vehicle_class": sample.vehicle_class,
-                        "driver_rank": sample.driver_rank,
-                        "driver_rank_progress": sample.driver_rank_progress,
-                        "visual_score": sample.visual_score,
-                        "internal_score": sample.visual_score.map(|score| score * DRIVER_RANK_INTERNAL_SCALE),
-                        "race_position": sample.race_position,
-                        "live_race_position": sample.live_race_position,
-                        "race_position_source": sample.race_position_source,
-                        "qualifying_position": sample.qualifying_position,
-                    },
-                    "coverage": {
-                        "same_class_rivals": sample.same_class_rivals,
-                        "rated_opponents": sample.rated_opponents,
-                        "missing_profiles": sample.same_class_rivals.saturating_sub(sample.rated_opponents),
-                    },
-                    "calculation": {
-                        "race_result_total": sample.race_result_total,
-                        "qualifying_result_total": sample.qualifying_result_total,
-                        "qualifying_weight": DRIVER_RANK_QUALIFY_WEIGHT,
-                        "gain_factor": sample.gain_factor,
-                        "internal_rating_gain": sample.internal_rating_gain,
-                        "estimated_gain": sample.estimated_gain,
-                    },
-                    "settings": {
-                        "multiplier": split.driver_rank_settings.multiplier,
-                        "k": split.driver_rank_settings.k,
-                        "distance": split.driver_rank_settings.distance,
-                        "logarithm": split.driver_rank_settings.logarithm,
-                    },
-                }));
+                if (0..=8).contains(&snapshot.session_type) {
+                    super::dr_estimate_log::queue(serde_json::json!({
+                        "event": "driver_rank_current_sample",
+                        "event_id": split.event_id,
+                        "session_type": snapshot.session_type,
+                        "status": sample.status,
+                        "player": {
+                            "vehicle_id": sample.vehicle_id,
+                            "vehicle_class": sample.vehicle_class,
+                            "driver_rank": sample.driver_rank,
+                            "driver_rank_progress": sample.driver_rank_progress,
+                            "visual_score": sample.visual_score,
+                            "internal_score": sample.visual_score.map(|score| score * DRIVER_RANK_INTERNAL_SCALE),
+                        },
+                    }));
+                } else {
+                    super::dr_estimate_log::queue(serde_json::json!({
+                        "event": "driver_rank_estimate_sample",
+                        "event_id": split.event_id,
+                        "session_type": snapshot.session_type,
+                        "game_phase": snapshot.game_phase,
+                        "status": sample.status,
+                        "player": {
+                            "vehicle_id": sample.vehicle_id,
+                            "vehicle_class": sample.vehicle_class,
+                            "driver_rank": sample.driver_rank,
+                            "driver_rank_progress": sample.driver_rank_progress,
+                            "visual_score": sample.visual_score,
+                            "internal_score": sample.visual_score.map(|score| score * DRIVER_RANK_INTERNAL_SCALE),
+                            "race_position": sample.race_position,
+                            "live_race_position": sample.live_race_position,
+                            "race_position_source": sample.race_position_source,
+                            "qualifying_position": sample.qualifying_position,
+                        },
+                        "coverage": {
+                            "same_class_rivals": sample.same_class_rivals,
+                            "rated_opponents": sample.rated_opponents,
+                            "missing_profiles": sample.same_class_rivals.saturating_sub(sample.rated_opponents),
+                        },
+                        "calculation": {
+                            "race_result_total": sample.race_result_total,
+                            "qualifying_result_total": sample.qualifying_result_total,
+                            "qualifying_weight": DRIVER_RANK_QUALIFY_WEIGHT,
+                            "gain_factor": sample.gain_factor,
+                            "internal_rating_gain": sample.internal_rating_gain,
+                            "estimated_gain": sample.estimated_gain,
+                        },
+                        "settings": {
+                            "multiplier": split.driver_rank_settings.multiplier,
+                            "k": split.driver_rank_settings.k,
+                            "distance": split.driver_rank_settings.distance,
+                            "logarithm": split.driver_rank_settings.logarithm,
+                        },
+                    }));
+                }
             }
         }
 
@@ -3780,6 +3824,36 @@ mod tests {
         assert_eq!(scored.race_position, 3);
         assert_eq!(scored.race_position_source, "rest_server_scored");
         assert!(scored.estimated_gain.unwrap() < live.estimated_gain.unwrap());
+    }
+
+    #[test]
+    fn driver_rank_log_reports_current_rank_without_estimating_before_race() {
+        for session_type in [1, 5] {
+            let mut entries = vec![StandingEntry {
+                vehicle_id: 7,
+                position: 3,
+                vehicle_class: "LMP2".to_owned(),
+                driver_rank: "S1".to_owned(),
+                driver_rank_progress: 90.0,
+                is_player: true,
+                ..StandingEntry::default()
+            }];
+
+            let diagnostic = LmuTelemetrySource::update_driver_rank_estimates(
+                &mut entries,
+                &HashMap::from([(7, 490.0)]),
+                &HashMap::new(),
+                &HashMap::new(),
+                session_type,
+                DriverRankSettings::default(),
+            )
+            .unwrap();
+
+            assert_eq!(diagnostic.status, "current_rank");
+            assert_eq!(diagnostic.visual_score, Some(490.0));
+            assert_eq!(diagnostic.estimated_gain, None);
+            assert!(!entries[0].estimated_driver_rank_gain_available);
+        }
     }
 
     #[test]

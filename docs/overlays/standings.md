@@ -87,9 +87,12 @@ duplicate selection or timing semantics.
   or `XX` nationality and missing badges without replacing valid `/players` data.
 - The DR estimate is same-class and event-parameter aware. Convert it back from
   the three-times internal rating scale before serializing visible progress.
-- Its dedicated diagnostic switch writes the initial player estimate and each
-  meaningful change to `dr-estimate-logs/dr-estimate.jsonl`; unchanged samples
-  are omitted and floating-point values are compared after rounding to 0.001.
+- Its dedicated diagnostic switch writes the player's current DR when available
+  or changed during practice and qualifying, then the initial player estimate and
+  each meaningful change during a race, to `dr-estimate-logs/dr-estimate.jsonl`.
+  Practice and qualifying samples contain no position or calculation fields;
+  unchanged samples are omitted and floating-point values are compared after
+  rounding to 0.001.
   That JSONL contains only the estimate inputs, coverage, calculation and event
   settings; it remains separate from general analysis telemetry and keeps the
   10 Hz standings model active while enabled. It accumulates all sessions and
