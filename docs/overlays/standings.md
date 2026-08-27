@@ -90,7 +90,8 @@ duplicate selection or timing semantics.
   the three-times internal rating scale before serializing visible progress.
 - Its dedicated diagnostic switch writes the player's current DR when available
   or changed during practice and qualifying, then the initial player estimate and
-  each meaningful change during a race, to `dr-estimate-logs/dr-estimate.jsonl`.
+  each meaningful change during a race, to a unique per-run file under
+  `dr-estimate-logs/`.
   Practice and qualifying samples contain no position or calculation fields;
   all resolved player samples retain raw continuous ELO to diagnose rank-boundary
   resets. Unchanged samples are omitted and floating-point values are compared
@@ -98,7 +99,8 @@ duplicate selection or timing semantics.
   That JSONL contains only the estimate inputs, coverage, calculation and event
   settings; it remains separate from general analysis telemetry and keeps the
   10 Hz standings model active while enabled. It accumulates all sessions and
-  enable/disable cycles in one app run, then resets on the next app launch.
+  enable/disable cycles in one app run; later launches create a distinct file and
+  retain the previous logs.
 - During the live race, DR head-to-head results follow the responsive class order
   from shared memory. After the checkered flag, prefer LMU REST `position` only
   when `serverScored` is true and every car in that class has a positive scored

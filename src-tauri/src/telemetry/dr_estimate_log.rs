@@ -9,6 +9,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 static ENABLED: AtomicBool = AtomicBool::new(false);
 static DIRECTORY: OnceLock<PathBuf> = OnceLock::new();
 static SETTINGS_PATH: OnceLock<PathBuf> = OnceLock::new();
+static RUN_FILE: OnceLock<PathBuf> = OnceLock::new();
 static ACTIVE_FILE: Mutex<Option<PathBuf>> = Mutex::new(None);
 static EVENTS: Mutex<Vec<serde_json::Value>> = Mutex::new(Vec::new());
 static LAST_SIGNATURE: Mutex<Option<serde_json::Value>> = Mutex::new(None);
@@ -39,8 +40,30 @@ pub(super) fn configure(app_data_directory: &Path) {
     if let Some(directory) = DIRECTORY.get() {
         if fs::create_dir_all(directory).is_ok() {
             // Un solo fichero por ejecución de la aplicación. Volver a activar
-            // el registro en la misma ejecución continúa añadiendo al mismo log.
-            let _ = File::create(directory.join("dr-estimate.jsonl"));
+            // el registro continúa ese log, pero los arranques anteriores se conservan.
+            let started_ms = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_millis();
+            for suffix in 0_u16..=u16::MAX {
+                let suffix = if suffix == 0 {
+                    String::new()
+                } else {
+                    format!("-{suffix}")
+                };
+                let path = directory.join(format!(
+                    "dr-estimate-{started_ms}-{}{suffix}.jsonl",
+                    std::process::id()
+                ));
+                match OpenOptions::new().write(true).create_new(true).open(&path) {
+                    Ok(_) => {
+                        let _ = RUN_FILE.set(path);
+                        break;
+                    }
+                    Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
+                    Err(_) => break,
+                }
+            }
         }
     }
 }
@@ -180,13 +203,15 @@ impl DriverRankEstimateLogger {
     }
 
     fn open(&mut self) {
-        let Some(directory) = DIRECTORY.get() else {
+        let Some(path) = RUN_FILE.get().cloned() else {
+            return;
+        };
+        let Some(directory) = path.parent() else {
             return;
         };
         if fs::create_dir_all(directory).is_err() {
             return;
         }
-        let path = directory.join("dr-estimate.jsonl");
         let Ok(file) = OpenOptions::new().create(true).append(true).open(&path) else {
             return;
         };
@@ -250,7 +275,10 @@ mod tests {
             .unwrap();
         assert_eq!(files.len(), 1);
         let path = files[0].path();
-        assert_eq!(path.file_name().unwrap(), "dr-estimate.jsonl");
+        let file_name = path.file_name().unwrap().to_string_lossy();
+        assert!(file_name.starts_with("dr-estimate-"));
+        assert!(file_name.ends_with(".jsonl"));
+        assert_ne!(file_name, "dr-estimate.jsonl");
         let contents = fs::read_to_string(path).unwrap();
         let entries = contents.lines().collect::<Vec<_>>();
         assert_eq!(entries.len(), 3);

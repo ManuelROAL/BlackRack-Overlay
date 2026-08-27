@@ -140,8 +140,9 @@ persisted.
   Enabling it requests the 10 Hz standings
   model even when Standings is hidden; it never records telemetry frames,
   performance samples or complete third-party responses. All sessions in one
-  application run append to `dr-estimate.jsonl`; toggling the logger continues
-  that file, and the next application launch truncates it.
+  application run append to its unique
+  `dr-estimate-<timestamp>-<pid>.jsonl`; toggling the logger continues that file,
+  and later application launches retain every earlier run.
 - Keep bounded/non-blocking delivery for browser clients and skip serialization
   when no client exists.
 - Add focused Rust tests for shared telemetry semantics, especially session reset,
