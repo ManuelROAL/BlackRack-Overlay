@@ -289,7 +289,7 @@ const selectControlView = (view: string): void => {
 for (const button of viewButtons) {
   button.addEventListener("click", () => selectControlView(button.dataset.controlView ?? "overlays"));
 }
-selectControlView("overlays");
+selectControlView("general");
 
 const appVersion = document.getElementById("app-version");
 getVersion()

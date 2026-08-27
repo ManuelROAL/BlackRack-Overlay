@@ -56,6 +56,7 @@ telemetry semantics and file ownership live under `docs/overlays/`; use
 ## Control panel and persistence
 
 - Keep top-level separation between overlays, general settings and integrations.
+  General is the leftmost tab and the default view when the control panel opens.
   Visibility stays immediately accessible. Per-overlay monitor, transparency,
   reset and content options live in that overlay's single settings disclosure.
 - Present general settings as a single compact, full-width group with consistently
