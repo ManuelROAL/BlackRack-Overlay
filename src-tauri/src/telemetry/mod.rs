@@ -598,6 +598,8 @@ pub struct TelemetryFrame {
     #[serde(skip)]
     last_lap_valid: bool,
     best_lap_seconds: f64,
+    #[serde(skip)]
+    session_best_lap_seconds: f64,
     lap_delta_seconds: f64,
     delta_model: delta_records::DeltaViewModel,
     timing_model: delta_records::TimingViewModel,
@@ -817,6 +819,7 @@ impl TelemetryFrame {
             last_lap_seconds: 0.0,
             last_lap_valid: true,
             best_lap_seconds: 0.0,
+            session_best_lap_seconds: 0.0,
             lap_delta_seconds: 0.0,
             delta_model: delta_records::DeltaViewModel::default(),
             timing_model: delta_records::TimingViewModel::default(),

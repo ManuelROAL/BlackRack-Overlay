@@ -8,9 +8,12 @@
   <body class="timing-body">
     <main id="timing-card" class="timing-card" data-state="waiting">
       <section class="timing-times">
-        <div><span data-i18n="timing.current">ACTUAL</span><b id="timing-current">--:--.---</b></div>
-        <div><span data-i18n="timing.last">ÚLTIMA</span><b id="timing-last">--:--.---</b></div>
-        <div><span data-i18n="timing.best">MEJOR</span><b id="timing-best">--:--.---</b></div>
+        <div data-time="current"><span data-i18n="timing.current">ACTUAL</span><b id="timing-current">--:--.---</b></div>
+        <div data-time="session-best"><span data-i18n="timing.sessionBest">MEJOR DE SESIÓN</span><b id="timing-session-best">--:--.---</b></div>
+        <div data-time="session-personal-best"><span data-i18n="timing.sessionPersonalBest">PB DE SESIÓN</span><b id="timing-session-personal-best">--:--.---</b></div>
+        <div data-time="personal-best"><span data-i18n="timing.personalBest">MEJOR PERSONAL</span><b id="timing-personal-best">--:--.---</b></div>
+        <div data-time="last"><span data-i18n="timing.last">ÚLTIMA</span><b id="timing-last">--:--.---</b></div>
+        <div data-time="estimated"><span data-i18n="timing.estimated">ESTIMADA</span><b id="timing-estimated">--:--.---</b></div>
       </section>
       <section id="timing-sectors" class="timing-sectors" aria-label="Sectores" data-i18n-aria-label="timing.sectorsAria">
         <div data-sector="0"><span>S1</span><b>--.---</b></div>

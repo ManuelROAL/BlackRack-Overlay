@@ -2,8 +2,9 @@
 
 ## Propósito
 
-Timing compacto reúne en un único panel el tiempo actual, último y mejor de
-sesión, tres sectores y un historial corto. Evita dividir información
+Timing compacto reúne en un único panel el tiempo actual, último, estimado,
+mejor de clase en sesión, mejor personal de sesión y mejor personal absoluto,
+tres sectores y un historial corto. Evita dividir información
 estrechamente relacionada en varios micro-overlays.
 
 ## Archivos y propiedad
@@ -33,6 +34,12 @@ El panel consume el ciclo base de 50 Hz y no construye clasificaciones.
   modos aunque no se muestren, de modo que cambiar de referencia no pierde historial.
 - El historial registra hasta cinco vueltas reconstruibles. El panel no muestra
   delta dinámico; el overlay Delta lo ofrece por separado cuando está visible.
+- El mejor de sesión es la vuelta más rápida de la clase del jugador. El PB de
+  sesión usa el mejor oficial de LMU y el mejor personal usa la vuelta absoluta
+  persistida para la combinación coche/circuito.
+- La estimación proyecta la vuelta actual sobre la mejor traza disponible, con
+  prioridad stint, sesión y absoluto, y suaviza el delta vivo. No usa
+  `mEstimatedLapTime`, que puede anticipar tiempos irreales.
 - Las vueltas inválidas se conservan en el historial y se marcan como tales, pero
   nunca mejoran referencias de vuelta o sector. La validez retiene
   `mLapInvalidated` durante toda la vuelta y el tiempo oficial negativo confirma

@@ -13,7 +13,7 @@ bindOverlayTransparency("timing");
 bindOverlayInteractionMode();
 const performance = createOverlayPerformanceTracker("timing");
 let settings = readTimingSettings();
-const designHeight = (rows: number): number => rows === 0 ? 100 : rows === 5 ? 170 : 142;
+const designHeight = (rows: number): number => rows === 0 ? 180 : rows === 5 ? 250 : 222;
 const resizeOverlay = fitOverlay(
   { width: 318, height: designHeight(settings.historyLaps) },
   { heightTextRatio: 0.3 }
@@ -21,7 +21,10 @@ const resizeOverlay = fitOverlay(
 const card = document.getElementById("timing-card");
 const current = document.getElementById("timing-current");
 const last = document.getElementById("timing-last");
-const best = document.getElementById("timing-best");
+const sessionBest = document.getElementById("timing-session-best");
+const sessionPersonalBest = document.getElementById("timing-session-personal-best");
+const personalBest = document.getElementById("timing-personal-best");
+const estimated = document.getElementById("timing-estimated");
 const history = document.getElementById("timing-history");
 const sectorNodes = [...document.querySelectorAll<HTMLElement>("[data-sector]")];
 
@@ -40,7 +43,10 @@ const render = (model: TimingViewModel): void => {
   card?.setAttribute("data-state", model.available ? "active" : "waiting");
   setText(current, lapTime(model.current_seconds));
   setText(last, lapTime(model.last_seconds));
-  setText(best, lapTime(model.best_seconds));
+  setText(sessionBest, lapTime(model.session_best_seconds));
+  setText(sessionPersonalBest, lapTime(model.session_personal_best_seconds));
+  setText(personalBest, lapTime(model.personal_best_seconds));
+  setText(estimated, lapTime(model.estimated_seconds));
   for (const [index, node] of sectorNodes.entries()) {
     const sector = model.sectors[index];
     node.dataset.state = sector?.state ?? "pending";

@@ -2639,6 +2639,20 @@ impl LmuTelemetrySource {
             .min_by_key(|entry| entry.position)
     }
 
+    fn player_class_session_best(snapshot: &LmuSnapshot) -> f64 {
+        let entries = &snapshot.standings[..snapshot.standings_count as usize];
+        let Some(player) = entries.iter().find(|entry| entry.is_player != 0) else {
+            return 0.0;
+        };
+        entries
+            .iter()
+            .filter(|entry| entry.vehicle_class == player.vehicle_class)
+            .map(|entry| entry.best_lap_seconds)
+            .filter(|seconds| seconds.is_finite() && (20.0..900.0).contains(seconds))
+            .min_by(f64::total_cmp)
+            .unwrap_or(0.0)
+    }
+
     fn standing_reference_lap(entry: &LmuStandingEntry) -> Option<f64> {
         [
             entry.estimated_lap_time,
@@ -3362,6 +3376,7 @@ impl TelemetrySource for LmuTelemetrySource {
             last_lap_seconds: CarHistory::normalize_official_lap(snapshot.last_lap_seconds),
             last_lap_valid: !CarHistory::official_lap_is_invalid(snapshot.last_lap_seconds),
             best_lap_seconds: snapshot.best_lap_seconds.max(0.0),
+            session_best_lap_seconds: Self::player_class_session_best(&snapshot),
             lap_delta_seconds: snapshot.lap_delta_seconds,
             delta_model: Default::default(),
             timing_model: Default::default(),
@@ -3673,6 +3688,35 @@ mod tests {
             ["S", "M", "H", "W"]
         );
         assert_eq!(LmuTelemetrySource::tire_compound(&[1, 2, 1, 2]), "M/H");
+    }
+
+    #[test]
+    fn timing_session_best_uses_only_the_player_class() {
+        let mut snapshot = LmuSnapshot {
+            standings_count: 3,
+            ..LmuSnapshot::default()
+        };
+        snapshot.standings[0] = LmuStandingEntry {
+            is_player: 1,
+            best_lap_seconds: 101.5,
+            ..LmuStandingEntry::default()
+        };
+        snapshot.standings[1] = LmuStandingEntry {
+            best_lap_seconds: 100.2,
+            ..LmuStandingEntry::default()
+        };
+        snapshot.standings[2] = LmuStandingEntry {
+            best_lap_seconds: 89.0,
+            ..LmuStandingEntry::default()
+        };
+        set_chars(&mut snapshot.standings[0].vehicle_class, "LMGT3");
+        set_chars(&mut snapshot.standings[1].vehicle_class, "LMGT3");
+        set_chars(&mut snapshot.standings[2].vehicle_class, "HYPERCAR");
+
+        assert_eq!(
+            LmuTelemetrySource::player_class_session_best(&snapshot),
+            100.2
+        );
     }
 
     #[test]

@@ -216,7 +216,10 @@ pub(crate) struct TimingViewModel {
     available: bool,
     current_seconds: f64,
     last_seconds: f64,
-    best_seconds: f64,
+    session_best_seconds: f64,
+    session_personal_best_seconds: f64,
+    personal_best_seconds: f64,
+    estimated_seconds: f64,
     active_sector: usize,
     sectors: [TimingSectorView; 3],
     history: Vec<TimingLapView>,
@@ -228,7 +231,10 @@ impl Default for TimingViewModel {
             available: false,
             current_seconds: 0.0,
             last_seconds: 0.0,
-            best_seconds: 0.0,
+            session_best_seconds: 0.0,
+            session_personal_best_seconds: 0.0,
+            personal_best_seconds: 0.0,
+            estimated_seconds: 0.0,
             active_sector: 0,
             sectors: std::array::from_fn(|_| TimingSectorView::default()),
             history: Vec::new(),
@@ -751,7 +757,9 @@ pub(crate) struct DeltaEngine {
     session_timing_sectors: [Option<f64>; 3],
     timing_history: Vec<TimingLapView>,
     smoothed_delta: f64,
+    timing_smoothed_delta: f64,
     last_delta_update: Instant,
+    last_timing_update: Instant,
     delta_trend: DeltaTrend,
     delta_trend_anchor: Option<DeltaTrendAnchor>,
 }
@@ -781,7 +789,9 @@ impl DeltaEngine {
             session_timing_sectors: [None; 3],
             timing_history: Vec::new(),
             smoothed_delta: 0.0,
+            timing_smoothed_delta: 0.0,
             last_delta_update: Instant::now(),
+            last_timing_update: Instant::now(),
             delta_trend: DeltaTrend::Neutral,
             delta_trend_anchor: None,
         }
@@ -834,7 +844,9 @@ impl DeltaEngine {
             self.pending_lap = self.current_lap.take();
             self.current_lap = Some(CurrentLap::new(frame));
             self.smoothed_delta = 0.0;
+            self.timing_smoothed_delta = 0.0;
             self.last_delta_update = Instant::now();
+            self.last_timing_update = Instant::now();
             self.reset_delta_trend();
             self.timing_results_until = None;
             self.timing_sectors = [None; 3];
@@ -868,6 +880,8 @@ impl DeltaEngine {
         self.last_session_elapsed = 0.0;
         self.last_lap_number = -1;
         self.reset_delta_trend();
+        self.timing_smoothed_delta = 0.0;
+        self.last_timing_update = Instant::now();
     }
 
     fn poll_load(&mut self) {
@@ -905,6 +919,8 @@ impl DeltaEngine {
         self.timing_sector_states = ["pending"; 3];
         self.session_timing_sectors = [None; 3];
         self.timing_history.clear();
+        self.timing_smoothed_delta = 0.0;
+        self.last_timing_update = Instant::now();
         self.smoothed_delta = 0.0;
         self.session_id = format!("{}-{}", unix_millis(), self.generation);
         if let Some(identity) = self.identity.clone() {
@@ -1131,6 +1147,7 @@ impl DeltaEngine {
             .current_lap
             .as_ref()
             .is_some_and(|lap| lap.started_at_line);
+        let estimated_seconds = self.timing_estimated_lap(frame, timed_lap_active);
         TimingViewModel {
             available: true,
             current_seconds: if timed_lap_active {
@@ -1139,11 +1156,10 @@ impl DeltaEngine {
                 0.0
             },
             last_seconds: frame.last_lap_seconds,
-            best_seconds: self
-                .session
-                .best
-                .as_ref()
-                .map_or(frame.best_lap_seconds, |lap| lap.lap_time),
+            session_best_seconds: frame.session_best_lap_seconds,
+            session_personal_best_seconds: frame.best_lap_seconds,
+            personal_best_seconds: self.overall.best.as_ref().map_or(0.0, |lap| lap.lap_time),
+            estimated_seconds,
             active_sector,
             sectors: std::array::from_fn(|index| TimingSectorView {
                 seconds: self.timing_sectors[index].unwrap_or(0.0),
@@ -1156,6 +1172,43 @@ impl DeltaEngine {
                 },
             }),
             history: self.timing_history.clone(),
+        }
+    }
+
+    fn timing_estimated_lap(&mut self, frame: &TelemetryFrame, timed_lap_active: bool) -> f64 {
+        if !timed_lap_active {
+            self.timing_smoothed_delta = 0.0;
+            self.last_timing_update = Instant::now();
+            return 0.0;
+        }
+        let distance = frame.lap_progress * frame.track_length_meters;
+        let reference = [
+            self.stint_best.as_ref(),
+            self.session.best.as_ref(),
+            self.overall.best.as_ref(),
+        ]
+        .into_iter()
+        .find_map(|trace| trace_reference(trace, distance));
+        let Some((reference_at, reference_total)) = reference else {
+            self.timing_smoothed_delta = 0.0;
+            return 0.0;
+        };
+        let raw_delta = frame.current_lap_seconds - reference_at;
+        let now = Instant::now();
+        let elapsed = now.duration_since(self.last_timing_update).as_secs_f64();
+        self.last_timing_update = now;
+        let alpha = 1.0 - (-elapsed / DELTA_SMOOTHING_SECONDS).exp();
+        if self.timing_smoothed_delta == 0.0 || !self.timing_smoothed_delta.is_finite() {
+            self.timing_smoothed_delta = raw_delta;
+        } else {
+            self.timing_smoothed_delta +=
+                (raw_delta - self.timing_smoothed_delta) * alpha.clamp(0.0, 1.0);
+        }
+        let estimated = reference_total + self.timing_smoothed_delta;
+        if estimated.is_finite() && (20.0..900.0).contains(&estimated) {
+            estimated
+        } else {
+            0.0
         }
     }
 

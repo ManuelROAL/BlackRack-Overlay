@@ -104,7 +104,10 @@ export interface TimingViewModel {
   available: boolean;
   current_seconds: number;
   last_seconds: number;
-  best_seconds: number;
+  session_best_seconds: number;
+  session_personal_best_seconds: number;
+  personal_best_seconds: number;
+  estimated_seconds: number;
   active_sector: number;
   sectors: TimingSectorView[];
   history: TimingLapView[];
