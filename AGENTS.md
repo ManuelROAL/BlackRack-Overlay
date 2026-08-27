@@ -109,6 +109,12 @@ successful compilation alone is not performance evidence.
   and owning documentation are all up to date.
 - If a required verification cannot run, report that explicitly instead of
   presenting the work as fully complete.
+- Multiple sessions may share the same worktree and Git index. Unrelated staged
+  changes are not a reason to wait: create the task commit with a temporary
+  alternate `GIT_INDEX_FILE` and stage only this task there. Never alter unrelated
+  entries in the real index; after committing, synchronize only the committed task
+  paths there so they match the new `HEAD`. Recheck `HEAD` before committing; if
+  another session advanced it, rebuild the temporary index and retry.
 - After completing and verifying a change, create the Git commit directly with a
   concise message that summarizes only the work completed in the current task.
   Do not include copy-ready commit messages in the handoff. Preserve unrelated
