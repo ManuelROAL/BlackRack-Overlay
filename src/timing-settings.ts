@@ -1,5 +1,5 @@
 export type TimingSectorReference = "lmu" | "session" | "overall";
-export type TimingTimeId = "current" | "sessionBest" | "sessionPersonalBest" | "personalBest" | "last" | "estimated";
+export type TimingTimeId = "current" | "sessionPersonalBest" | "personalBest" | "last" | "estimated";
 
 export interface TimingSettings {
   historyLaps: 0 | 3 | 5;
@@ -17,7 +17,6 @@ export const TIMING_SECTOR_REFERENCES = [
 
 export const TIMING_TIMES = [
   { id: "current", labelKey: "timing.current" },
-  { id: "sessionBest", labelKey: "timing.sessionBest" },
   { id: "sessionPersonalBest", labelKey: "timing.sessionPersonalBest" },
   { id: "personalBest", labelKey: "timing.personalBest" },
   { id: "last", labelKey: "timing.last" },

@@ -12,8 +12,7 @@ html, body { width: fit-content; min-width: 100%; min-height: 100%; margin: 0; o
 .timing-sectors div { display: grid; gap: 1px; padding: 4px; background: rgb(255 255 255 / 5%); line-height: 1; }
 .timing-times span, .timing-sectors span { color: #747f8b; font-size: calc(8px * var(--overlay-font-scale, 1)); font-weight: 800; letter-spacing: .09em; }
 .timing-times b { font-size: calc(14px * var(--overlay-font-scale, 1)); line-height: 1.1; }
-.timing-times [data-time="session-best"] b { color: #44ddff; }
-.timing-times [data-time="session-personal-best"] b { color: #ee77ff; }
+.timing-times [data-time="session-best"] b { color: #ee77ff; }
 .timing-times [data-time="personal-best"] b { color: #61e98a; }
 .timing-times [data-time="estimated"] b { color: #ffff88; }
 .timing-sectors { margin-top: 4px; }

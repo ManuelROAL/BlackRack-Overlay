@@ -216,7 +216,6 @@ pub(crate) struct TimingViewModel {
     available: bool,
     current_seconds: f64,
     last_seconds: f64,
-    session_best_seconds: f64,
     session_personal_best_seconds: f64,
     personal_best_seconds: f64,
     estimated_seconds: f64,
@@ -231,7 +230,6 @@ impl Default for TimingViewModel {
             available: false,
             current_seconds: 0.0,
             last_seconds: 0.0,
-            session_best_seconds: 0.0,
             session_personal_best_seconds: 0.0,
             personal_best_seconds: 0.0,
             estimated_seconds: 0.0,
@@ -1156,7 +1154,6 @@ impl DeltaEngine {
                 0.0
             },
             last_seconds: frame.last_lap_seconds,
-            session_best_seconds: frame.session_best_lap_seconds,
             session_personal_best_seconds: frame.best_lap_seconds,
             personal_best_seconds: self.overall.best.as_ref().map_or(0.0, |lap| lap.lap_time),
             estimated_seconds,

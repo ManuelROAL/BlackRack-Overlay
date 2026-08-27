@@ -26,7 +26,6 @@ const times = document.getElementById("timing-times");
 const current = document.getElementById("timing-current");
 const last = document.getElementById("timing-last");
 const sessionBest = document.getElementById("timing-session-best");
-const sessionPersonalBest = document.getElementById("timing-session-personal-best");
 const personalBest = document.getElementById("timing-personal-best");
 const estimated = document.getElementById("timing-estimated");
 const history = document.getElementById("timing-history");
@@ -57,8 +56,7 @@ const render = (model: TimingViewModel): void => {
   card?.setAttribute("data-state", model.available ? "active" : "waiting");
   setText(current, lapTime(model.current_seconds));
   setText(last, lapTime(model.last_seconds));
-  setText(sessionBest, lapTime(model.session_best_seconds));
-  setText(sessionPersonalBest, lapTime(model.session_personal_best_seconds));
+  setText(sessionBest, lapTime(model.session_personal_best_seconds));
   setText(personalBest, lapTime(model.personal_best_seconds));
   setText(estimated, lapTime(model.estimated_seconds));
   for (const [index, node] of sectorNodes.entries()) {

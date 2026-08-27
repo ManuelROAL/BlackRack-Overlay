@@ -3,8 +3,8 @@
 ## Propósito
 
 Timing reúne en un único panel el tiempo actual, último, estimado,
-mejor de clase en sesión, mejor personal de sesión y mejor personal absoluto,
-tres sectores y un historial corto. Evita dividir información
+mejor personal de sesión y mejor personal absoluto, tres sectores y un historial
+corto. Evita dividir información
 estrechamente relacionada en varios micro-overlays.
 
 ## Archivos y propiedad
@@ -34,13 +34,13 @@ El panel consume el ciclo base de 50 Hz y no construye clasificaciones.
   modos aunque no se muestren, de modo que cambiar de referencia no pierde historial.
 - El historial registra hasta cinco vueltas reconstruibles. El panel no muestra
   delta dinámico; el overlay Delta lo ofrece por separado cuando está visible.
-- El mejor de sesión es la vuelta más rápida de la clase del jugador. El PB de
-  sesión usa el mejor oficial de LMU y el mejor personal usa la vuelta absoluta
-  persistida para la combinación coche/circuito.
+- El mejor de sesión usa el mejor personal oficial de LMU; no muestra tiempos de
+  otros pilotos. El mejor personal usa la vuelta absoluta persistida para la
+  combinación coche/circuito.
 - La estimación proyecta la vuelta actual sobre la mejor traza disponible, con
   prioridad stint, sesión y absoluto, y suaviza el delta vivo. No usa
   `mEstimatedLapTime`, que puede anticipar tiempos irreales.
-- Cada una de las seis filas de tiempo se puede ocultar de forma independiente.
+- Cada una de las cinco filas de tiempo se puede ocultar de forma independiente.
   Todas están visibles por defecto; el panel reduce su altura según las filas
   activas sin ocultar los sectores ni el historial.
 - La nota sobre los colores de sector aparece dentro del bloque de referencia de
