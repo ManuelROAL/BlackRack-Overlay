@@ -95,6 +95,7 @@ struct LmuSnapshot {
     uint32_t vehicle_class_id;
     uint32_t player_lap_valid;
     double current_lap_seconds;
+    double player_lap_start_elapsed_seconds;
     double current_sector1_seconds;
     double current_sector2_seconds;
     double player_best_sector_ends[3];
@@ -466,6 +467,7 @@ extern "C" int lmu_read_snapshot(LmuSnapshot* output) {
         }
     }
     output->current_lap_seconds = std::max(0.0, vehicle.mElapsedTime - vehicle.mLapStartET);
+    output->player_lap_start_elapsed_seconds = vehicle.mLapStartET;
     output->lap_delta_seconds = vehicle.mDeltaBest;
     std::memcpy(output->vehicle_name, vehicle.mVehicleName, sizeof(output->vehicle_name));
     std::memcpy(output->track_name, vehicle.mTrackName, sizeof(output->track_name));

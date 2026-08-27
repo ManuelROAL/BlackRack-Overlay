@@ -222,6 +222,7 @@ struct LmuSnapshot {
     vehicle_class_id: u32,
     player_lap_valid: u32,
     current_lap_seconds: f64,
+    player_lap_start_elapsed_seconds: f64,
     current_sector1_seconds: f64,
     current_sector2_seconds: f64,
     player_best_sector_ends: [f64; 3],
@@ -304,6 +305,7 @@ impl Default for LmuSnapshot {
             vehicle_class_id: u32::MAX,
             player_lap_valid: 0,
             current_lap_seconds: 0.0,
+            player_lap_start_elapsed_seconds: 0.0,
             current_sector1_seconds: 0.0,
             current_sector2_seconds: 0.0,
             player_best_sector_ends: [0.0; 3],
@@ -780,7 +782,42 @@ pub struct LmuTelemetrySource {
     last_valid_snapshot: Option<LmuSnapshot>,
     last_valid_snapshot_at: Option<Instant>,
     player_lap_distance: PlayerLapDistanceEstimator,
+    player_lap_times: PlayerLapTimeHistory,
     source_stage_performance: SourceStagePerformance,
+}
+
+#[derive(Default)]
+struct PlayerLapTimeHistory {
+    lap_start_elapsed_seconds: Option<f64>,
+    reconstructed_last_lap_seconds: f64,
+}
+
+impl PlayerLapTimeHistory {
+    fn reset(&mut self) {
+        *self = Self::default();
+    }
+
+    fn update(&mut self, lap_start: f64, current_lap_seconds: f64) -> f64 {
+        if !lap_start.is_finite()
+            || lap_start <= 0.0
+            || !current_lap_seconds.is_finite()
+            || current_lap_seconds <= 1.0
+        {
+            return self.reconstructed_last_lap_seconds;
+        }
+        match self.lap_start_elapsed_seconds {
+            None => self.lap_start_elapsed_seconds = Some(lap_start),
+            Some(previous) if lap_start > previous => {
+                let reconstructed = lap_start - previous;
+                self.reconstructed_last_lap_seconds =
+                    CarHistory::normalize_official_lap(reconstructed);
+                self.lap_start_elapsed_seconds = Some(lap_start);
+            }
+            Some(previous) if lap_start < previous => self.reset(),
+            Some(_) => {}
+        }
+        self.reconstructed_last_lap_seconds
+    }
 }
 
 #[derive(Default)]
@@ -1120,6 +1157,7 @@ impl LmuTelemetrySource {
             last_valid_snapshot: None,
             last_valid_snapshot_at: None,
             player_lap_distance: PlayerLapDistanceEstimator::default(),
+            player_lap_times: PlayerLapTimeHistory::default(),
             source_stage_performance: SourceStagePerformance::new(),
         }
     }
@@ -1173,6 +1211,7 @@ impl LmuTelemetrySource {
         self.last_standings_state_update = None;
         self.last_valid_standings.clear();
         self.last_valid_standings_at = None;
+        self.player_lap_times.reset();
 
         let entered_qualifying = Self::is_qualifying(session_type)
             && previous_session.is_none_or(|previous| !Self::is_qualifying(previous));
@@ -2826,6 +2865,7 @@ impl TelemetrySource for LmuTelemetrySource {
             self.last_valid_snapshot = None;
             self.last_valid_snapshot_at = None;
             self.player_lap_distance.reset();
+            self.player_lap_times.reset();
             return TelemetryFrame::waiting_for_lmu(false);
         }
 
@@ -2869,6 +2909,7 @@ impl TelemetrySource for LmuTelemetrySource {
             self.consumption_profiler.reset_lap();
             self.tire_wear_tracker.reset();
             self.player_lap_distance.reset();
+            self.player_lap_times.reset();
             let mut frame = TelemetryFrame::waiting_for_lmu(true);
             frame.standings = standings;
             return frame;
@@ -2884,6 +2925,17 @@ impl TelemetrySource for LmuTelemetrySource {
         // la vuelta. Solo una vuelta válida, sin boxes y completamente en verde
         // puede modificar el consumo base de carrera.
         let lap_changed = snapshot.lap_number != self.last_lap;
+        let reconstructed_last_lap_seconds = self.player_lap_times.update(
+            snapshot.player_lap_start_elapsed_seconds,
+            snapshot.current_lap_seconds,
+        );
+        let official_last_lap_seconds =
+            CarHistory::normalize_official_lap(snapshot.last_lap_seconds);
+        let displayed_last_lap_seconds = if official_last_lap_seconds > 0.0 {
+            official_last_lap_seconds
+        } else {
+            reconstructed_last_lap_seconds
+        };
         let in_pits = Self::player_in_pits(&snapshot);
         let player_tire_flat_spot_percent = self.tire_wear_tracker.update(
             snapshot.player_tire_remaining_by_wheel_percent,
@@ -3399,7 +3451,7 @@ impl TelemetrySource for LmuTelemetrySource {
             current_sector2_seconds: snapshot.current_sector2_seconds.max(0.0),
             player_best_sector_ends: snapshot.player_best_sector_ends,
             session_best_sector_ends: snapshot.session_best_sector_ends,
-            last_lap_seconds: CarHistory::normalize_official_lap(snapshot.last_lap_seconds),
+            last_lap_seconds: displayed_last_lap_seconds,
             last_lap_valid: !CarHistory::official_lap_is_invalid(snapshot.last_lap_seconds),
             best_lap_seconds: snapshot.best_lap_seconds.max(0.0),
             lap_delta_seconds: snapshot.lap_delta_seconds,
@@ -3438,7 +3490,8 @@ mod tests {
     use super::{
         fuel_energy_ratio, lmu_snapshot_size, rear_wing_detached,
         suspension_damage_by_wheel_percent, synchronized_lap_progress, CarHistory, LmuSnapshot,
-        LmuStandingEntry, LmuTelemetrySource, PlayerLapDistanceEstimator, TireWearTracker,
+        LmuStandingEntry, LmuTelemetrySource, PlayerLapDistanceEstimator, PlayerLapTimeHistory,
+        TireWearTracker,
     };
     use crate::telemetry::event_split::DriverRankSettings;
     use crate::telemetry::lmu_rest::{RestStanding, RestVehicleDamage};
@@ -3485,6 +3538,15 @@ mod tests {
         estimator.update(4_990.0, 95.0, 180.0, 4, 3, 5_000.0, false);
         let reset = estimator.update(0.0, 0.02, 180.0, 3, 4, 5_000.0, true);
         assert_eq!(reset, 0.0);
+    }
+
+    #[test]
+    fn player_lap_history_reconstructs_an_omitted_invalid_duration() {
+        let mut history = PlayerLapTimeHistory::default();
+
+        assert_eq!(history.update(400.0, 2.0), 0.0);
+        assert_eq!(history.update(445.0, 0.5), 0.0);
+        assert_eq!(history.update(445.0, 1.5), 45.0);
     }
 
     #[test]
