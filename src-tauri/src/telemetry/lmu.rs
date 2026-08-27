@@ -914,7 +914,6 @@ struct DriverRankEstimateDiagnostic {
     race_result_total: f64,
     qualifying_result_total: f64,
     gain_factor: f64,
-    internal_rating_gain: Option<f64>,
     estimated_gain: Option<f64>,
 }
 
@@ -1659,7 +1658,6 @@ impl LmuTelemetrySource {
                 race_result_total: 0.0,
                 qualifying_result_total: 0.0,
                 gain_factor: 0.0,
-                internal_rating_gain: None,
                 estimated_gain: None,
             });
         }
@@ -1720,7 +1718,6 @@ impl LmuTelemetrySource {
                         race_result_total: 0.0,
                         qualifying_result_total: 0.0,
                         gain_factor: 0.0,
-                        internal_rating_gain: None,
                         estimated_gain: None,
                     });
                 }
@@ -1772,7 +1769,6 @@ impl LmuTelemetrySource {
                         race_result_total,
                         qualifying_result_total: qualify_result_total,
                         gain_factor: 0.0,
-                        internal_rating_gain: None,
                         estimated_gain: None,
                     });
                 }
@@ -1802,7 +1798,6 @@ impl LmuTelemetrySource {
                     race_result_total,
                     qualifying_result_total: qualify_result_total,
                     gain_factor,
-                    internal_rating_gain: Some(gain * DRIVER_RANK_INTERNAL_SCALE),
                     estimated_gain: Some(gain),
                 });
             }
@@ -2200,14 +2195,12 @@ impl LmuTelemetrySource {
                         "coverage": {
                             "same_class_rivals": sample.same_class_rivals,
                             "rated_opponents": sample.rated_opponents,
-                            "missing_profiles": sample.same_class_rivals.saturating_sub(sample.rated_opponents),
                         },
                         "calculation": {
                             "race_result_total": sample.race_result_total,
                             "qualifying_result_total": sample.qualifying_result_total,
                             "qualifying_weight": DRIVER_RANK_QUALIFY_WEIGHT,
                             "gain_factor": sample.gain_factor,
-                            "internal_rating_gain": sample.internal_rating_gain,
                             "estimated_gain": sample.estimated_gain,
                         },
                         "settings": {

@@ -95,7 +95,7 @@ duplicate selection or timing semantics.
   Practice and qualifying samples contain no position or calculation fields;
   all resolved player samples retain raw continuous ELO to diagnose rank-boundary
   resets. Unchanged samples are omitted and floating-point values are compared
-  after rounding to 0.001.
+  after rounding to 0.001. Exactly derivable duplicate values are not serialized.
   That JSONL contains only the estimate inputs, coverage, calculation and event
   settings; it remains separate from general analysis telemetry and keeps the
   10 Hz standings model active while enabled. It accumulates all sessions and
