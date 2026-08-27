@@ -106,7 +106,8 @@ the scoring completed-lap counter advances and supplies that lap's official
 time. Validity latches telemetry's `mLapInvalidated` over the complete lap; a
 negative official time confirms the completed lap as invalid after normalization.
 When LMU omits that official duration, consecutive player `mLapStartET` values
-reconstruct it so Timing history can retain the invalid lap. `mCountLapFlag` is
+reconstruct it and the missing official result confirms it as invalid, so Timing
+history can retain the lap. `mCountLapFlag` is
 not a validity input. This state determines the history category and reference
 eligibility.
 

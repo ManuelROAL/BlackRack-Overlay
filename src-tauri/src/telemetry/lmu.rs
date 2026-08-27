@@ -612,6 +612,10 @@ impl CarHistory {
                 Some(previous_start) if previous_start != lap_start => {
                     if previous_start > 0.0 && previous_start < lap_start {
                         let reconstructed = lap_start - previous_start;
+                        let official_result_valid = Self::completed_lap_result_is_valid(
+                            entry.last_lap_seconds,
+                            reconstructed,
+                        );
                         self.last_lap_seconds = if Self::valid_lap_time(official_last_lap) {
                             official_last_lap
                         } else if self.current_lap_invalid && Self::valid_lap_time(reconstructed) {
@@ -622,7 +626,7 @@ impl CarHistory {
                             0.0
                         };
                         self.last_lap_valid = !(self.current_lap_invalid
-                            || official_last_lap_invalid
+                            || !official_result_valid
                             || (entry.in_garage == 0 && entry.lap_invalidated != 0));
                         Self::push_recent(&mut self.recent_lap_times, self.last_lap_seconds);
                         self.last_lap_boundary_elapsed_seconds = Some(entry.elapsed_seconds);
@@ -670,6 +674,13 @@ impl CarHistory {
 
     fn official_lap_is_invalid(lap_time: f64) -> bool {
         lap_time.is_finite() && lap_time > -900.0 && lap_time < -20.0
+    }
+
+    fn completed_lap_result_is_valid(official_lap_time: f64, reconstructed: f64) -> bool {
+        !Self::official_lap_is_invalid(official_lap_time)
+            && !(official_lap_time.is_finite()
+                && official_lap_time < 0.0
+                && Self::valid_lap_time(reconstructed))
     }
 
     fn plausible_reconstructed_lap(entry: &LmuStandingEntry, lap_time: f64) -> bool {
@@ -2937,6 +2948,10 @@ impl TelemetrySource for LmuTelemetrySource {
         } else {
             reconstructed_last_lap_seconds
         };
+        let last_lap_valid = CarHistory::completed_lap_result_is_valid(
+            snapshot.last_lap_seconds,
+            reconstructed_last_lap_seconds,
+        );
         let in_pits = Self::player_in_pits(&snapshot);
         let player_tire_flat_spot_percent = self.tire_wear_tracker.update(
             snapshot.player_tire_remaining_by_wheel_percent,
@@ -3457,7 +3472,7 @@ impl TelemetrySource for LmuTelemetrySource {
             player_best_sector_ends: snapshot.player_best_sector_ends,
             session_best_sector_ends: snapshot.session_best_sector_ends,
             last_lap_seconds: displayed_last_lap_seconds,
-            last_lap_valid: !CarHistory::official_lap_is_invalid(snapshot.last_lap_seconds),
+            last_lap_valid,
             best_lap_seconds: snapshot.best_lap_seconds.max(0.0),
             lap_delta_seconds: snapshot.lap_delta_seconds,
             delta_model: Default::default(),
@@ -4175,6 +4190,29 @@ mod tests {
 
         assert!(!history.is_last_lap_valid());
         assert!((history.last_lap_seconds(entry.last_lap_seconds) - 100.25).abs() < 0.001);
+    }
+
+    #[test]
+    fn standings_history_marks_a_reconstructed_missing_official_lap_invalid() {
+        let mut history = CarHistory::default();
+        let mut entry = LmuStandingEntry {
+            total_laps: 9,
+            last_lap_seconds: 101.0,
+            best_lap_seconds: 101.0,
+            lap_start_elapsed_seconds: 4_019.166,
+            elapsed_seconds: 4_021.166,
+            ..LmuStandingEntry::default()
+        };
+
+        history.update(&entry, 60.0);
+        entry.total_laps = 10;
+        entry.last_lap_seconds = -1.0;
+        entry.lap_start_elapsed_seconds = 4_121.367;
+        entry.elapsed_seconds = 4_122.867;
+        history.update(&entry, 59.0);
+
+        assert!(!history.is_last_lap_valid());
+        assert!((history.last_lap_seconds(entry.last_lap_seconds) - 102.201).abs() < 0.001);
     }
 
     #[test]

@@ -57,14 +57,15 @@ the prepared vehicle IDs and formats them; it must not repeat domain selection.
   surname plus name initial.
 - Keep full header visibility separate from air/track temperature, brake bias,
   player track-limit counter/threshold, game-time and local-clock toggles. Format
-  both clocks with the selected locale and distinguish the simulated-time clock
-  from the local wall-clock icon.
+  both clocks with the selected locale and distinguish the game-time clock from
+  the real-time globe icon.
 - Apply the same asset, NRG, damage, tyre, pit, DR/SR and track-limit semantics as
   Standings, including the sidewall-style uniform-compound SVGs; do not create
   divergent formatting rules for shared cells.
 - Apply Standings' completed-lap validity semantics to LAST, including the latched
   `mLapInvalidated`, negative official-time signals and reconstructed invalid
-  durations when LMU omits the official time. Invalid LAST values are gray and
+  durations when LMU omits the official time; that missing official result also
+  confirms the reconstructed lap as invalid. Invalid LAST values are gray and
   take visual precedence over personal-best or session-fastest coloring.
 - Reuse Standings' event-roster fallback for missing/`XX` nationality and badges.
 - If a resolved country asset fails to load, replace it with the bundled `XX`

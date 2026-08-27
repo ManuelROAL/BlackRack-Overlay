@@ -39,8 +39,9 @@ math belongs in Rust. `fuel.ts` only formats serialized plans.
   into the race and clears for a new practice/event.
 - Formation, invalid, neutralized and pit laps affect real balance but do not
   contaminate clean average consumption.
-- Invalid laps follow the shared latched `mLapInvalidated` plus negative official
-  time confirmation; `mCountLapFlag` is not used for consumption validity.
+- Invalid laps follow the shared latched `mLapInvalidated`, negative official
+  time confirmation and a reconstructed duration when LMU returns the missing
+  official sentinel; `mCountLapFlag` is not used for consumption validity.
 - Learn pit-in and pit-out use separately per car/circuit and include them in
   multi-stop strategy. Do not learn garage exit as a race pit-out lap.
 - Automatic target consumption follows TinyPedal semantics and cannot exceed the

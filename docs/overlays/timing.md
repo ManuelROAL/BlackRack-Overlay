@@ -55,7 +55,8 @@ El panel consume el ciclo base de 50 Hz y no construye clasificaciones.
   nunca mejoran referencias de vuelta o sector. La validez retiene
   `mLapInvalidated` durante toda la vuelta y el tiempo oficial negativo confirma
   la invalidez al completarla; si LMU omite su tiempo oficial, se reconstruye con
-  dos valores consecutivos de `mLapStartET`. `mCountLapFlag` no interviene.
+  dos valores consecutivos de `mLapStartET` y esa ausencia oficial confirma la
+  invalidez. `mCountLapFlag` no interviene.
 - Al cambiar sesión se vacían historia y referencias personales de sesión. Los
   mejores absolutos permanecen en `lap-records.sqlite3`.
 - Durante la salida de boxes, `ACTUAL` permanece sin valor. LMU

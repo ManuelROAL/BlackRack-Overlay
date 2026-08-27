@@ -56,7 +56,8 @@ duplicate selection or timing semantics.
   residual invalidation signals for two seconds after a stable lap
   boundary. If `mLastLapTime` is unavailable,
   reconstruct it from consecutive `mLapStartET` values only after the new lap has
-  been active for more than one second. Discard stable partial resets below 50%
+  been active for more than one second and mark that reconstructed result invalid.
+  Discard stable partial resets below 50%
   of official best or estimated pace only for valid laps; retain every invalid
   reconstructed duration between 20 and 900 seconds so LAST never becomes empty.
 - AVG 5 keeps the latest five completed plausible times, rejects values below the
@@ -119,7 +120,7 @@ duplicate selection or timing semantics.
   temperature, brake bias, track-limit steps/threshold and local time.
 - Game time and local time are independently configurable. Use the shared-memory
   time of day for game time, format both clocks with the selected locale and keep
-  the session stopwatch, simulated-time clock and local wall-clock icons distinct.
+  the session stopwatch, game-time clock and real-time globe icons distinct.
 - Remaining time is the live countdown and displays `00:00` once exhausted. The
   compact total duration (`h m`) uses the official, fixed `maxTime` from local
   `/rest/watch/sessionInfo`; it is latched once per session and never reconstructed
