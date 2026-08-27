@@ -3184,7 +3184,6 @@ impl TelemetrySource for LmuTelemetrySource {
                 .map(|entry| TrackMapVehicle {
                     vehicle_id: entry.vehicle_id,
                     overall_position: entry.position,
-                    class_position: 0,
                     vehicle_class: Self::string_from_chars(&entry.vehicle_class),
                     world_x: entry.world_x,
                     world_y: entry.world_y,

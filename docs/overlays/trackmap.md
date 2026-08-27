@@ -64,9 +64,8 @@ TypeScript fetches static geometry, interpolates and renders it.
   SVG filters; these keep the WebView2 GPU process awake.
 - Vehicles use 24 px class-colored circles with their class position in black;
   pit cars remain at reduced opacity.
-- Smooth retains the complete roster. Balanced keeps up to 32 markers and
-  Efficiency up to 20, always preserving the player, overall leader and nearest
-  traffic. Rust assigns class positions before limiting the serialized roster.
+- Every performance profile retains the complete roster; only delivery/rendering
+  cadence and the Efficiency halo behavior change.
 - The player keeps its class-position label in a 28 px circle and has a larger
   lime halo advanced by telemetry events. It pulses in Smooth and Balanced and is
   static in Efficiency. Never replace its label with `P`.

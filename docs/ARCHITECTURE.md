@@ -129,9 +129,8 @@ profile and diagnostics.
   panel or a connected browser-source client.
 - Relative: Smooth 50 ms, Balanced 80 ms, Efficiency 120 ms while active. Cycles coinciding
   with Standings reuse the same constructed roster.
-- Track Map: Smooth 33 ms with the complete lightweight roster, Balanced 60 ms
-  with up to 32 cars, and Efficiency 120 ms with up to 20 cars. Limited rosters
-  retain the player, overall leader and nearest traffic.
+- Track Map: Smooth 33 ms, Balanced 60 ms and Efficiency 120 ms. Every profile
+  retains the complete lightweight coordinate roster.
 - Detailed damage and pit-stop estimate: Smooth 50 ms, Balanced 80 ms and
   Efficiency 120 ms.
 - Active Rejoin warning: 50 ms; inactive flag/rejoin warning: 250 ms.

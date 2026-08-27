@@ -21,7 +21,6 @@ mod track_geometry;
 mod track_map_model;
 
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
 use std::fs::{self, File};
 use std::io::{BufWriter, Write};
 use std::path::{Path, PathBuf};
@@ -409,7 +408,6 @@ struct PerformanceTuning {
     relative_interval: Duration,
     track_map_interval: Duration,
     secondary_overlay_interval: Duration,
-    track_map_vehicle_limit: usize,
 }
 
 static PERFORMANCE_PROFILE: AtomicU8 = AtomicU8::new(PerformanceProfile::Smooth as u8);
@@ -440,7 +438,6 @@ impl PerformanceProfile {
                 relative_interval: Duration::from_millis(50),
                 track_map_interval: Duration::from_millis(33),
                 secondary_overlay_interval: Duration::from_millis(50),
-                track_map_vehicle_limit: usize::MAX,
             },
             Self::Balanced => PerformanceTuning {
                 profile: self,
@@ -449,7 +446,6 @@ impl PerformanceProfile {
                 relative_interval: Duration::from_millis(80),
                 track_map_interval: Duration::from_millis(60),
                 secondary_overlay_interval: Duration::from_millis(80),
-                track_map_vehicle_limit: 32,
             },
             Self::Efficiency => PerformanceTuning {
                 profile: self,
@@ -458,7 +454,6 @@ impl PerformanceProfile {
                 relative_interval: Duration::from_millis(120),
                 track_map_interval: Duration::from_millis(120),
                 secondary_overlay_interval: Duration::from_millis(120),
-                track_map_vehicle_limit: 20,
             },
         }
     }
@@ -473,71 +468,6 @@ pub fn set_performance_profile(profile: &str) -> Result<(), String> {
     };
     PERFORMANCE_PROFILE.store(profile as u8, Ordering::Relaxed);
     Ok(())
-}
-
-fn prepare_track_map_vehicles(
-    vehicles: &mut Vec<TrackMapVehicle>,
-    track_length: f64,
-    limit: usize,
-) {
-    let mut order: Vec<usize> = (0..vehicles.len()).collect();
-    order.sort_by_key(|&index| vehicles[index].overall_position);
-    let mut class_positions = vec![0; vehicles.len()];
-    let mut class_counts: HashMap<&str, i32> = HashMap::new();
-    for index in order {
-        let count = class_counts
-            .entry(vehicles[index].vehicle_class.as_str())
-            .or_default();
-        *count += 1;
-        class_positions[index] = *count;
-    }
-    drop(class_counts);
-    for (vehicle, class_position) in vehicles.iter_mut().zip(class_positions) {
-        vehicle.class_position = class_position;
-    }
-
-    if vehicles.len() <= limit {
-        return;
-    }
-    let player_distance = vehicles
-        .iter()
-        .find(|vehicle| vehicle.is_player)
-        .map(|vehicle| vehicle.lap_distance)
-        .unwrap_or_default();
-    let mut selected: HashSet<usize> = vehicles
-        .iter()
-        .enumerate()
-        .filter_map(|(index, vehicle)| {
-            (vehicle.is_player || vehicle.overall_position == 1).then_some(index)
-        })
-        .collect();
-    let mut nearest: Vec<(usize, f64)> = vehicles
-        .iter()
-        .enumerate()
-        .filter(|(index, _)| !selected.contains(index))
-        .map(|(index, vehicle)| {
-            let direct = (vehicle.lap_distance - player_distance).abs();
-            let circular = if track_length > 0.0 {
-                direct.min((track_length - direct).abs())
-            } else {
-                direct
-            };
-            (index, circular)
-        })
-        .collect();
-    nearest.sort_by(|left, right| left.1.total_cmp(&right.1));
-    for (index, _) in nearest
-        .into_iter()
-        .take(limit.saturating_sub(selected.len()))
-    {
-        selected.insert(index);
-    }
-    let mut index = 0;
-    vehicles.retain(|_| {
-        let retain = selected.contains(&index);
-        index += 1;
-        retain
-    });
 }
 
 #[derive(Clone, Default, Serialize)]
@@ -600,7 +530,6 @@ pub struct StandingEntry {
 pub struct TrackMapVehicle {
     vehicle_id: i32,
     overall_position: i32,
-    class_position: i32,
     vehicle_class: String,
     world_x: f64,
     world_y: f64,
@@ -1045,11 +974,6 @@ pub fn spawn_source(app: AppHandle) {
             standings_models::prepare_overlay_models(&mut frame);
             if track_map_requested {
                 track_map_model.update(&mut frame);
-                prepare_track_map_vehicles(
-                    &mut frame.track_map_vehicles,
-                    frame.track_length_meters,
-                    tuning.track_map_vehicle_limit,
-                );
             }
             let source_elapsed = source_started.elapsed();
             let now = Instant::now();
@@ -1207,8 +1131,8 @@ pub fn spawn_source(app: AppHandle) {
 #[cfg(test)]
 mod tests {
     use super::{
-        configure_logging, prepare_track_map_vehicles, set_telemetry_logging, AnalysisLogger,
-        PerformanceProfile, TelemetryFrame, TrackMapVehicle,
+        configure_logging, set_telemetry_logging, AnalysisLogger, PerformanceProfile,
+        TelemetryFrame,
     };
     use std::fs;
     use std::time::{SystemTime, UNIX_EPOCH};
@@ -1249,43 +1173,6 @@ mod tests {
         assert!(balanced.fast_overlay_interval < efficiency.fast_overlay_interval);
         assert!(smooth.standings_interval < balanced.standings_interval);
         assert!(balanced.standings_interval < efficiency.standings_interval);
-        assert_eq!(smooth.track_map_vehicle_limit, usize::MAX);
-        assert_eq!(balanced.track_map_vehicle_limit, 32);
-        assert_eq!(efficiency.track_map_vehicle_limit, 20);
-    }
-
-    #[test]
-    fn track_map_limit_keeps_player_leader_and_nearby_cars() {
-        let mut vehicles: Vec<TrackMapVehicle> = (0..40)
-            .map(|index| TrackMapVehicle {
-                vehicle_id: index + 1,
-                overall_position: index + 1,
-                class_position: 0,
-                vehicle_class: "HYPERCAR".into(),
-                world_x: 0.0,
-                world_y: 0.0,
-                lap_distance: index as f64 * 100.0,
-                total_laps: 1,
-                in_pits: false,
-                in_garage: false,
-                is_player: index == 20,
-            })
-            .collect();
-
-        prepare_track_map_vehicles(&mut vehicles, 4_000.0, 5);
-
-        assert_eq!(vehicles.len(), 5);
-        assert!(vehicles.iter().any(|vehicle| vehicle.overall_position == 1));
-        assert!(vehicles.iter().any(|vehicle| vehicle.is_player));
-        assert!(vehicles
-            .iter()
-            .any(|vehicle| vehicle.overall_position == 20));
-        assert!(vehicles
-            .iter()
-            .any(|vehicle| vehicle.overall_position == 22));
-        assert!(vehicles
-            .iter()
-            .all(|vehicle| vehicle.class_position == vehicle.overall_position));
     }
 
     #[test]

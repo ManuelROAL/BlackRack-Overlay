@@ -432,11 +432,19 @@ const createMarker = (vehicle: TrackMapVehicle): MarkerView => {
 
 const renderVehicles = (vehicles: TrackMapVehicle[], trackLength: number): void => {
   const active = new Set<number>();
+  const classPositions = new Map<number, number>();
+  const classCounts = new Map<string, number>();
   const pulseEnabled = latestPerformanceProfile !== "efficiency";
   const pulsePhase = pulseEnabled ? performance.now() % 900 / 900 * Math.PI * 2 : 0;
   const playerHaloOpacity = pulseEnabled
     ? (0.65 - Math.cos(pulsePhase) * 0.35).toFixed(2)
     : "0.45";
+  [...vehicles].sort((a, b) => a.overall_position - b.overall_position).forEach((vehicle) => {
+    const key = vehicle.vehicle_class.toUpperCase();
+    const position = (classCounts.get(key) ?? 0) + 1;
+    classCounts.set(key, position);
+    classPositions.set(vehicle.vehicle_id, position);
+  });
   for (const vehicle of vehicles) {
     if (vehicle.in_garage) continue;
     active.add(vehicle.vehicle_id);
@@ -447,7 +455,7 @@ const renderVehicles = (vehicles: TrackMapVehicle[], trackLength: number): void 
       marker = undefined;
     }
     marker ??= createMarker(vehicle);
-    const classPosition = vehicle.class_position || vehicle.overall_position;
+    const classPosition = classPositions.get(vehicle.vehicle_id) ?? vehicle.overall_position;
     const isRaceLeader = vehicle.overall_position === 1;
     if (marker.isRaceLeader !== isRaceLeader) {
       marker.isRaceLeader = isRaceLeader;
@@ -536,7 +544,6 @@ if (import.meta.env.DEV && new URLSearchParams(window.location.search).has("prev
     return {
       vehicle_id: index + 1,
       overall_position: index + 1,
-      class_position: Math.floor(index / 4) + 1,
       vehicle_class: ["HYPERCAR", "LMP2", "LMP3", "LMGT3"][index % 4],
       world_x: point.x,
       world_y: point.y,

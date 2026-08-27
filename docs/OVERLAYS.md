@@ -62,10 +62,10 @@ telemetry semantics and file ownership live under `docs/overlays/`; use
   aligned controls. Preserve readable secondary copy and stack fields on narrow
   windows instead of leaving partial rows or unused columns.
 - General settings expose Smooth, Balanced and Efficiency performance profiles.
-  Profiles change delivery/render cadence and Track Map density while the source,
+  Profiles change delivery/render cadence while the source,
   delta engine and strategy calculations remain sampled at 50 Hz. Smooth preserves
   full-cadence behavior; Balanced is recommended; Efficiency also removes the
-  Track Map pulse.
+  Track Map pulse. Every profile retains the complete Track Map roster.
 - Keep the overlay catalog scannable in two columns at the normal control-panel
   width: descriptions may use two lines, configuration must read as an action,
   and enabled state should remain clear without turning every card into a bright

@@ -275,7 +275,6 @@ impl TelemetrySource for MockTelemetrySource {
                         TrackMapVehicle {
                             vehicle_id: index + 1,
                             overall_position: index + 1,
-                            class_position: 0,
                             vehicle_class: match index % 4 {
                                 0 => "HYPERCAR",
                                 1 => "LMP2",
