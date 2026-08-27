@@ -104,6 +104,7 @@ struct LmuSnapshot {
     double lap_delta_seconds;
     double session_time_remaining;
     double session_elapsed_seconds;
+    double game_time_of_day_seconds;
     double session_end_seconds;
     double estimated_lap_time;
     double last_lap_seconds;
@@ -239,6 +240,7 @@ extern "C" int lmu_read_snapshot(LmuSnapshot* output) {
     }
     output->session_time_remaining = scoring.scoringInfo.mSessionTimeRemaining;
     output->session_elapsed_seconds = scoring.scoringInfo.mCurrentET;
+    output->game_time_of_day_seconds = scoring.scoringInfo.mTimeOfDay;
     output->session_end_seconds = scoring.scoringInfo.mEndET;
     output->track_limits_steps_per_penalty = static_cast<uint32_t>(scoring.scoringInfo.mTrackLimitsStepsPerPenalty);
     output->track_length = scoring.scoringInfo.mLapDist;

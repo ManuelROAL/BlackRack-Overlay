@@ -231,6 +231,7 @@ struct LmuSnapshot {
     lap_delta_seconds: f64,
     session_time_remaining: f64,
     session_elapsed_seconds: f64,
+    game_time_of_day_seconds: f64,
     session_end_seconds: f64,
     estimated_lap_time: f64,
     last_lap_seconds: f64,
@@ -314,6 +315,7 @@ impl Default for LmuSnapshot {
             lap_delta_seconds: 0.0,
             session_time_remaining: 0.0,
             session_elapsed_seconds: 0.0,
+            game_time_of_day_seconds: 0.0,
             session_end_seconds: 0.0,
             estimated_lap_time: 0.0,
             last_lap_seconds: 0.0,
@@ -3272,6 +3274,11 @@ impl TelemetrySource for LmuTelemetrySource {
             session_max_laps: snapshot.max_laps,
             session_time_remaining: snapshot.session_time_remaining.max(0.0),
             session_elapsed_seconds: snapshot.session_elapsed_seconds.max(0.0),
+            game_time_of_day_seconds: if snapshot.game_time_of_day_seconds.is_finite() {
+                snapshot.game_time_of_day_seconds.rem_euclid(86_400.0)
+            } else {
+                0.0
+            },
             session_max_time_seconds: self.local_rest.session_max_time_seconds(),
             leader_total_laps: snapshot.leader_total_laps,
             session_split_number: session_split.number,

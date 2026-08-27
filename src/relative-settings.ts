@@ -43,6 +43,7 @@ export type RelativeOptionId =
   | "trackTemperature"
   | "brakeBias"
   | "trackLimits"
+  | "gameTimeClock"
   | "realTimeClock"
   | "positionChange"
   | "lap"
@@ -72,7 +73,8 @@ export interface RelativeSettings {
 export const RELATIVE_SETTINGS_KEY = "blackrack-overlay.relative.v3";
 export const RELATIVE_HEADER_OPTIONS: RelativeOptionDefinition[] = [
   { id: "airTemperature", labelKey: "header.airTemperature" }, { id: "trackTemperature", labelKey: "header.trackTemperature" },
-  { id: "brakeBias", labelKey: "header.brakeBias" }, { id: "trackLimits", labelKey: "header.trackLimits" }, { id: "realTimeClock", labelKey: "header.realTimeClock" }
+  { id: "brakeBias", labelKey: "header.brakeBias" }, { id: "trackLimits", labelKey: "header.trackLimits" },
+  { id: "gameTimeClock", labelKey: "header.gameTimeClock" }, { id: "realTimeClock", labelKey: "header.realTimeClock" }
 ];
 
 export const RELATIVE_COLUMN_OPTIONS: RelativeOptionDefinition[] = [

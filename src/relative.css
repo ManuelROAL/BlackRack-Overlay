@@ -118,6 +118,7 @@ body[data-overlay-fit="true"].relative-body .standings-shell {
   object-fit: contain;
 }
 
+.relative-game-time,
 .relative-local-time {
   display: inline-flex;
   align-items: center;
@@ -194,6 +195,7 @@ body[data-overlay-fit="true"].relative-body .standings-shell {
   --class-color: #98a5b3;
 }
 
+.relative-game-time,
 .relative-local-time {
   color: #f6f8fa;
   font-size: calc(10px * var(--overlay-font-scale, 1));

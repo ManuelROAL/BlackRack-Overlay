@@ -28,6 +28,11 @@ let fixedNumberFormatters = Array.from({ length: 4 }, (_, digits) => new Intl.Nu
   maximumFractionDigits: digits
 }));
 let clockFormatter = new Intl.DateTimeFormat(locale, { hour: "2-digit", minute: "2-digit" });
+let timeOfDayFormatter = new Intl.DateTimeFormat(locale, {
+  hour: "2-digit",
+  minute: "2-digit",
+  timeZone: "UTC"
+});
 
 export const getLocale = (): Locale => locale;
 export const setLocale = (next: Locale): void => {
@@ -40,6 +45,11 @@ export const setLocale = (next: Locale): void => {
     maximumFractionDigits: digits
   }));
   clockFormatter = new Intl.DateTimeFormat(next, { hour: "2-digit", minute: "2-digit" });
+  timeOfDayFormatter = new Intl.DateTimeFormat(next, {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "UTC"
+  });
   document.documentElement.lang = next;
 };
 
@@ -57,6 +67,8 @@ export const t = (key: TranslationKey, parameters: Parameters = {}): string => {
 export const formatNumber = (value: number, digits?: number): string =>
   digits === undefined ? numberFormatter.format(value) : fixedNumberFormatters[Math.max(0, Math.min(3, digits))].format(value);
 export const formatClock = (value: Date | number): string => clockFormatter.format(value);
+export const formatTimeOfDay = (seconds: number): string =>
+  timeOfDayFormatter.format(new Date(Date.UTC(1970, 0, 1, 0, 0, Math.floor(seconds))));
 
 const applyAttribute = (root: ParentNode, attribute: string, target: string): void => {
   root.querySelectorAll<HTMLElement>(`[${attribute}]`).forEach((element) => {

@@ -12,10 +12,10 @@ import {
   type RelativeSettings
 } from "./relative-settings";
 import { listenRuntimeEvent, listenTelemetry } from "./runtime-events";
-import { airTemperatureIconUrl, compoundIconUrl, timingIconUrl, trackTemperatureIconUrl } from "./lmu-icons";
+import { airTemperatureIconUrl, clockIconUrl, compoundIconUrl, gameTimeIconUrl, trackTemperatureIconUrl } from "./lmu-icons";
 import { applyTrackLimitTone, formatTrackLimitPoints } from "./track-limit-tone";
 import { formatDriverName } from "./driver-name-format";
-import { formatClock as formatRealClock, formatNumber, t, type TranslationKey } from "./i18n";
+import { formatClock as formatRealClock, formatNumber, formatTimeOfDay, t, type TranslationKey } from "./i18n";
 
 let relativeSettings = readRelativeSettings();
 const relativeBaseHeight = (): number => Math.max(
@@ -123,9 +123,9 @@ const node = <K extends keyof HTMLElementTagNameMap>(
   return element;
 };
 
-const timingIcon = (): HTMLImageElement => {
+const clockIcon = (source: string): HTMLImageElement => {
   const image = node("img", "relative-timing-icon");
-  image.src = timingIconUrl;
+  image.src = source;
   image.width = 12;
   image.height = 12;
   image.alt = "";
@@ -566,9 +566,16 @@ const sessionHeader = (frame: TelemetryFrame): HTMLElement => {
     applyTrackLimitTone(trackLimits, frame.track_limits_steps, frame.track_limits_steps_per_penalty);
     header.append(trackLimits);
   }
+  if (relativeSettings.options.gameTimeClock) {
+    const gameTime = node("time", "relative-game-time");
+    gameTime.append(clockIcon(gameTimeIconUrl), formatTimeOfDay(frame.game_time_of_day_seconds));
+    gameTime.title = t("standings.gameTime");
+    header.append(gameTime);
+  }
   if (relativeSettings.options.realTimeClock) {
     const localTime = node("time", "relative-local-time");
-    localTime.append(timingIcon(), formatRealClock(new Date()));
+    localTime.append(clockIcon(clockIconUrl), formatRealClock(new Date()));
+    localTime.title = t("standings.localTime");
     header.append(localTime);
   }
   return header;
@@ -605,6 +612,7 @@ const cachedSessionHeaderFor = (frame: TelemetryFrame): HTMLElement => {
     relativeSettings.options.trackTemperature,
     relativeSettings.options.brakeBias,
     relativeSettings.options.trackLimits,
+    relativeSettings.options.gameTimeClock,
     relativeSettings.options.realTimeClock,
     frame.rest_weather_available,
     Math.round(frame.ambient_temperature_c),
@@ -612,6 +620,7 @@ const cachedSessionHeaderFor = (frame: TelemetryFrame): HTMLElement => {
     Math.round(frame.brake_bias_percent * 10),
     frame.track_limits_steps,
     frame.track_limits_steps_per_penalty,
+    Math.floor(frame.game_time_of_day_seconds / 60),
     formatRealClock(new Date())
   ]);
   if (!cachedSessionHeader || cachedSessionHeader.signature !== signature) {
@@ -759,6 +768,7 @@ if (import.meta.env.DEV && new URLSearchParams(window.location.search).has("prev
     session_type: 1,
     session_time_remaining: 3_220,
     session_elapsed_seconds: 5_179,
+    game_time_of_day_seconds: 63_000,
     session_max_time_seconds: 8_400,
     session_max_laps: 0,
     leader_total_laps: 7,

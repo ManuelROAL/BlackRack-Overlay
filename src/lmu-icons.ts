@@ -1,5 +1,7 @@
 import profileIconUrl from "./assets/lmu-icons/helmet-race-svgrepo-com.svg";
 import timingIconUrl from "./assets/lmu-icons/timing.svg";
+import clockIconUrl from "./assets/lmu-icons/clock.svg";
+import gameTimeIconUrl from "./assets/lmu-icons/game-time.svg";
 import fuelIconUrl from "./assets/lmu-icons/fuel.svg";
 import energyIconUrl from "./assets/lmu-icons/energy.svg";
 import tiresIconUrl from "./assets/lmu-icons/tires.svg";
@@ -14,8 +16,10 @@ import wetCompoundIconUrl from "./assets/lmu-icons/compounds/wet.svg";
 
 export {
   airTemperatureIconUrl,
+  clockIconUrl,
   energyIconUrl,
   fuelIconUrl,
+  gameTimeIconUrl,
   profileIconUrl,
   timingIconUrl,
   tiresIconUrl,

@@ -167,6 +167,7 @@ body[data-overlay-fit="true"].standings-body .standings-shell {
 }
 
 .standings-header-temperature,
+.standings-header-game-time,
 .standings-header-local-time {
   display: inline-flex;
   align-items: center;
@@ -182,6 +183,7 @@ body[data-overlay-fit="true"].standings-body .standings-shell {
 .standings-header-temperature,
 .standings-header-brake-bias,
 .standings-header-track-limits,
+.standings-header-game-time,
 .standings-header-local-time {
   color: #d8dde2;
   font-size: calc(10px * var(--overlay-font-scale, 1));

@@ -42,6 +42,9 @@ restore per-overlay native listeners or direct cross-realm object events.
 - Shared-memory vehicle `mID` and REST `slotID` are different namespaces. Match
   cross-source vehicles by normalized driver identity; accept a numeric slot
   fallback only when identity agrees.
+- The in-game time of day comes from shared memory's `mTimeOfDay` seconds since
+  midnight; presentation formats it as a locale-aware clock without applying the
+  computer's timezone.
 - Do not replace fresh shared-memory timing with REST history. History is a
   low-frequency late-start recovery source only where an overlay document
   explicitly permits it.

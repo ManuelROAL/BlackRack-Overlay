@@ -129,6 +129,7 @@ export interface TelemetryFrame {
   session_max_laps: number;
   session_time_remaining: number;
   session_elapsed_seconds: number;
+  game_time_of_day_seconds: number;
   session_max_time_seconds: number;
   leader_total_laps: number;
   session_split_number: number;

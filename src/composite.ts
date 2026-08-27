@@ -76,14 +76,14 @@ const telemetryFields: Record<OverlayId, readonly (keyof TelemetryFrame)[]> = {
     "player_suspension_damage_percent", "player_tire_remaining_by_wheel_percent"
   ],
   standings: [
-    "session_type", "session_max_laps", "session_time_remaining", "session_max_time_seconds",
+    "session_type", "session_max_laps", "session_time_remaining", "game_time_of_day_seconds", "session_max_time_seconds",
     "session_split_number", "session_split_count", "rest_weather_available", "ambient_temperature_c",
     "track_temperature_c", "player_total_laps", "brake_bias_percent", "track_limits_steps",
     "track_limits_steps_per_penalty", "session_total_laps_estimated", "standings_model",
     "standings"
   ],
   relative: [
-    "rest_weather_available", "ambient_temperature_c", "track_temperature_c",
+    "game_time_of_day_seconds", "rest_weather_available", "ambient_temperature_c", "track_temperature_c",
     "brake_bias_percent", "track_limits_steps", "track_limits_steps_per_penalty",
     "relative_model", "standings"
   ],

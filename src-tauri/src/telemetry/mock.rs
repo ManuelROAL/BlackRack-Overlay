@@ -102,6 +102,7 @@ impl TelemetrySource for MockTelemetrySource {
             session_max_laps: 0,
             session_time_remaining: (3_600.0 - elapsed).max(0.0),
             session_elapsed_seconds: elapsed,
+            game_time_of_day_seconds: (63_000.0 + elapsed).rem_euclid(86_400.0),
             session_max_time_seconds: 3_600.0,
             leader_total_laps: 18,
             session_split_number: 2,

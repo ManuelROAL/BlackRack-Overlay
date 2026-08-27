@@ -15,7 +15,9 @@ import {
 import { listenRuntimeEvent, listenTelemetry } from "./runtime-events";
 import {
   airTemperatureIconUrl,
+  clockIconUrl,
   compoundIconUrl,
+  gameTimeIconUrl,
   profileIconUrl,
   timingIconUrl,
   tiresIconUrl,
@@ -23,7 +25,7 @@ import {
 } from "./lmu-icons";
 import { applyTrackLimitTone, formatTrackLimitPoints } from "./track-limit-tone";
 import { formatDriverName } from "./driver-name-format";
-import { formatClock as formatRealClock, formatNumber, t, type TranslationKey } from "./i18n";
+import { formatClock as formatRealClock, formatNumber, formatTimeOfDay, t, type TranslationKey } from "./i18n";
 
 let settings = readStandingsSettings();
 const STANDINGS_EMPTY_HEIGHT = 72;
@@ -629,10 +631,18 @@ const sessionHeader = (frame: TelemetryFrame): HTMLElement => {
     applyTrackLimitTone(trackLimits, frame.track_limits_steps, frame.track_limits_steps_per_penalty);
     dataGroup.append(trackLimits);
   }
+  if (settings.header.gameTimeClock) {
+    const gameTime = node("time", "standings-header-game-time");
+    gameTime.append(
+      icon(gameTimeIconUrl, "standings-header-icon", t("standings.gameTime")),
+      formatTimeOfDay(frame.game_time_of_day_seconds)
+    );
+    dataGroup.append(gameTime);
+  }
   if (settings.header.realTimeClock) {
     const localTime = node("time", "standings-header-local-time");
     localTime.append(
-      icon(timingIconUrl, "standings-header-icon", t("standings.localTime")),
+      icon(clockIconUrl, "standings-header-icon", t("standings.localTime")),
       formatRealClock(new Date())
     );
     dataGroup.append(localTime);
@@ -709,6 +719,7 @@ const cachedSessionHeaderFor = (frame: TelemetryFrame): HTMLElement => {
     Math.round(frame.brake_bias_percent * 10),
     frame.track_limits_steps,
     frame.track_limits_steps_per_penalty,
+    Math.floor(frame.game_time_of_day_seconds / 60),
     formatRealClock(new Date())
   ]);
   if (!cachedSessionHeader || cachedSessionHeader.signature !== signature) {
@@ -877,6 +888,7 @@ if (import.meta.env.DEV && new URLSearchParams(window.location.search).has("prev
   render({
     session_type: 1,
     session_time_remaining: 3_220,
+    game_time_of_day_seconds: 63_000,
     session_max_time_seconds: 8_400,
     session_max_laps: 0,
     leader_total_laps: 7,

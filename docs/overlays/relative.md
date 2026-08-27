@@ -56,7 +56,9 @@ the prepared vehicle IDs and formats them; it must not repeat domain selection.
   initial plus surname, name plus surname initial, surname only, name only and
   surname plus name initial.
 - Keep full header visibility separate from air/track temperature, brake bias,
-  player track-limit counter/threshold and local clock toggles.
+  player track-limit counter/threshold, game-time and local-clock toggles. Format
+  both clocks with the selected locale and distinguish the simulated-time clock
+  from the local wall-clock icon.
 - Apply the same asset, NRG, damage, tyre, pit, DR/SR and track-limit semantics as
   Standings, including the sidewall-style uniform-compound SVGs; do not create
   divergent formatting rules for shared cells.

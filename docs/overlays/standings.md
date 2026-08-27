@@ -116,6 +116,9 @@ duplicate selection or timing semantics.
 - Keep complete header visibility separate from each header datum. The header may
   show session, split, remaining/total time, current/estimated laps, air/track
   temperature, brake bias, track-limit steps/threshold and local time.
+- Game time and local time are independently configurable. Use the shared-memory
+  time of day for game time, format both clocks with the selected locale and keep
+  the session stopwatch, simulated-time clock and local wall-clock icons distinct.
 - Remaining time is the live countdown and displays `00:00` once exhausted. The
   compact total duration (`h m`) uses the official, fixed `maxTime` from local
   `/rest/watch/sessionInfo`; it is latched once per session and never reconstructed

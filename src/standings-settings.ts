@@ -52,6 +52,7 @@ export type StandingsHeaderOptionId =
   | "trackTemperature"
   | "brakeBias"
   | "trackLimits"
+  | "gameTimeClock"
   | "realTimeClock";
 
 export interface StandingsHeaderOptionDefinition {
@@ -65,7 +66,8 @@ export const STANDINGS_HEADER_OPTIONS: StandingsHeaderOptionDefinition[] = [
   { id: "sessionType", labelKey: "header.sessionType" }, { id: "eventSplit", labelKey: "header.eventSplit" },
   { id: "remainingTime", labelKey: "header.remainingTime" }, { id: "laps", labelKey: "header.laps" },
   { id: "airTemperature", labelKey: "header.airTemperature" }, { id: "trackTemperature", labelKey: "header.trackTemperature" },
-  { id: "brakeBias", labelKey: "header.brakeBias" }, { id: "trackLimits", labelKey: "header.trackLimits" }, { id: "realTimeClock", labelKey: "header.realTimeClock" }
+  { id: "brakeBias", labelKey: "header.brakeBias" }, { id: "trackLimits", labelKey: "header.trackLimits" },
+  { id: "gameTimeClock", labelKey: "header.gameTimeClock" }, { id: "realTimeClock", labelKey: "header.realTimeClock" }
 ];
 
 export const STANDINGS_COLUMNS: StandingsColumnDefinition[] = [
