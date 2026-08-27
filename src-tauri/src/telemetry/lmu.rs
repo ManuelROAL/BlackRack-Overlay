@@ -1910,6 +1910,7 @@ impl LmuTelemetrySource {
         let mut driver_rank_scores = HashMap::<i32, f64>::new();
         let mut driver_qualifying_positions = HashMap::<i32, i32>::new();
         let mut scored_overall_positions = HashMap::<i32, i32>::new();
+        let mut player_driver_elo = None;
         let player_entry = raw_entries
             .iter()
             .find(|entry| entry.is_player != 0)
@@ -2031,6 +2032,9 @@ impl LmuTelemetrySource {
                 if ranks.badge.is_empty() {
                     ranks.badge = event_profile.badge.clone();
                 }
+            }
+            if entry.is_player != 0 && ranks.driver_elo.is_finite() && ranks.driver_elo > 0.0 {
+                player_driver_elo = Some(ranks.driver_elo);
             }
             if let Some(score) = Self::driver_rank_score(&ranks.driver, ranks.driver_progress) {
                 driver_rank_scores.insert(entry.vehicle_id, score);
@@ -2168,6 +2172,7 @@ impl LmuTelemetrySource {
                             "vehicle_class": sample.vehicle_class,
                             "driver_rank": sample.driver_rank,
                             "driver_rank_progress": sample.driver_rank_progress,
+                            "raw_elo": player_driver_elo,
                             "visual_score": sample.visual_score,
                             "internal_score": sample.visual_score.map(|score| score * DRIVER_RANK_INTERNAL_SCALE),
                         },
@@ -2184,6 +2189,7 @@ impl LmuTelemetrySource {
                             "vehicle_class": sample.vehicle_class,
                             "driver_rank": sample.driver_rank,
                             "driver_rank_progress": sample.driver_rank_progress,
+                            "raw_elo": player_driver_elo,
                             "visual_score": sample.visual_score,
                             "internal_score": sample.visual_score.map(|score| score * DRIVER_RANK_INTERNAL_SCALE),
                             "race_position": sample.race_position,

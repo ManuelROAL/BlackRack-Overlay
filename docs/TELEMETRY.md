@@ -133,7 +133,8 @@ persisted.
 - The independent DR-estimate JSONL records the player's current DR when it
   becomes available or changes during practice and qualifying, plus changes to
   the derived estimate during a race. Practice and qualifying samples omit
-  positions and calculations.
+  positions and calculations. Every resolved player sample includes RaceControl's
+  raw continuous ELO so rank promotion resets cannot be mistaken for exact gains.
   Values are compared at the precision useful for diagnosis, so floating-point
   noise and unchanged periodic samples are omitted.
   Enabling it requests the 10 Hz standings
