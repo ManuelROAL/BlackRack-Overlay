@@ -19,6 +19,11 @@ telemetry semantics and file ownership live under `docs/overlays/`; use
   `src/styles.css` only when they are genuinely shared.
 - Do not set `color-scheme: dark` on an embedded document root; WebView2 can paint
   the unused iframe canvas as an opaque rectangle during resize.
+- Embedded native documents suppress CSS animations, transitions and backdrop
+  filters so WebView2 presents only for bounded telemetry or UI changes instead
+  of continuously at the monitor refresh rate. Express native warning motion as
+  cadence-driven state changes when it is essential; standalone and OBS pages may
+  retain decorative motion. New overlays must preserve this shared safeguard.
 
 ## Host and interaction
 
@@ -143,3 +148,6 @@ telemetry semantics and file ownership live under `docs/overlays/`; use
 5. Update the overlay document when behavior, sources, cadence or architecture
    changes. Do not duplicate those details in `AGENTS.md`.
 6. Run the verification listed in `AGENTS.md` and any overlay-specific checks.
+7. Verify the native composite has no continuous CSS animation, transition or
+   backdrop filter capable of raising presentation cadence above its telemetry
+   cadence; use a comparable PresentMon capture for performance-sensitive motion.

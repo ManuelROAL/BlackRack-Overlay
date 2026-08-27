@@ -80,9 +80,11 @@ lap in its scope.
   unchanged value is neutral. The trend resets across laps, references, modes and
   reset-style mini-sector boundaries so discontinuities cannot produce a false
   colour.
-- Bar position and width ease toward each 50 Hz telemetry target over 180 ms so
-  shared-memory noise does not become visible lateral oscillation. This visual
-  easing does not filter or delay the numeric delta. Trend colors use Dox's solid
+- Standalone and OBS bar position/width ease toward each telemetry target over
+  180 ms so shared-memory noise does not become visible lateral oscillation. The
+  native composite applies each already-smoothed 50 Hz target directly because
+  shared-host transitions would otherwise force presentation at monitor refresh.
+  Neither path filters or delays the numeric delta. Trend colors use Dox's solid
   green, red and white stops.
 - An invalid live lap uses amber rather than presenting its segment trend as
   actionable feedback.

@@ -70,6 +70,19 @@ body[data-overlay-fit="true"] {
   backdrop-filter: blur(14px);
 }
 
+/* The native composite host must repaint at telemetry cadence, not at the
+   monitor refresh rate. Standalone/OBS pages keep their decorative motion. */
+html.composite-embed body *,
+html.composite-embed body *::before,
+html.composite-embed body *::after {
+  animation: none !important;
+  transition: none !important;
+}
+
+html.composite-embed .overlay-shell {
+  backdrop-filter: none !important;
+}
+
 .topbar,
 footer {
   display: flex;

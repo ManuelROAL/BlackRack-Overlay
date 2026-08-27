@@ -41,6 +41,11 @@ document.
 - Use UTF-8 for text files and keep the frontend framework-free.
 - Keep overlay-specific CSS in its own file. Use `src/fonts.css` and
   `src/styles.css` only for genuinely shared rules.
+- Native composite overlays must repaint only from bounded telemetry/UI updates.
+  Do not add continuous CSS animations, long transitions or backdrop filters
+  that make WebView2 present at the monitor refresh rate. Preserve the shared
+  `composite-embed` motion/blur safeguard; use cadence-driven state changes for
+  native warnings and keep decorative motion limited to standalone/OBS pages.
 - Keep `src/telemetry-types.ts` synchronized with serialized Rust frame fields.
 - Keep domain calculations and roster selection in Rust. TypeScript owns
   presentation and browser-only state, not duplicated telemetry semantics.

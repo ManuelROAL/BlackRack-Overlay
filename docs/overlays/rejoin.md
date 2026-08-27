@@ -24,6 +24,9 @@
 
 - Display distance, arrival time, position and category.
 - Preserve distinct safe, caution and danger colors in the compact alert surface.
+- Keep danger emphasis static in the native composite; standalone and OBS pages
+  may pulse it. Native alert updates follow the bounded Rejoin cadence rather
+  than the monitor refresh rate.
 
 ## Verification focus
 

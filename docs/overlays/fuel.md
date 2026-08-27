@@ -85,6 +85,9 @@ math belongs in Rust. `fuel.ts` only formats serialized plans.
   aggressive high-consumption reference and the last lap as the freshest live
   sample.
 - Keep the shared 2 px translucent lime accent along the shell's left edge.
+- In the native composite, resource bars and critical-state emphasis update
+  directly at the bounded overlay cadence; CSS easing/pulsing remains available
+  only to standalone and OBS pages so it cannot force monitor-rate presentation.
 - Keep the summary focused on current resource, lap autonomy, pit window and PIT
   status. Do not show the redundant projected remaining/total race laps or
   autonomy minutes. Reserve the summary's first column for an enlarged current

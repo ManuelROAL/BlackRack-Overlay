@@ -70,6 +70,9 @@ These are hypotheses, not approved changes.
 - Measure before and after with the same workload.
 - A successful build is not performance evidence.
 - Match cadence to human-visible need without reducing safety-warning response.
+- Keep the native composite free of CSS animation, transition and backdrop-filter
+  work that causes WebView2 to present at monitor refresh. Native motion must be
+  driven by bounded overlay cadence; standalone/OBS decoration is independent.
 - Cache static data and derive slow values outside 50 Hz.
 - Avoid serialization when no consumer exists.
 - Prefer bounded channels and stale-data fallbacks over blocking the hot loop.

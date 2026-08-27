@@ -52,8 +52,10 @@ Detailed Damage (`damage.md`).
   and does not provide stable semantic part identifiers.
 - Continue exposing aggregate REST aero wear through the wing tooltip without
   presenting it as a detached rear wing.
-- Blink only the affected tyre shape: orange for puncture, red for detachment,
-  with detachment taking priority. Numeric readings stay continuously visible.
+- Standalone and OBS pages blink only the affected tyre shape: orange for
+  puncture, red for detachment, with detachment taking priority. The native
+  composite holds the same alert color statically so an alert cannot force
+  WebView2 to present at monitor refresh. Numeric readings stay visible.
 
 ## Presentation and hot path
 
