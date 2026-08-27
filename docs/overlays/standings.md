@@ -48,7 +48,8 @@ duplicate selection or timing semantics.
 - The category leader displays its current lap once in GAP and once in INT.
 - Lap times use three decimals; GAP/INT use one decimal. Personal best is green
   and session fastest is purple.
-- A completed invalid lap remains visible in gray. Latch the per-vehicle telemetry
+- A completed invalid lap remains visible in gray, taking visual precedence over
+  personal-best or session-fastest coloring. Latch the per-vehicle telemetry
   `mLapInvalidated` signal across the complete lap. Also treat a negative
   `mLastLapTime` between -900 and -20 seconds
   as official invalid confirmation and display its absolute duration. Ignore

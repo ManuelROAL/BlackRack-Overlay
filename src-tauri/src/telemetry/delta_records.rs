@@ -217,6 +217,7 @@ pub(crate) struct TimingViewModel {
     total_laps_estimated: f64,
     current_seconds: f64,
     last_seconds: f64,
+    last_valid: bool,
     session_personal_best_seconds: f64,
     personal_best_seconds: f64,
     average_seconds: f64,
@@ -235,6 +236,7 @@ impl Default for TimingViewModel {
             total_laps_estimated: 0.0,
             current_seconds: 0.0,
             last_seconds: 0.0,
+            last_valid: true,
             session_personal_best_seconds: 0.0,
             personal_best_seconds: 0.0,
             average_seconds: 0.0,
@@ -1163,6 +1165,7 @@ impl DeltaEngine {
                 0.0
             },
             last_seconds: frame.last_lap_seconds,
+            last_valid: timing_last_lap_valid(frame, &self.timing_history),
             session_personal_best_seconds: frame.best_lap_seconds,
             personal_best_seconds: self.overall.best.as_ref().map_or(0.0, |lap| lap.lap_time),
             average_seconds: average_timing_laps(&self.timing_history),
@@ -1435,6 +1438,11 @@ fn average_timing_laps(history: &[TimingLapView]) -> f64 {
     } else {
         total / f64::from(count)
     }
+}
+
+fn timing_last_lap_valid(frame: &TelemetryFrame, history: &[TimingLapView]) -> bool {
+    frame.last_lap_seconds <= 0.0
+        || (frame.last_lap_valid && history.first().is_none_or(|lap| lap.valid))
 }
 
 fn round_delta_for_trend(seconds: f64) -> f64 {
@@ -1808,6 +1816,21 @@ mod tests {
         ];
 
         assert_eq!(average_timing_laps(&history), 102.0);
+    }
+
+    #[test]
+    fn timing_model_keeps_reconstructed_invalid_last_lap_marked_invalid() {
+        let history = [TimingLapView {
+            number: 3,
+            seconds: 90.0,
+            valid: false,
+            state: "invalid",
+        }];
+        let mut frame = active_frame();
+        frame.last_lap_seconds = 90.0;
+        frame.last_lap_valid = true;
+
+        assert!(!super::timing_last_lap_valid(&frame, &history));
     }
 
     fn active_frame() -> TelemetryFrame {

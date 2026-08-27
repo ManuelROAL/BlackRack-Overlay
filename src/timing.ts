@@ -63,6 +63,7 @@ const render = (model: TimingViewModel): void => {
   setText(lapNumber, model.lap_number > 0 ? `${model.lap_number}/${totalLaps}` : `--/${totalLaps}`);
   setText(current, lapTime(model.current_seconds));
   setText(last, lapTime(model.last_seconds));
+  last?.parentElement?.toggleAttribute("data-invalid", !model.last_valid);
   setText(sessionBest, lapTime(model.session_personal_best_seconds));
   setText(personalBest, lapTime(model.personal_best_seconds));
   setText(average, lapTime(model.average_seconds));
@@ -83,6 +84,7 @@ const render = (model: TimingViewModel): void => {
       history.replaceChildren(...rows.map((lap) => {
         const row = document.createElement("li");
         row.dataset.state = lap.state;
+        row.classList.toggle("invalid-lap", !lap.valid);
         const label = document.createElement("span");
         label.textContent = t("timing.lap", { number: lap.number });
         const value = document.createElement("b");

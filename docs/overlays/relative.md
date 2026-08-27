@@ -64,7 +64,8 @@ the prepared vehicle IDs and formats them; it must not repeat domain selection.
   divergent formatting rules for shared cells.
 - Apply Standings' completed-lap validity semantics to LAST, including the latched
   `mLapInvalidated`, negative official-time signals and reconstructed invalid
-  durations when LMU omits the official time.
+  durations when LMU omits the official time. Invalid LAST values are gray and
+  take visual precedence over personal-best or session-fastest coloring.
 - Reuse Standings' event-roster fallback for missing/`XX` nationality and badges.
 - If a resolved country asset fails to load, replace it with the bundled `XX`
   marker; remove the image if that fallback also fails instead of leaving a

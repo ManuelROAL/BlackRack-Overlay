@@ -106,6 +106,7 @@ export interface TimingViewModel {
   total_laps_estimated: number;
   current_seconds: number;
   last_seconds: number;
+  last_valid: boolean;
   session_personal_best_seconds: number;
   personal_best_seconds: number;
   average_seconds: number;

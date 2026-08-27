@@ -19,6 +19,7 @@ html, body { width: fit-content; min-width: 100%; min-height: 100%; margin: 0; o
 .timing-times [data-time="personal-best"] b { color: #61e98a; }
 .timing-times [data-time="optimal"] b { color: #61e98a; }
 .timing-times [data-time="estimated"] b { color: #ffff88; }
+.timing-times [data-time="last"][data-invalid] b { color: #7a7a7a; }
 .timing-sectors { margin-top: 4px; }
 .timing-sectors div { border-bottom: 2px solid transparent; }
 .timing-sectors div.active { border-bottom-color: #d8ff3e; }
@@ -29,5 +30,5 @@ html, body { width: fit-content; min-width: 100%; min-height: 100%; margin: 0; o
 .timing-history { display: grid; gap: 2px; margin: 5px 0 0; padding: 0; list-style: none; }
 .timing-history li { display: flex; justify-content: space-between; padding: 1px 5px; color: #7d8793; font-size: calc(10px * var(--overlay-font-scale, 1)); line-height: 1; background: rgb(255 255 255 / 3%); }
 .timing-history li[data-state="best"] b { color: #61e98a; }
-.timing-history li[data-state="invalid"] b { color: #ffad4d; }
+.timing-history li.invalid-lap b { color: #7a7a7a; }
 .timing-card[data-state="waiting"] { opacity: .72; }

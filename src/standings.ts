@@ -456,9 +456,10 @@ const createCell = (entry: StandingEntry, column: StandingsColumnId, trackLimit:
     }
     case "last": {
       const cell = entry.is_out_lap ? node("b", "lap-time out-lap", "OUT") : node("b", "lap-time", formatLapTime(entry.last_lap_seconds));
+      const invalid = !entry.is_out_lap && entry.last_lap_seconds > 0 && !entry.last_lap_valid;
       const personalBest = entry.last_lap_seconds > 0 && entry.best_lap_seconds > 0 && Math.abs(entry.last_lap_seconds - entry.best_lap_seconds) <= 0.001;
-      if (!entry.is_out_lap && personalBest) cell.classList.add(entry.has_fastest_lap ? "session-fastest" : "personal-best");
-      if (!entry.is_out_lap && entry.last_lap_seconds > 0 && !entry.last_lap_valid) cell.classList.add("invalid-lap");
+      if (invalid) cell.classList.add("invalid-lap");
+      else if (!entry.is_out_lap && personalBest) cell.classList.add(entry.has_fastest_lap ? "session-fastest" : "personal-best");
       return cell;
     }
     case "average": return node("b", "lap-time", formatLapTime(entry.average_lap_seconds));

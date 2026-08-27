@@ -49,7 +49,9 @@ El panel consume el ciclo base de 50 Hz y no construye clasificaciones.
   activas sin ocultar los sectores ni el historial.
 - La nota sobre los colores de sector aparece dentro del bloque de referencia de
   sectores, antes del separador y de las opciones de tiempos visibles.
-- Las vueltas inválidas se conservan en el historial y se marcan como tales, pero
+- Las vueltas inválidas se conservan en el historial; tanto `ÚLTIMA` como su fila
+  de historial muestran el tiempo en gris. Los sectores de la vuelta activa usan
+  ámbar para advertir de la invalidez. Estas vueltas se marcan como tales, pero
   nunca mejoran referencias de vuelta o sector. La validez retiene
   `mLapInvalidated` durante toda la vuelta y el tiempo oficial negativo confirma
   la invalidez al completarla; si LMU omite su tiempo oficial, se reconstruye con
