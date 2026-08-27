@@ -7,7 +7,7 @@ import { createOverlayPerformanceTracker } from "./overlay-performance";
 import { isTauriRuntime, listenRuntimeEvent, listenTelemetry } from "./runtime-events";
 import { readTimingSettings, TIMING_TIMES, type TimingSettings } from "./timing-settings";
 import type { TimingViewModel } from "./telemetry-types";
-import { t } from "./i18n";
+import { formatNumber, t } from "./i18n";
 
 bindOverlayTransparency("timing");
 bindOverlayInteractionMode();
@@ -15,7 +15,7 @@ const performance = createOverlayPerformanceTracker("timing");
 let settings = readTimingSettings();
 const designWidth = 250;
 const visibleTimeCount = (): number => TIMING_TIMES.filter(({ id }) => settings.times[id]).length;
-const designHeight = (): number => 65 + visibleTimeCount() * 19
+const designHeight = (): number => 87 + visibleTimeCount() * 19
   + (settings.historyLaps === 0 ? 0 : settings.historyLaps === 5 ? 70 : 42);
 const resizeOverlay = fitOverlay(
   { width: designWidth, height: designHeight() },
@@ -23,10 +23,13 @@ const resizeOverlay = fitOverlay(
 );
 const card = document.getElementById("timing-card");
 const times = document.getElementById("timing-times");
+const lapNumber = document.getElementById("timing-lap-number");
 const current = document.getElementById("timing-current");
 const last = document.getElementById("timing-last");
 const sessionBest = document.getElementById("timing-session-best");
 const personalBest = document.getElementById("timing-personal-best");
+const average = document.getElementById("timing-average");
+const optimal = document.getElementById("timing-optimal");
 const estimated = document.getElementById("timing-estimated");
 const history = document.getElementById("timing-history");
 const sectorNodes = [...document.querySelectorAll<HTMLElement>("[data-sector]")];
@@ -54,10 +57,16 @@ const sectorTime = (seconds: number): string =>
 
 const render = (model: TimingViewModel): void => {
   card?.setAttribute("data-state", model.available ? "active" : "waiting");
+  const totalLaps = Number.isFinite(model.total_laps_estimated) && model.total_laps_estimated > 0
+    ? `~${formatNumber(model.total_laps_estimated, 2)}`
+    : "~--";
+  setText(lapNumber, model.lap_number > 0 ? `${model.lap_number}/${totalLaps}` : `--/${totalLaps}`);
   setText(current, lapTime(model.current_seconds));
   setText(last, lapTime(model.last_seconds));
   setText(sessionBest, lapTime(model.session_personal_best_seconds));
   setText(personalBest, lapTime(model.personal_best_seconds));
+  setText(average, lapTime(model.average_seconds));
+  setText(optimal, lapTime(model.optimal_seconds));
   setText(estimated, lapTime(model.estimated_seconds));
   for (const [index, node] of sectorNodes.entries()) {
     const sector = model.sectors[index];

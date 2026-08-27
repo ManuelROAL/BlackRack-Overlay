@@ -909,7 +909,7 @@ fn get_overlay_displays(app: AppHandle) -> Result<Vec<OverlayDisplay>, String> {
 fn default_overlay_geometry(label: &str) -> (f64, f64, f64, f64) {
     match label {
         "delta" => (610.0, 20.0, 420.0, 72.0),
-        "timing" => (610.0, 110.0, 250.0, 203.0),
+        "timing" => (610.0, 110.0, 250.0, 263.0),
         "driving" => (20.0, 380.0, 540.0, 120.0),
         "tires" => (588.0, 380.0, 174.0, 130.0),
         "damage" => (798.0, 380.0, 94.0, 94.0),

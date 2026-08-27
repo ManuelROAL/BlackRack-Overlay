@@ -4,6 +4,9 @@ html, body { width: fit-content; min-width: 100%; min-height: 100%; margin: 0; o
 .timing-body { padding: 4px; font-family: "Roboto Condensed", sans-serif; color: #eef2f5; }
 .timing-card { position: relative; width: 242px; overflow: hidden; padding: 7px 8px; border: 1px solid rgb(255 255 255 / 16%); border-radius: 5px; background: rgb(8 12 16 / var(--overlay-background-opacity)); box-shadow: 0 6px 18px rgb(0 0 0 / 36%); font-variant-numeric: tabular-nums; }
 .timing-card::before { position: absolute; z-index: 2; inset: 0 auto auto 0; width: 2px; height: 100%; background: #d8ff3e; content: ""; opacity: .82; }
+.timing-header { display: flex; align-items: baseline; justify-content: space-between; padding: 1px 5px 3px; border-bottom: 1px solid rgb(255 255 255 / 10%); line-height: 1; }
+.timing-header span { color: #8b96a1; font-size: calc(9px * var(--overlay-font-scale, 1)); font-weight: 900; letter-spacing: .1em; }
+.timing-header b { color: #eef2f5; font-size: calc(16px * var(--overlay-font-scale, 1)); }
 .timing-times, .timing-sectors { display: grid; gap: 4px; }
 .timing-times { margin-top: 5px; }
 .timing-times div { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding: 2px 5px; background: rgb(255 255 255 / 5%); line-height: 1; }
@@ -14,6 +17,7 @@ html, body { width: fit-content; min-width: 100%; min-height: 100%; margin: 0; o
 .timing-times b { font-size: calc(14px * var(--overlay-font-scale, 1)); line-height: 1.1; }
 .timing-times [data-time="session-best"] b { color: #ee77ff; }
 .timing-times [data-time="personal-best"] b { color: #61e98a; }
+.timing-times [data-time="optimal"] b { color: #61e98a; }
 .timing-times [data-time="estimated"] b { color: #ffff88; }
 .timing-sectors { margin-top: 4px; }
 .timing-sectors div { border-bottom: 2px solid transparent; }

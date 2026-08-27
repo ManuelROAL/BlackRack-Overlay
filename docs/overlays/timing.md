@@ -2,9 +2,9 @@
 
 ## Propósito
 
-Timing reúne en un único panel el tiempo actual, último, estimado,
-mejor personal de sesión y mejor personal absoluto, tres sectores y un historial
-corto. Evita dividir información
+Timing reúne en un único panel el número de vuelta, tiempo actual, último,
+estimado, promedio reciente, óptimo de sesión, mejor personal de sesión y mejor
+personal absoluto, tres sectores y un historial corto. Evita dividir información
 estrechamente relacionada en varios micro-overlays.
 
 ## Archivos y propiedad
@@ -37,10 +37,14 @@ El panel consume el ciclo base de 50 Hz y no construye clasificaciones.
 - El mejor de sesión usa el mejor personal oficial de LMU; no muestra tiempos de
   otros pilotos. El mejor personal usa la vuelta absoluta persistida para la
   combinación coche/circuito.
+- El promedio usa únicamente las vueltas válidas entre las cinco más recientes.
+  La óptima suma los mejores sectores personales válidos aprendidos en la sesión.
+- La cabecera muestra la vuelta actual y el total estimado (`actual/~total`) con
+  la misma estimación de carrera usada por los demás overlays.
 - La estimación proyecta la vuelta actual sobre la mejor traza disponible, con
   prioridad stint, sesión y absoluto, y suaviza el delta vivo. No usa
   `mEstimatedLapTime`, que puede anticipar tiempos irreales.
-- Cada una de las cinco filas de tiempo se puede ocultar de forma independiente.
+- Cada una de las siete filas de tiempo se puede ocultar de forma independiente.
   Todas están visibles por defecto; el panel reduce su altura según las filas
   activas sin ocultar los sectores ni el historial.
 - La nota sobre los colores de sector aparece dentro del bloque de referencia de

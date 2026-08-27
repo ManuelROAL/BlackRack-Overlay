@@ -102,10 +102,14 @@ export interface TimingSectorView { seconds: number; state: "pending" | "neutral
 export interface TimingLapView { number: number; seconds: number; valid: boolean; state: "normal" | "best" | "invalid"; }
 export interface TimingViewModel {
   available: boolean;
+  lap_number: number;
+  total_laps_estimated: number;
   current_seconds: number;
   last_seconds: number;
   session_personal_best_seconds: number;
   personal_best_seconds: number;
+  average_seconds: number;
+  optimal_seconds: number;
   estimated_seconds: number;
   active_sector: number;
   sectors: TimingSectorView[];

@@ -214,10 +214,14 @@ pub(crate) struct TimingLapView {
 #[derive(Clone, Debug, Serialize)]
 pub(crate) struct TimingViewModel {
     available: bool,
+    lap_number: i32,
+    total_laps_estimated: f64,
     current_seconds: f64,
     last_seconds: f64,
     session_personal_best_seconds: f64,
     personal_best_seconds: f64,
+    average_seconds: f64,
+    optimal_seconds: f64,
     estimated_seconds: f64,
     active_sector: usize,
     sectors: [TimingSectorView; 3],
@@ -228,10 +232,14 @@ impl Default for TimingViewModel {
     fn default() -> Self {
         Self {
             available: false,
+            lap_number: 0,
+            total_laps_estimated: 0.0,
             current_seconds: 0.0,
             last_seconds: 0.0,
             session_personal_best_seconds: 0.0,
             personal_best_seconds: 0.0,
+            average_seconds: 0.0,
+            optimal_seconds: 0.0,
             estimated_seconds: 0.0,
             active_sector: 0,
             sectors: std::array::from_fn(|_| TimingSectorView::default()),
@@ -1148,6 +1156,8 @@ impl DeltaEngine {
         let estimated_seconds = self.timing_estimated_lap(frame, timed_lap_active);
         TimingViewModel {
             available: true,
+            lap_number: frame.player_total_laps.saturating_add(1).max(1),
+            total_laps_estimated: frame.session_total_laps_estimated,
             current_seconds: if timed_lap_active {
                 frame.current_lap_seconds
             } else {
@@ -1156,6 +1166,8 @@ impl DeltaEngine {
             last_seconds: frame.last_lap_seconds,
             session_personal_best_seconds: frame.best_lap_seconds,
             personal_best_seconds: self.overall.best.as_ref().map_or(0.0, |lap| lap.lap_time),
+            average_seconds: average_timing_laps(&self.timing_history),
+            optimal_seconds: self.session.optimal.total().unwrap_or(0.0),
             estimated_seconds,
             active_sector,
             sectors: std::array::from_fn(|index| TimingSectorView {
@@ -1414,6 +1426,20 @@ impl DeltaEngine {
             DeltaMode::LastLap => self.last_lap.as_ref().map(|trace| trace.lap_time),
             DeltaMode::Off => None,
         }
+    }
+}
+
+fn average_timing_laps(history: &[TimingLapView]) -> f64 {
+    let valid = history
+        .iter()
+        .filter(|lap| lap.valid && lap.seconds.is_finite() && lap.seconds > 0.0);
+    let (total, count) = valid.fold((0.0, 0_u32), |(total, count), lap| {
+        (total + lap.seconds, count + 1)
+    });
+    if count == 0 {
+        0.0
+    } else {
+        total / f64::from(count)
     }
 }
 
@@ -1737,11 +1763,11 @@ mod tests {
     use rusqlite::Connection;
 
     use super::{
-        build_sectors, can_show_live_delta, classify_delta_trend, handle_storage_command,
-        initialize_database, interpolate, native_session_delta, sector_count, sector_state,
-        should_reset_delta_at_lap_start, three_sector_times, CurrentLap, DeltaTrend, Identity,
-        LapTrace, PersistentReferences, ReferenceSet, SectorBank, StorageCommand,
-        TimingSectorReference, TracePoint, STORE_VERSION,
+        average_timing_laps, build_sectors, can_show_live_delta, classify_delta_trend,
+        handle_storage_command, initialize_database, interpolate, native_session_delta,
+        sector_count, sector_state, should_reset_delta_at_lap_start, three_sector_times,
+        CurrentLap, DeltaTrend, Identity, LapTrace, PersistentReferences, ReferenceSet, SectorBank,
+        StorageCommand, TimingLapView, TimingSectorReference, TracePoint, STORE_VERSION,
     };
     use crate::telemetry::TelemetryFrame;
 
@@ -1757,6 +1783,32 @@ mod tests {
                 .collect(),
             official_sector_ends: [None; 2],
         }
+    }
+
+    #[test]
+    fn timing_average_uses_only_valid_recent_laps() {
+        let history = [
+            TimingLapView {
+                number: 4,
+                seconds: 100.0,
+                valid: true,
+                state: "normal",
+            },
+            TimingLapView {
+                number: 3,
+                seconds: 90.0,
+                valid: false,
+                state: "invalid",
+            },
+            TimingLapView {
+                number: 2,
+                seconds: 104.0,
+                valid: true,
+                state: "normal",
+            },
+        ];
+
+        assert_eq!(average_timing_laps(&history), 102.0);
     }
 
     fn active_frame() -> TelemetryFrame {
