@@ -181,6 +181,24 @@ impl RestWeatherSession {
         })
         .collect()
     }
+
+    pub(super) fn wind_at(&self, index: usize) -> Option<(f64, f64)> {
+        let node = [
+            &self.start,
+            &self.node_25,
+            &self.node_50,
+            &self.node_75,
+            &self.finish,
+        ]
+        .get(index)
+        .copied()?;
+        let speed_ms = node.wind_speed.current_value;
+        let direction_index = node.wind_direction.current_value;
+        (speed_ms.is_finite() && speed_ms > 0.0 && direction_index.is_finite()).then_some((
+            speed_ms,
+            (direction_index.round().rem_euclid(8.0) * 45.0) % 360.0,
+        ))
+    }
 }
 
 #[derive(Clone, Debug, Default, Deserialize)]
@@ -194,6 +212,10 @@ pub(super) struct RestWeatherNode {
     pub sky: RestWeatherMetric,
     #[serde(rename = "WNV_HUMIDITY")]
     pub humidity: RestWeatherMetric,
+    #[serde(rename = "WNV_WINDSPEED")]
+    pub wind_speed: RestWeatherMetric,
+    #[serde(rename = "WNV_WINDDIRECTION")]
+    pub wind_direction: RestWeatherMetric,
 }
 
 #[derive(Clone, Debug, Default, Deserialize)]
@@ -825,7 +847,7 @@ mod tests {
     fn parses_weather_forecast_nodes_into_serialized_nodes() {
         let weather: RestWeatherSession = serde_json::from_str(
             r#"{
-              "START": {"WNV_SKY": {"currentValue": 0, "stringValue": "Sunny"}, "WNV_TEMPERATURE": {"currentValue": 22.4, "stringValue": "22.4 C"}, "WNV_RAIN_CHANCE": {"currentValue": 5, "stringValue": "5 %"}, "WNV_HUMIDITY": {"currentValue": 40, "stringValue": "40 %"}},
+              "START": {"WNV_SKY": {"currentValue": 0, "stringValue": "Sunny"}, "WNV_TEMPERATURE": {"currentValue": 22.4, "stringValue": "22.4 C"}, "WNV_RAIN_CHANCE": {"currentValue": 5, "stringValue": "5 %"}, "WNV_HUMIDITY": {"currentValue": 40, "stringValue": "40 %"}, "WNV_WINDSPEED": {"currentValue": 7, "stringValue": "25.2 km/h"}, "WNV_WINDDIRECTION": {"currentValue": 2, "stringValue": "East"}},
               "NODE_25": {"WNV_SKY": {"currentValue": 2, "stringValue": "Cloudy"}, "WNV_TEMPERATURE": {"currentValue": 21.1, "stringValue": "21.1 C"}, "WNV_RAIN_CHANCE": {"currentValue": 30, "stringValue": "30 %"}, "WNV_HUMIDITY": {"currentValue": 55, "stringValue": "55 %"}},
               "NODE_50": {"WNV_SKY": {"currentValue": 4, "stringValue": "Rain"}, "WNV_TEMPERATURE": {"currentValue": 19.6, "stringValue": "19.6 C"}, "WNV_RAIN_CHANCE": {"currentValue": 85, "stringValue": "85 %"}, "WNV_HUMIDITY": {"currentValue": 90, "stringValue": "90 %"}},
               "NODE_75": {"WNV_SKY": {"currentValue": 5, "stringValue": "Storm"}, "WNV_TEMPERATURE": {"currentValue": 18.2, "stringValue": "18.2 C"}, "WNV_RAIN_CHANCE": {"currentValue": 95, "stringValue": "95 %"}, "WNV_HUMIDITY": {"currentValue": 95, "stringValue": "95 %"}},
@@ -841,6 +863,8 @@ mod tests {
         assert_eq!(nodes[2].sky, 4);
         assert_eq!(nodes[2].rain_chance_percent, 85.0);
         assert_eq!(nodes[4].humidity_percent, 60.0);
+        assert_eq!(weather.wind_at(0), Some((7.0, 90.0)));
+        assert_eq!(weather.wind_at(1), None);
     }
 
     #[test]

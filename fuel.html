@@ -9,7 +9,6 @@
     <main class="overlay-shell fuel-shell" data-resource-mode="energy" data-tauri-drag-region>
       <section class="strategy-summary">
         <div class="summary-stat accent-stat">
-          <span id="resource-label">NRG</span>
           <strong id="resource-current">--</strong><small id="resource-unit">%</small>
         </div>
         <div class="summary-stat">
@@ -31,29 +30,33 @@
 
        <section class="strategy-table energy-strategy-table" aria-label="Escenarios de energía" data-i18n-aria-label="fuel.energyScenariosAria">
          <header class="strategy-columns" aria-hidden="true">
-           <span id="active-table-label">NRG</span><span data-i18n="fuel.consumption">CONSUMO</span><span data-i18n="fuel.autonomy">AUTON.</span><span data-i18n="fuel.totalAdd">TOTAL +</span>
+           <span id="active-table-label" class="resource-icon" aria-label="NRG"><img id="active-table-icon" src="/src/assets/lmu-icons/energy.svg" width="14" height="14" alt="" aria-hidden="true" /></span><span data-i18n="fuel.consumption">CONSUMO</span><span data-i18n="fuel.autonomy">AUTON.</span><span data-i18n="fuel.totalAdd">TOTAL +</span><span data-i18n="fuel.stintEnd">FIN STINT</span>
          </header>
          <div class="strategy-row average-row">
-           <span data-i18n="fuel.average">PROMEDIO</span><strong id="energy-average-consumption">--</strong><strong id="energy-average-autonomy">--</strong><strong id="energy-average-required">--</strong>
+           <span data-i18n="fuel.average">PROMEDIO</span><strong id="energy-average-consumption">--</strong><strong id="energy-average-autonomy">--</strong><strong id="energy-average-required">--</strong><strong id="energy-average-stint-end">--</strong>
          </div>
          <div class="strategy-row qualify-row">
-           <span data-i18n="fuel.qualifying">QUALY</span><strong id="energy-qualifying-consumption">--</strong><strong id="energy-qualifying-autonomy">--</strong><strong id="energy-qualifying-required">--</strong>
+           <span data-i18n="fuel.qualifying">QUALY</span><strong id="energy-qualifying-consumption">--</strong><strong id="energy-qualifying-autonomy">--</strong><strong id="energy-qualifying-required">--</strong><strong id="energy-qualifying-stint-end">--</strong>
          </div>
          <div class="strategy-row last-row">
-           <span data-i18n="fuel.last">ÚLTIMA</span><strong id="energy-last-consumption">--</strong><strong id="energy-last-autonomy">--</strong><strong id="energy-last-required">--</strong>
+           <span data-i18n="fuel.last">ÚLTIMA</span><strong id="energy-last-consumption">--</strong><strong id="energy-last-autonomy">--</strong><strong id="energy-last-required">--</strong><strong id="energy-last-stint-end">--</strong>
          </div>
        </section>
 
-       <section class="fuel-compact-card" aria-label="Estrategia de gasolina" data-i18n-aria-label="fuel.fuelStrategyAria">
-         <header><b class="icon-value"><img src="/src/assets/lmu-icons/fuel.svg" width="12" height="12" alt="" aria-hidden="true" /></header>
-         <div class="fuel-compact-values">
-           <div><span data-i18n="fuel.current">ACTUAL</span><strong id="fuel-current">--</strong></div>
-           <div><span data-i18n="fuel.consumption">CONSUMO</span><strong id="fuel-consumption">--</strong></div>
-           <div><span data-i18n="fuel.autonomy">AUTON.</span><strong id="fuel-autonomy">--</strong></div>
-           <div><span data-i18n="fuel.refill">CARGAR</span><strong id="fuel-required">--</strong></div>
-           <div><span>PIT</span><strong id="fuel-stops">--</strong></div>
+       <section class="fuel-card" aria-label="Estrategia de gasolina" data-i18n-aria-label="fuel.fuelStrategyAria">
+         <header class="fuel-card-summary">
+           <div class="fuel-card-current">
+             <strong id="fuel-current">--</strong><small>L</small><em id="fuel-capacity">/ --</em>
+           </div>
+           <div class="fuel-card-range">
+             <span data-i18n="fuel.autonomy">AUTON.</span><strong id="fuel-autonomy">--</strong>
+           </div>
+         </header>
+         <div class="fuel-level"><i id="fuel-level"></i></div>
+         <div class="fuel-card-values">
            <div><span data-i18n="fuel.ratioAssigned">RATIO</span><strong id="fuel-ratio-assigned">--</strong></div>
            <div><span data-i18n="fuel.ratioAverage">R AVG</span><strong id="fuel-ratio-average">--</strong></div>
+           <div><span data-i18n="fuel.ratioLast">R LAST</span><strong id="fuel-ratio-last">--</strong></div>
          </div>
        </section>
     </main>

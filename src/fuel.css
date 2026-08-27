@@ -74,6 +74,19 @@ body[data-overlay-fit="true"].fuel-body .fuel-shell {
   letter-spacing: 0.045em;
 }
 
+.resource-icon {
+  display: flex !important;
+  min-height: 14px;
+  align-items: center;
+}
+
+.resource-icon img {
+  width: 14px;
+  height: 14px;
+  object-fit: contain;
+  opacity: 0.82;
+}
+
 .icon-value {
   display: inline-flex;
   align-items: center;
@@ -101,6 +114,11 @@ body[data-overlay-fit="true"].fuel-body .fuel-shell {
 
 .accent-stat strong {
   color: #d8ff3e;
+  font-size: 1.35em;
+}
+
+.accent-stat small {
+  font-size: 1.08em;
 }
 
 .fuel-shell[data-resource-mode="fuel"] .accent-stat strong {
@@ -173,7 +191,7 @@ body[data-overlay-fit="true"].fuel-body .fuel-shell {
 }
 
 .fuel-shell[data-resource-mode="fuel"] .strategy-level i {
-  background: linear-gradient(90deg, #ff7c43, #ffbc42);
+  background: linear-gradient(90deg, #ff6e43, #ffbc42);
 }
 
 .strategy-level b {
@@ -245,76 +263,107 @@ body[data-overlay-fit="true"].fuel-body .fuel-shell {
   flex: 1 1 auto;
 }
 
-.fuel-compact-card {
+.fuel-card {
   display: none;
-  flex: 0 0 calc(42px * var(--overlay-font-height-expansion, 1));
-  grid-template-columns: 16px 1fr;
-  align-items: center;
-  column-gap: 4px;
-  padding: 2px 5px;
+  flex: 0 0 calc(52px * var(--overlay-font-height-expansion, 1));
+  grid-template-rows: 24px 4px 1fr;
+  padding: 2px 5px 3px;
   border-top: 1px solid rgb(255 255 255 / 8%);
   border-bottom: 1px solid rgb(255 255 255 / 8%);
   background: rgb(255 173 67 / 5%);
 }
 
-.fuel-shell[data-resource-mode="energy"] .fuel-compact-card {
+.fuel-shell[data-resource-mode="energy"] .fuel-card {
   display: grid;
 }
 
-.fuel-compact-card header {
-  display: flex;
-  align-items: center;
-}
-
-.fuel-compact-card header {
-  color: #ffad43;
-  letter-spacing: 0.04em;
-}
-
-.fuel-compact-card header span {
-  color: #7f8a96;
-  text-align: right;
-}
-
-.fuel-compact-values {
+.fuel-card-summary {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  grid-template-rows: repeat(3, 1fr);
+  grid-template-columns: 1fr auto;
   align-items: center;
-  gap: 1px 4px;
+  column-gap: 8px;
 }
 
-.fuel-compact-values > div {
+.fuel-card-current,
+.fuel-card-range {
   min-width: 0;
-  overflow: hidden;
-  font-size: calc(9px * var(--overlay-font-scale, 1));
-  text-align: right;
   white-space: nowrap;
 }
 
-.fuel-compact-values > div:nth-child(6) {
-  grid-column: 1;
-  grid-row: 3;
-}
-
-.fuel-compact-values > div:nth-child(7) {
-  grid-column: 2;
-  grid-row: 3;
-}
-
-.fuel-compact-values span {
+.fuel-card-current > span,
+.fuel-card-range > span {
+  margin-right: 4px;
   color: #7f8a96;
-  margin-right: 2px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
 }
 
-.fuel-compact-values strong {
+.fuel-card-current strong,
+.fuel-card-range strong {
+  color: #ffad43;
+  font-size: calc(13px * var(--overlay-font-scale, 1));
+  font-weight: 950;
+}
+
+.fuel-card-current small,
+.fuel-card-current em {
+  margin-left: 2px;
+  color: #9ca6b0;
+  font-size: calc(9px * var(--overlay-font-scale, 1));
+  font-style: normal;
+  font-weight: 900;
+}
+
+.fuel-card-range {
+  text-align: right;
+}
+
+.fuel-level {
+  overflow: hidden;
+  height: 4px;
+  border-radius: 2px;
+  background: rgb(255 255 255 / 8%);
+}
+
+.fuel-level i {
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #ff6e43, #ffbc42);
+  transition: width 90ms linear;
+}
+
+.fuel-card-values {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: 1fr;
+  align-items: center;
+  gap: 1px 6px;
+  padding-top: 2px;
+}
+
+.fuel-card-values > div {
+  min-width: 0;
+  overflow: hidden;
+  font-size: calc(9px * var(--overlay-font-scale, 1));
+  white-space: nowrap;
+}
+
+.fuel-card-values span {
+  margin-right: 2px;
+  color: #7f8a96;
+}
+
+.fuel-card-values strong {
   color: #ffcf78;
+  font-weight: 950;
 }
 
 .strategy-columns,
 .strategy-row {
   display: grid;
-  grid-template-columns: 56fr repeat(3, 58fr);
+  grid-template-columns: 50fr repeat(4, 48fr);
   align-items: center;
   column-gap: 2px;
   padding: 0 5px;

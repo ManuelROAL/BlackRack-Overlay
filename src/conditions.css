@@ -2,15 +2,15 @@
 @import "./styles.css";
 
 body.conditions-body {
-  min-width: 260px;
-  min-height: 70px;
+  min-width: 320px;
+  min-height: 90px;
   padding: 6px;
 }
 
 .conditions-shell {
   position: relative;
-  display: flex;
-  align-items: stretch;
+  display: grid;
+  grid-template-rows: 30px minmax(0, 1fr);
   box-sizing: border-box;
   width: 100%;
   height: 100%;
@@ -40,45 +40,66 @@ body.conditions-body {
   opacity: 0.82;
 }
 
-.conditions-status {
+.conditions-header {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 3px;
-  flex: 0 0 calc(44px * var(--overlay-font-width-expansion, 1));
-  padding: 0 3px;
-  border-right: 1px solid rgb(255 255 255 / 9%);
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+  padding: 0 9px;
+  border-bottom: 1px solid rgb(255 255 255 / 9%);
 }
 
-.conditions-status img {
-  width: 26px;
-  height: 26px;
+.conditions-weather {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  color: #f0f4f7;
+  font-size: calc(11px * var(--overlay-font-scale, 1));
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.conditions-weather img {
+  width: 18px;
+  height: 18px;
   object-fit: contain;
 }
 
-.conditions-status img[hidden] {
+.conditions-weather img[hidden] {
   display: none;
 }
 
-.conditions-state {
-  color: #3ec3a6;
+.conditions-summary {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 0;
+  color: #b7c0c9;
   font-size: calc(9px * var(--overlay-font-scale, 1));
   font-weight: 900;
   letter-spacing: .08em;
   white-space: nowrap;
 }
 
+.conditions-summary-part::before {
+  margin: 0 5px;
+  color: #58636e;
+  content: "·";
+}
+
+.conditions-state { color: #dce3ea; }
 .conditions-state[data-state="damp"] { color: #ffb84d; }
 .conditions-state[data-state="wet"] { color: #6fa8dc; }
-.conditions-state[data-state="saturated"] { color: #4a6ea8; }
+.conditions-state[data-state="heavy"] { color: #4f8cc9; }
+.conditions-state[data-state="saturated"] { color: #806fd6; }
 
 .conditions-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(38px, 1fr)) minmax(52px, 1.25fr) repeat(4, minmax(38px, 1fr));
-  flex: 1 1 auto;
+  grid-template-columns: repeat(2, minmax(54px, 1fr)) minmax(105px, 1.55fr) repeat(2, minmax(48px, .8fr));
   margin: 0;
-  padding: 1px 2px;
+  padding: 1px 4px;
   gap: 0;
   min-width: 0;
 }
@@ -88,7 +109,7 @@ body.conditions-body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 1px;
+  gap: 2px;
   min-width: 0;
 }
 

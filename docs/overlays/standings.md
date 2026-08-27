@@ -85,12 +85,13 @@ duplicate selection or timing semantics.
   or `XX` nationality and missing badges without replacing valid `/players` data.
 - The DR estimate is same-class and event-parameter aware. Convert it back from
   the three-times internal rating scale before serializing visible progress.
-- Its dedicated diagnostic switch writes one player estimate sample per second to
-  `dr-estimate-logs/dr-estimate.jsonl`. That JSONL contains only the estimate
-  inputs, coverage, calculation and event settings; it remains separate from
-  general analysis telemetry and keeps the 10 Hz standings model active while
-  enabled. It accumulates all sessions and enable/disable cycles in one app run,
-  then resets on the next app launch.
+- Its dedicated diagnostic switch writes the initial player estimate and each
+  meaningful change to `dr-estimate-logs/dr-estimate.jsonl`; unchanged samples
+  are omitted and floating-point values are compared after rounding to 0.001.
+  That JSONL contains only the estimate inputs, coverage, calculation and event
+  settings; it remains separate from general analysis telemetry and keeps the
+  10 Hz standings model active while enabled. It accumulates all sessions and
+  enable/disable cycles in one app run, then resets on the next app launch.
 - During the live race, DR head-to-head results follow the responsive class order
   from shared memory. After the checkered flag, prefer LMU REST `position` only
   when `serverScored` is true and every car in that class has a positive scored

@@ -39,6 +39,18 @@ fn rear_wing_detached(
     false
 }
 
+fn fuel_energy_ratio(fuel_consumption: f64, energy_consumption: f64) -> f64 {
+    if fuel_consumption.is_finite()
+        && fuel_consumption > 0.0
+        && energy_consumption.is_finite()
+        && energy_consumption > 0.0
+    {
+        fuel_consumption / energy_consumption
+    } else {
+        0.0
+    }
+}
+
 #[repr(C)]
 #[derive(Clone, Copy)]
 struct LmuStandingEntry {
@@ -762,7 +774,6 @@ pub struct LmuTelemetrySource {
     rejoin_hold_frames: u16,
     rejoin_reason: &'static str,
     last_gap_log_at: Option<Instant>,
-    last_driver_rank_log_at: Option<Instant>,
     last_standings_state_update: Option<Instant>,
     last_valid_standings: Vec<StandingEntry>,
     last_valid_standings_at: Option<Instant>,
@@ -998,6 +1009,58 @@ impl LmuTelemetrySource {
         }
     }
 
+    fn track_rubber_percent(snapshot: &LmuSnapshot) -> f64 {
+        const MEDIAN_LAPS: f64 = 2_000.0;
+
+        let starting_rubber = if (0..=4).contains(&snapshot.session_type) {
+            0.25
+        } else {
+            0.50
+        };
+        let starting_laps = starting_rubber * MEDIAN_LAPS / 0.75;
+        let count = (snapshot.standings_count as usize).min(MAX_VEHICLES);
+        let completed_laps = snapshot.standings[..count]
+            .iter()
+            .filter(|entry| entry.vehicle_id > 0 && entry.position > 0)
+            .map(|entry| entry.total_laps)
+            .filter(|laps| (0..10_000).contains(laps))
+            .map(f64::from)
+            .sum::<f64>();
+        let equivalent_laps = starting_laps + completed_laps;
+
+        if equivalent_laps >= MEDIAN_LAPS * 2.0 {
+            100.0
+        } else if equivalent_laps > MEDIAN_LAPS {
+            (75.0 + (equivalent_laps - MEDIAN_LAPS) / MEDIAN_LAPS * 25.0).clamp(0.0, 100.0)
+        } else {
+            (equivalent_laps / MEDIAN_LAPS * 75.0).clamp(0.0, 100.0)
+        }
+    }
+
+    fn track_surface_state(track_wetness_percent: f64) -> &'static str {
+        if !track_wetness_percent.is_finite() || track_wetness_percent < 1.0 {
+            "dry"
+        } else if track_wetness_percent < 15.0 {
+            "damp"
+        } else if track_wetness_percent < 40.0 {
+            "wet"
+        } else if track_wetness_percent < 70.0 {
+            "heavy"
+        } else {
+            "saturated"
+        }
+    }
+
+    fn resolve_wind(wind_x: f64, wind_z: f64, rest_wind: Option<(f64, f64)>) -> (f64, f64) {
+        let shared_speed_ms = f64::hypot(wind_x, wind_z);
+        if shared_speed_ms.is_finite() && shared_speed_ms > 0.0 {
+            let direction_degrees = (wind_z.atan2(wind_x).to_degrees() + 360.0) % 360.0;
+            (shared_speed_ms, direction_degrees)
+        } else {
+            rest_wind.unwrap_or((0.0, 0.0))
+        }
+    }
+
     #[cfg(test)]
     pub fn new() -> Self {
         let mut source = Self::with_profile_directory(None);
@@ -1051,7 +1114,6 @@ impl LmuTelemetrySource {
             rejoin_hold_frames: 0,
             rejoin_reason: "rejoin",
             last_gap_log_at: None,
-            last_driver_rank_log_at: None,
             last_standings_state_update: None,
             last_valid_standings: Vec::new(),
             last_valid_standings_at: None,
@@ -1108,7 +1170,6 @@ impl LmuTelemetrySource {
         self.driver_ranks.begin_session();
         self.rejoin_hold_frames = 0;
         self.last_gap_log_at = None;
-        self.last_driver_rank_log_at = None;
         self.last_standings_state_update = None;
         self.last_valid_standings.clear();
         self.last_valid_standings_at = None;
@@ -1759,13 +1820,7 @@ impl LmuTelemetrySource {
         if log_gap_sample {
             self.last_gap_log_at = Some(now);
         }
-        let log_driver_rank_sample = super::dr_estimate_log::enabled()
-            && self
-                .last_driver_rank_log_at
-                .is_none_or(|previous| now.duration_since(previous) >= Duration::from_secs(1));
-        if log_driver_rank_sample {
-            self.last_driver_rank_log_at = Some(now);
-        }
+        let log_driver_rank_sample = super::dr_estimate_log::enabled();
         let mut gap_sample = Vec::new();
 
         let mut fastest_by_class = HashMap::<String, f64>::new();
@@ -2993,7 +3048,15 @@ impl TelemetrySource for LmuTelemetrySource {
             }),
             ..FuelStrategies::default()
         }
-        .with_qualifying_guidance();
+        .with_qualifying_guidance()
+        .with_stint_end_balances(
+            if virtual_energy_active {
+                virtual_energy_percent
+            } else {
+                snapshot.fuel_liters
+            },
+            session_lap_equivalents_remaining,
+        );
         let fuel_needed_liters = fuel_strategy
             .map(|strategy| {
                 snapshot.fuel_liters + strategy.total_additional - strategy.end_remaining
@@ -3092,19 +3155,18 @@ impl TelemetrySource for LmuTelemetrySource {
             })
             .map(|node| node.humidity_percent)
             .unwrap_or(0.0);
-        let wind_speed_ms = f64::hypot(snapshot.wind_x, snapshot.wind_z);
-        let wind_direction_degrees =
-            (snapshot.wind_z.atan2(snapshot.wind_x).to_degrees() + 360.0) % 360.0;
+        let rest_wind = weather_forecast.as_ref().and_then(|model| {
+            usize::try_from(model.current_index).ok().and_then(|index| {
+                self.local_rest
+                    .weather_forecast()
+                    .and_then(|session| session.wind_at(index))
+            })
+        });
+        let (wind_speed_ms, wind_direction_degrees) =
+            Self::resolve_wind(snapshot.wind_x, snapshot.wind_z, rest_wind);
         let player_grip_percent = Self::track_grip_percent(snapshot.track_grip_level);
-        let track_grip_state = if snapshot.track_wetness_percent < 15.0 {
-            "dry"
-        } else if snapshot.track_wetness_percent < 40.0 {
-            "damp"
-        } else if snapshot.track_wetness_percent < 70.0 {
-            "wet"
-        } else {
-            "saturated"
-        };
+        let track_rubber_percent = Self::track_rubber_percent(&snapshot);
+        let track_grip_state = Self::track_surface_state(snapshot.track_wetness_percent);
         let frame = TelemetryFrame {
             source: "lmu",
             connected: true,
@@ -3136,6 +3198,7 @@ impl TelemetrySource for LmuTelemetrySource {
             wind_speed_ms,
             wind_direction_degrees,
             player_grip_percent,
+            track_rubber_percent,
             track_grip_state,
             cloud_coverage: Self::live_weather_icon(snapshot.cloud_coverage, snapshot.rain_percent),
             lap_number: snapshot.lap_number,
@@ -3171,16 +3234,17 @@ impl TelemetrySource for LmuTelemetrySource {
             } else {
                 0.0
             },
-            fuel_ratio_average: if virtual_energy_active
-                && fuel_per_lap.is_finite()
-                && fuel_per_lap > 0.0
-                && virtual_energy_per_lap.is_finite()
-                && virtual_energy_per_lap > 0.0
-            {
-                fuel_per_lap / virtual_energy_per_lap
-            } else {
-                0.0
-            },
+            fuel_ratio_average: virtual_energy_active
+                .then(|| fuel_energy_ratio(fuel_per_lap, virtual_energy_per_lap))
+                .unwrap_or(0.0),
+            fuel_ratio_last: virtual_energy_active
+                .then(|| {
+                    fuel_energy_ratio(
+                        self.fuel_last_lap.unwrap_or(0.0),
+                        self.energy_last_lap.unwrap_or(0.0),
+                    )
+                })
+                .unwrap_or(0.0),
             estimated_fuel_laps,
             session_laps_remaining,
             session_laps_remaining_estimated,
@@ -3328,14 +3392,21 @@ fn synchronized_lap_progress(raw: f64, current_lap_seconds: f64, lap_changed: bo
 #[cfg(test)]
 mod tests {
     use super::{
-        lmu_snapshot_size, rear_wing_detached, suspension_damage_by_wheel_percent,
-        synchronized_lap_progress, CarHistory, LmuSnapshot, LmuStandingEntry, LmuTelemetrySource,
-        PlayerLapDistanceEstimator, TireWearTracker,
+        fuel_energy_ratio, lmu_snapshot_size, rear_wing_detached,
+        suspension_damage_by_wheel_percent, synchronized_lap_progress, CarHistory, LmuSnapshot,
+        LmuStandingEntry, LmuTelemetrySource, PlayerLapDistanceEstimator, TireWearTracker,
     };
     use crate::telemetry::event_split::DriverRankSettings;
     use crate::telemetry::lmu_rest::{RestStanding, RestVehicleDamage};
     use crate::telemetry::StandingEntry;
     use std::collections::{HashMap, HashSet};
+
+    #[test]
+    fn fuel_energy_ratio_requires_both_valid_consumptions() {
+        assert!((fuel_energy_ratio(12.0, 8.0) - 1.5).abs() < 1e-9);
+        assert_eq!(fuel_energy_ratio(12.0, 0.0), 0.0);
+        assert_eq!(fuel_energy_ratio(f64::NAN, 8.0), 0.0);
+    }
 
     #[test]
     fn lap_progress_suppresses_stale_finish_distance_after_telemetry_boundary() {
@@ -3390,6 +3461,61 @@ mod tests {
         assert_eq!(LmuTelemetrySource::track_grip_percent(3), 75.0);
         assert_eq!(LmuTelemetrySource::track_grip_percent(4), 90.0);
         assert_eq!(LmuTelemetrySource::track_grip_percent(5), 0.0);
+    }
+
+    #[test]
+    fn track_rubber_estimate_uses_session_base_and_all_valid_completed_laps() {
+        let mut snapshot = LmuSnapshot {
+            session_type: 0,
+            standings_count: 3,
+            ..LmuSnapshot::default()
+        };
+        snapshot.standings[0] = LmuStandingEntry {
+            vehicle_id: 1,
+            position: 1,
+            total_laps: 10,
+            ..LmuStandingEntry::default()
+        };
+        snapshot.standings[1] = LmuStandingEntry {
+            vehicle_id: 2,
+            position: 2,
+            total_laps: 17,
+            ..LmuStandingEntry::default()
+        };
+        snapshot.standings[2] = LmuStandingEntry {
+            vehicle_id: 3,
+            position: 3,
+            total_laps: 10_000,
+            ..LmuStandingEntry::default()
+        };
+
+        assert_eq!(LmuTelemetrySource::track_rubber_percent(&snapshot), 26.0125);
+
+        snapshot.session_type = 5;
+        snapshot.standings_count = 0;
+        assert_eq!(LmuTelemetrySource::track_rubber_percent(&snapshot), 50.0);
+    }
+
+    #[test]
+    fn track_surface_state_uses_dry_and_lmu_wetness_bands() {
+        assert_eq!(LmuTelemetrySource::track_surface_state(0.99), "dry");
+        assert_eq!(LmuTelemetrySource::track_surface_state(1.0), "damp");
+        assert_eq!(LmuTelemetrySource::track_surface_state(15.0), "wet");
+        assert_eq!(LmuTelemetrySource::track_surface_state(40.0), "heavy");
+        assert_eq!(LmuTelemetrySource::track_surface_state(70.0), "saturated");
+    }
+
+    #[test]
+    fn wind_uses_official_rest_node_when_shared_memory_is_zero() {
+        assert_eq!(
+            LmuTelemetrySource::resolve_wind(0.0, 0.0, Some((7.0, 90.0))),
+            (7.0, 90.0)
+        );
+        assert_eq!(
+            LmuTelemetrySource::resolve_wind(3.0, 4.0, Some((7.0, 90.0))).0,
+            5.0
+        );
+        assert_eq!(LmuTelemetrySource::resolve_wind(0.0, 0.0, None), (0.0, 0.0));
     }
 
     #[test]

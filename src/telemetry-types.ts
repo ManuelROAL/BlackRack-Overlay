@@ -140,7 +140,8 @@ export interface TelemetryFrame {
   wind_speed_ms: number;
   wind_direction_degrees: number;
   player_grip_percent: number;
-  track_grip_state: "dry" | "damp" | "wet" | "saturated";
+  track_rubber_percent: number;
+  track_grip_state: "dry" | "damp" | "wet" | "heavy" | "saturated";
   cloud_coverage: number;
   lap_number: number;
   player_sector: number;
@@ -172,6 +173,7 @@ export interface TelemetryFrame {
   fuel_pit_out_consumption: number;
   fuel_ratio_assigned: number;
   fuel_ratio_average: number;
+  fuel_ratio_last: number;
   estimated_fuel_laps: number;
   session_laps_remaining: number;
   session_laps_remaining_estimated: number;
@@ -253,6 +255,7 @@ export interface ResourceStrategy {
   total_additional: number;
   end_remaining: number;
   autonomy_delta: number;
+  stint_end_balance: number | null;
 }
 
 export interface FuelStrategies {

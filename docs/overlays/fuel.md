@@ -65,11 +65,11 @@ math belongs in Rust. `fuel.ts` only formats serialized plans.
 
 - Present current resource, autonomy, pit window/load and the clean-average,
   qualifying and last-lap scenarios as a compact endurance strategy tool.
-- Use a `252 x 188` design surface. Migrate the former default `560 x 230` and
+- Use a `292 x 198` design surface. Migrate the former default `560 x 230` and
   intermediate `470 x 188`, `390 x 188`, `356 x 202` and `356 x 188` placements
-  to the compact size so deliberately resized user layouts keep their chosen
-  scale.
-- Let the scenario table define the panel width: its label column and three
+  plus the former `252 x 188`, `252 x 216` and `292 x 216` defaults to the current
+  size so deliberately resized user layouts keep their chosen scale.
+- Let the scenario table define the panel width: its label column and four
   numeric columns fill the complete usable surface without empty side gutters.
 - When text size expands the design surface, distribute the added width and
   only the required row height through the summary, plan and scenario tracks; do
@@ -85,15 +85,21 @@ math belongs in Rust. `fuel.ts` only formats serialized plans.
 - Keep the shared 2 px translucent lime accent along the shell's left edge.
 - Keep the summary focused on current resource, lap autonomy, pit window and PIT
   status. Do not show the redundant projected remaining/total race laps or
-  autonomy minutes.
+  autonomy minutes. Reserve the summary's first column for an enlarged current
+  value and represent the active resource with its energy or fuel icon only in
+  the scenario header instead of spelling out `NRG` or `FUEL`.
+  Use the lime energy bar for regulated cars and the orange fuel bar for cars
+  without virtual energy.
 - Keep the race plan focused on stops, target consumption, required saving and
   next-stop load. Do not show the presentation-only live stint delta.
 - Omit diagnostic context (confidence, pit-cycle delta, qualifying gain and
   pit-service estimate) from the driving overlay; those values are not needed for
   the immediate stop/save decision.
-- In energy mode, wrap the auxiliary fuel values across three compact rows beside
-  the fuel icon. Keep current use/range on the first row, refill/PIT on the
-  second and both fuel ratios on the third; values must not overlap or clip.
+- In energy mode, give the auxiliary fuel resource its own card below the energy
+  scenarios. Emphasize current litres without a redundant resource label, show
+  fractional autonomy, capacity and a proportional level bar, then show only the
+  official assigned fuel ratio, the
+  clean-lap average ratio and the last-lap ratio in one readable detail row.
 - Label scenario-wide replenishment as `TOTAL +`; it is the sum still required
   over the remaining race, not necessarily the next pit load. The summary's
   `CARGA` value remains the next-stop load.
@@ -102,13 +108,18 @@ math belongs in Rust. `fuel.ts` only formats serialized plans.
   and label it `CARGA Q`. This follows the conservative final-stint behavior of
   planning for full-power running without adding an arbitrary reserve.
 - Keep `TOTAL +` in the scenario table, but omit `Δ QUALY` and the redundant
-  `ESTIMADO` row. The visible rows are `PROMEDIO`, `QUALY` and `ÚLTIMA`.
+  `ESTIMADO` row. The visible rows are `PROMEDIO`, `QUALY` and `ÚLTIMA`. Each row
+  also shows the projected active-resource balance at the end of the current
+  planned stint, or at the race finish when it comes first. Positive values are
+  surplus and negative values are a deficit; use percent for NRG and litres for
+  fuel-only cars.
 - Hybrid cars show energy scenarios plus a compact fuel card while the global pit
   plan accounts for both resources.
 - Cars reporting both virtual energy and fuel show the fuel ratio selected in
-  LMU's official pit menu plus the clean-lap average ratio. The average is fuel
-  consumption divided by virtual-energy consumption; keep it unavailable until
-  both clean averages exist, and do not show either ratio in fuel-only mode.
+  LMU's official pit menu plus clean-average and last-lap ratios. Each observed
+  ratio is fuel consumption divided by virtual-energy consumption; keep it
+  unavailable until both matching consumption values exist, and do not show the
+  ratios in fuel-only mode.
 - The PIT indicator is neutral above three laps of autonomy and changes as the
   stop approaches. Show a distinct full-power state when qualifying caps target
   consumption. Label the target `MANTÉN` when an active pit stop, the parallel

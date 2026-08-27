@@ -87,7 +87,8 @@ impl TelemetrySource for MockTelemetrySource {
             last: energy_strategy(8.55),
             ..FuelStrategies::default()
         }
-        .with_qualifying_guidance();
+        .with_qualifying_guidance()
+        .with_stint_end_balances(virtual_energy_percent, laps_remaining);
 
         let mut frame = TelemetryFrame {
             source: "mock",
@@ -110,8 +111,8 @@ impl TelemetrySource for MockTelemetrySource {
             rest_weather_available: true,
             ambient_temperature_c: 19.4,
             track_temperature_c: 27.8,
-            rain_percent: 8.0,
-            track_wetness_percent: 12.0,
+            rain_percent: 55.0,
+            track_wetness_percent: 45.0,
             track_wetness_min_percent: 4.0,
             track_wetness_max_percent: 22.0,
             weather_forecast: super::WeatherForecastModel {
@@ -162,12 +163,13 @@ impl TelemetrySource for MockTelemetrySource {
                     },
                 ],
             },
-            current_humidity_percent: 66.0,
+            current_humidity_percent: 80.0,
             wind_speed_ms: 3.5,
             wind_direction_degrees: 290.0,
-            player_grip_percent: 87.0,
-            track_grip_state: "dry",
-            cloud_coverage: 2,
+            player_grip_percent: 75.0,
+            track_rubber_percent: 56.0,
+            track_grip_state: "heavy",
+            cloud_coverage: 9,
             lap_number: (elapsed / 215.0).floor() as i32 + 1,
             player_sector: if lap_progress < 1.0 / 3.0 {
                 1
@@ -204,6 +206,7 @@ impl TelemetrySource for MockTelemetrySource {
             fuel_pit_out_consumption: 10.1,
             fuel_ratio_assigned: 0.97,
             fuel_ratio_average: fuel_per_lap / virtual_energy_per_lap,
+            fuel_ratio_last: 12.05 / 8.55,
             estimated_fuel_laps: fuel_liters / fuel_per_lap,
             session_laps_remaining,
             session_laps_remaining_estimated: session_laps_remaining - 0.35,

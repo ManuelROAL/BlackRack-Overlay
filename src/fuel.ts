@@ -7,9 +7,10 @@ import { bindOverlayTransparency } from "./overlay-appearance";
 import type { ResourceStrategy, TelemetryFrame } from "./telemetry-types";
 import { listenTelemetry } from "./runtime-events";
 import { formatNumber, t } from "./i18n";
+import { energyIconUrl, fuelIconUrl } from "./lmu-icons";
 
 fitOverlay(
-  { width: 252, height: 188 },
+  { width: 292, height: 198 },
   { widthTextRatio: 0.5, heightTextRatio: 0.3 }
 );
 bindOverlayTransparency("fuel");
@@ -21,6 +22,17 @@ type PitLevel = "unknown" | "safe" | "caution" | "warning" | "critical";
 const text = (id: string, value: string): void => {
   const element = document.getElementById(id);
   if (element && element.textContent !== value) element.textContent = value;
+};
+
+const renderResourceIcon = (containerId: string, imageId: string, energyMode: boolean): void => {
+  const label = energyMode ? "NRG" : "FUEL";
+  const container = document.getElementById(containerId);
+  const image = document.getElementById(imageId) as HTMLImageElement | null;
+  if (container && container.getAttribute("aria-label") !== label) {
+    container.setAttribute("aria-label", label);
+  }
+  const url = energyMode ? energyIconUrl : fuelIconUrl;
+  if (image && image.getAttribute("src") !== url) image.src = url;
 };
 
 const tone = (id: string, value: "good" | "warn" | "bad" | "neutral"): void => {
@@ -46,12 +58,22 @@ const renderProfile = (
   resource: "energy" | "fuel",
   name: ProfileName,
   consumption: number,
-  plan: ResourceStrategy | null
+  plan: ResourceStrategy | null,
+  unit: "%" | "L"
 ): void => {
   const id = `${resource}-${name}`;
   text(`${id}-consumption`, plan ? format(consumption) : "--");
   text(`${id}-autonomy`, plan ? format(plan.autonomy) : "--");
   text(`${id}-required`, plan ? format(plan.total_additional) : "--");
+  const balance = plan?.stint_end_balance;
+  const balanceAvailable = balance !== null && balance !== undefined && Number.isFinite(balance);
+  const displayedBalance = balanceAvailable && Math.abs(balance) >= 0.05
+    ? `${balance > 0 ? "+" : "−"}${format(Math.abs(balance), 1)}${unit}`
+    : balanceAvailable ? `0.0${unit}` : "--";
+  text(`${id}-stint-end`, displayedBalance);
+  tone(`${id}-stint-end`, !balanceAvailable
+    ? "neutral"
+    : balance < -0.05 ? "bad" : balance > 0.05 ? "good" : "neutral");
 };
 
 const renderStatus = (frame: TelemetryFrame): void => {
@@ -86,13 +108,11 @@ const render = (frame: TelemetryFrame): void => {
     frame.fuel_reference_per_lap,
     frame.fuel_qualifying_lap
   ) ?? 0;
-  const fuelStrategy = frame.fuel_strategies.fuel;
   const strategy = frame.fuel_strategies.active;
 
   const shell = document.querySelector<HTMLElement>(".fuel-shell");
   shell?.setAttribute("data-resource-mode", mode);
-  text("resource-label", energyMode ? "NRG" : "FUEL");
-  text("active-table-label", energyMode ? "NRG" : "FUEL");
+  renderResourceIcon("active-table-label", "active-table-icon", energyMode);
   text("resource-current", frame.player_active ? format(current, 1) : "--");
   text("resource-unit", unit);
   if (strategy) {
@@ -137,22 +157,26 @@ const render = (frame: TelemetryFrame): void => {
   const fuelAutonomy = fuelReference > 0
     ? Math.max(frame.fuel_liters, 0) / fuelReference
     : Number.POSITIVE_INFINITY;
-  text("fuel-current", energyMode ? `${format(frame.fuel_liters, 1)}L` : "--");
-  text("fuel-consumption", energyMode ? t("fuel.litersPerLap", { value: format(fuelReference) }) : "--");
+  text("fuel-current", energyMode ? format(frame.fuel_liters, 1) : "--");
+  text("fuel-capacity", energyMode ? `/ ${format(frame.fuel_capacity_liters, 1)}` : "/ --");
   text("fuel-autonomy", energyMode ? t("fuel.lapsValue", { value: format(fuelAutonomy, 1) }) : "--");
-  text("fuel-required", energyMode && fuelStrategy ? `+${format(fuelStrategy.total_additional, 1)}L` : "--");
-  text("fuel-stops", energyMode && fuelStrategy ? `${fuelStrategy.stops}` : "--");
   text("fuel-ratio-assigned", energyMode ? format(frame.fuel_ratio_assigned) : "--");
   text("fuel-ratio-average", energyMode ? format(frame.fuel_ratio_average) : "--");
-
-  renderProfile("energy", "average", average, frame.fuel_strategies.average);
-  renderProfile("energy", "qualifying", qualifying, frame.fuel_strategies.qualifying);
-  renderProfile("energy", "last", last, frame.fuel_strategies.last);
+  text("fuel-ratio-last", energyMode ? format(frame.fuel_ratio_last) : "--");
+  renderProfile("energy", "average", average, frame.fuel_strategies.average, unit);
+  renderProfile("energy", "qualifying", qualifying, frame.fuel_strategies.qualifying, unit);
+  renderProfile("energy", "last", last, frame.fuel_strategies.last, unit);
 
   const level = document.getElementById("resource-level");
   if (level) {
     const width = `${Math.round(Math.max(0, Math.min(1, current / Math.max(capacity, 1))) * 1_000) / 10}%`;
     if (level.style.width !== width) level.style.width = width;
+  }
+
+  const fuelLevel = document.getElementById("fuel-level");
+  if (fuelLevel) {
+    const width = `${Math.round(Math.max(0, Math.min(1, frame.fuel_liters / Math.max(frame.fuel_capacity_liters, 1))) * 1_000) / 10}%`;
+    if (fuelLevel.style.width !== width) fuelLevel.style.width = width;
   }
 };
 

@@ -92,7 +92,7 @@ const telemetryFields: Record<OverlayId, readonly (keyof TelemetryFrame)[]> = {
     "fuel_liters", "fuel_capacity_liters", "fuel_per_lap", "fuel_last_lap",
     "fuel_qualifying_lap", "fuel_reference_per_lap", "fuel_projected_lap",
     "fuel_pit_cycle_consumption", "fuel_pit_out_consumption", "fuel_ratio_assigned",
-    "fuel_ratio_average", "session_laps_remaining",
+    "fuel_ratio_average", "fuel_ratio_last", "session_laps_remaining",
     "session_total_laps_estimated", "virtual_energy_active", "virtual_energy_percent",
     "virtual_energy_per_lap", "virtual_energy_last_lap", "virtual_energy_qualifying_lap",
     "virtual_energy_reference_per_lap", "virtual_energy_projected_lap",
@@ -115,7 +115,7 @@ const telemetryFields: Record<OverlayId, readonly (keyof TelemetryFrame)[]> = {
   conditions: [
     "rest_weather_available", "ambient_temperature_c", "track_temperature_c",
     "rain_percent", "track_wetness_percent", "wind_speed_ms", "wind_direction_degrees",
-    "player_grip_percent", "track_grip_state", "cloud_coverage", "current_humidity_percent",
+    "player_grip_percent", "track_rubber_percent", "track_grip_state", "cloud_coverage", "current_humidity_percent",
     "weather_forecast"
   ]
 };

@@ -11,6 +11,7 @@ static DIRECTORY: OnceLock<PathBuf> = OnceLock::new();
 static SETTINGS_PATH: OnceLock<PathBuf> = OnceLock::new();
 static ACTIVE_FILE: Mutex<Option<PathBuf>> = Mutex::new(None);
 static EVENTS: Mutex<Vec<serde_json::Value>> = Mutex::new(Vec::new());
+static LAST_SIGNATURE: Mutex<Option<serde_json::Value>> = Mutex::new(None);
 
 #[derive(Clone, Deserialize, Serialize)]
 struct Preferences {
@@ -63,6 +64,9 @@ pub(crate) fn status() -> DriverRankEstimateLoggingStatus {
 pub(crate) fn set_enabled(enabled: bool) -> Result<DriverRankEstimateLoggingStatus, String> {
     ENABLED.store(enabled, Ordering::Relaxed);
     if !enabled {
+        *LAST_SIGNATURE
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner()) = None;
         EVENTS
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
@@ -84,11 +88,41 @@ pub(super) fn enabled() -> bool {
 }
 
 pub(super) fn queue(event: serde_json::Value) {
-    if enabled() {
-        EVENTS
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .push(event);
+    if !enabled() {
+        return;
+    }
+
+    let signature = normalized_signature(&event);
+    let mut last_signature = LAST_SIGNATURE
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    if last_signature.as_ref() == Some(&signature) {
+        return;
+    }
+    *last_signature = Some(signature);
+    EVENTS
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .push(event);
+}
+
+fn normalized_signature(value: &serde_json::Value) -> serde_json::Value {
+    match value {
+        serde_json::Value::Array(values) => {
+            serde_json::Value::Array(values.iter().map(normalized_signature).collect())
+        }
+        serde_json::Value::Object(object) => serde_json::Value::Object(
+            object
+                .iter()
+                .map(|(key, value)| (key.clone(), normalized_signature(value)))
+                .collect(),
+        ),
+        serde_json::Value::Number(number) if number.is_f64() => number
+            .as_f64()
+            .and_then(|value| serde_json::Number::from_f64((value * 1_000.0).round() / 1_000.0))
+            .map(serde_json::Value::Number)
+            .unwrap_or_else(|| value.clone()),
+        _ => value.clone(),
     }
 }
 
@@ -183,7 +217,18 @@ mod tests {
         set_enabled(true).unwrap();
         queue(serde_json::json!({
             "event": "driver_rank_estimate_sample",
-            "status": "estimated"
+            "status": "estimated",
+            "calculation": { "estimated_gain": 1.2344 }
+        }));
+        queue(serde_json::json!({
+            "event": "driver_rank_estimate_sample",
+            "status": "estimated",
+            "calculation": { "estimated_gain": 1.23449 }
+        }));
+        queue(serde_json::json!({
+            "event": "driver_rank_estimate_sample",
+            "status": "estimated",
+            "calculation": { "estimated_gain": 1.236 }
         }));
 
         let mut logger = DriverRankEstimateLogger::new();
@@ -208,13 +253,15 @@ mod tests {
         assert_eq!(path.file_name().unwrap(), "dr-estimate.jsonl");
         let contents = fs::read_to_string(path).unwrap();
         let entries = contents.lines().collect::<Vec<_>>();
-        assert_eq!(entries.len(), 2);
+        assert_eq!(entries.len(), 3);
         let entry: serde_json::Value = serde_json::from_str(entries[0]).unwrap();
         assert_eq!(entry["event"], "driver_rank_estimate_sample");
         assert_eq!(entry["status"], "estimated");
         assert!(entry["timestamp_ms"].is_u64());
-        let second: serde_json::Value = serde_json::from_str(entries[1]).unwrap();
-        assert_eq!(second["status"], "estimated_after_reenable");
+        let changed: serde_json::Value = serde_json::from_str(entries[1]).unwrap();
+        assert_eq!(changed["calculation"]["estimated_gain"], 1.236);
+        let reenabled: serde_json::Value = serde_json::from_str(entries[2]).unwrap();
+        assert_eq!(reenabled["status"], "estimated_after_reenable");
 
         let _ = fs::remove_dir_all(app_data);
     }
