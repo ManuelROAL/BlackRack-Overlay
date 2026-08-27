@@ -15,7 +15,7 @@ const performance = createOverlayPerformanceTracker("timing");
 let settings = readTimingSettings();
 const designWidth = 250;
 const visibleTimeCount = (): number => TIMING_TIMES.filter(({ id }) => settings.times[id]).length;
-const designHeight = (): number => 87 + visibleTimeCount() * 19
+const designHeight = (): number => 117 + visibleTimeCount() * 19
   + (settings.historyLaps === 0 ? 0 : settings.historyLaps === 5 ? 70 : 42);
 const resizeOverlay = fitOverlay(
   { width: designWidth, height: designHeight() },

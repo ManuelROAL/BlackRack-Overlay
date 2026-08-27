@@ -452,7 +452,9 @@ window.addEventListener("message", (event: MessageEvent<RuntimeMessage>) => {
     const current = layout[overlay];
     const scale = previousSize
       ? Math.min(current.width / previousSize.width, current.height / previousSize.height)
-      : Math.min(current.width / nextSize.width, current.height / nextSize.height);
+      : overlay === "timing"
+        ? current.width / nextSize.width
+        : Math.min(current.width / nextSize.width, current.height / nextSize.height);
     const fitted = fitPlacementToMonitor({
       ...current,
       width: nextSize.width * scale,
