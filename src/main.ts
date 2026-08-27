@@ -93,6 +93,7 @@ import {
 import {
   ensureCompositeLayout,
   COMPOSITE_LAYOUT_KEY,
+  getDefaultCompositeLayout,
   getOverlayDisplays,
   readCompositeLayout,
   resetOverlayPlacement,
@@ -235,26 +236,18 @@ if (localeSelect) {
   });
 }
 
+const CURRENT_CONFIGURATION_SCHEMA = 9;
+const CURRENT_CONFIGURATION_FORMAT = "blackrack-overlay-configuration";
+const LEGACY_CONFIGURATION_FORMAT = "lmu-overlay-configuration";
 const overlayIds: OverlayId[] = ["delta", "timing", "driving", "tires", "damage", "standings", "relative", "fuel", "pitstop", "flags", "rejoin", "trackmap", "forecast", "conditions"];
 const storageKey = "blackrack-overlay.visible-windows.v1";
 
+const defaultVisibility = (): Record<OverlayId, boolean> => Object.fromEntries(
+  overlayIds.map((id) => [id, false])
+) as Record<OverlayId, boolean>;
+
 const readPreferences = (): Record<OverlayId, boolean> => {
-  const defaults: Record<OverlayId, boolean> = {
-    delta: false,
-    timing: false,
-    driving: false,
-    tires: false,
-    damage: false,
-    standings: false,
-    relative: false,
-    fuel: false,
-    pitstop: false,
-    flags: false,
-    rejoin: false,
-    trackmap: false,
-    forecast: false,
-    conditions: false
-  };
+  const defaults = defaultVisibility();
 
   try {
     const saved = JSON.parse(localStorage.getItem(storageKey) ?? "{}") as Partial<
@@ -957,7 +950,10 @@ const configurationObject = (value: unknown): Record<string, unknown> | null =>
     ? value as Record<string, unknown>
     : null;
 
-const parseOverlayConfiguration = (contents: string): OverlayConfigurationExport => {
+const parseOverlayConfiguration = (
+  contents: string,
+  defaultLayout: OverlayConfigurationExport["overlays"]["layout"]
+): OverlayConfigurationExport => {
   let parsed: unknown;
   try {
     parsed = JSON.parse(contents);
@@ -995,25 +991,29 @@ const parseOverlayConfiguration = (contents: string): OverlayConfigurationExport
   const monitor = schemaMonitor ?? legacyMonitor ?? 0;
   const percentageIsValid = (value: unknown): value is number =>
     typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 100;
-  if (root?.format !== "blackrack-overlay-configuration"
-    || ![1, 2, 3, 4, 5, 6, 7, 8, 9].includes(Number(schemaVersion))
+  const numericSchemaVersion = Number(schemaVersion);
+  const recognizedFormat = root?.format === CURRENT_CONFIGURATION_FORMAT
+    || root?.format === LEGACY_CONFIGURATION_FORMAT;
+  if (!recognizedFormat
+    || !Number.isInteger(numericSchemaVersion) || numericSchemaVersion < 1
     || !overlays || !visibility || !transparency || !transparencyScope || !transparencyValues
     || (Number(schemaVersion) >= 8 && (!fontSize || !fontSizeScope || !fontSizeValues))
     || !layout || !standings || !relative
-    || (Number(schemaVersion) >= 9 && !isPerformanceProfile(importedPerformanceProfile))
+    || (numericSchemaVersion >= 9 && importedPerformanceProfile !== undefined
+      && !isPerformanceProfile(importedPerformanceProfile))
     || (Number(schemaVersion) >= 2 && !driving)
     || (Number(schemaVersion) >= 3 && !delta) || (Number(schemaVersion) >= 4 && !timing)
-    || (Number(schemaVersion) >= 6 && !trackMap)) {
+    || (numericSchemaVersion >= 6 && !trackMap)) {
     throw new Error(t("config.incompatible"));
   }
   if (transparencyScope.mode !== "global" && transparencyScope.mode !== "individual") {
     throw new Error(t("config.invalidTransparency"));
   }
-  if (Number(schemaVersion) >= 8
+  if (numericSchemaVersion >= 8
     && fontSizeScope?.mode !== "global" && fontSizeScope?.mode !== "individual") {
     throw new Error(t("config.invalidFontSize"));
   }
-  if (Number(schemaVersion) >= 5) {
+  if (numericSchemaVersion >= 5) {
     if (schemaMonitor === null) {
       throw new Error(t("config.invalidMonitor"));
     }
@@ -1027,15 +1027,15 @@ const parseOverlayConfiguration = (contents: string): OverlayConfigurationExport
   }
   const fontSizeIsValid = (value: unknown): value is number =>
     typeof value === "number" && Number.isFinite(value) && value >= 75 && value <= 150;
-  if (Number(schemaVersion) >= 8 && !fontSizeIsValid(fontSizeScope?.globalFontSize)) {
+  if (numericSchemaVersion >= 8 && !fontSizeIsValid(fontSizeScope?.globalFontSize)) {
     throw new Error(t("config.invalidGeneral"));
   }
-  if (Number(schemaVersion) < 3) {
+  if (numericSchemaVersion < 3) {
     visibility.delta = false;
     transparencyValues.delta = 5;
     layout.delta = { overlay: "delta", x: 610, y: 20, width: 420, height: 72 };
   }
-  if (Number(schemaVersion) < 4) {
+  if (numericSchemaVersion < 4) {
     visibility.timing = false;
     transparencyValues.timing = 5;
     layout.timing = { overlay: "timing", x: 610, y: 110, width: 250, height: 292 };
@@ -1044,17 +1044,32 @@ const parseOverlayConfiguration = (contents: string): OverlayConfigurationExport
     const record = configurationObject(value);
     return record !== null && keys.every((key) => typeof record[key] === "boolean");
   };
-  const completeOrder = (value: unknown, keys: string[]): boolean =>
-    Array.isArray(value) && value.length === keys.length
-      && new Set(value).size === keys.length
-      && value.every((key) => typeof key === "string" && keys.includes(key));
+  const mergeBooleanRecord = <Key extends string>(
+    value: unknown,
+    defaults: Record<Key, boolean>
+  ): Record<Key, boolean> | null => {
+    const record = configurationObject(value);
+    if (!record) return null;
+    const keys = Object.keys(defaults) as Key[];
+    if (keys.some((key) => record[key] !== undefined && typeof record[key] !== "boolean")) {
+      return null;
+    }
+    return Object.fromEntries(keys.map((key) => [key, record[key] ?? defaults[key]])) as Record<Key, boolean>;
+  };
+  const mergeOrder = <Key extends string>(value: unknown, defaults: Key[]): Key[] | null => {
+    if (!Array.isArray(value) || value.some((key) => typeof key !== "string")) return null;
+    const imported = value.filter((key): key is Key => defaults.includes(key as Key));
+    if (new Set(imported).size !== imported.length) return null;
+    return [...imported, ...defaults.filter((key) => !imported.includes(key))];
+  };
   const defaultStandings = defaultStandingsSettings();
-  const standingsColumnIds = Object.keys(defaultStandings.columns);
-  const standingsHeaderIds = Object.keys(defaultStandings.header);
-  if (!completeBooleanRecord(standings.columns, standingsColumnIds)
-    || !completeOrder(standings.columnOrder, standingsColumnIds)
+  const normalizedStandingsColumns = mergeBooleanRecord(standings.columns, defaultStandings.columns);
+  const normalizedStandingsOrder = mergeOrder(standings.columnOrder, defaultStandings.columnOrder);
+  const normalizedStandingsHeader = mergeBooleanRecord(standings.header, defaultStandings.header);
+  if (!normalizedStandingsColumns
+    || !normalizedStandingsOrder
     || typeof standings.showHeader !== "boolean"
-    || !completeBooleanRecord(standings.header, standingsHeaderIds)
+    || !normalizedStandingsHeader
     || !Number.isInteger(standings.ownClassRows) || Number(standings.ownClassRows) < 3
     || Number(standings.ownClassRows) > 30
     || !Number.isInteger(standings.otherClassRows) || Number(standings.otherClassRows) < 1
@@ -1064,10 +1079,10 @@ const parseOverlayConfiguration = (contents: string): OverlayConfigurationExport
     throw new Error(t("config.invalidStandings"));
   }
   const defaultRelative = defaultRelativeSettings();
-  const relativeOptionIds = Object.keys(defaultRelative.options);
-  const relativeColumnIds = defaultRelative.columnOrder;
-  if (!completeBooleanRecord(relative.options, relativeOptionIds)
-    || !completeOrder(relative.columnOrder, relativeColumnIds)
+  const normalizedRelativeOptions = mergeBooleanRecord(relative.options, defaultRelative.options);
+  const normalizedRelativeOrder = mergeOrder(relative.columnOrder, defaultRelative.columnOrder);
+  if (!normalizedRelativeOptions
+    || !normalizedRelativeOrder
     || !Number.isInteger(relative.aheadRows) || Number(relative.aheadRows) < 1
     || Number(relative.aheadRows) > 10
     || !Number.isInteger(relative.behindRows) || Number(relative.behindRows) < 1
@@ -1114,10 +1129,22 @@ const parseOverlayConfiguration = (contents: string): OverlayConfigurationExport
     throw new Error(t("config.invalidMap"));
   }
 
+  const fallbackVisibility = defaultVisibility();
+  for (const id of overlayIds) {
+    if (visibility[id] === undefined) visibility[id] = fallbackVisibility[id];
+    if (transparencyValues[id] === undefined) {
+      transparencyValues[id] = DEFAULT_OVERLAY_TRANSPARENCY[id];
+    }
+    if (fontSizeValues && fontSizeValues[id] === undefined) {
+      fontSizeValues[id] = DEFAULT_OVERLAY_FONT_SIZE[id];
+    }
+    if (layout[id] === undefined) layout[id] = defaultLayout[id];
+  }
+
   for (const id of overlayIds) {
     const placement = configurationObject(layout[id]);
     if (typeof visibility[id] !== "boolean" || !percentageIsValid(transparencyValues[id])
-      || (Number(schemaVersion) >= 8 && !fontSizeIsValid(fontSizeValues?.[id]))
+      || (numericSchemaVersion >= 8 && !fontSizeIsValid(fontSizeValues?.[id]))
       || !placement || placement.overlay !== id
       || ![placement.x, placement.y, placement.width, placement.height]
         .every((value) => typeof value === "number" && Number.isFinite(value))
@@ -1131,7 +1158,7 @@ const parseOverlayConfiguration = (contents: string): OverlayConfigurationExport
     return [id, placement];
   })) as unknown as OverlayConfigurationExport["overlays"]["layout"];
   const normalized = parsed as OverlayConfigurationExport;
-  const normalizedFontSize = Number(schemaVersion) >= 8
+  const normalizedFontSize = numericSchemaVersion >= 8
     ? {
         scope: fontSizeScope as unknown as OverlayFontSizeScope,
         values: fontSizeValues as unknown as Record<OverlayId, number>
@@ -1142,13 +1169,36 @@ const parseOverlayConfiguration = (contents: string): OverlayConfigurationExport
       };
   return {
     ...normalized,
-    schemaVersion: 9,
+    format: CURRENT_CONFIGURATION_FORMAT,
+    schemaVersion: CURRENT_CONFIGURATION_SCHEMA,
     ui: { locale: isLocale(ui?.locale) ? ui.locale : getLocale() },
     overlays: {
       ...normalized.overlays,
+      visibility: visibility as unknown as Record<OverlayId, boolean>,
+      transparency: {
+        scope: transparencyScope as unknown as OverlayTransparencyScope,
+        values: transparencyValues as unknown as Record<OverlayId, number>
+      },
       monitor,
       layout: cleanedLayout,
       fontSize: normalizedFontSize,
+      standings: {
+        ...(standings as unknown as StandingsSettings),
+        columns: normalizedStandingsColumns,
+        columnOrder: normalizedStandingsOrder,
+        header: normalizedStandingsHeader,
+        driverNameFormat: isDriverNameFormat(standings.driverNameFormat)
+          ? standings.driverNameFormat
+          : defaultStandings.driverNameFormat
+      },
+      relative: {
+        ...(relative as unknown as RelativeSettings),
+        options: normalizedRelativeOptions,
+        columnOrder: normalizedRelativeOrder,
+        driverNameFormat: isDriverNameFormat(relative.driverNameFormat)
+          ? relative.driverNameFormat
+          : defaultRelative.driverNameFormat
+      },
       driving: driving ? driving as unknown as DrivingSettings : defaultDriving,
       delta: normalizedDelta as unknown as DeltaSettings,
       timing: normalizedTimingWithTimes as unknown as TimingSettings,
@@ -1217,8 +1267,8 @@ exportConfigurationButton?.addEventListener("click", () => {
     const layout = readCompositeLayout() ?? await ensureCompositeLayout();
     const monitor = await resolveOverlayMonitor();
     const configuration: OverlayConfigurationExport = {
-      format: "blackrack-overlay-configuration",
-      schemaVersion: 9,
+      format: CURRENT_CONFIGURATION_FORMAT,
+      schemaVersion: CURRENT_CONFIGURATION_SCHEMA,
       exportedAt: now.toISOString(),
       ui: { locale: getLocale() },
       overlays: {
@@ -1288,7 +1338,10 @@ importConfigurationButton?.addEventListener("click", () => {
       return;
     }
     const contents = await invoke<string>("import_overlay_configuration", { path: selectedPath });
-    const configuration = await normalizeImportedMonitor(parseOverlayConfiguration(contents));
+    const configuration = await normalizeImportedMonitor(parseOverlayConfiguration(
+      contents,
+      await getDefaultCompositeLayout()
+    ));
     if (!await confirmReset(
       t("config.confirmImport")
     )) {

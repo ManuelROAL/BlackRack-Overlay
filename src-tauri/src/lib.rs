@@ -1170,13 +1170,47 @@ fn validate_overlay_configuration(contents: &str) -> Result<(), String> {
     let schema_version = parsed
         .get("schemaVersion")
         .and_then(serde_json::Value::as_u64);
-    if parsed.get("format").and_then(serde_json::Value::as_str)
-        != Some("blackrack-overlay-configuration")
-        || !matches!(schema_version, Some(1..=5))
+    let format = parsed.get("format").and_then(serde_json::Value::as_str);
+    if !matches!(
+        format,
+        Some("blackrack-overlay-configuration" | "lmu-overlay-configuration")
+    ) || !matches!(schema_version, Some(1..))
     {
         return Err("Formato de configuración no reconocido".into());
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod configuration_tests {
+    use super::validate_overlay_configuration;
+
+    #[test]
+    fn accepts_current_and_future_schema_versions_without_backend_lockstep() {
+        for version in [1, 9, 10] {
+            let contents = format!(
+                r#"{{"format":"blackrack-overlay-configuration","schemaVersion":{version}}}"#
+            );
+            assert!(validate_overlay_configuration(&contents).is_ok());
+        }
+    }
+
+    #[test]
+    fn accepts_legacy_product_format() {
+        let contents = r#"{"format":"lmu-overlay-configuration","schemaVersion":7}"#;
+        assert!(validate_overlay_configuration(contents).is_ok());
+    }
+
+    #[test]
+    fn rejects_unknown_or_unversioned_documents() {
+        for contents in [
+            r#"{"format":"other","schemaVersion":9}"#,
+            r#"{"format":"blackrack-overlay-configuration","schemaVersion":0}"#,
+            r#"{"format":"blackrack-overlay-configuration"}"#,
+        ] {
+            assert!(validate_overlay_configuration(contents).is_err());
+        }
+    }
 }
 
 #[tauri::command]

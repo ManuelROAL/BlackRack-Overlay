@@ -97,6 +97,8 @@ telemetry semantics and file ownership live under `docs/overlays/`; use
   monitor selection, geometry, performance profile and content preferences. Use native dialogs,
   validate before applying, and map unavailable monitors to the primary display.
   Exclude learned telemetry, diagnostic logs, session state and credentials.
+  Imports retain known values from older product/schema versions, fill settings
+  introduced later with current defaults and tolerate unknown additive fields.
 - A common support card remains below the visible content in Overlays, General
   and Integrations, immediately above the shortcut footer. It opens the fixed
   project Ko-fi URL in the system browser and never embeds remote content.

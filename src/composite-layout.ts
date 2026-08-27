@@ -180,6 +180,12 @@ export const ensureCompositeLayout = async (): Promise<CompositeLayout> => {
   return layoutPromise;
 };
 
+export const getDefaultCompositeLayout = async (): Promise<CompositeLayout> => {
+  const monitor = await resolveOverlayMonitor();
+  const seed = await invoke<OverlayPlacement[]>("get_composite_layout_seed", { monitor });
+  return Object.fromEntries(seed.map((placement) => [placement.overlay, placement])) as CompositeLayout;
+};
+
 export const readCompositeLayout = (): CompositeLayout | null => {
   const stored = readStoredLayout();
   return stored && overlayIds.every((overlay) => stored[overlay])
