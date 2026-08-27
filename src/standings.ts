@@ -17,11 +17,11 @@ import {
   airTemperatureIconUrl,
   clockIconUrl,
   compoundIconUrl,
-  gameTimeIconUrl,
   profileIconUrl,
   timingIconUrl,
   tiresIconUrl,
-  trackTemperatureIconUrl
+  trackTemperatureIconUrl,
+  worldIconUrl
 } from "./lmu-icons";
 import { applyTrackLimitTone, formatTrackLimitPoints } from "./track-limit-tone";
 import { formatDriverName } from "./driver-name-format";
@@ -635,7 +635,7 @@ const sessionHeader = (frame: TelemetryFrame): HTMLElement => {
   if (settings.header.gameTimeClock) {
     const gameTime = node("time", "standings-header-game-time");
     gameTime.append(
-      icon(gameTimeIconUrl, "standings-header-icon", t("standings.gameTime")),
+      icon(clockIconUrl, "standings-header-icon", t("standings.gameTime")),
       formatTimeOfDay(frame.game_time_of_day_seconds)
     );
     dataGroup.append(gameTime);
@@ -643,7 +643,7 @@ const sessionHeader = (frame: TelemetryFrame): HTMLElement => {
   if (settings.header.realTimeClock) {
     const localTime = node("time", "standings-header-local-time");
     localTime.append(
-      icon(clockIconUrl, "standings-header-icon", t("standings.localTime")),
+      icon(worldIconUrl, "standings-header-icon", t("standings.localTime")),
       formatRealClock(new Date())
     );
     dataGroup.append(localTime);

@@ -12,7 +12,7 @@ import {
   type RelativeSettings
 } from "./relative-settings";
 import { listenRuntimeEvent, listenTelemetry } from "./runtime-events";
-import { airTemperatureIconUrl, clockIconUrl, compoundIconUrl, gameTimeIconUrl, trackTemperatureIconUrl } from "./lmu-icons";
+import { airTemperatureIconUrl, clockIconUrl, compoundIconUrl, trackTemperatureIconUrl, worldIconUrl } from "./lmu-icons";
 import { applyTrackLimitTone, formatTrackLimitPoints } from "./track-limit-tone";
 import { formatDriverName } from "./driver-name-format";
 import { formatClock as formatRealClock, formatNumber, formatTimeOfDay, t, type TranslationKey } from "./i18n";
@@ -569,13 +569,13 @@ const sessionHeader = (frame: TelemetryFrame): HTMLElement => {
   }
   if (relativeSettings.options.gameTimeClock) {
     const gameTime = node("time", "relative-game-time");
-    gameTime.append(clockIcon(gameTimeIconUrl), formatTimeOfDay(frame.game_time_of_day_seconds));
+    gameTime.append(clockIcon(clockIconUrl), formatTimeOfDay(frame.game_time_of_day_seconds));
     gameTime.title = t("standings.gameTime");
     header.append(gameTime);
   }
   if (relativeSettings.options.realTimeClock) {
     const localTime = node("time", "relative-local-time");
-    localTime.append(clockIcon(clockIconUrl), formatRealClock(new Date()));
+    localTime.append(clockIcon(worldIconUrl), formatRealClock(new Date()));
     localTime.title = t("standings.localTime");
     header.append(localTime);
   }
