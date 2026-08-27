@@ -3,12 +3,13 @@
 ## Purpose
 
 Delta provides an iRacing-style signed time comparison while also establishing
-the Rust-owned lap and stint record used by future overlays. The numeric value is
-green while ahead of the reference and red while behind it. Independently, the
-bar is green when the driver is gaining time over the recent circuit segment,
-red when losing time and grey when stable. The bar grows right for gains and left
-for losses, with its configured range clamped visually while the numeric value
-remains unclamped.
+the Rust-owned lap and stint record used by future overlays. Following Dox's
+visual behavior, the numeric value interpolates from green at -0.04 seconds
+through ice white at zero to red at +0.04 seconds, clamping beyond those stops.
+Independently, the bar is green when the driver is gaining time over the recent
+circuit segment, red when losing time and white when stable. The bar grows right
+for gains and left for losses, with its configured range clamped visually while
+the numeric value remains unclamped.
 
 The presentation contains only a transparent horizontal timing rail and the
 signed delta centred immediately below it. The visible numeral height matches
@@ -80,7 +81,8 @@ lap in its scope.
   mini-sector boundaries so discontinuities cannot produce a false colour.
 - Bar position and width ease toward each 50 Hz telemetry target over 180 ms so
   shared-memory noise does not become visible lateral oscillation. This visual
-  easing does not filter or delay the numeric delta. Neutral trend is white.
+  easing does not filter or delay the numeric delta. Trend colors use Dox's solid
+  green, red and white stops.
 - An invalid live lap uses amber rather than presenting its segment trend as
   actionable feedback.
 - At the timing line the Delta overlay resets immediately to zero and begins

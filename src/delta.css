@@ -50,18 +50,8 @@
   bottom: 0;
   left: 50%;
   width: 0;
-  background: linear-gradient(180deg, #8af6a4, #3fd170);
-  box-shadow: 0 0 7px rgb(80 228 122 / 38%);
-}
-
-.delta-card[data-state="loss"] .delta-fill {
-  background: linear-gradient(180deg, #ff7882, #e83e4c);
-  box-shadow: 0 0 7px rgb(255 76 91 / 42%);
-}
-
-.delta-card[data-trend="improving"] .delta-fill {
-  background: linear-gradient(180deg, #8af6a4, #3fd170);
-  box-shadow: 0 0 7px rgb(80 228 122 / 38%);
+  background: #00ff00;
+  box-shadow: 0 0 7px rgb(0 255 0 / 38%);
   transition:
     left 180ms ease-out,
     width 180ms ease-out,
@@ -69,13 +59,23 @@
     box-shadow 120ms linear;
 }
 
+.delta-card[data-state="loss"] .delta-fill {
+  background: #dc3232;
+  box-shadow: 0 0 7px rgb(220 50 50 / 42%);
+}
+
+.delta-card[data-trend="improving"] .delta-fill {
+  background: #00ff00;
+  box-shadow: 0 0 7px rgb(0 255 0 / 38%);
+}
+
 .delta-card[data-trend="worsening"] .delta-fill {
-  background: linear-gradient(180deg, #ff7882, #e83e4c);
-  box-shadow: 0 0 7px rgb(255 76 91 / 42%);
+  background: #dc3232;
+  box-shadow: 0 0 7px rgb(220 50 50 / 42%);
 }
 
 .delta-card[data-trend="neutral"] .delta-fill {
-  background: linear-gradient(180deg, #ffffff, #d9dee3);
+  background: #ffffff;
   box-shadow: 0 0 7px rgb(255 255 255 / 30%);
 }
 
@@ -85,17 +85,13 @@
   top: 21px;
   right: 0;
   left: 0;
-  color: #61e98a;
+  color: var(--delta-value-color, #f0f8ff);
   font-size: calc(11.25px * var(--overlay-font-scale, 1));
   font-weight: 800;
   letter-spacing: -0.035em;
   line-height: calc(11px * var(--overlay-font-scale, 1));
   text-align: center;
   text-shadow: 0 1px 5px rgb(0 0 0 / 95%);
-}
-
-.delta-card[data-state="loss"] > strong {
-  color: #ff6572;
 }
 
 .delta-card[data-state="waiting"] > strong,
