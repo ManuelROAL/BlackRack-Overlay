@@ -487,7 +487,7 @@ pub(super) fn profile_nationality(value: &Value) -> String {
     String::new()
 }
 
-fn rank_progress(value: &Value) -> Option<f64> {
+pub(super) fn rank_progress(value: &Value) -> Option<f64> {
     let progress = value.get("progress")?.as_f64()?;
     if !progress.is_finite() || progress < 0.0 {
         return None;
@@ -503,7 +503,7 @@ pub(super) fn normalized_name(value: &str) -> String {
     value.trim().to_lowercase()
 }
 
-fn rank_code(value: &Value) -> Option<String> {
+pub(super) fn rank_code(value: &Value) -> Option<String> {
     let object = value.as_object()?;
     let name = object.get("rank")?.as_str()?.trim();
     if name.is_empty() {

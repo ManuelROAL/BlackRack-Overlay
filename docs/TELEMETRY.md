@@ -150,6 +150,9 @@ persisted.
   roster profiles remain the source for rank, tier and visible progress.
   Preserve a returned zero as raw evidence: RaceControl currently masks ELO as
   zero in some practice contexts, while registered event overview may expose it.
+  For the registered player, an exact rank progress stored in `event/overview`
+  overrides a zero returned by `/players`; the game card can keep its first
+  ten-percent segment empty even when that event snapshot contains progress.
   Enabling it requests the 10 Hz standings
   model even when Standings is hidden; it never records telemetry frames,
   performance samples or complete third-party responses. All sessions in one
