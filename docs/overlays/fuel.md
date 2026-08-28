@@ -106,7 +106,7 @@ math belongs in Rust. `fuel.ts` only formats serialized plans.
   fractional autonomy, capacity and a proportional level bar, then show only the
   official assigned fuel ratio, the
   clean-lap average ratio and the last-lap ratio in one readable detail row.
-- Label scenario-wide replenishment as `REFUEL`; show the total resource required
+- Label scenario-wide replenishment as `TOTAL +`; show the total resource required
   over the remaining race by adding the current level to the calculated refill
   balance (and subtracting any calculated surplus). It is not necessarily the
   next pit load. The summary's `CARGA` value remains the next-stop load.
@@ -114,7 +114,7 @@ math belongs in Rust. `fuel.ts` only formats serialized plans.
   one stop, use the larger of the active and qualifying next-fill calculations
   and label it `CARGA Q`. This follows the conservative final-stint behavior of
   planning for full-power running without adding an arbitrary reserve.
-- Keep `REFUEL` in the scenario table, but omit `Δ QUALY` and the redundant
+- Keep `TOTAL +` in the scenario table, but omit `Δ QUALY` and the redundant
   `ESTIMADO` row. The visible rows are `PROMEDIO`, `QUALY` and `ÚLTIMA`.
 - Hybrid cars show energy scenarios plus a compact fuel card while the global pit
   plan accounts for both resources.
