@@ -37,7 +37,8 @@ the prepared vehicle IDs and formats them; it must not repeat domain selection.
 - Derive the lap relationship in Rust from completed laps plus continuous lap
   phase. Do not flash a false lapping event while only one car has crossed the
   timing line.
-- Show compact, cumulative `OUT` and `PIT` chips in Signals. Damage is represented
+- Show compact, cumulative `OUT` and `PIT` chips in Signals. `PIT` is green while
+  a stop is requested and orange once the car is in the pit lane. Damage is represented
   only by a restrained underline on the driver name, becoming red at the shared
   50% heavy-damage threshold. Keep the underline inside the name bounds so text
   scaling cannot clip it.

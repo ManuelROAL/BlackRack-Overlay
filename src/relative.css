@@ -807,6 +807,11 @@ body[data-overlay-fit="true"].relative-body .standings-shell {
   background: #ffad43;
 }
 
+.pit-requested-flag {
+  color: #eaffef;
+  background: #239b48;
+}
+
 .out-lap-flag {
   color: #241600;
   background: #ffd36a;
