@@ -54,6 +54,20 @@ impl DeltaMode {
             Self::OverallOptimalSectors | Self::SessionOptimalSectors
         )
     }
+
+    fn next(self) -> Self {
+        match self {
+            Self::Off => Self::OverallBest,
+            Self::OverallBest => Self::OverallOptimalLap,
+            Self::OverallOptimalLap => Self::OverallOptimalSectors,
+            Self::OverallOptimalSectors => Self::SessionBest,
+            Self::SessionBest => Self::SessionOptimalLap,
+            Self::SessionOptimalLap => Self::SessionOptimalSectors,
+            Self::SessionOptimalSectors => Self::StintBest,
+            Self::StintBest => Self::LastLap,
+            Self::LastLap => Self::OverallBest,
+        }
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -76,6 +90,18 @@ static DELTA_MODE: AtomicU8 = AtomicU8::new(DeltaMode::SessionBest as u8);
 
 pub(crate) fn set_settings(settings: DeltaSettings) {
     DELTA_MODE.store(settings.mode as u8, Ordering::Relaxed);
+}
+
+pub(crate) fn cycle_mode() -> DeltaMode {
+    let mut current = DELTA_MODE.load(Ordering::Relaxed);
+    loop {
+        let next = DeltaMode::from_u8(current).next() as u8;
+        match DELTA_MODE.compare_exchange_weak(current, next, Ordering::Relaxed, Ordering::Relaxed)
+        {
+            Ok(_) => return DeltaMode::from_u8(next),
+            Err(actual) => current = actual,
+        }
+    }
 }
 
 fn active_mode() -> DeltaMode {
@@ -1772,9 +1798,9 @@ mod tests {
         average_timing_laps, build_sectors, can_show_live_delta, classify_delta_trend,
         handle_storage_command, initialize_database, interpolate, native_session_delta,
         round_delta_for_trend, sector_count, sector_state, should_reset_delta_at_lap_start,
-        three_sector_times, CurrentLap, DeltaTrend, Identity, LapTrace, PersistentReferences,
-        ReferenceSet, SectorBank, StorageCommand, TimingLapView, TimingSectorReference, TracePoint,
-        STORE_VERSION,
+        three_sector_times, CurrentLap, DeltaMode, DeltaTrend, Identity, LapTrace,
+        PersistentReferences, ReferenceSet, SectorBank, StorageCommand, TimingLapView,
+        TimingSectorReference, TracePoint, STORE_VERSION,
     };
     use crate::telemetry::TelemetryFrame;
 
@@ -1789,6 +1815,26 @@ mod tests {
                 })
                 .collect(),
             official_sector_ends: [None; 2],
+        }
+    }
+
+    #[test]
+    fn wheel_mode_cycle_enters_from_off_and_wraps_without_disabling_delta() {
+        let mut mode = DeltaMode::Off;
+        let expected = [
+            DeltaMode::OverallBest,
+            DeltaMode::OverallOptimalLap,
+            DeltaMode::OverallOptimalSectors,
+            DeltaMode::SessionBest,
+            DeltaMode::SessionOptimalLap,
+            DeltaMode::SessionOptimalSectors,
+            DeltaMode::StintBest,
+            DeltaMode::LastLap,
+            DeltaMode::OverallBest,
+        ];
+        for next in expected {
+            mode = mode.next();
+            assert_eq!(mode, next);
         }
     }
 

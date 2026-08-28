@@ -143,6 +143,13 @@ interface ShortcutSettingsStatus {
   show_panel: ShortcutBindingStatus;
 }
 
+interface WheelInputStatus {
+  available: boolean;
+  capturing: boolean;
+  binding: { deviceId: string; deviceName: string; button: number } | null;
+  error: string | null;
+}
+
 interface BrowserSourceStatus {
   enabled: boolean;
   running: boolean;
@@ -545,6 +552,57 @@ if (deltaModeSelect) {
     persistDeltaSettings();
   });
 }
+
+const wheelBindingOutput = document.getElementById("delta-wheel-binding") as HTMLOutputElement | null;
+const wheelCaptureButton = document.getElementById("capture-delta-wheel-button") as HTMLButtonElement | null;
+const wheelClearButton = document.getElementById("clear-delta-wheel-button") as HTMLButtonElement | null;
+const wheelMessage = document.getElementById("delta-wheel-message");
+
+const renderWheelInputStatus = (status: WheelInputStatus): void => {
+  if (wheelBindingOutput) {
+    wheelBindingOutput.textContent = status.binding
+      ? t("wheel.saved", { device: status.binding.deviceName, button: status.binding.button + 1 })
+      : t("wheel.unassigned");
+    wheelBindingOutput.title = wheelBindingOutput.textContent;
+  }
+  if (wheelCaptureButton) {
+    wheelCaptureButton.disabled = !status.available || status.capturing;
+    wheelCaptureButton.textContent = t(status.capturing ? "wheel.capturing" : "wheel.assign");
+  }
+  if (wheelClearButton) wheelClearButton.disabled = !status.binding || status.capturing;
+  if (wheelMessage) {
+    wheelMessage.textContent = t(
+      status.error === "persistence_failed"
+        ? "wheel.error"
+        : !status.available
+          ? "wheel.unavailable"
+          : status.capturing
+            ? "wheel.capturing"
+            : "wheel.instruction"
+    );
+  }
+};
+
+wheelCaptureButton?.addEventListener("click", () => {
+  void invoke<WheelInputStatus>("capture_delta_wheel_button")
+    .then(renderWheelInputStatus)
+    .catch(() => { if (wheelMessage) wheelMessage.textContent = t("wheel.unavailable"); });
+});
+wheelClearButton?.addEventListener("click", () => {
+  void invoke<WheelInputStatus>("clear_delta_wheel_button")
+    .then(renderWheelInputStatus)
+    .catch(() => { if (wheelMessage) wheelMessage.textContent = t("wheel.error"); });
+});
+void listen<WheelInputStatus>("wheel-input://status", ({ payload }) => renderWheelInputStatus(payload));
+void invoke<WheelInputStatus>("get_wheel_input_status").then(renderWheelInputStatus).catch(() => {
+  renderWheelInputStatus({ available: false, capturing: false, binding: null, error: "unavailable" });
+});
+void listen<import("./delta-settings").DeltaMode>("delta://mode-changed", ({ payload: mode }) => {
+  if (!isDeltaMode(mode)) return;
+  deltaSettings = { ...deltaSettings, mode };
+  if (deltaModeSelect) deltaModeSelect.value = mode;
+  persistDeltaSettings();
+});
 if (deltaRangeSelect) {
   for (const option of deltaRangeSelect.options) option.textContent = `±${formatNumber(Number(option.value))} s`;
   deltaRangeSelect.value = String(deltaSettings.displayRange);

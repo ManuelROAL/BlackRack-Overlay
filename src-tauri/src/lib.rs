@@ -3,6 +3,8 @@ mod browser_source;
 mod lmu_install;
 mod startup_log;
 mod telemetry;
+#[cfg(windows)]
+mod wheel_input;
 
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
@@ -1445,13 +1447,17 @@ pub fn run() {
     startup_log::record(format!("startup log path={}", log_path.display()));
     startup_log::record("building Tauri application");
 
-    tauri::Builder::default()
+    let builder = tauri::Builder::default()
         .manage(OverlayControl {
             click_through: AtomicBool::new(DEFAULT_CLICK_THROUGH),
             auto_hidden: AtomicBool::new(true),
             desired_visible: Mutex::new(HashSet::new()),
         })
-        .manage(ShortcutControl(Mutex::new(ShortcutRuntime::default())))
+        .manage(ShortcutControl(Mutex::new(ShortcutRuntime::default())));
+    #[cfg(windows)]
+    let builder = builder.manage(wheel_input::WheelInputControl::default());
+
+    builder
         .invoke_handler(tauri::generate_handler![
             set_overlay_visible,
             get_overlay_states,
@@ -1485,7 +1491,13 @@ pub fn run() {
             get_shortcut_settings,
             set_shortcut,
             export_overlay_configuration,
-            import_overlay_configuration
+            import_overlay_configuration,
+            #[cfg(windows)]
+            wheel_input::get_wheel_input_status,
+            #[cfg(windows)]
+            wheel_input::capture_delta_wheel_button,
+            #[cfg(windows)]
+            wheel_input::clear_delta_wheel_button
         ])
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_dialog::init())
@@ -1496,6 +1508,10 @@ pub fn run() {
                 startup_log::record("control window available");
                 if let Some(position) = load_control_window_position() {
                     let _ = panel.set_position(PhysicalPosition::new(position.x, position.y));
+                }
+                #[cfg(windows)]
+                if let Ok(hwnd) = panel.hwnd() {
+                    wheel_input::spawn(app.handle().clone(), hwnd.0 as isize);
                 }
                 if panel
                     .inner_size()

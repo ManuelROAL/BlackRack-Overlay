@@ -403,6 +403,7 @@ for (const event of [
   "standings://settings",
   "relative://settings",
   "driving://settings",
+  "delta://settings",
   "timing://settings",
   "trackmap://settings",
   "overlay://background-transparency",

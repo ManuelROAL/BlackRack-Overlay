@@ -18,12 +18,21 @@ weight. The coloured bar grows away from the centre without a marker or gap
 between the two halves. Mode, mini-sector and reference details remain
 configuration/backend concerns and are not rendered.
 
+The control panel can bind one DirectInput wheel/controller button. Each press
+advances to the next reference mode, wraps from Last lap to Overall best and
+skips Off while cycling; pressing it when Delta is Off starts at Overall best.
+The binding is detected on the press edge and remains active while LMU has focus.
+It is stored in `wheel-input.json` and is intentionally outside configuration
+import/export because it identifies local hardware.
+
 ## Files and ownership
 
 - `delta.html`, `src/delta.ts`, `src/delta.css`: presentation.
 - `src/delta-settings.ts`: mode and visual-range persistence.
 - `src-tauri/src/telemetry/delta_records.rs`: lap reconstruction, reference
   selection, delta calculation, stint aggregation and storage.
+- `src-tauri/src/wheel_input.rs`, `src-tauri/src/wheel_input.cpp`: persisted
+  wheel-button binding and background DirectInput polling.
 - `src/composite.ts`, `src/composite-layout.ts`: shared-host projection and layout.
 - `src-tauri/src/browser_source.rs`: `/delta` OBS route and mirrored preferences.
 
@@ -152,6 +161,8 @@ excluded from configuration import/export and configuration reset.
 - `cargo test --manifest-path src-tauri\Cargo.toml --lib` covers interpolation,
   sector sizing, optimal-sector composition and SQLite reference round trips.
 - `npm.cmd run build` covers the standalone, composite and OBS entries.
+- Live Windows validation should bind a wheel button, confirm one change per
+  press with LMU focused, verify wraparound and reconnect the device.
 - Live LMU validation should cover a clean lap, invalid lap, pit passage, session
   reset, stint transition, vehicle/track change and application restart.
 
