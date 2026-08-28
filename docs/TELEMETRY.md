@@ -67,9 +67,12 @@ restore per-overlay native listeners or direct cross-realm object events.
   sector duration from the asynchronously updated scoring-sector transition.
 - Delta's session-best mode consumes telemetry's native `mDeltaBest`; custom
   overall, optimal, stint and last-lap modes retain reconstructed traces.
-- Persistent lap references use track, vehicle and rounded track length as their
-  identity. They are loaded asynchronously and merged with any newer in-memory
-  result rather than replacing it.
+- Persistent lap references use track, generic vehicle model and rounded track
+  length as their identity; learned consumption uses track and that same generic
+  model. Neither fragments history by team/livery entry name. Lap references also
+  check and migrate the current livery-specific legacy key. They are loaded
+  asynchronously and merged with any newer in-memory result rather than replacing
+  it.
 
 ## Local REST endpoints
 

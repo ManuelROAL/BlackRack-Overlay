@@ -459,6 +459,7 @@ struct PersistentReferences {
 #[derive(Clone, Debug)]
 struct Identity {
     key: String,
+    legacy_key: Option<String>,
     track: String,
     vehicle: String,
     track_length: f64,
@@ -472,8 +473,12 @@ impl Identity {
             return None;
         }
         let rounded_length = frame.track_length_meters.round() as i64;
+        let legacy_vehicle = frame.player_vehicle_livery_name.trim();
+        let legacy_key = (!legacy_vehicle.is_empty() && legacy_vehicle != vehicle)
+            .then(|| format!("{track}\u{1f}{legacy_vehicle}\u{1f}{rounded_length}"));
         Some(Self {
             key: format!("{track}\u{1f}{vehicle}\u{1f}{rounded_length}"),
+            legacy_key,
             track: track.to_owned(),
             vehicle: vehicle.to_owned(),
             track_length: frame.track_length_meters,
@@ -728,8 +733,8 @@ impl StintAccumulator {
 
 enum StorageCommand {
     Load {
-        key: String,
-        reply: Sender<PersistentReferences>,
+        keys: Vec<String>,
+        reply: Sender<(PersistentReferences, bool)>,
     },
     Save {
         identity: Identity,
@@ -757,9 +762,9 @@ impl DeltaStorage {
         Self { sender }
     }
 
-    fn load(&self, key: String) -> Receiver<PersistentReferences> {
+    fn load(&self, keys: Vec<String>) -> Receiver<(PersistentReferences, bool)> {
         let (reply, receiver) = mpsc::channel();
-        let _ = self.sender.send(StorageCommand::Load { key, reply });
+        let _ = self.sender.send(StorageCommand::Load { keys, reply });
         receiver
     }
 
@@ -771,7 +776,7 @@ impl DeltaStorage {
 pub(crate) struct DeltaEngine {
     storage: DeltaStorage,
     identity: Option<Identity>,
-    pending_load: Option<Receiver<PersistentReferences>>,
+    pending_load: Option<Receiver<(PersistentReferences, bool)>>,
     overall: ReferenceSet,
     session: ReferenceSet,
     stint_best: Option<LapTrace>,
@@ -899,7 +904,11 @@ impl DeltaEngine {
 
     fn select_identity(&mut self, identity: Identity) {
         self.identity = Some(identity.clone());
-        self.pending_load = Some(self.storage.load(identity.key.clone()));
+        let mut keys = vec![identity.key.clone()];
+        if let Some(legacy_key) = identity.legacy_key.clone() {
+            keys.push(legacy_key);
+        }
+        self.pending_load = Some(self.storage.load(keys));
         self.overall = ReferenceSet::default();
         self.session = ReferenceSet::default();
         self.stint_best = None;
@@ -923,11 +932,19 @@ impl DeltaEngine {
             .pending_load
             .as_ref()
             .and_then(|receiver| receiver.try_recv().ok());
-        if let Some(loaded) = loaded {
+        if let Some((loaded, needs_migration)) = loaded {
             if loaded.version == STORE_VERSION {
                 self.overall_timing_sectors = loaded.timing_sectors;
                 if self.overall.merge(&loaded.overall) {
                     self.generation = self.generation.wrapping_add(1);
+                }
+                if needs_migration {
+                    if let Some(identity) = self.identity.clone() {
+                        self.storage.send(StorageCommand::Save {
+                            identity,
+                            references: loaded,
+                        });
+                    }
                 }
             }
             self.pending_load = None;
@@ -1694,17 +1711,23 @@ fn handle_storage_command(
     command: StorageCommand,
 ) -> rusqlite::Result<()> {
     match command {
-        StorageCommand::Load { key, reply } => {
-            let loaded = connection
-                .query_row(
-                    "SELECT payload FROM delta_references WHERE identity_key = ?1",
-                    params![key],
-                    |row| row.get::<_, Vec<u8>>(0),
-                )
-                .ok()
-                .and_then(|bytes| serde_json::from_slice(&bytes).ok())
+        StorageCommand::Load { keys, reply } => {
+            let (loaded, needs_migration) = keys
+                .into_iter()
+                .enumerate()
+                .find_map(|(index, key)| {
+                    connection
+                        .query_row(
+                            "SELECT payload FROM delta_references WHERE identity_key = ?1",
+                            params![key],
+                            |row| row.get::<_, Vec<u8>>(0),
+                        )
+                        .ok()
+                        .and_then(|bytes| serde_json::from_slice(&bytes).ok())
+                        .map(|references| (references, index > 0))
+                })
                 .unwrap_or_default();
-            let _ = reply.send(loaded);
+            let _ = reply.send((loaded, needs_migration));
         }
         StorageCommand::Save {
             identity,
@@ -2170,6 +2193,7 @@ mod tests {
         initialize_database(&connection).unwrap();
         let identity = Identity {
             key: "track\u{1f}car\u{1f}5000".into(),
+            legacy_key: None,
             track: "track".into(),
             vehicle: "car".into(),
             track_length: 5_000.0,
@@ -2197,14 +2221,28 @@ mod tests {
         handle_storage_command(
             &connection,
             StorageCommand::Load {
-                key: identity.key,
+                keys: vec![identity.key.clone()],
                 reply: sender,
             },
         )
         .unwrap();
-        let loaded = receiver.recv().unwrap();
+        let (loaded, needs_migration) = receiver.recv().unwrap();
+        assert!(!needs_migration);
         assert_eq!(loaded.version, STORE_VERSION);
         assert_eq!(loaded.overall.best.unwrap().lap_time, 100.0);
         assert_eq!(loaded.overall.optimal.total(), Some(100.0));
+
+        let (sender, receiver) = mpsc::channel();
+        handle_storage_command(
+            &connection,
+            StorageCommand::Load {
+                keys: vec!["new-model-key".into(), identity.key],
+                reply: sender,
+            },
+        )
+        .unwrap();
+        let (loaded, needs_migration) = receiver.recv().unwrap();
+        assert!(needs_migration);
+        assert_eq!(loaded.version, STORE_VERSION);
     }
 }

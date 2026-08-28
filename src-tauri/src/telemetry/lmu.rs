@@ -264,6 +264,7 @@ struct LmuSnapshot {
     player_tire_detached: [u8; 4],
     player_damage_severity: [u8; 8],
     vehicle_name: [c_char; 64],
+    vehicle_model: [c_char; 30],
     track_name: [c_char; 64],
     standings: [LmuStandingEntry; MAX_VEHICLES],
 }
@@ -348,6 +349,7 @@ impl Default for LmuSnapshot {
             player_tire_detached: [0; 4],
             player_damage_severity: [0; 8],
             vehicle_name: [0; 64],
+            vehicle_model: [0; 30],
             track_name: [0; 64],
             standings: [LmuStandingEntry::default(); MAX_VEHICLES],
         }
@@ -1438,6 +1440,17 @@ impl LmuTelemetrySource {
             .map(|value| *value as u8)
             .collect::<Vec<_>>();
         String::from_utf8_lossy(&bytes).trim().to_owned()
+    }
+
+    fn player_vehicle_names(snapshot: &LmuSnapshot) -> (String, String) {
+        let livery_name = Self::string_from_chars(&snapshot.vehicle_name);
+        let model = Self::string_from_chars(&snapshot.vehicle_model);
+        let persistent_name = if model.is_empty() {
+            livery_name.clone()
+        } else {
+            model
+        };
+        (persistent_name, livery_name)
     }
 
     fn car_number(vehicle_name: &str, vehicle_filename: &str) -> String {
@@ -3013,7 +3026,7 @@ impl TelemetrySource for LmuTelemetrySource {
             .map(|start| start + self.energy_added_this_lap - virtual_energy_percent)
             .unwrap_or(0.0)
             .max(0.0);
-        let vehicle_name = Self::string_from_chars(&snapshot.vehicle_name);
+        let (vehicle_name, vehicle_livery_name) = Self::player_vehicle_names(&snapshot);
         let track_name = Self::string_from_chars(&snapshot.track_name);
         let (tc_active, abs_active) = Self::driver_assists(&snapshot);
         let (steering_angle_degrees, force_feedback) =
@@ -3300,6 +3313,7 @@ impl TelemetrySource for LmuTelemetrySource {
             session_split_count: session_split.count,
             track_name,
             player_vehicle_name: vehicle_name,
+            player_vehicle_livery_name: vehicle_livery_name,
             rest_weather_available: snapshot.ambient_temperature_c.is_finite()
                 && snapshot.track_temperature_c.is_finite(),
             ambient_temperature_c: snapshot.ambient_temperature_c,
@@ -3523,6 +3537,35 @@ mod tests {
         assert!((fuel_energy_ratio(12.0, 8.0) - 1.5).abs() < 1e-9);
         assert_eq!(fuel_energy_ratio(12.0, 0.0), 0.0);
         assert_eq!(fuel_energy_ratio(f64::NAN, 8.0), 0.0);
+    }
+
+    #[test]
+    fn player_persistence_uses_generic_model_instead_of_livery() {
+        let mut snapshot = LmuSnapshot::default();
+        set_chars(&mut snapshot.vehicle_name, "AMR GT3 Custom Team 2025 #397");
+        set_chars(
+            &mut snapshot.vehicle_model,
+            "Aston Martin Vantage AMR LMGT3",
+        );
+
+        assert_eq!(
+            LmuTelemetrySource::player_vehicle_names(&snapshot),
+            (
+                "Aston Martin Vantage AMR LMGT3".into(),
+                "AMR GT3 Custom Team 2025 #397".into()
+            )
+        );
+    }
+
+    #[test]
+    fn player_persistence_falls_back_when_model_is_unavailable() {
+        let mut snapshot = LmuSnapshot::default();
+        set_chars(&mut snapshot.vehicle_name, "Legacy vehicle name");
+
+        assert_eq!(
+            LmuTelemetrySource::player_vehicle_names(&snapshot),
+            ("Legacy vehicle name".into(), "Legacy vehicle name".into())
+        );
     }
 
     #[test]

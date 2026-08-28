@@ -137,6 +137,7 @@ struct LmuSnapshot {
     uint8_t player_tire_detached[4];
     uint8_t player_damage_severity[8];
     char vehicle_name[64];
+    char vehicle_model[30];
     char track_name[64];
     LmuStandingEntry standings[MAX_VEHICLES];
 };
@@ -472,6 +473,7 @@ extern "C" int lmu_read_snapshot(LmuSnapshot* output) {
     output->player_lap_start_elapsed_seconds = vehicle.mLapStartET;
     output->lap_delta_seconds = vehicle.mDeltaBest;
     std::memcpy(output->vehicle_name, vehicle.mVehicleName, sizeof(output->vehicle_name));
+    std::memcpy(output->vehicle_model, vehicle.mVehicleModel, sizeof(output->vehicle_model));
     std::memcpy(output->track_name, vehicle.mTrackName, sizeof(output->track_name));
 
     return 1;

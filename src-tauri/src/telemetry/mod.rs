@@ -562,6 +562,8 @@ pub struct TelemetryFrame {
     session_split_count: u32,
     track_name: String,
     player_vehicle_name: String,
+    #[serde(skip)]
+    player_vehicle_livery_name: String,
     rest_weather_available: bool,
     ambient_temperature_c: f64,
     track_temperature_c: f64,
@@ -788,6 +790,7 @@ impl TelemetryFrame {
             session_split_count: 0,
             track_name: String::new(),
             player_vehicle_name: String::new(),
+            player_vehicle_livery_name: String::new(),
             rest_weather_available: false,
             ambient_temperature_c: 0.0,
             track_temperature_c: 0.0,

@@ -65,11 +65,13 @@ No live delta is exposed during an outlap that BlackRack did not observe from
 the timing line. This also prevents LMU's stale pre-line lap-start timestamp from
 appearing as a multi-minute current lap before the first timed crossing.
 
-Overall references are keyed by normalized track name, vehicle name and rounded
-track length. Session references reset when the shared session identity changes
-or elapsed session time moves backwards. Stint references use LMU's player stint
-counter. A reference becomes available after the first reconstructable eligible
-lap in its scope.
+Overall references are keyed by normalized track name, generic vehicle model and
+rounded track length, so changing team or livery retains the same references.
+When that model first appears, the current livery-specific legacy key is also
+checked and migrated. Session references reset when the shared session identity
+changes or elapsed session time moves backwards. Stint references use LMU's
+player stint counter. A reference becomes available after the first
+reconstructable eligible lap in its scope.
 
 ## Sampling and calculation
 
