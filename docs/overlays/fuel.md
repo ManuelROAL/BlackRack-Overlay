@@ -128,6 +128,8 @@ math belongs in Rust. `fuel.ts` only formats serialized plans.
   consumption. Label the target `MANTÉN` when an active pit stop, the parallel
   resource or an over-15% saving requirement prevents reducing the current stop
   count.
+- Grow the PIT indicator's box with the text design surface so its label remains
+  centered and unclipped throughout the supported 75–200% text range.
 
 ## Verification focus
 

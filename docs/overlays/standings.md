@@ -163,9 +163,10 @@ duplicate selection or timing semantics.
   timer uses the same amber/orange semantic family as PIT and OUT.
 - Cache row/header nodes and replace only changed cells/signatures. The general
   performance profile changes roster request and renderer cadence together.
-- Derive the design height from the currently visible header, class sections and
-  rows, retaining only the shared 72 px empty-state minimum. Scale the complete
-  table without clipping so the edit border follows the rendered content.
+- Derive the design height from the rendered header, class sections, rows,
+  margins and padding instead of fixed row estimates, retaining only the shared
+  72 px empty-state minimum. Scale the complete table without clipping so the
+  edit border follows the rendered content throughout the 75–200% text range.
 - Expand text-bearing column tracks together with the text-size design surface so
   enlarged labels and values cannot overlap neighboring columns. Keep the
   manufacturer-logo and driver-badge tracks fixed. Position/change and assigned

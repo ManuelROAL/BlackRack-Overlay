@@ -138,8 +138,8 @@ body[data-overlay-fit="true"].fuel-body .fuel-shell {
   display: grid;
   align-self: center;
   justify-self: end;
-  width: 28px;
-  height: 18px;
+  width: calc(28px * var(--overlay-font-width-expansion, 1));
+  height: calc(18px * var(--overlay-font-track-expansion, 1));
   place-items: center;
   border: 1px solid rgb(255 255 255 / 11%);
   border-radius: 4px;

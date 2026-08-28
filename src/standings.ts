@@ -43,7 +43,7 @@ const standingsBaseWidth = (): number => Math.max(
 );
 const updateOverlayFit = fitOverlay(
   { width: standingsBaseWidth(), height: STANDINGS_EMPTY_HEIGHT },
-  { widthTextRatio: () => expandableColumnsWidth() / standingsBaseWidth(), heightTextRatio: 0.15 }
+  { widthTextRatio: () => expandableColumnsWidth() / standingsBaseWidth() }
 );
 let fittedOverlayHeight = STANDINGS_EMPTY_HEIGHT;
 bindOverlayTransparency("standings");
@@ -788,12 +788,10 @@ const render = (frame: TelemetryFrame): void => {
   const entriesById = new Map(frame.standings.map((entry) => [entry.vehicle_id, entry]));
   const children: HTMLElement[] = [];
   if (settings.showHeader) children.push(cachedSessionHeaderFor(frame));
-  const visibleRowCounts: number[] = [];
   for (const model of frame.standings_model.groups) {
     const visibleEntries = model.visible_vehicle_ids
       .map((vehicleId) => entriesById.get(vehicleId))
       .filter((entry): entry is StandingEntry => entry !== undefined);
-    visibleRowCounts.push(visibleEntries.length);
     let group = classSections.get(model.vehicle_class);
     if (!group) {
       group = node("section", "standings-class");
@@ -807,13 +805,27 @@ const render = (frame: TelemetryFrame): void => {
     children.push(group);
   }
   syncChildren(list, children);
-  const contentHeight = visibleRowCounts.reduce((height, rowCount, groupIndex) => (
-    height
-    + 23
-    + rowCount * 23
-    + (groupIndex < visibleRowCounts.length - 1 ? 6 : 0)
-  ), 20 + (settings.showHeader ? 25 : 0));
-  const nextOverlayHeight = Math.max(STANDINGS_EMPTY_HEIGHT, contentHeight);
+  synchronizeOverlayHeight();
+};
+
+const synchronizeOverlayHeight = (): void => {
+  const list = document.getElementById("standings-list");
+  const shell = document.querySelector<HTMLElement>(".standings-shell");
+  if (!list || !shell) return;
+  const listStyle = getComputedStyle(list);
+  const childrenHeight = Array.from(list.children).reduce((height, child) => {
+    const element = child as HTMLElement;
+    const style = getComputedStyle(element);
+    return height
+      + element.offsetHeight
+      + (Number.parseFloat(style.marginTop) || 0)
+      + (Number.parseFloat(style.marginBottom) || 0);
+  }, (Number.parseFloat(listStyle.paddingTop) || 0) + (Number.parseFloat(listStyle.paddingBottom) || 0));
+  const layoutChrome = document.body.offsetHeight - list.offsetHeight;
+  const nextOverlayHeight = Math.max(
+    STANDINGS_EMPTY_HEIGHT,
+    Math.ceil(childrenHeight + layoutChrome) + 1
+  );
   if (nextOverlayHeight !== fittedOverlayHeight) {
     fittedOverlayHeight = nextOverlayHeight;
     updateOverlayFit({ width: standingsBaseWidth(), height: nextOverlayHeight });
@@ -846,6 +858,10 @@ if (import.meta.hot) {
   });
 }
 bindOverlayInteractionMode();
+window.addEventListener("overlay-font-size-change", () => {
+  window.requestAnimationFrame(synchronizeOverlayHeight);
+});
+void document.fonts.ready.then(synchronizeOverlayHeight);
 
 if (import.meta.env.DEV && new URLSearchParams(window.location.search).has("preview")) {
   const previewClasses: Array<[string, number]> = [
