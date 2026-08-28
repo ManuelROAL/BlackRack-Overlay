@@ -484,7 +484,7 @@ const renderVehicles = (vehicles: TrackMapVehicle[], trackLength: number): void 
     }
     const [x, y] = markerPosition(vehicle, trackLength);
     setMarkerPosition(marker, x, y);
-    const color = vehicle.causing_yellow ? "#ffe34f" : classColor(vehicle.vehicle_class);
+    const color = classColor(vehicle.vehicle_class);
     if (marker.color !== color) {
       marker.color = color;
       marker.disc.style.backgroundColor = color;

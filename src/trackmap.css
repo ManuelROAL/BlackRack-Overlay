@@ -98,10 +98,6 @@
   z-index: 10;
 }
 
-.vehicle-marker.is-causing-yellow {
-  z-index: 11;
-}
-
 .pit-prediction-marker {
   position: absolute;
   top: 0;
