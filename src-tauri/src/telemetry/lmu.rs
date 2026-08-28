@@ -2054,13 +2054,6 @@ impl LmuTelemetrySource {
                     ranks.badge = event_profile.badge.clone();
                 }
             }
-            if entry.is_player != 0 {
-                let split = self.session_split.value();
-                if let Some(progress) = split.player_driver_progress {
-                    ranks.driver = split.player_driver_rank.clone();
-                    ranks.driver_progress = progress;
-                }
-            }
             if entry.is_player != 0 && ranks.driver_elo.is_finite() && ranks.driver_elo >= 0.0 {
                 player_driver_elo = Some(ranks.driver_elo);
             }

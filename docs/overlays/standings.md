@@ -88,8 +88,6 @@ duplicate selection or timing semantics.
   driver without discarding the profiles already cached for the team.
 - In registered events, the one-time `event/my-split` roster supplements missing
   or `XX` nationality and missing badges without replacing valid `/players` data.
-- For the authenticated player, prefer exact rank progress from the registered
-  `event/overview` snapshot when `/players` reports a masked zero.
 - The DR estimate is same-class and event-parameter aware. Convert it back from
   the three-times internal rating scale before serializing visible progress.
 - Its dedicated diagnostic switch writes the player's current DR when available

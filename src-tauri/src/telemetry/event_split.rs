@@ -21,8 +21,6 @@ pub(super) struct SessionSplit {
     pub event_id: String,
     pub driver_rank_settings: DriverRankSettings,
     pub player_driver_elo: Option<f64>,
-    pub player_driver_rank: String,
-    pub player_driver_progress: Option<f64>,
     profiles: HashMap<String, EventDriverProfile>,
     profiles_checked: bool,
 }
@@ -233,10 +231,6 @@ fn fetch_direct_split(
     if direct.player_driver_elo.is_some() {
         fallback.player_driver_elo = direct.player_driver_elo;
     }
-    if direct.player_driver_progress.is_some() {
-        fallback.player_driver_rank = direct.player_driver_rank;
-        fallback.player_driver_progress = direct.player_driver_progress;
-    }
     fallback.event_id = event_id.to_owned();
     fallback.profiles = parse_event_profiles(&json);
     fallback.profiles_checked = true;
@@ -331,39 +325,24 @@ fn parse_event_split(value: &Value, event_id: &str) -> SessionSplit {
     };
     let count = explicit_count.max(splits_count).max(estimated_count);
 
-    let (player_driver_rank, player_driver_progress, player_driver_elo) =
-        parse_authenticated_driver_rank(overview);
     SessionSplit {
         number,
         count,
         event_id: event_id.to_owned(),
         driver_rank_settings: parse_driver_rank_settings(overview),
-        player_driver_elo,
-        player_driver_rank,
-        player_driver_progress,
+        player_driver_elo: parse_authenticated_driver_elo(overview),
         profiles: HashMap::new(),
         profiles_checked: false,
     }
 }
 
-fn parse_authenticated_driver_rank(overview: &Value) -> (String, Option<f64>, Option<f64>) {
-    let Some(split) = object_value_from_value(overview, "split") else {
-        return Default::default();
-    };
-    let Some(drivers) = object_value_from_value(split, "drivers").and_then(Value::as_array) else {
-        return Default::default();
-    };
-    drivers
-        .iter()
-        .find_map(|registration| {
-            let driver = object_value_from_value(registration, "driver").unwrap_or(registration);
-            let rank = object_value_from_value(driver, "driverRank")?;
-            let code = super::driver_ranks::rank_code(rank)?;
-            let progress = super::driver_ranks::rank_progress(rank);
-            let elo = super::driver_ranks::rank_elo(rank);
-            Some((code, progress, elo))
-        })
-        .unwrap_or_default()
+fn parse_authenticated_driver_elo(overview: &Value) -> Option<f64> {
+    let split = object_value_from_value(overview, "split")?;
+    let drivers = object_value_from_value(split, "drivers")?.as_array()?;
+    drivers.iter().find_map(|registration| {
+        let driver = object_value_from_value(registration, "driver").unwrap_or(registration);
+        object_value_from_value(driver, "driverRank").and_then(super::driver_ranks::rank_elo)
+    })
 }
 
 fn find_event_overview<'a>(value: &'a Value, event_id: &str) -> Option<&'a Value> {
@@ -859,7 +838,7 @@ mod tests {
                 "drivers": [{
                     "driver": {
                         "username": "player",
-                        "driverRank": { "elo": 1456.25, "rank": "Silver", "tier": 1, "progress": 3.9691567 }
+                        "driverRank": { "elo": 1456.25, "rank": "Silver", "tier": 1 }
                     }
                 }]
             },
@@ -870,14 +849,6 @@ mod tests {
         assert_eq!(
             parse_event_split(&response, "event-id").player_driver_elo,
             Some(1456.25)
-        );
-        assert_eq!(
-            parse_event_split(&response, "event-id").player_driver_rank,
-            "S1"
-        );
-        assert_eq!(
-            parse_event_split(&response, "event-id").player_driver_progress,
-            Some(3.9691567)
         );
     }
 }
