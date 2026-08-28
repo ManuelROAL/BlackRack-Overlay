@@ -65,7 +65,7 @@ const renderProfile = (
   text(`${id}-consumption`, plan ? format(consumption) : "--");
   text(`${id}-autonomy`, plan ? format(plan.autonomy) : "--");
   const totalRequired = plan
-    ? Math.max(current, 0) + plan.total_additional - plan.end_remaining
+    ? Math.max(current, 0) + plan.total_additional
     : null;
   text(`${id}-required`, totalRequired === null ? "--" : format(totalRequired));
 };
