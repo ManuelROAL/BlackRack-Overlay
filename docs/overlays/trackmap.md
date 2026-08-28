@@ -75,6 +75,9 @@ TypeScript fetches static geometry, interpolates and renders it.
 - A vehicle inferred by Rust as causing a yellow keeps its normal class marker and
   receives a yellow halo driven by telemetry events. It pulses in Smooth and
   Balanced and remains static in Efficiency like the player's halo.
+- Official yellow-sector flags paint the corresponding circuit segment yellow once
+  Rust has observed and learned the two scoring-sector boundaries. The normal track
+  remains visible until aligned geometry and both boundaries are available.
 
 ## Verification focus
 

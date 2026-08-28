@@ -68,6 +68,8 @@ export interface TrackMapViewModel {
   geometry_revision: number;
   learned_geometry_available: boolean;
   pit_prediction_lap_distance: number | null;
+  yellow_sectors: number;
+  sector_boundaries: [number | null, number | null];
 }
 
 export interface WeatherForecastNode {

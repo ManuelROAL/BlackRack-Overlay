@@ -28,6 +28,7 @@
 
 .track-outline,
 .track-line,
+.yellow-sector,
 .pit-outline,
 .pit-line,
 .start-line {
@@ -44,6 +45,11 @@
 
 .track-line {
   stroke: rgb(218 222 225 / 94%);
+  stroke-width: 8px;
+}
+
+.yellow-sector {
+  stroke: #ffe34f;
   stroke-width: 8px;
 }
 

@@ -539,6 +539,8 @@ pub struct TrackMapVehicle {
     in_pits: bool,
     in_garage: bool,
     causing_yellow: bool,
+    #[serde(skip)]
+    sector: i32,
     is_player: bool,
 }
 
@@ -582,6 +584,8 @@ pub struct TelemetryFrame {
     cloud_coverage: i32,
     lap_number: i32,
     player_sector: i32,
+    #[serde(skip)]
+    yellow_sectors: u32,
     player_total_laps: i32,
     player_lap_valid: bool,
     player_in_pits: bool,
@@ -809,6 +813,7 @@ impl TelemetryFrame {
             cloud_coverage: 0,
             lap_number: 0,
             player_sector: 0,
+            yellow_sectors: 0,
             player_total_laps: 0,
             player_lap_valid: false,
             player_in_pits: false,

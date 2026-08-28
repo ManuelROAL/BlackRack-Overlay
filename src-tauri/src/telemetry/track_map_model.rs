@@ -23,6 +23,8 @@ pub(crate) struct TrackMapViewModel {
     geometry_revision: u64,
     learned_geometry_available: bool,
     pit_prediction_lap_distance: Option<f64>,
+    yellow_sectors: u32,
+    sector_boundaries: [Option<f64>; 2],
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
@@ -190,6 +192,8 @@ pub(crate) struct TrackMapModelState {
     last_sample_distance: f64,
     pit_vehicles: HashMap<i32, PitVehicleState>,
     previous_pit_sample_time: Option<f64>,
+    vehicle_sectors: HashMap<i32, (i32, f64)>,
+    sector_boundaries: [Option<f64>; 2],
 }
 
 impl Default for TrackMapModelState {
@@ -202,6 +206,8 @@ impl Default for TrackMapModelState {
             last_sample_distance: f64::NEG_INFINITY,
             pit_vehicles: HashMap::new(),
             previous_pit_sample_time: None,
+            vehicle_sectors: HashMap::new(),
+            sector_boundaries: [None; 2],
         }
     }
 }
@@ -217,6 +223,8 @@ impl TrackMapModelState {
             self.last_sample_distance = f64::NEG_INFINITY;
             self.pit_vehicles.clear();
             self.previous_pit_sample_time = None;
+            self.vehicle_sectors.clear();
+            self.sector_boundaries = [None; 2];
         }
         if frame.track_map_vehicles.is_empty() {
             frame.track_map_model = self.view_model(frame, None);
@@ -227,12 +235,42 @@ impl TrackMapModelState {
             .track_map_vehicles
             .iter()
             .position(|vehicle| vehicle.is_player);
+        self.update_sector_boundaries(frame);
         self.update_pit_traversal(frame);
         if let Some(index) = player_index {
             self.update_recorder(frame, index);
         }
         let player = player_index.and_then(|index| frame.track_map_vehicles.get(index));
         frame.track_map_model = self.view_model(frame, player);
+    }
+
+    fn update_sector_boundaries(&mut self, frame: &TelemetryFrame) {
+        let track_length = frame.track_length_meters;
+        if track_length <= 100.0 {
+            return;
+        }
+        let mut active = HashSet::new();
+        for vehicle in &frame.track_map_vehicles {
+            active.insert(vehicle.vehicle_id);
+            let distance = vehicle.lap_distance.rem_euclid(track_length);
+            if let Some((previous_sector, previous_distance)) = self
+                .vehicle_sectors
+                .insert(vehicle.vehicle_id, (vehicle.sector, distance))
+            {
+                let boundary_index = match (previous_sector, vehicle.sector) {
+                    (1, 2) => Some(0),
+                    (2, 0) => Some(1),
+                    _ => None,
+                };
+                let delta = (distance - previous_distance).rem_euclid(track_length);
+                if let Some(index) = boundary_index.filter(|_| delta <= 250.0) {
+                    self.sector_boundaries[index] =
+                        Some((previous_distance + delta * 0.5).rem_euclid(track_length));
+                }
+            }
+        }
+        self.vehicle_sectors
+            .retain(|vehicle_id, _| active.contains(vehicle_id));
     }
 
     fn track_metadata(&self) -> (u64, bool, Vec<f64>) {
@@ -452,6 +490,8 @@ impl TrackMapModelState {
             geometry_revision,
             learned_geometry_available,
             pit_prediction_lap_distance,
+            yellow_sectors: frame.yellow_sectors,
+            sector_boundaries: self.sector_boundaries,
         }
     }
 }
@@ -540,6 +580,23 @@ fn observe_pit_progress(state: &mut PitVehicleState, progress: Option<f64>) {
 mod tests {
     use super::*;
 
+    fn sector_vehicle(sector: i32, lap_distance: f64) -> TrackMapVehicle {
+        TrackMapVehicle {
+            vehicle_id: 7,
+            overall_position: 1,
+            vehicle_class: "HYPERCAR".into(),
+            world_x: 0.0,
+            world_y: 0.0,
+            lap_distance,
+            total_laps: 1,
+            in_pits: false,
+            in_garage: false,
+            causing_yellow: false,
+            sector,
+            is_player: false,
+        }
+    }
+
     #[test]
     fn cache_key_matches_the_frontend_legacy_format() {
         assert_eq!(
@@ -600,5 +657,23 @@ mod tests {
         let distance = predicted_lap_distance(4_000.0, 20.0, 30.0, 100.0, 5_000.0);
         assert_eq!(distance, Some(1_500.0));
         assert_eq!(predicted_lap_distance(0.0, 20.0, 30.0, 0.0, 5_000.0), None);
+    }
+
+    #[test]
+    fn learns_scoring_sector_boundaries_from_vehicle_crossings() {
+        let mut state = TrackMapModelState::default();
+        let mut frame = TelemetryFrame::waiting_for_lmu(true);
+        frame.track_length_meters = 5_000.0;
+        frame.track_map_vehicles = vec![sector_vehicle(1, 990.0)];
+        state.update_sector_boundaries(&frame);
+
+        frame.track_map_vehicles[0] = sector_vehicle(2, 1_010.0);
+        state.update_sector_boundaries(&frame);
+        frame.track_map_vehicles[0] = sector_vehicle(2, 3_490.0);
+        state.update_sector_boundaries(&frame);
+        frame.track_map_vehicles[0] = sector_vehicle(0, 3_510.0);
+        state.update_sector_boundaries(&frame);
+
+        assert_eq!(state.sector_boundaries, [Some(1_000.0), Some(3_500.0)]);
     }
 }

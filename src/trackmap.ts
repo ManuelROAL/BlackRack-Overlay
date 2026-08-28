@@ -71,6 +71,9 @@ const line = document.querySelector<SVGPathElement>("#track-line")!;
 const pitOutline = document.querySelector<SVGPathElement>("#pit-outline")!;
 const pitLine = document.querySelector<SVGPathElement>("#pit-line")!;
 const startLine = document.querySelector<SVGPathElement>("#start-line")!;
+const yellowSectorLines = [1, 2, 3].map((sector) =>
+  document.querySelector<SVGPathElement>(`#yellow-sector-${sector}`)!
+);
 const vehicleLayer = document.querySelector<HTMLDivElement>("#vehicle-layer")!;
 const status = document.getElementById("map-status") as HTMLElement;
 
@@ -89,6 +92,10 @@ let predictionMarker: HTMLDivElement | null = null;
 let predictionTransform = "";
 let trackMapSettings = readTrackMapSettings();
 let latestPerformanceProfile: TelemetryFrame["performance_profile"] = "smooth";
+let latestYellowSectors = 0;
+let latestSectorBoundaries: [number | null, number | null] = [null, null];
+let latestTrackLength = 0;
+let yellowSectorRenderKey = "";
 
 const migrateLegacyLearning = (key: string, trackName: string, trackLength: number): void => {
   if (!isTauriRuntime()) return;
@@ -203,6 +210,7 @@ const clearPitPath = (): void => {
 };
 
 const renderTrack = (): void => {
+  yellowSectorRenderKey = "";
   const displayPoints = officialGeometry?.mainPath ?? learnedPoints;
   if (displayPoints.length >= 40) {
     transform = makeTransform(displayPoints);
@@ -243,6 +251,7 @@ const renderTrack = (): void => {
     startLine.setAttribute("d", `M${SIZE / 2 - 8} ${MARGIN} L${SIZE / 2 + 8} ${MARGIN}`);
     status.hidden = false;
   }
+  renderYellowSectors();
 };
 
 const nearestMainPoint = (x: number, y: number): { point: MapPoint; distance: number } | null => {
@@ -345,6 +354,49 @@ const positionAtLapDistance = (lapDistance: number, trackLength: number): [numbe
   const worldX = lower.x + (upper.x - lower.x) * ratio;
   const worldY = lower.y + (upper.y - lower.y) * ratio;
   return [transform.x(worldX), transform.y(worldY)];
+};
+
+const yellowSectorPath = (
+  start: number,
+  end: number,
+  trackLength: number,
+  points: MapPoint[]
+): string => {
+  const [startX, startY] = positionAtLapDistance(start, trackLength);
+  const [endX, endY] = positionAtLapDistance(end, trackLength);
+  const middle = points
+    .filter((point) => point.distance > start && point.distance < end)
+    .map((point) => `L${transform!.x(point.x).toFixed(2)} ${transform!.y(point.y).toFixed(2)}`)
+    .join(" ");
+  return `M${startX.toFixed(2)} ${startY.toFixed(2)} ${middle} L${endX.toFixed(2)} ${endY.toFixed(2)}`;
+};
+
+const renderYellowSectors = (): void => {
+  const [sector1End, sector2End] = latestSectorBoundaries;
+  const points = officialDistancePoints.length ? officialDistancePoints : learnedPoints;
+  const ready = transform
+    && points.length >= 40
+    && latestTrackLength > 100
+    && sector1End !== null
+    && sector2End !== null
+    && sector1End > 0
+    && sector2End > sector1End
+    && sector2End < latestTrackLength;
+  const ranges: Array<[number, number, number]> = ready
+    ? [[0, sector1End, 1], [sector1End, sector2End, 2], [sector2End, latestTrackLength, 0]]
+    : [];
+  const renderKey = `${ready ? 1 : 0}|${latestYellowSectors}|${sector1End}|${sector2End}|${latestTrackLength}`;
+  if (renderKey === yellowSectorRenderKey) return;
+  yellowSectorRenderKey = renderKey;
+  yellowSectorLines.forEach((sectorLine, index) => {
+    const range = ranges[index];
+    if (!range || (latestYellowSectors & (1 << range[2])) === 0) {
+      if (sectorLine.hasAttribute("d")) sectorLine.removeAttribute("d");
+      return;
+    }
+    const path = yellowSectorPath(range[0], range[1], latestTrackLength, points);
+    if (sectorLine.getAttribute("d") !== path) sectorLine.setAttribute("d", path);
+  });
 };
 
 const ensurePredictionMarker = (): HTMLDivElement => {
@@ -505,6 +557,9 @@ const renderVehicles = (vehicles: TrackMapVehicle[], trackLength: number): void 
 
 const render = (frame: TelemetryFrame): void => {
   latestPerformanceProfile = frame.performance_profile;
+  latestYellowSectors = frame.track_map_model.yellow_sectors;
+  latestSectorBoundaries = frame.track_map_model.sector_boundaries;
+  latestTrackLength = frame.track_length_meters;
   const nextKey = frame.track_map_model.cache_key;
   if (nextKey !== mapKey) {
     mapKey = nextKey;
@@ -526,6 +581,7 @@ const render = (frame: TelemetryFrame): void => {
   requestOfficialGeometry(mapKey);
   const player = frame.track_map_vehicles.find((vehicle) => vehicle.is_player);
   calibrateOfficialDistances(player, frame.track_length_meters);
+  renderYellowSectors();
   renderVehicles(frame.track_map_vehicles, frame.track_length_meters);
   renderPitPrediction(
     trackMapSettings.showPitPrediction

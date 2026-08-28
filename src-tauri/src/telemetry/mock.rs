@@ -180,6 +180,11 @@ impl TelemetrySource for MockTelemetrySource {
             } else {
                 0
             },
+            yellow_sectors: if (elapsed as u64 / 8) % 2 == 0 {
+                1 << 2
+            } else {
+                0
+            },
             player_total_laps: completed_laps,
             player_lap_valid: true,
             player_in_pits: false,
@@ -293,6 +298,13 @@ impl TelemetrySource for MockTelemetrySource {
                             in_pits: false,
                             in_garage: false,
                             causing_yellow: index == 4,
+                            sector: match angle.rem_euclid(std::f64::consts::TAU)
+                                / std::f64::consts::TAU
+                            {
+                                progress if progress < 1.0 / 3.0 => 1,
+                                progress if progress < 2.0 / 3.0 => 2,
+                                _ => 0,
+                            },
                             is_player: index == 7,
                         }
                     })

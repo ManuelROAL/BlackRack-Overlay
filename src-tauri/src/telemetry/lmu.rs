@@ -3228,6 +3228,7 @@ impl TelemetrySource for LmuTelemetrySource {
                     in_pits: entry.in_pits != 0,
                     in_garage: entry.in_garage != 0,
                     causing_yellow: standings_yellow_culprits.contains(&entry.vehicle_id),
+                    sector: entry.sector,
                     is_player: entry.is_player != 0,
                 })
                 .collect()
@@ -3340,6 +3341,7 @@ impl TelemetrySource for LmuTelemetrySource {
             cloud_coverage: Self::live_weather_icon(snapshot.cloud_coverage, snapshot.rain_percent),
             lap_number: snapshot.lap_number,
             player_sector: snapshot.player_sector,
+            yellow_sectors: snapshot.yellow_sectors,
             player_total_laps: snapshot.player_total_laps,
             player_lap_valid: current_player_lap_valid,
             player_in_pits: in_pits,
