@@ -3227,6 +3227,7 @@ impl TelemetrySource for LmuTelemetrySource {
                     total_laps: entry.total_laps,
                     in_pits: entry.in_pits != 0,
                     in_garage: entry.in_garage != 0,
+                    causing_yellow: standings_yellow_culprits.contains(&entry.vehicle_id),
                     is_player: entry.is_player != 0,
                 })
                 .collect()

@@ -59,6 +59,7 @@ export interface TrackMapVehicle {
   total_laps: number;
   in_pits: boolean;
   in_garage: boolean;
+  causing_yellow: boolean;
   is_player: boolean;
 }
 

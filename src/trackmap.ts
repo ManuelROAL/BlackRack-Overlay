@@ -53,6 +53,7 @@ interface MarkerView {
   color: string;
   labelValue: string;
   inPits: boolean;
+  causingYellow: boolean;
   isRaceLeader: boolean;
 }
 
@@ -424,6 +425,7 @@ const createMarker = (vehicle: TrackMapVehicle): MarkerView => {
     color: "",
     labelValue: "",
     inPits: false,
+    causingYellow: false,
     isRaceLeader: false
   };
   markers.set(vehicle.vehicle_id, marker);
@@ -465,10 +467,14 @@ const renderVehicles = (vehicles: TrackMapVehicle[], trackLength: number): void 
       marker.inPits = vehicle.in_pits;
       marker.root.classList.toggle("is-pit", vehicle.in_pits);
     }
+    if (marker.causingYellow !== vehicle.causing_yellow) {
+      marker.causingYellow = vehicle.causing_yellow;
+      marker.root.classList.toggle("is-causing-yellow", vehicle.causing_yellow);
+    }
     if (marker.halo) marker.halo.style.opacity = playerHaloOpacity;
     const [x, y] = markerPosition(vehicle, trackLength);
     setMarkerPosition(marker, x, y);
-    const color = classColor(vehicle.vehicle_class);
+    const color = vehicle.causing_yellow ? "#ffe34f" : classColor(vehicle.vehicle_class);
     if (marker.color !== color) {
       marker.color = color;
       marker.disc.style.backgroundColor = color;
@@ -551,6 +557,7 @@ if (import.meta.env.DEV && new URLSearchParams(window.location.search).has("prev
       total_laps: 8,
       in_pits: index === 12,
       in_garage: false,
+      causing_yellow: index === 4,
       is_player: index === 6
     };
   });

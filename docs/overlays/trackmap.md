@@ -70,8 +70,10 @@ TypeScript fetches static geometry, interpolates and renders it.
   lime halo advanced by telemetry events. It pulses in Smooth and Balanced and is
   static in Efficiency. Never replace its label with `P`.
 - Only the overall leader receives a static gold star. Keep the complete leader
-  marker above all others and distinct from the player's halo; class leaders have
-  no special mark.
+  marker above normal vehicles and distinct from the player's halo; class leaders
+  have no special mark.
+- A vehicle inferred by Rust as causing a yellow is painted yellow and stacked
+  above every other vehicle marker, including the overall leader when they overlap.
 
 ## Verification focus
 

@@ -538,6 +538,7 @@ pub struct TrackMapVehicle {
     total_laps: i32,
     in_pits: bool,
     in_garage: bool,
+    causing_yellow: bool,
     is_player: bool,
 }
 

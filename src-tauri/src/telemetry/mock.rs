@@ -292,6 +292,7 @@ impl TelemetrySource for MockTelemetrySource {
                             total_laps: 18,
                             in_pits: false,
                             in_garage: false,
+                            causing_yellow: index == 4,
                             is_player: index == 7,
                         }
                     })
