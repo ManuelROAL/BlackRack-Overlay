@@ -12,7 +12,7 @@ right for gains and left for losses, with its configured range clamped visually
 while the numeric value follows its independent symmetric `9.9999`-second cap.
 
 The presentation contains only a transparent horizontal timing rail and the
-signed delta, shown to four decimals and capped symmetrically at `-9.9999` and
+signed delta, shown to three decimals and capped symmetrically at `-9.9999` and
 `+9.9999`, centred immediately below it. The visible numeral height matches
 the eight-pixel coloured bar so the timing rail retains the primary visual
 weight. The coloured bar grows away from the centre without a marker or gap
