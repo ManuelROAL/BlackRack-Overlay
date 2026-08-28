@@ -29,13 +29,17 @@ import { formatClock as formatRealClock, formatNumber, formatTimeOfDay, t, type 
 
 let settings = readStandingsSettings();
 const STANDINGS_EMPTY_HEIGHT = 72;
+const FIXED_IMAGE_COLUMNS = new Set<StandingsColumnId>(["manufacturer", "badge"]);
+const expandableColumnsWidth = (): number => visibleStandingsColumns(settings)
+  .filter(({ id }) => !FIXED_IMAGE_COLUMNS.has(id))
+  .reduce((total, { width }) => total + width, 0);
 const standingsBaseWidth = (): number => Math.max(
   760,
   visibleStandingsColumns(settings).reduce((total, { width }) => total + width, 0) + 8
 );
 const updateOverlayFit = fitOverlay(
   { width: standingsBaseWidth(), height: STANDINGS_EMPTY_HEIGHT },
-  { widthTextRatio: 1, heightTextRatio: 0.15 }
+  { widthTextRatio: () => expandableColumnsWidth() / standingsBaseWidth(), heightTextRatio: 0.15 }
 );
 let fittedOverlayHeight = STANDINGS_EMPTY_HEIGHT;
 bindOverlayTransparency("standings");
@@ -45,27 +49,36 @@ let lastFrame: TelemetryFrame | null = null;
 
 const activeColumns = () => visibleStandingsColumns(settings);
 const expandedLength = (pixels: number): string =>
-  `calc(${pixels}px * var(--overlay-font-width-expansion, 1))`;
+  `calc(${pixels}px * var(--overlay-font-scale, 1))`;
+const columnsLength = (columns: ReadonlyArray<{ id: StandingsColumnId; width: number }>): string => {
+  const fixedWidth = columns
+    .filter(({ id }) => FIXED_IMAGE_COLUMNS.has(id))
+    .reduce((total, { width }) => total + width, 0);
+  const expandableWidth = columns
+    .filter(({ id }) => !FIXED_IMAGE_COLUMNS.has(id))
+    .reduce((total, { width }) => total + width, 0);
+  if (fixedWidth === 0) return expandedLength(expandableWidth);
+  if (expandableWidth === 0) return `${fixedWidth}px`;
+  return `calc(${fixedWidth}px + ${expandableWidth}px * var(--overlay-font-scale, 1))`;
+};
 
 const applyColumnLayout = (): void => {
   const columns = activeColumns();
   const shell = document.querySelector<HTMLElement>(".standings-shell");
   shell?.style.setProperty(
     "--standings-grid-columns",
-    columns.map(({ width }) => expandedLength(width)).join(" ")
+    columns.map(({ id, width }) => FIXED_IMAGE_COLUMNS.has(id) ? `${width}px` : expandedLength(width)).join(" ")
   );
-  const totalWidth = columns.reduce((total, { width }) => total + width, 0);
   const signalsVisible = columns.some(({ id }) => id === "signals");
   const signalsLast = columns.at(-1)?.id === "signals";
-  const signalsWidth = columns.find(({ id }) => id === "signals")?.width ?? 0;
-  const dataWidth = signalsLast ? totalWidth - signalsWidth : totalWidth;
+  const dataColumns = signalsLast ? columns.filter(({ id }) => id !== "signals") : columns;
   shell?.style.setProperty(
     "--standings-content-width",
-    `calc(${expandedLength(dataWidth)} + 8px)`
+    `calc(${columnsLength(dataColumns)} + 8px)`
   );
   shell?.style.setProperty(
     "--standings-row-background-width",
-    `calc(${expandedLength(dataWidth)} + ${signalsVisible && signalsLast ? 4 : 8}px)`
+    `calc(${columnsLength(dataColumns)} + ${signalsVisible && signalsLast ? 4 : 8}px)`
   );
 };
 

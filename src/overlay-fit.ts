@@ -6,7 +6,7 @@ interface OverlaySize {
 }
 
 interface OverlayFitOptions {
-  widthTextRatio?: number;
+  widthTextRatio?: number | (() => number);
   heightTextRatio?: number;
 }
 
@@ -24,9 +24,14 @@ export const fitOverlay = (
   const initialFontScale = Number.parseFloat(getComputedStyle(root).getPropertyValue("--overlay-font-scale"));
   let fontScale = Number.isFinite(initialFontScale) ? initialFontScale : 1;
 
-  const widthExpansion = (): number => fontScale > 1
-    ? 1 + (fontScale - 1) * (options.widthTextRatio ?? 0)
-    : 1;
+  const widthExpansion = (): number => {
+    const configuredRatio = typeof options.widthTextRatio === "function"
+      ? options.widthTextRatio()
+      : options.widthTextRatio;
+    return fontScale > 1
+      ? 1 + (fontScale - 1) * (configuredRatio ?? 0)
+      : 1;
+  };
   const heightExpansion = (): number => fontScale > 1
     ? 1 + (fontScale - 1) * (options.heightTextRatio ?? 0)
     : 1;

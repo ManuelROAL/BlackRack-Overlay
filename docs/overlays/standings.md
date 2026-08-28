@@ -166,8 +166,10 @@ duplicate selection or timing semantics.
 - Derive the design height from the currently visible header, class sections and
   rows, retaining only the shared 72 px empty-state minimum. Scale the complete
   table without clipping so the edit border follows the rendered content.
-- Expand configured column tracks together with the text-size design surface so
-  enlarged labels and values cannot overlap neighboring columns.
+- Expand text-bearing column tracks together with the text-size design surface so
+  enlarged labels and values cannot overlap neighboring columns. Keep the
+  manufacturer-logo and driver-badge tracks fixed because their images do not
+  scale with text size.
 - Keep GAP, INT, lap-time, NRG, damage and pit tracks at their compact measured
   minimums; retain a small internal gutter and let text scaling grow those tracks.
 - The entry-specific transparent `.overlay-shell` override must have greater

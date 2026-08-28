@@ -18,6 +18,7 @@ import { formatDriverName } from "./driver-name-format";
 import { formatClock as formatRealClock, formatNumber, formatTimeOfDay, t, type TranslationKey } from "./i18n";
 
 let relativeSettings = readRelativeSettings();
+const FIXED_IMAGE_COLUMNS = new Set<RelativeColumnId>(["country", "badge"]);
 const relativeBaseHeight = (): number => Math.max(
   220,
   48 + (relativeSettings.aheadRows + relativeSettings.behindRows + 1) * 23
@@ -26,10 +27,13 @@ const relativeBaseWidth = (): number => Math.max(
   344,
   visibleRelativeColumns(relativeSettings).reduce((total, { width }) => total + width, 0) + 32
 );
+const expandableColumnsWidth = (): number => visibleRelativeColumns(relativeSettings)
+  .filter(({ id }) => !FIXED_IMAGE_COLUMNS.has(id))
+  .reduce((total, { width }) => total + width, 0);
 const updateOverlayFit = fitOverlay({
   width: relativeBaseWidth(),
   height: relativeBaseHeight()
-}, { widthTextRatio: 1, heightTextRatio: 0.15 });
+}, { widthTextRatio: () => expandableColumnsWidth() / relativeBaseWidth(), heightTextRatio: 0.15 });
 bindOverlayTransparency("relative");
 const renderPerformance = createOverlayPerformanceTracker("relative");
 
@@ -37,27 +41,36 @@ let lastFrame: TelemetryFrame | null = null;
 
 const activeColumns = () => visibleRelativeColumns(relativeSettings);
 const expandedLength = (pixels: number): string =>
-  `calc(${pixels}px * var(--overlay-font-width-expansion, 1))`;
+  `calc(${pixels}px * var(--overlay-font-scale, 1))`;
+const columnsLength = (columns: ReadonlyArray<{ id: RelativeColumnId; width: number }>): string => {
+  const fixedWidth = columns
+    .filter(({ id }) => FIXED_IMAGE_COLUMNS.has(id))
+    .reduce((total, { width }) => total + width, 0);
+  const expandableWidth = columns
+    .filter(({ id }) => !FIXED_IMAGE_COLUMNS.has(id))
+    .reduce((total, { width }) => total + width, 0);
+  if (fixedWidth === 0) return expandedLength(expandableWidth);
+  if (expandableWidth === 0) return `${fixedWidth}px`;
+  return `calc(${fixedWidth}px + ${expandableWidth}px * var(--overlay-font-scale, 1))`;
+};
 
 const applyColumnLayout = (): void => {
   const columns = activeColumns();
   const shell = document.querySelector<HTMLElement>(".standings-shell");
   shell?.style.setProperty(
     "--standings-grid-columns",
-    columns.map(({ width }) => expandedLength(width)).join(" ")
+    columns.map(({ id, width }) => FIXED_IMAGE_COLUMNS.has(id) ? `${width}px` : expandedLength(width)).join(" ")
   );
-  const totalWidth = columns.reduce((total, { width }) => total + width, 0);
   const signalsVisible = columns.some(({ id }) => id === "signals");
   const signalsLast = columns.at(-1)?.id === "signals";
-  const signalsWidth = columns.find(({ id }) => id === "signals")?.width ?? 0;
-  const dataWidth = signalsLast ? totalWidth - signalsWidth : totalWidth;
+  const dataColumns = signalsLast ? columns.filter(({ id }) => id !== "signals") : columns;
   shell?.style.setProperty(
     "--standings-content-width",
-    `calc(${expandedLength(dataWidth)} + 8px)`
+    `calc(${columnsLength(dataColumns)} + 8px)`
   );
   shell?.style.setProperty(
     "--standings-row-background-width",
-    `calc(${expandedLength(dataWidth)} + ${signalsVisible && signalsLast ? 4 : 8}px)`
+    `calc(${columnsLength(dataColumns)} + ${signalsVisible && signalsLast ? 4 : 8}px)`
   );
 };
 
