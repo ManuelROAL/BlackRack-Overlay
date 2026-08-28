@@ -71,7 +71,7 @@ const render = (delta: DeltaViewModel): void => {
       card.style.setProperty("--delta-value-color", color);
     }
   }
-  setText(value, available ? `${delta.seconds >= 0 ? "+" : "−"}${Math.abs(delta.seconds).toFixed(3)}` : "---.---");
+  setText(value, available ? `${delta.seconds >= 0 ? "+" : "−"}${Math.abs(delta.seconds).toFixed(4)}` : "---.----");
   if (fill) {
     const ratio = available ? Math.min(1, Math.abs(delta.seconds) / settings.displayRange) : 0;
     const width = `${ratio * 50}%`;

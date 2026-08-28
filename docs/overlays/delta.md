@@ -9,10 +9,11 @@ through ice white at zero to red at +0.04 seconds, clamping beyond those stops.
 Independently, the bar is green when the driver is gaining time over the recent
 half-second window, red when losing time and white when stable. The bar grows
 right for gains and left for losses, with its configured range clamped visually
-while the numeric value remains unclamped.
+while the numeric value follows its independent symmetric `9.9999`-second cap.
 
 The presentation contains only a transparent horizontal timing rail and the
-signed delta centred immediately below it. The visible numeral height matches
+signed delta, shown to four decimals and capped symmetrically at `-9.9999` and
+`+9.9999`, centred immediately below it. The visible numeral height matches
 the eight-pixel coloured bar so the timing rail retains the primary visual
 weight. The coloured bar grows away from the centre without a marker or gap
 between the two halves. Mode, mini-sector and reference details remain

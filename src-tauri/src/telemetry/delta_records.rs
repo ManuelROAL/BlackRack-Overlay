@@ -13,6 +13,7 @@ const SECTOR_TARGET_METERS: f64 = 250.0;
 const MIN_SECTORS: usize = 12;
 const MAX_SECTORS: usize = 40;
 const DELTA_SMOOTHING_SECONDS: f64 = 0.10;
+const DELTA_DISPLAY_LIMIT_SECONDS: f64 = 9.9999;
 const DELTA_TREND_INTERVAL: Duration = Duration::from_millis(500);
 const MIN_SECTOR_DURATION_SECONDS: f64 = 5.0;
 const TIMING_RESULT_FREEZE: Duration = Duration::from_secs(3);
@@ -1364,6 +1365,7 @@ impl DeltaEngine {
         frame: &TelemetryFrame,
         mut model: DeltaViewModel,
     ) -> DeltaViewModel {
+        model.seconds = limit_delta_seconds(model.seconds);
         if !model.available || !model.current_lap_valid || !model.seconds.is_finite() {
             self.reset_delta_trend();
             return model;
@@ -1469,6 +1471,10 @@ fn average_timing_laps(history: &[TimingLapView]) -> f64 {
 fn timing_last_lap_valid(frame: &TelemetryFrame, history: &[TimingLapView]) -> bool {
     frame.last_lap_seconds <= 0.0
         || (frame.last_lap_valid && history.first().is_none_or(|lap| lap.valid))
+}
+
+fn limit_delta_seconds(seconds: f64) -> f64 {
+    seconds.clamp(-DELTA_DISPLAY_LIMIT_SECONDS, DELTA_DISPLAY_LIMIT_SECONDS)
 }
 
 fn round_delta_for_trend(seconds: f64) -> f64 {
@@ -1796,11 +1802,11 @@ mod tests {
 
     use super::{
         average_timing_laps, build_sectors, can_show_live_delta, classify_delta_trend,
-        handle_storage_command, initialize_database, interpolate, native_session_delta,
-        round_delta_for_trend, sector_count, sector_state, should_reset_delta_at_lap_start,
-        three_sector_times, CurrentLap, DeltaMode, DeltaTrend, Identity, LapTrace,
-        PersistentReferences, ReferenceSet, SectorBank, StorageCommand, TimingLapView,
-        TimingSectorReference, TracePoint, STORE_VERSION,
+        handle_storage_command, initialize_database, interpolate, limit_delta_seconds,
+        native_session_delta, round_delta_for_trend, sector_count, sector_state,
+        should_reset_delta_at_lap_start, three_sector_times, CurrentLap, DeltaMode, DeltaTrend,
+        Identity, LapTrace, PersistentReferences, ReferenceSet, SectorBank, StorageCommand,
+        TimingLapView, TimingSectorReference, TracePoint, STORE_VERSION,
     };
     use crate::telemetry::TelemetryFrame;
 
@@ -1897,6 +1903,13 @@ mod tests {
         assert_eq!(classify_delta_trend(0.01, 0.0), DeltaTrend::Improving);
         assert_eq!(classify_delta_trend(0.01, 0.01), DeltaTrend::Neutral);
         assert_eq!(classify_delta_trend(0.01, 0.02), DeltaTrend::Worsening);
+    }
+
+    #[test]
+    fn displayed_delta_stops_at_the_symmetric_limit() {
+        assert_eq!(limit_delta_seconds(10.5), 9.9999);
+        assert_eq!(limit_delta_seconds(-10.5), -9.9999);
+        assert_eq!(limit_delta_seconds(4.25), 4.25);
     }
 
     #[test]
