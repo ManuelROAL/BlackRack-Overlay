@@ -57,18 +57,17 @@ const pitLevel = (playerActive: boolean, autonomy: number): PitLevel => {
 const renderProfile = (
   resource: "energy" | "fuel",
   name: ProfileName,
+  current: number,
   consumption: number,
   plan: ResourceStrategy | null
 ): void => {
   const id = `${resource}-${name}`;
   text(`${id}-consumption`, plan ? format(consumption) : "--");
   text(`${id}-autonomy`, plan ? format(plan.autonomy) : "--");
-  const refuelBalance = plan
-    ? plan.total_additional > 0 ? plan.total_additional : -plan.end_remaining
+  const totalRequired = plan
+    ? Math.max(current, 0) + plan.total_additional - plan.end_remaining
     : null;
-  text(`${id}-required`, refuelBalance === null
-    ? "--"
-    : `${refuelBalance < 0 ? "−" : ""}${format(Math.abs(refuelBalance))}`);
+  text(`${id}-required`, totalRequired === null ? "--" : format(totalRequired));
 };
 
 const renderStatus = (frame: TelemetryFrame): void => {
@@ -158,9 +157,9 @@ const render = (frame: TelemetryFrame): void => {
   text("fuel-ratio-assigned", energyMode ? format(frame.fuel_ratio_assigned) : "--");
   text("fuel-ratio-average", energyMode ? format(frame.fuel_ratio_average) : "--");
   text("fuel-ratio-last", energyMode ? format(frame.fuel_ratio_last) : "--");
-  renderProfile("energy", "average", average, frame.fuel_strategies.average);
-  renderProfile("energy", "qualifying", qualifying, frame.fuel_strategies.qualifying);
-  renderProfile("energy", "last", last, frame.fuel_strategies.last);
+  renderProfile("energy", "average", current, average, frame.fuel_strategies.average);
+  renderProfile("energy", "qualifying", current, qualifying, frame.fuel_strategies.qualifying);
+  renderProfile("energy", "last", current, last, frame.fuel_strategies.last);
 
   const level = document.getElementById("resource-level");
   if (level) {
