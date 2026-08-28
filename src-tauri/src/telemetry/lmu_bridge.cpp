@@ -234,7 +234,7 @@ extern "C" int lmu_read_snapshot(LmuSnapshot* output) {
     // normaliza al mismo valor para que Rust pueda comparar ambos sin
     // depender del orden interno de mSectorFlag.
     for (int flag_index = 0; flag_index < 3; ++flag_index) {
-        if (scoring.scoringInfo.mSectorFlag[flag_index] > 0) {
+        if (scoring.scoringInfo.mSectorFlag[flag_index] == 1) {
             const int scoring_sector = (flag_index + 1) % 3;
             output->yellow_sectors |= 1u << scoring_sector;
         }

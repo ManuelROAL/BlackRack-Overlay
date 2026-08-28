@@ -77,7 +77,8 @@ TypeScript fetches static geometry, interpolates and renders it.
   Balanced and remains static in Efficiency like the player's halo.
 - Official yellow-sector flags paint the corresponding circuit segment yellow once
   Rust has observed and learned the two scoring-sector boundaries. The normal track
-  remains visible until aligned geometry and both boundaries are available.
+  remains visible until aligned geometry and both boundaries are available. Only
+  the SDK's exact local-yellow value (`mSectorFlag == 1`) activates a segment.
 
 ## Verification focus
 
