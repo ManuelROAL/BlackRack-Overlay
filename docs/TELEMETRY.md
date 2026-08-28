@@ -148,6 +148,8 @@ persisted.
   The raw ELO comes first from the authenticated RaceControl player profile and
   falls back to the authenticated registration in `event/overview` when present;
   roster profiles remain the source for rank, tier and visible progress.
+  Preserve a returned zero as raw evidence: RaceControl currently masks ELO as
+  zero in some practice contexts, while registered event overview may expose it.
   Enabling it requests the 10 Hz standings
   model even when Standings is hidden; it never records telemetry frames,
   performance samples or complete third-party responses. All sessions in one

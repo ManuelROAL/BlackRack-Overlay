@@ -2054,7 +2054,7 @@ impl LmuTelemetrySource {
                     ranks.badge = event_profile.badge.clone();
                 }
             }
-            if entry.is_player != 0 && ranks.driver_elo.is_finite() && ranks.driver_elo > 0.0 {
+            if entry.is_player != 0 && ranks.driver_elo.is_finite() && ranks.driver_elo >= 0.0 {
                 player_driver_elo = Some(ranks.driver_elo);
             }
             if let Some(score) = Self::driver_rank_score(&ranks.driver, ranks.driver_progress) {
@@ -2183,10 +2183,7 @@ impl LmuTelemetrySource {
             player_driver_elo = self.driver_ranks.authenticated_player_elo();
         }
         if player_driver_elo.is_none() {
-            let overview_elo = self.session_split.value().player_driver_elo;
-            if overview_elo.is_finite() && overview_elo > 0.0 {
-                player_driver_elo = Some(overview_elo);
-            }
+            player_driver_elo = self.session_split.value().player_driver_elo;
         }
 
         if log_driver_rank_sample {

@@ -20,7 +20,7 @@ pub(super) struct SessionSplit {
     pub count: u32,
     pub event_id: String,
     pub driver_rank_settings: DriverRankSettings,
-    pub player_driver_elo: f64,
+    pub player_driver_elo: Option<f64>,
     profiles: HashMap<String, EventDriverProfile>,
     profiles_checked: bool,
 }
@@ -228,7 +228,7 @@ fn fetch_direct_split(
     if direct.count > 0 {
         fallback.count = direct.count;
     }
-    if direct.player_driver_elo > 0.0 {
+    if direct.player_driver_elo.is_some() {
         fallback.player_driver_elo = direct.player_driver_elo;
     }
     fallback.event_id = event_id.to_owned();
@@ -330,7 +330,7 @@ fn parse_event_split(value: &Value, event_id: &str) -> SessionSplit {
         count,
         event_id: event_id.to_owned(),
         driver_rank_settings: parse_driver_rank_settings(overview),
-        player_driver_elo: parse_authenticated_driver_elo(overview).unwrap_or_default(),
+        player_driver_elo: parse_authenticated_driver_elo(overview),
         profiles: HashMap::new(),
         profiles_checked: false,
     }
@@ -848,7 +848,7 @@ mod tests {
 
         assert_eq!(
             parse_event_split(&response, "event-id").player_driver_elo,
-            1456.25
+            Some(1456.25)
         );
     }
 }

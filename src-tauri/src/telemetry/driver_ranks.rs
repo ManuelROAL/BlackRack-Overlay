@@ -314,7 +314,7 @@ fn fetch_driver_ranks(
                 let authenticated = collect_authenticated_profile(&profile);
                 authenticated_player_elo = authenticated
                     .values()
-                    .find_map(|ranks| (ranks.driver_elo > 0.0).then_some(ranks.driver_elo));
+                    .find_map(|ranks| (ranks.driver_elo >= 0.0).then_some(ranks.driver_elo));
                 profiles.extend(authenticated);
             }
         }
@@ -395,7 +395,7 @@ pub(super) fn rank_elo(value: &Value) -> Option<f64> {
     let elo = value
         .get("elo")
         .and_then(|value| value.as_f64().or_else(|| value.as_str()?.parse().ok()))?;
-    (elo.is_finite() && elo > 0.0).then_some(elo)
+    (elo.is_finite() && elo >= 0.0).then_some(elo)
 }
 
 pub(super) fn profile_badge(value: &Value) -> String {
@@ -718,5 +718,18 @@ mod tests {
         let profiles = collect_authenticated_profile(&response);
         assert_eq!(profiles["visible driver"].driver_elo, 1378.5);
         assert_eq!(profiles["account_name"].driver_elo, 1378.5);
+    }
+
+    #[test]
+    fn preserves_zero_elo_returned_by_racecontrol() {
+        let response = serde_json::json!({
+            "name": "Visible Driver",
+            "driverRank": { "rank": "Silver", "tier": 2, "progress": 0, "elo": 0 }
+        });
+
+        assert_eq!(
+            collect_authenticated_profile(&response)["visible driver"].driver_elo,
+            0.0
+        );
     }
 }
