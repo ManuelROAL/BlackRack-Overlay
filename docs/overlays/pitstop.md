@@ -25,7 +25,8 @@
 - Add the penalty row only when non-zero and expand the design height while it is
   visible so the total remains fully inside the panel at every saved scale.
 - Larger text expands row height without widening the panel; labels and values
-  retain their opposing alignment and minimum gap.
+  retain their opposing alignment and minimum gap. The reported design height is
+  measured from the rendered content instead of estimated from fixed ratios.
 - Keep the restrained lime edge accent on the left as the overlay's visual mark,
   matching the Trailing + Pedal treatment.
 - Follow the shared visual hierarchy without implying that displayed rows add up

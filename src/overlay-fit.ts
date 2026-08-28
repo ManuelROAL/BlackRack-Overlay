@@ -66,3 +66,27 @@ export const fitOverlay = (
   });
   return setSize;
 };
+
+/** Ajusta el alto de diseño al contenido real sin alterar el ancho elegido. */
+export const fitOverlayToContent = (
+  width: number,
+  content: HTMLElement
+): (() => void) => {
+  const body = document.body;
+  const resizeOverlay = fitOverlay({ width, height: 1 });
+  let measuredHeight = 0;
+
+  const synchronizeHeight = (): void => {
+    const bodyStyle = getComputedStyle(body);
+    const paddingBottom = Number.parseFloat(bodyStyle.paddingBottom) || 0;
+    const height = Math.ceil(content.offsetTop + content.offsetHeight + paddingBottom);
+    if (height === measuredHeight) return;
+    measuredHeight = height;
+    resizeOverlay({ width, height });
+  };
+
+  new ResizeObserver(synchronizeHeight).observe(content);
+  synchronizeHeight();
+  void document.fonts.ready.then(synchronizeHeight);
+  return synchronizeHeight;
+};

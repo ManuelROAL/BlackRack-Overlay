@@ -71,8 +71,9 @@ El panel consume el ciclo base de 50 Hz y no construye clasificaciones.
   y el acento lima vertical izquierdo compartido con los demás overlays compactos.
   Al cambiar entre 0, 3 o 5 vueltas, conserva la escala visual elegida. Un texto
   mayor añade solo la altura de línea necesaria, sin ensanchar el panel. La
-  superficie reserva la altura completa del historial configurado para que sus
-  filas nunca se recorten al empezar a recibir vueltas.
+  superficie mide el contenido renderizado y reserva la altura completa del
+  historial configurado para que no deje espacio sobrante ni recorte filas al
+  empezar a recibir vueltas.
 
 ## Invariantes
 
