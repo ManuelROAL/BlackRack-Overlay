@@ -2180,6 +2180,9 @@ impl LmuTelemetrySource {
         );
 
         if player_driver_elo.is_none() {
+            player_driver_elo = self.driver_ranks.authenticated_player_elo();
+        }
+        if player_driver_elo.is_none() {
             let overview_elo = self.session_split.value().player_driver_elo;
             if overview_elo.is_finite() && overview_elo > 0.0 {
                 player_driver_elo = Some(overview_elo);

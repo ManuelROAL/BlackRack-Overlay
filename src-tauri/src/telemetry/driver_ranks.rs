@@ -37,6 +37,7 @@ impl Default for DriverRanks {
 struct RankFetchResult {
     requested_names: Vec<String>,
     result: Result<HashMap<String, DriverRanks>, String>,
+    authenticated_player_elo: Option<f64>,
 }
 
 pub(super) struct DriverRankResolver {
@@ -49,6 +50,7 @@ pub(super) struct DriverRankResolver {
     logging_generation: Option<u64>,
     logged_refresh: Option<String>,
     logged_lookups: HashMap<String, String>,
+    authenticated_player_elo: Option<f64>,
 }
 
 impl DriverRankResolver {
@@ -63,6 +65,7 @@ impl DriverRankResolver {
             logging_generation: None,
             logged_refresh: None,
             logged_lookups: HashMap::new(),
+            authenticated_player_elo: None,
         }
     }
 
@@ -142,10 +145,14 @@ impl DriverRankResolver {
         self.receiver = Some(receiver);
         let requested_names = names.clone();
         thread::spawn(move || {
-            let result = fetch_driver_ranks(&requested_names);
+            let (result, authenticated_player_elo) = match fetch_driver_ranks(&requested_names) {
+                Ok((profiles, elo)) => (Ok(profiles), elo),
+                Err(error) => (Err(error), None),
+            };
             let _ = sender.send(RankFetchResult {
                 requested_names,
                 result,
+                authenticated_player_elo,
             });
         });
 
@@ -166,6 +173,10 @@ impl DriverRankResolver {
             return;
         };
         self.receiver = None;
+
+        if let Some(elo) = response.authenticated_player_elo {
+            self.authenticated_player_elo = Some(elo);
+        }
 
         match response.result {
             Ok(discovered) => {
@@ -256,9 +267,15 @@ impl DriverRankResolver {
         }
         ranks
     }
+
+    pub(super) fn authenticated_player_elo(&self) -> Option<f64> {
+        self.authenticated_player_elo
+    }
 }
 
-fn fetch_driver_ranks(driver_names: &[String]) -> Result<HashMap<String, DriverRanks>, String> {
+fn fetch_driver_ranks(
+    driver_names: &[String],
+) -> Result<(HashMap<String, DriverRanks>, Option<f64>), String> {
     let client = reqwest::blocking::Client::builder()
         .timeout(REQUEST_TIMEOUT)
         .build()
@@ -286,6 +303,7 @@ fn fetch_driver_ranks(driver_names: &[String]) -> Result<HashMap<String, DriverR
     // The roster endpoint can omit the continuous ELO even though the
     // authenticated profile still exposes it. Keep this enrichment optional so
     // a player-profile failure cannot discard a valid roster response.
+    let mut authenticated_player_elo = None;
     if let Ok(response) = client
         .get(RACECONTROL_PLAYER_URL)
         .header("Game-Authorization", format!("Bearer {access_token}"))
@@ -293,12 +311,16 @@ fn fetch_driver_ranks(driver_names: &[String]) -> Result<HashMap<String, DriverR
     {
         if response.status().is_success() {
             if let Ok(profile) = response.json::<Value>() {
-                profiles.extend(collect_authenticated_profile(&profile));
+                let authenticated = collect_authenticated_profile(&profile);
+                authenticated_player_elo = authenticated
+                    .values()
+                    .find_map(|ranks| (ranks.driver_elo > 0.0).then_some(ranks.driver_elo));
+                profiles.extend(authenticated);
             }
         }
     }
 
-    Ok(profiles)
+    Ok((profiles, authenticated_player_elo))
 }
 
 fn collect_authenticated_profile(value: &Value) -> HashMap<String, DriverRanks> {
@@ -542,6 +564,7 @@ mod tests {
                 .send(RankFetchResult {
                     requested_names: vec!["Test Driver".to_owned()],
                     result,
+                    authenticated_player_elo: None,
                 })
                 .unwrap();
             resolver.receiver = Some(receiver);
@@ -562,6 +585,7 @@ mod tests {
                     "test driver".to_owned(),
                     DriverRanks::default(),
                 )])),
+                authenticated_player_elo: Some(1378.5),
             })
             .unwrap();
         resolver.receiver = Some(receiver);
@@ -569,6 +593,7 @@ mod tests {
 
         assert!(resolver.queried_names.contains("test driver"));
         assert!(resolver.resolved_roster_names.contains("test driver"));
+        assert_eq!(resolver.authenticated_player_elo(), Some(1378.5));
     }
 
     #[test]
@@ -582,6 +607,7 @@ mod tests {
                     "resolved driver".to_owned(),
                     DriverRanks::default(),
                 )])),
+                authenticated_player_elo: None,
             })
             .unwrap();
         resolver.receiver = Some(receiver);
