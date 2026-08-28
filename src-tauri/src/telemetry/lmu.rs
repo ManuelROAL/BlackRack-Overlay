@@ -1653,6 +1653,26 @@ impl LmuTelemetrySource {
         positions
     }
 
+    fn class_positions_with_complete_preferred_order(
+        entries: &[StandingEntry],
+        preferred_overall_positions: &HashMap<i32, i32>,
+        fallback_class_positions: &HashMap<i32, i32>,
+    ) -> HashMap<i32, i32> {
+        let preferred_class_positions =
+            Self::scored_class_positions(entries, preferred_overall_positions);
+        entries
+            .iter()
+            .map(|entry| {
+                let position = preferred_class_positions
+                    .get(&entry.vehicle_id)
+                    .or_else(|| fallback_class_positions.get(&entry.vehicle_id))
+                    .copied()
+                    .unwrap_or(entry.position);
+                (entry.vehicle_id, position)
+            })
+            .collect()
+    }
+
     fn update_driver_rank_estimates(
         entries: &mut [StandingEntry],
         rank_scores: &HashMap<i32, f64>,
@@ -1929,7 +1949,7 @@ impl LmuTelemetrySource {
         let mut class_leaders = HashMap::<String, &LmuStandingEntry>::new();
         let mut previous_in_class = HashMap::<String, &LmuStandingEntry>::new();
         let mut driver_rank_scores = HashMap::<i32, f64>::new();
-        let mut driver_qualifying_positions = HashMap::<i32, i32>::new();
+        let mut driver_qualifying_overall_positions = HashMap::<i32, i32>::new();
         let mut scored_overall_positions = HashMap::<i32, i32>::new();
         let mut player_driver_elo = None;
         let player_entry = raw_entries
@@ -2065,7 +2085,7 @@ impl LmuTelemetrySource {
                 .map(|standing| standing.qualification)
                 .filter(|qualification| *qualification > 0)
             {
-                driver_qualifying_positions.insert(entry.vehicle_id, qualification);
+                driver_qualifying_overall_positions.insert(entry.vehicle_id, qualification);
             }
             let (relative_ahead_seconds, relative_behind_seconds) = player_entry
                 .map(|player| Self::relative_gaps_seconds(&player, entry))
@@ -2165,6 +2185,19 @@ impl LmuTelemetrySource {
                     .unwrap_or(entry.finish_status),
                 is_player: entry.is_player != 0,
             });
+        }
+
+        let driver_qualifying_positions = Self::class_positions_with_complete_preferred_order(
+            &entries,
+            &driver_qualifying_overall_positions,
+            &self.starting_positions,
+        );
+        for entry in &mut entries {
+            let starting_position = driver_qualifying_positions
+                .get(&entry.vehicle_id)
+                .copied()
+                .unwrap_or(entry.position);
+            entry.position_change = starting_position - entry.position;
         }
 
         let latest_scored_positions =
@@ -3899,6 +3932,60 @@ mod tests {
             &HashMap::from([(1, 1), (2, 3), (3, 2)]),
         );
         assert_eq!(complete, HashMap::from([(1, 1), (2, 3), (3, 2)]));
+    }
+
+    #[test]
+    fn qualifying_grid_converts_complete_overall_order_and_never_mixes_partial_rest() {
+        let entries = vec![
+            StandingEntry {
+                vehicle_id: 1,
+                vehicle_class: "HYPERCAR".to_owned(),
+                position: 1,
+                ..StandingEntry::default()
+            },
+            StandingEntry {
+                vehicle_id: 2,
+                vehicle_class: "HYPERCAR".to_owned(),
+                position: 2,
+                ..StandingEntry::default()
+            },
+            StandingEntry {
+                vehicle_id: 3,
+                vehicle_class: "LMP2".to_owned(),
+                position: 1,
+                ..StandingEntry::default()
+            },
+            StandingEntry {
+                vehicle_id: 4,
+                vehicle_class: "LMP2".to_owned(),
+                position: 2,
+                ..StandingEntry::default()
+            },
+            StandingEntry {
+                vehicle_id: 5,
+                vehicle_class: "LMP2".to_owned(),
+                position: 3,
+                ..StandingEntry::default()
+            },
+        ];
+        let fallback = HashMap::from([(1, 1), (2, 2), (3, 3), (4, 1), (5, 2)]);
+
+        let complete = LmuTelemetrySource::class_positions_with_complete_preferred_order(
+            &entries,
+            &HashMap::from([(1, 1), (2, 2), (3, 10), (4, 30), (5, 20)]),
+            &fallback,
+        );
+        assert_eq!(
+            complete,
+            HashMap::from([(1, 1), (2, 2), (3, 1), (4, 3), (5, 2)])
+        );
+
+        let partial = LmuTelemetrySource::class_positions_with_complete_preferred_order(
+            &entries,
+            &HashMap::from([(1, 1), (2, 2), (3, 10), (4, 30)]),
+            &fallback,
+        );
+        assert_eq!(partial, fallback);
     }
 
     #[test]

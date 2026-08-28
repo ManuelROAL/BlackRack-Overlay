@@ -79,8 +79,11 @@ duplicate selection or timing semantics.
   when identity also agrees.
 - Sample standings history at low frequency only for late-start initial roster
   size and previous valid AVG 5 samples. Its `totalLaps = 0` order is not the race
-  grid; derive class starting position from REST `qualification`. Never invent a
-  duration for history `lapTime = -1`.
+  grid; derive class starting position from REST `qualification` only when every
+  current car in that class has a positive value, converting the complete overall
+  order to class positions. Otherwise use the complete shared-memory starting
+  order for that class; never mix partial REST and shared-memory positions. Never
+  invent a duration for history `lapTime = -1`.
 - RaceControl supplies DR, progress, ELO when available, SR, nationality and badge.
   In qualifying/race, complete the one-per-roster refresh only after a successful
   non-empty result; failed, empty and partial results remain retryable. A driver
