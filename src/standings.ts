@@ -29,10 +29,14 @@ import { formatClock as formatRealClock, formatNumber, formatTimeOfDay, t, type 
 
 let settings = readStandingsSettings();
 const STANDINGS_EMPTY_HEIGHT = 72;
-const FIXED_IMAGE_COLUMNS = new Set<StandingsColumnId>(["manufacturer", "badge"]);
+const columnExpansionRatio = (id: StandingsColumnId): number => {
+  if (id === "manufacturer" || id === "badge") return 0;
+  if (id === "position") return 0.65;
+  if (id === "number") return 0.35;
+  return 1;
+};
 const expandableColumnsWidth = (): number => visibleStandingsColumns(settings)
-  .filter(({ id }) => !FIXED_IMAGE_COLUMNS.has(id))
-  .reduce((total, { width }) => total + width, 0);
+  .reduce((total, { id, width }) => total + width * columnExpansionRatio(id), 0);
 const standingsBaseWidth = (): number => Math.max(
   760,
   visibleStandingsColumns(settings).reduce((total, { width }) => total + width, 0) + 8
@@ -48,16 +52,20 @@ const renderPerformance = createOverlayPerformanceTracker("standings");
 let lastFrame: TelemetryFrame | null = null;
 
 const activeColumns = () => visibleStandingsColumns(settings);
-const expandedLength = (pixels: number): string =>
-  `calc(${pixels}px * var(--overlay-font-scale, 1))`;
+const columnLength = ({ id, width }: { id: StandingsColumnId; width: number }): string => {
+  const ratio = columnExpansionRatio(id);
+  if (ratio === 0) return `${width}px`;
+  if (ratio === 1) return `calc(${width}px * var(--overlay-font-scale, 1))`;
+  return `calc(${width * (1 - ratio)}px + ${width * ratio}px * var(--overlay-font-scale, 1))`;
+};
 const columnsLength = (columns: ReadonlyArray<{ id: StandingsColumnId; width: number }>): string => {
-  const fixedWidth = columns
-    .filter(({ id }) => FIXED_IMAGE_COLUMNS.has(id))
-    .reduce((total, { width }) => total + width, 0);
+  const fixedWidth = columns.reduce(
+    (total, { id, width }) => total + width * (1 - columnExpansionRatio(id)),
+    0
+  );
   const expandableWidth = columns
-    .filter(({ id }) => !FIXED_IMAGE_COLUMNS.has(id))
-    .reduce((total, { width }) => total + width, 0);
-  if (fixedWidth === 0) return expandedLength(expandableWidth);
+    .reduce((total, { id, width }) => total + width * columnExpansionRatio(id), 0);
+  if (fixedWidth === 0) return `calc(${expandableWidth}px * var(--overlay-font-scale, 1))`;
   if (expandableWidth === 0) return `${fixedWidth}px`;
   return `calc(${fixedWidth}px + ${expandableWidth}px * var(--overlay-font-scale, 1))`;
 };
@@ -67,7 +75,7 @@ const applyColumnLayout = (): void => {
   const shell = document.querySelector<HTMLElement>(".standings-shell");
   shell?.style.setProperty(
     "--standings-grid-columns",
-    columns.map(({ id, width }) => FIXED_IMAGE_COLUMNS.has(id) ? `${width}px` : expandedLength(width)).join(" ")
+    columns.map(columnLength).join(" ")
   );
   const signalsVisible = columns.some(({ id }) => id === "signals");
   const signalsLast = columns.at(-1)?.id === "signals";

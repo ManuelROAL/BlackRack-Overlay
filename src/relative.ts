@@ -18,7 +18,12 @@ import { formatDriverName } from "./driver-name-format";
 import { formatClock as formatRealClock, formatNumber, formatTimeOfDay, t, type TranslationKey } from "./i18n";
 
 let relativeSettings = readRelativeSettings();
-const FIXED_IMAGE_COLUMNS = new Set<RelativeColumnId>(["country", "badge"]);
+const columnExpansionRatio = (id: RelativeColumnId): number => {
+  if (id === "country" || id === "badge") return 0;
+  if (id === "position") return 0.65;
+  if (id === "number") return 0.35;
+  return 1;
+};
 const relativeBaseHeight = (): number => Math.max(
   220,
   48 + (relativeSettings.aheadRows + relativeSettings.behindRows + 1) * 23
@@ -28,8 +33,7 @@ const relativeBaseWidth = (): number => Math.max(
   visibleRelativeColumns(relativeSettings).reduce((total, { width }) => total + width, 0) + 32
 );
 const expandableColumnsWidth = (): number => visibleRelativeColumns(relativeSettings)
-  .filter(({ id }) => !FIXED_IMAGE_COLUMNS.has(id))
-  .reduce((total, { width }) => total + width, 0);
+  .reduce((total, { id, width }) => total + width * columnExpansionRatio(id), 0);
 const updateOverlayFit = fitOverlay({
   width: relativeBaseWidth(),
   height: relativeBaseHeight()
@@ -40,16 +44,20 @@ const renderPerformance = createOverlayPerformanceTracker("relative");
 let lastFrame: TelemetryFrame | null = null;
 
 const activeColumns = () => visibleRelativeColumns(relativeSettings);
-const expandedLength = (pixels: number): string =>
-  `calc(${pixels}px * var(--overlay-font-scale, 1))`;
+const columnLength = ({ id, width }: { id: RelativeColumnId; width: number }): string => {
+  const ratio = columnExpansionRatio(id);
+  if (ratio === 0) return `${width}px`;
+  if (ratio === 1) return `calc(${width}px * var(--overlay-font-scale, 1))`;
+  return `calc(${width * (1 - ratio)}px + ${width * ratio}px * var(--overlay-font-scale, 1))`;
+};
 const columnsLength = (columns: ReadonlyArray<{ id: RelativeColumnId; width: number }>): string => {
-  const fixedWidth = columns
-    .filter(({ id }) => FIXED_IMAGE_COLUMNS.has(id))
-    .reduce((total, { width }) => total + width, 0);
+  const fixedWidth = columns.reduce(
+    (total, { id, width }) => total + width * (1 - columnExpansionRatio(id)),
+    0
+  );
   const expandableWidth = columns
-    .filter(({ id }) => !FIXED_IMAGE_COLUMNS.has(id))
-    .reduce((total, { width }) => total + width, 0);
-  if (fixedWidth === 0) return expandedLength(expandableWidth);
+    .reduce((total, { id, width }) => total + width * columnExpansionRatio(id), 0);
+  if (fixedWidth === 0) return `calc(${expandableWidth}px * var(--overlay-font-scale, 1))`;
   if (expandableWidth === 0) return `${fixedWidth}px`;
   return `calc(${fixedWidth}px + ${expandableWidth}px * var(--overlay-font-scale, 1))`;
 };
@@ -59,7 +67,7 @@ const applyColumnLayout = (): void => {
   const shell = document.querySelector<HTMLElement>(".standings-shell");
   shell?.style.setProperty(
     "--standings-grid-columns",
-    columns.map(({ id, width }) => FIXED_IMAGE_COLUMNS.has(id) ? `${width}px` : expandedLength(width)).join(" ")
+    columns.map(columnLength).join(" ")
   );
   const signalsVisible = columns.some(({ id }) => id === "signals");
   const signalsLast = columns.at(-1)?.id === "signals";
