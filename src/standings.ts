@@ -55,8 +55,8 @@ const activeColumns = () => visibleStandingsColumns(settings);
 const columnLength = ({ id, width }: { id: StandingsColumnId; width: number }): string => {
   const ratio = columnExpansionRatio(id);
   if (ratio === 0) return `${width}px`;
-  if (ratio === 1) return `calc(${width}px * var(--overlay-font-scale, 1))`;
-  return `calc(${width * (1 - ratio)}px + ${width * ratio}px * var(--overlay-font-scale, 1))`;
+  if (ratio === 1) return `calc(${width}px * var(--overlay-font-track-expansion, 1))`;
+  return `calc(${width * (1 - ratio)}px + ${width * ratio}px * var(--overlay-font-track-expansion, 1))`;
 };
 const columnsLength = (columns: ReadonlyArray<{ id: StandingsColumnId; width: number }>): string => {
   const fixedWidth = columns.reduce(
@@ -65,9 +65,9 @@ const columnsLength = (columns: ReadonlyArray<{ id: StandingsColumnId; width: nu
   );
   const expandableWidth = columns
     .reduce((total, { id, width }) => total + width * columnExpansionRatio(id), 0);
-  if (fixedWidth === 0) return `calc(${expandableWidth}px * var(--overlay-font-scale, 1))`;
+  if (fixedWidth === 0) return `calc(${expandableWidth}px * var(--overlay-font-track-expansion, 1))`;
   if (expandableWidth === 0) return `${fixedWidth}px`;
-  return `calc(${fixedWidth}px + ${expandableWidth}px * var(--overlay-font-scale, 1))`;
+  return `calc(${fixedWidth}px + ${expandableWidth}px * var(--overlay-font-track-expansion, 1))`;
 };
 
 const applyColumnLayout = (): void => {

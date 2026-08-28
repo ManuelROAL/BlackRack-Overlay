@@ -54,6 +54,7 @@ export const fitOverlay = (
       width: Math.round(size.width * widthExpansion()),
       height: Math.round(size.height * heightExpansion())
     };
+    root.style.setProperty("--overlay-font-track-expansion", Math.max(fontScale, 1).toString());
     root.style.setProperty("--overlay-font-width-expansion", widthExpansion().toString());
     root.style.setProperty("--overlay-font-height-expansion", heightExpansion().toString());
     root.style.setProperty("--overlay-base-width", `${effectiveSize.width}px`);

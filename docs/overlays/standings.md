@@ -170,7 +170,8 @@ duplicate selection or timing semantics.
   enlarged labels and values cannot overlap neighboring columns. Keep the
   manufacturer-logo and driver-badge tracks fixed. Position/change and assigned
   number use limited expansion so large values remain separated without the full
-  text-column margin.
+  text-column margin. Text-bearing tracks retain their base width at 100% and
+  below so fixed-minimum contents such as DR/SR badges cannot overlap neighbors.
 - Keep GAP, INT, lap-time, NRG, damage and pit tracks at their compact measured
   minimums; retain a small internal gutter and let text scaling grow those tracks.
 - The entry-specific transparent `.overlay-shell` override must have greater

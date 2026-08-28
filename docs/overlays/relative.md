@@ -88,7 +88,8 @@ the prepared vehicle IDs and formats them; it must not repeat domain selection.
   enlarged labels and values cannot overlap neighboring columns. Keep the
   country-flag and driver-badge tracks fixed. Position/change and assigned number
   use limited expansion so large values remain separated without the full
-  text-column margin.
+  text-column margin. Text-bearing tracks retain their base width at 100% and
+  below so fixed-minimum contents such as DR/SR badges cannot overlap neighbors.
 - Cache DOM rows and update at the selected performance-profile cadence. Cycles
   coinciding with Standings reuse the same constructed roster.
 - Give the transparent `.overlay-shell` override greater specificity than the
