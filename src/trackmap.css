@@ -153,15 +153,25 @@
   border: 2.5px solid #f4fff6;
 }
 
-.player-halo {
+.marker-halo {
   position: absolute;
   top: -20px;
   left: -20px;
+  display: none;
   width: 40px;
   height: 40px;
   border: 4px solid #54ff79;
   border-radius: 50%;
   animation: none;
+}
+
+.vehicle-marker.is-player .marker-halo,
+.vehicle-marker.is-causing-yellow .marker-halo {
+  display: block;
+}
+
+.vehicle-marker.is-causing-yellow .marker-halo {
+  border-color: #ffe34f;
 }
 
 .vehicle-marker.is-pit {

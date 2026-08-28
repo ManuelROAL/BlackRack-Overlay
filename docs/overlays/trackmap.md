@@ -74,6 +74,8 @@ TypeScript fetches static geometry, interpolates and renders it.
   have no special mark.
 - A vehicle inferred by Rust as causing a yellow is painted yellow and stacked
   above every other vehicle marker, including the overall leader when they overlap.
+  It also receives a yellow halo driven by telemetry events, pulsing in Smooth and
+  Balanced and remaining static in Efficiency like the player's halo.
 
 ## Verification focus
 

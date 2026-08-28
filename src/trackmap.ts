@@ -391,6 +391,13 @@ const setMarkerPosition = (marker: MarkerView, x: number, y: number): void => {
   marker.root.style.transform = nextTransform;
 };
 
+const createMarkerHalo = (root: HTMLDivElement, before: HTMLDivElement | null = null): HTMLDivElement => {
+  const halo = document.createElement("div");
+  halo.classList.add("marker-halo");
+  root.insertBefore(halo, before);
+  return halo;
+};
+
 const createMarker = (vehicle: TrackMapVehicle): MarkerView => {
   const group = document.createElement("div");
   group.classList.add("vehicle-marker");
@@ -404,9 +411,7 @@ const createMarker = (vehicle: TrackMapVehicle): MarkerView => {
   let halo: HTMLDivElement | null = null;
   if (vehicle.is_player) {
     group.classList.add("is-player");
-    halo = document.createElement("div");
-    halo.classList.add("player-halo");
-    group.appendChild(halo);
+    halo = createMarkerHalo(group);
   }
   const disc = document.createElement("div");
   disc.classList.add("vehicle-disc");
@@ -438,7 +443,7 @@ const renderVehicles = (vehicles: TrackMapVehicle[], trackLength: number): void 
   const classCounts = new Map<string, number>();
   const pulseEnabled = latestPerformanceProfile !== "efficiency";
   const pulsePhase = pulseEnabled ? performance.now() % 900 / 900 * Math.PI * 2 : 0;
-  const playerHaloOpacity = pulseEnabled
+  const markerHaloOpacity = pulseEnabled
     ? (0.65 - Math.cos(pulsePhase) * 0.35).toFixed(2)
     : "0.45";
   [...vehicles].sort((a, b) => a.overall_position - b.overall_position).forEach((vehicle) => {
@@ -471,7 +476,12 @@ const renderVehicles = (vehicles: TrackMapVehicle[], trackLength: number): void 
       marker.causingYellow = vehicle.causing_yellow;
       marker.root.classList.toggle("is-causing-yellow", vehicle.causing_yellow);
     }
-    if (marker.halo) marker.halo.style.opacity = playerHaloOpacity;
+    if (vehicle.causing_yellow && !marker.halo) {
+      marker.halo = createMarkerHalo(marker.root, marker.disc);
+    }
+    if (marker.halo && (marker.isPlayer || vehicle.causing_yellow)) {
+      marker.halo.style.opacity = markerHaloOpacity;
+    }
     const [x, y] = markerPosition(vehicle, trackLength);
     setMarkerPosition(marker, x, y);
     const color = vehicle.causing_yellow ? "#ffe34f" : classColor(vehicle.vehicle_class);
