@@ -77,6 +77,8 @@ import {
   effectiveOverlayFontSize,
   effectiveOverlayTransparency,
   OVERLAY_FONT_SIZE_KEY,
+  OVERLAY_FONT_SIZE_MAX,
+  OVERLAY_FONT_SIZE_MIN,
   OVERLAY_FONT_SIZE_SCOPE_KEY,
   OVERLAY_TRANSPARENCY_KEY,
   OVERLAY_TRANSPARENCY_SCOPE_KEY,
@@ -881,8 +883,8 @@ for (const id of overlayIds) {
     fontSizeCaption.textContent = t("overlay.fontSize");
     const fontSizeRange = document.createElement("input");
     fontSizeRange.type = "range";
-    fontSizeRange.min = "75";
-    fontSizeRange.max = "150";
+    fontSizeRange.min = String(OVERLAY_FONT_SIZE_MIN);
+    fontSizeRange.max = String(OVERLAY_FONT_SIZE_MAX);
     fontSizeRange.step = "5";
     fontSizeRange.value = String(overlayFontSize[id]);
     fontSizeRange.setAttribute("aria-label", t("overlay.fontSizeAria", { overlay: overlayDisplayName(id) }));
@@ -919,7 +921,10 @@ for (const id of overlayIds) {
       syncBrowserSourcePreferences();
     });
     fontSizeRange.addEventListener("input", () => {
-      const fontSize = Math.max(75, Math.min(150, Number(fontSizeRange.value)));
+      const fontSize = Math.max(
+        OVERLAY_FONT_SIZE_MIN,
+        Math.min(OVERLAY_FONT_SIZE_MAX, Number(fontSizeRange.value))
+      );
       overlayFontSize[id] = fontSize;
       fontSizeOutput.textContent = `${fontSize}%`;
       localStorage.setItem(OVERLAY_FONT_SIZE_KEY, JSON.stringify(overlayFontSize));
@@ -965,7 +970,10 @@ fontSizeMode?.addEventListener("change", () => {
 globalFontSize?.addEventListener("input", () => {
   overlayFontSizeScope = {
     ...overlayFontSizeScope,
-    globalFontSize: Math.max(75, Math.min(150, Number(globalFontSize.value)))
+    globalFontSize: Math.max(
+      OVERLAY_FONT_SIZE_MIN,
+      Math.min(OVERLAY_FONT_SIZE_MAX, Number(globalFontSize.value))
+    )
   };
   persistFontSizeScope();
   renderFontSizeMode();
@@ -1084,7 +1092,8 @@ const parseOverlayConfiguration = (
     throw new Error(t("config.invalidGeneral"));
   }
   const fontSizeIsValid = (value: unknown): value is number =>
-    typeof value === "number" && Number.isFinite(value) && value >= 75 && value <= 150;
+    typeof value === "number" && Number.isFinite(value) &&
+    value >= OVERLAY_FONT_SIZE_MIN && value <= OVERLAY_FONT_SIZE_MAX;
   if (numericSchemaVersion >= 8 && !fontSizeIsValid(fontSizeScope?.globalFontSize)) {
     throw new Error(t("config.invalidGeneral"));
   }

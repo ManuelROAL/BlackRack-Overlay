@@ -8,7 +8,7 @@ import type { FlagWarning, TelemetryFrame } from "./telemetry-types";
 import { listenTelemetry } from "./runtime-events";
 import { formatNumber } from "./i18n";
 
-fitOverlay({ width: 360, height: 120 });
+fitOverlay({ width: 360, height: 120 }, { heightTextRatio: 0.15 });
 bindOverlayTransparency("flags");
 const renderPerformance = createOverlayPerformanceTracker("flags");
 

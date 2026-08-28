@@ -40,6 +40,8 @@
   FFB, speed and gear are independently selectable too.
 - Compact panel width when a complete block is hidden while preserving current
   visual scale. Mirror every option in OBS browser-source preferences.
+- Keep gear, speed and the FFB readout vertically separated throughout the
+  supported 75–200% text-size range without enlarging the compact dial surface.
 
 ## Performance invariants
 

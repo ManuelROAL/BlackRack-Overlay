@@ -87,7 +87,7 @@ telemetry semantics and file ownership live under `docs/overlays/`; use
   at the bottom of the control panel instead of leaving unused space below them.
 - General and per-overlay transparency and text-size modes remain independent.
   General mode must preserve saved individual values. Text size ranges from 75%
-  to 150%; increases may expand the design surface without scaling non-text
+  to 200%; increases may expand the design surface without scaling non-text
   elements, while composite layout preserves the user's visual scale. Expand
   column spacing and row height independently: columns retain a minimum margin,
   while vertical growth remains limited to the space required by larger lines.

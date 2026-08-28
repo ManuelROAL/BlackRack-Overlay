@@ -94,7 +94,7 @@
 }
 
 .dial-gear {
-  top: 25px;
+  top: calc(38px - 13px * var(--overlay-font-scale, 1));
   color: #f4f7f9;
   font-size: calc(31px * var(--overlay-font-scale, 1));
   font-weight: 900;
@@ -102,7 +102,7 @@
 }
 
 .dial-speed {
-  top: 59px;
+  top: calc(44px + 15px * var(--overlay-font-scale, 1));
   color: #aab8c8;
   font-size: calc(12px * var(--overlay-font-scale, 1));
   font-weight: 900;
@@ -180,7 +180,7 @@
 .ffb-readout {
   position: absolute;
   right: 5px;
-  bottom: 7px;
+  bottom: max(0px, calc(14px - 7px * var(--overlay-font-scale, 1)));
   left: 7px;
   display: flex;
   align-items: center;

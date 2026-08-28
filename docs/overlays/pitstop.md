@@ -27,6 +27,8 @@
 - Larger text expands row height without widening the panel; labels and values
   retain their opposing alignment and minimum gap. The reported design height is
   measured from the rendered content instead of estimated from fixed ratios.
+- The shared fixed footer height must be overridden so the total grows naturally
+  and remains unclipped throughout the supported 75–200% text-size range.
 - Keep the restrained lime edge accent on the left as the overlay's visual mark,
   matching the Trailing + Pedal treatment.
 - Follow the shared visual hierarchy without implying that displayed rows add up

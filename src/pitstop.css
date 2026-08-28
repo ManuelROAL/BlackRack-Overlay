@@ -65,6 +65,7 @@ body.pitstop-body {
 .pitstop-shell dd { margin: 0; color: #e7edf3; font-size: calc(14px * var(--overlay-font-scale, 1)); font-weight: 800; }
 
 .pitstop-shell footer {
+  height: auto;
   margin: 0 10px;
   padding: 4px 0 6px;
   border-top: 1px solid rgb(255 255 255 / 14%);

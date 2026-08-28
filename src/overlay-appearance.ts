@@ -31,6 +31,8 @@ export const OVERLAY_TRANSPARENCY_KEY = "blackrack-overlay.background-transparen
 export const OVERLAY_TRANSPARENCY_SCOPE_KEY = "blackrack-overlay.background-transparency-scope.v1";
 export const OVERLAY_FONT_SIZE_KEY = "blackrack-overlay.font-size.v1";
 export const OVERLAY_FONT_SIZE_SCOPE_KEY = "blackrack-overlay.font-size-scope.v1";
+export const OVERLAY_FONT_SIZE_MIN = 75;
+export const OVERLAY_FONT_SIZE_MAX = 200;
 
 export const DEFAULT_OVERLAY_TRANSPARENCY: OverlayTransparencySettings = {
   delta: 5,
@@ -60,7 +62,9 @@ const percentage = (value: unknown, fallback: number): number => {
 
 const fontSizePercentage = (value: unknown, fallback: number): number => {
   const numeric = Number(value);
-  return Number.isFinite(numeric) ? Math.max(75, Math.min(150, Math.round(numeric))) : fallback;
+  return Number.isFinite(numeric)
+    ? Math.max(OVERLAY_FONT_SIZE_MIN, Math.min(OVERLAY_FONT_SIZE_MAX, Math.round(numeric)))
+    : fallback;
 };
 
 export const readOverlayTransparencyScope = (): OverlayTransparencyScope => {

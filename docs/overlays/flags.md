@@ -14,6 +14,8 @@
 - Green contains no car information.
 - Yellow and blue show distance, class position and category. Yellow includes an
   ahead/behind arrow.
+- Larger text expands only the height needed to keep distance and car details
+  separated throughout the supported 75–200% range.
 - Blue uses the player's official flag state and nearest plausible faster/lapping
   car behind. Cars in pitlane, in the garage or already finished are excluded.
 
