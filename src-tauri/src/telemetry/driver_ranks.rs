@@ -5,6 +5,7 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 const RACECONTROL_PLAYERS_URL: &str = "https://raceos.gg/api/v1/players";
+const RACECONTROL_PLAYER_URL: &str = "https://raceos.gg/api/v1/player";
 const RETRY_INTERVAL: Duration = Duration::from_secs(10);
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(5);
 
@@ -280,7 +281,41 @@ fn fetch_driver_ranks(driver_names: &[String]) -> Result<HashMap<String, DriverR
     let profiles_json = profiles_response
         .json::<Value>()
         .map_err(|_| "racecontrol_players_invalid_json".to_owned())?;
-    collect_profiles(&profiles_json)
+    let mut profiles = collect_profiles(&profiles_json)?;
+
+    // The roster endpoint can omit the continuous ELO even though the
+    // authenticated profile still exposes it. Keep this enrichment optional so
+    // a player-profile failure cannot discard a valid roster response.
+    if let Ok(response) = client
+        .get(RACECONTROL_PLAYER_URL)
+        .header("Game-Authorization", format!("Bearer {access_token}"))
+        .send()
+    {
+        if response.status().is_success() {
+            if let Ok(profile) = response.json::<Value>() {
+                profiles.extend(collect_authenticated_profile(&profile));
+            }
+        }
+    }
+
+    Ok(profiles)
+}
+
+fn collect_authenticated_profile(value: &Value) -> HashMap<String, DriverRanks> {
+    let profile = value
+        .get("player")
+        .or_else(|| value.get("data"))
+        .unwrap_or(value);
+    let Some(ranks) = parse_profile(profile) else {
+        return HashMap::new();
+    };
+    ["name", "username"]
+        .into_iter()
+        .filter_map(|key| profile.get(key).and_then(Value::as_str))
+        .map(str::trim)
+        .filter(|name| !name.is_empty())
+        .map(|name| (normalized_name(name), ranks.clone()))
+        .collect()
 }
 
 fn collect_profiles(value: &Value) -> Result<HashMap<String, DriverRanks>, String> {
@@ -298,39 +333,43 @@ fn collect_profiles(value: &Value) -> Result<HashMap<String, DriverRanks>, Strin
         else {
             continue;
         };
-        let driver = profile.get("driverRank").and_then(rank_code);
-        let driver_progress = profile
-            .get("driverRank")
-            .and_then(rank_progress)
-            .unwrap_or(-1.0);
-        let driver_elo = profile.get("driverRank").and_then(rank_elo).unwrap_or(-1.0);
-        let safety = profile.get("safetyRank").and_then(rank_code);
-        let safety_progress = profile
-            .get("safetyRank")
-            .and_then(rank_progress)
-            .unwrap_or(-1.0);
-        let nationality = profile_nationality(profile);
-        let badge = profile_badge(profile);
-        if driver.is_none() && safety.is_none() && nationality.is_empty() && badge.is_empty() {
+        let Some(profile_ranks) = parse_profile(profile) else {
             continue;
-        }
-        ranks.insert(
-            normalized_name(username),
-            DriverRanks {
-                driver: driver.unwrap_or_default(),
-                driver_progress,
-                driver_elo,
-                safety: safety.unwrap_or_default(),
-                safety_progress,
-                nationality,
-                badge,
-            },
-        );
+        };
+        ranks.insert(normalized_name(username), profile_ranks);
     }
     Ok(ranks)
 }
 
-fn rank_elo(value: &Value) -> Option<f64> {
+fn parse_profile(profile: &Value) -> Option<DriverRanks> {
+    let driver = profile.get("driverRank").and_then(rank_code);
+    let driver_progress = profile
+        .get("driverRank")
+        .and_then(rank_progress)
+        .unwrap_or(-1.0);
+    let driver_elo = profile.get("driverRank").and_then(rank_elo).unwrap_or(-1.0);
+    let safety = profile.get("safetyRank").and_then(rank_code);
+    let safety_progress = profile
+        .get("safetyRank")
+        .and_then(rank_progress)
+        .unwrap_or(-1.0);
+    let nationality = profile_nationality(profile);
+    let badge = profile_badge(profile);
+    if driver.is_none() && safety.is_none() && nationality.is_empty() && badge.is_empty() {
+        return None;
+    }
+    Some(DriverRanks {
+        driver: driver.unwrap_or_default(),
+        driver_progress,
+        driver_elo,
+        safety: safety.unwrap_or_default(),
+        safety_progress,
+        nationality,
+        badge,
+    })
+}
+
+pub(super) fn rank_elo(value: &Value) -> Option<f64> {
     let elo = value
         .get("elo")
         .and_then(|value| value.as_f64().or_else(|| value.as_str()?.parse().ok()))?;
@@ -461,7 +500,10 @@ fn rank_code(value: &Value) -> Option<String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{collect_profiles, DriverRankResolver, DriverRanks, RankFetchResult};
+    use super::{
+        collect_authenticated_profile, collect_profiles, DriverRankResolver, DriverRanks,
+        RankFetchResult,
+    };
     use std::collections::HashMap;
     use std::sync::mpsc;
 
@@ -637,5 +679,18 @@ mod tests {
             collect_profiles(&response).unwrap()["trusted driver"].badge,
             "sr-saint"
         );
+    }
+
+    #[test]
+    fn maps_authenticated_profile_elo_by_name_and_username() {
+        let response = serde_json::json!({
+            "name": "Visible Driver",
+            "username": "account_name",
+            "driverRank": { "rank": "Silver", "tier": 2, "progress": 14, "elo": "1378.5" }
+        });
+
+        let profiles = collect_authenticated_profile(&response);
+        assert_eq!(profiles["visible driver"].driver_elo, 1378.5);
+        assert_eq!(profiles["account_name"].driver_elo, 1378.5);
     }
 }

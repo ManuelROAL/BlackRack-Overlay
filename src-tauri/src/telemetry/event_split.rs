@@ -20,6 +20,7 @@ pub(super) struct SessionSplit {
     pub count: u32,
     pub event_id: String,
     pub driver_rank_settings: DriverRankSettings,
+    pub player_driver_elo: f64,
     profiles: HashMap<String, EventDriverProfile>,
     profiles_checked: bool,
 }
@@ -227,6 +228,9 @@ fn fetch_direct_split(
     if direct.count > 0 {
         fallback.count = direct.count;
     }
+    if direct.player_driver_elo > 0.0 {
+        fallback.player_driver_elo = direct.player_driver_elo;
+    }
     fallback.event_id = event_id.to_owned();
     fallback.profiles = parse_event_profiles(&json);
     fallback.profiles_checked = true;
@@ -326,9 +330,19 @@ fn parse_event_split(value: &Value, event_id: &str) -> SessionSplit {
         count,
         event_id: event_id.to_owned(),
         driver_rank_settings: parse_driver_rank_settings(overview),
+        player_driver_elo: parse_authenticated_driver_elo(overview).unwrap_or_default(),
         profiles: HashMap::new(),
         profiles_checked: false,
     }
+}
+
+fn parse_authenticated_driver_elo(overview: &Value) -> Option<f64> {
+    let split = object_value_from_value(overview, "split")?;
+    let drivers = object_value_from_value(split, "drivers")?.as_array()?;
+    drivers.iter().find_map(|registration| {
+        let driver = object_value_from_value(registration, "driver").unwrap_or(registration);
+        object_value_from_value(driver, "driverRank").and_then(super::driver_ranks::rank_elo)
+    })
 }
 
 fn find_event_overview<'a>(value: &'a Value, event_id: &str) -> Option<&'a Value> {
@@ -812,6 +826,29 @@ mod tests {
                 distance: 360.0,
                 logarithm: 8.0,
             }
+        );
+    }
+
+    #[test]
+    fn parses_authenticated_driver_elo_from_event_overview() {
+        let response = serde_json::json!({
+            "id": "event-id",
+            "split": {
+                "splitNo": 2,
+                "drivers": [{
+                    "driver": {
+                        "username": "player",
+                        "driverRank": { "elo": 1456.25, "rank": "Silver", "tier": 1 }
+                    }
+                }]
+            },
+            "totalSplits": 5,
+            "sof": { "elo": 1800 }
+        });
+
+        assert_eq!(
+            parse_event_split(&response, "event-id").player_driver_elo,
+            1456.25
         );
     }
 }

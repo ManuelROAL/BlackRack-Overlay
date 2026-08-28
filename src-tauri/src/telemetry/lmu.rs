@@ -2179,6 +2179,13 @@ impl LmuTelemetrySource {
             self.session_split.value().driver_rank_settings,
         );
 
+        if player_driver_elo.is_none() {
+            let overview_elo = self.session_split.value().player_driver_elo;
+            if overview_elo.is_finite() && overview_elo > 0.0 {
+                player_driver_elo = Some(overview_elo);
+            }
+        }
+
         if log_driver_rank_sample {
             let split = self.session_split.value();
             if let Some(sample) = driver_rank_diagnostic {

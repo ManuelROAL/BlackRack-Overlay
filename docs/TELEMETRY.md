@@ -145,6 +145,9 @@ persisted.
   raw continuous ELO so rank promotion resets cannot be mistaken for exact gains.
   Values are compared at the precision useful for diagnosis, so floating-point
   noise and unchanged periodic samples are omitted.
+  The raw ELO comes first from the authenticated RaceControl player profile and
+  falls back to the authenticated registration in `event/overview` when present;
+  roster profiles remain the source for rank, tier and visible progress.
   Enabling it requests the 10 Hz standings
   model even when Standings is hidden; it never records telemetry frames,
   performance samples or complete third-party responses. All sessions in one
