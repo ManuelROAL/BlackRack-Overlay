@@ -199,6 +199,11 @@ impl TelemetrySource for MockTelemetrySource {
             track_limits_steps_per_penalty: 17,
             tc_active: throttle > 0.72 && (elapsed * 7.0).sin() > 0.35,
             abs_active: brake > 0.35 && (elapsed * 9.0).sin() > 0.2,
+            lift_and_coast_progress: if (elapsed % 12.0) < 5.0 {
+                5 - (elapsed % 6.0).floor() as u8
+            } else {
+                0
+            },
             steering_angle_degrees: (elapsed * 1.35).sin() * 230.0,
             force_feedback: (elapsed * 4.2).sin() * 0.82,
             fuel_liters,

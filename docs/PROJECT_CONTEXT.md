@@ -25,6 +25,7 @@ on their runtime or source code.
 - Safe rejoin and pit-exit warning.
 - Optional localhost browser source for OBS.
 - Configurable global shortcuts and click-through game mode.
+- Compact Lift & Coast lamps driven by LMU's official shared-memory progress.
 - Background transparency selectable as one general value or per overlay.
 - Text size selectable from 75% to 200% as one general value or per overlay.
 - All overlays share one host on a single selected monitor.
@@ -79,7 +80,7 @@ The hot telemetry source runs at 50 Hz. Full standings construction has been
 removed from every source cycle: it is requested at 10 Hz for Standings or a local
 browser-source client, and at 20 Hz while the more time-sensitive Relative window
 is visible.
-Delta, Timing, Trailing + Pedal, tyres, fuel and active flags consume
+Delta, Timing, Trailing + Pedal, Lift & Coast, tyres, fuel and active flags consume
 the 50 Hz raw snapshot. Delta also calculates and renders from that 50 Hz snapshot. Rejoin,
 Relative and detailed damage run at 20 Hz, while standings
 history/identity state is maintained at 10 Hz.

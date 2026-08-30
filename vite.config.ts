@@ -29,6 +29,7 @@ export default defineConfig({
         delta: "delta.html",
         timing: "timing.html",
         driving: "driving.html",
+        liftcoast: "liftcoast.html",
         tires: "tires.html",
         damage: "damage.html",
         standings: "standings.html",

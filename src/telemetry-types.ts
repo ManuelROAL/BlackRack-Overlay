@@ -171,6 +171,7 @@ export interface TelemetryFrame {
   track_limits_steps_per_penalty: number;
   tc_active: boolean;
   abs_active: boolean;
+  lift_and_coast_progress: number;
   steering_angle_degrees: number;
   force_feedback: number;
   fuel_liters: number;

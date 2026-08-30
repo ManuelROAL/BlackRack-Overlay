@@ -12,6 +12,7 @@ UI behavior, telemetry semantics, cadence and special invariants.
 | Relative | [relative.md](relative.md) | `relative.html` | `/relative` | 20 Hz |
 | Fuel / energy | [fuel.md](fuel.md) | `fuel.html` | `/fuel` | 50 Hz |
 | Trailing + Pedal | [driving.md](driving.md) | `driving.html` | `/driving` | 50 Hz input, 25 Hz canvas |
+| Lift & Coast | [liftcoast.md](liftcoast.md) | `liftcoast.html` | `/liftcoast` | 50 Hz |
 | Damage + Tyres | [tires.md](tires.md) | `tires.html` | `/tires` | 50 Hz |
 | Detailed Damage | [damage.md](damage.md) | `damage.html` | `/damage` | 20 Hz |
 | Pit-stop estimate | [pitstop.md](pitstop.md) | `pitstop.html` | `/pitstop` | 20 Hz |

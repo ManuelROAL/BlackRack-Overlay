@@ -17,6 +17,10 @@ Every optional source must tolerate missing or stale data. Losing REST or RaceOS
 may remove enrichment but must not stop overlays or shared-memory telemetry.
 Network and REST work runs outside `next_frame()`.
 
+Lift & Coast presentation consumes the official shared-memory
+`mLiftAndCoastProgress` byte directly. It must not reconstruct the cue from track
+position, pedal behavior or learned braking points.
+
 ## Scheduling and payloads
 
 The source snapshot runs at 50 Hz. Rust schedules each consumer according to its

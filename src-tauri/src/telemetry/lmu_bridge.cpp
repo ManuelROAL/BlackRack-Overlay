@@ -86,6 +86,7 @@ struct LmuSnapshot {
     uint32_t track_limits_steps_per_penalty;
     uint32_t tc_active;
     uint32_t abs_active;
+    uint32_t lift_and_coast_progress;
     double steering;
     double steering_range_degrees;
     double force_feedback;
@@ -453,6 +454,7 @@ extern "C" int lmu_read_snapshot(LmuSnapshot* output) {
     output->track_limits_steps = static_cast<uint32_t>(vehicle.mTrackLimitsSteps);
     output->tc_active = vehicle.mTCActive ? 1u : 0u;
     output->abs_active = vehicle.mABSActive ? 1u : 0u;
+    output->lift_and_coast_progress = static_cast<uint32_t>(vehicle.mLiftAndCoastProgress);
     // The cockpit wheel follows the physical controller input. Filtered steering
     // can include the vehicle steering ratio and over-rotate the overlay.
     output->steering = vehicle.mUnfilteredSteering;

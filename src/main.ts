@@ -248,7 +248,7 @@ if (localeSelect) {
 const CURRENT_CONFIGURATION_SCHEMA = 9;
 const CURRENT_CONFIGURATION_FORMAT = "blackrack-overlay-configuration";
 const LEGACY_CONFIGURATION_FORMAT = "lmu-overlay-configuration";
-const overlayIds: OverlayId[] = ["delta", "timing", "driving", "tires", "damage", "standings", "relative", "fuel", "pitstop", "flags", "rejoin", "trackmap", "forecast", "conditions"];
+const overlayIds: OverlayId[] = ["delta", "timing", "driving", "liftcoast", "tires", "damage", "standings", "relative", "fuel", "pitstop", "flags", "rejoin", "trackmap", "forecast", "conditions"];
 const storageKey = "blackrack-overlay.visible-windows.v1";
 
 const defaultVisibility = (): Record<OverlayId, boolean> => Object.fromEntries(

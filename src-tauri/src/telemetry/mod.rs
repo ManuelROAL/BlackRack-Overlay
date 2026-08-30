@@ -288,6 +288,7 @@ struct PerformanceMonitor {
     emitted_delta: u64,
     emitted_timing: u64,
     emitted_driving: u64,
+    emitted_liftcoast: u64,
     emitted_tires: u64,
     emitted_damage: u64,
     emitted_pitstop: u64,
@@ -323,6 +324,7 @@ impl PerformanceMonitor {
             emitted_delta: 0,
             emitted_timing: 0,
             emitted_driving: 0,
+            emitted_liftcoast: 0,
             emitted_tires: 0,
             emitted_damage: 0,
             emitted_pitstop: 0,
@@ -369,6 +371,7 @@ impl PerformanceMonitor {
                 "delta": self.emitted_delta,
                 "timing": self.emitted_timing,
                 "driving": self.emitted_driving,
+                "liftcoast": self.emitted_liftcoast,
                 "tires": self.emitted_tires,
                 "damage": self.emitted_damage,
                 "pitstop": self.emitted_pitstop,
@@ -600,6 +603,7 @@ pub struct TelemetryFrame {
     track_limits_steps_per_penalty: u32,
     tc_active: bool,
     abs_active: bool,
+    lift_and_coast_progress: u8,
     steering_angle_degrees: f64,
     force_feedback: f64,
     fuel_liters: f64,
@@ -828,6 +832,7 @@ impl TelemetryFrame {
             track_limits_steps_per_penalty: 0,
             tc_active: false,
             abs_active: false,
+            lift_and_coast_progress: 0,
             steering_angle_degrees: 0.0,
             force_feedback: 0.0,
             fuel_liters: 0.0,
@@ -1035,6 +1040,7 @@ pub fn spawn_source(app: AppHandle) {
             let emit_delta = driving_due && super::overlay_is_active(&app, "delta");
             let emit_timing = driving_due && super::overlay_is_active(&app, "timing");
             let emit_driving = driving_due && super::overlay_is_active(&app, "driving");
+            let emit_liftcoast = driving_due && super::overlay_is_active(&app, "liftcoast");
             let emit_tires = driving_due && super::overlay_is_active(&app, "tires");
             let emit_damage =
                 interval_due(&mut last_damage, now, tuning.secondary_overlay_interval)
@@ -1066,6 +1072,7 @@ pub fn spawn_source(app: AppHandle) {
                 ("delta", emit_delta),
                 ("timing", emit_timing),
                 ("driving", emit_driving),
+                ("liftcoast", emit_liftcoast),
                 ("tires", emit_tires),
                 ("damage", emit_damage),
                 ("pitstop", emit_pitstop),
@@ -1075,7 +1082,7 @@ pub fn spawn_source(app: AppHandle) {
                 ("forecast", emit_forecast),
                 ("conditions", emit_conditions),
             ];
-            let mut base_targets = [""; 11];
+            let mut base_targets = [""; 12];
             let mut base_target_count = 0;
             for (label, should_emit) in base_emissions {
                 if should_emit {
@@ -1087,6 +1094,7 @@ pub fn spawn_source(app: AppHandle) {
                 performance.emitted_delta += u64::from(emit_delta);
                 performance.emitted_timing += u64::from(emit_timing);
                 performance.emitted_driving += u64::from(emit_driving);
+                performance.emitted_liftcoast += u64::from(emit_liftcoast);
                 performance.emitted_tires += u64::from(emit_tires);
                 performance.emitted_damage += u64::from(emit_damage);
                 performance.emitted_pitstop += u64::from(emit_pitstop);
@@ -1205,6 +1213,7 @@ mod tests {
         frame.player_active = true;
         frame.lap_number = 7;
         frame.virtual_energy_raw = 0.625;
+        frame.lift_and_coast_progress = 4;
         logger.record(&frame);
 
         set_telemetry_logging(false).unwrap();
@@ -1225,6 +1234,7 @@ mod tests {
             .expect("el log debe contener una entrada de telemetría");
         assert_eq!(entry["frame"]["lap_number"], 7);
         assert_eq!(entry["frame"]["virtual_energy_raw"], 0.625);
+        assert_eq!(entry["frame"]["lift_and_coast_progress"], 4);
         assert!(entry["frame"].get("standings").is_none());
 
         let _ = fs::remove_dir_all(app_data);
