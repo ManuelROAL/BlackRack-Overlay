@@ -67,8 +67,9 @@ El panel consume el ciclo base de 50 Hz y no construye clasificaciones.
   del valor oficial no inicializado `-1` de LMU se descarta; en una vuelta
   cronometrada invalidada se conserva en su lugar el tiempo real del cruce y se
   presenta con el estado inválido.
-- El panel usa una superficie compacta de 250 px de ancho, separaciones reducidas
-  y el acento lima vertical izquierdo compartido con los demás overlays compactos.
+- El panel usa una superficie compacta de 250 px de ancho y el lenguaje visual
+  compartido: fondo oscuro degradado, contorno fino, filas de datos separadas,
+  acento lima vertical y jerarquía tipográfica que destaca el tiempo actual.
   Al cambiar entre 0, 3 o 5 vueltas, conserva la escala visual elegida. Un texto
   mayor añade solo la altura de línea necesaria, sin ensanchar el panel. La
   superficie mide el contenido renderizado y reserva la altura completa del
