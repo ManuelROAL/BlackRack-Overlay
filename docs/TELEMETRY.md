@@ -44,9 +44,10 @@ restore per-overlay native listeners or direct cross-realm object events.
 - Cache static vehicle identity but refresh it on driver swaps and clear
   session-scoped state at session boundaries.
 - In spectator mode, if LMU no longer exposes a locally controlled vehicle, use
-  the telemetry vehicle whose scoring entry is marked `mIsPlayer`. This follows
-  the player's team entry without confusing a manually viewed rival with the
-  strategy, lap and relative reference car.
+  the fresh `focus`/`hasFocus` identity from local REST standings and match its
+  normalized driver name to shared-memory scoring before selecting the telemetry
+  vehicle. Never equate REST `slotID` with shared-memory `mID` without that
+  identity match.
 - Shared-memory vehicle `mID` and REST `slotID` are different namespaces. Match
   cross-source vehicles by normalized driver identity; accept a numeric slot
   fallback only when identity agrees.

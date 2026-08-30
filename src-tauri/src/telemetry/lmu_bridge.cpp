@@ -194,7 +194,7 @@ extern "C" size_t lmu_snapshot_size() {
     return sizeof(LmuSnapshot);
 }
 
-extern "C" int lmu_read_snapshot(LmuSnapshot* output, uint32_t spectator_mode) {
+extern "C" int lmu_read_snapshot(LmuSnapshot* output, int32_t spectator_vehicle_id) {
     if (!output) {
         return -1;
     }
@@ -263,6 +263,38 @@ extern "C" int lmu_read_snapshot(LmuSnapshot* output, uint32_t spectator_mode) {
     std::fill_n(output->player_tire_remaining_by_wheel_percent, 4, -1.0);
     std::fill_n(output->player_tire_slip_ratio, 4, 0.0);
     std::fill_n(output->player_tire_sliding_fraction, 4, 0.0);
+
+    const unsigned long active_vehicles =
+        std::min<unsigned long>(telemetry.activeVehicles, MAX_VEHICLES);
+    const TelemInfoV01* selected_vehicle = nullptr;
+    if (telemetry.playerHasVehicle && telemetry.playerVehicleIdx < active_vehicles) {
+        selected_vehicle = &telemetry.telemInfo[telemetry.playerVehicleIdx];
+    } else if (spectator_vehicle_id >= 0) {
+        for (unsigned long index = 0; index < active_vehicles; ++index) {
+            if (telemetry.telemInfo[index].mID == spectator_vehicle_id) {
+                selected_vehicle = &telemetry.telemInfo[index];
+                break;
+            }
+        }
+    } else if (spectator_vehicle_id == -1) {
+        const VehicleScoringInfoV01* player_entry = nullptr;
+        for (int index = 0; index < vehicle_count; ++index) {
+            if (scoring.vehScoringInfo[index].mIsPlayer) {
+                player_entry = &scoring.vehScoringInfo[index];
+                break;
+            }
+        }
+        if (player_entry) {
+            for (unsigned long index = 0; index < active_vehicles; ++index) {
+                if (telemetry.telemInfo[index].mID == player_entry->mID) {
+                    selected_vehicle = &telemetry.telemInfo[index];
+                    break;
+                }
+            }
+        }
+    }
+    const long selected_vehicle_id = selected_vehicle ? selected_vehicle->mID : -1;
+
     for (int index = 0; index < vehicle_count; ++index) {
         const VehicleScoringInfoV01& source = scoring.vehScoringInfo[index];
         LmuStandingEntry& destination = output->standings[index];
@@ -270,7 +302,8 @@ extern "C" int lmu_read_snapshot(LmuSnapshot* output, uint32_t spectator_mode) {
         destination.position = static_cast<int32_t>(source.mPlace);
         destination.total_laps = static_cast<int32_t>(source.mTotalLaps);
         destination.laps_behind_leader = static_cast<int32_t>(source.mLapsBehindLeader);
-        destination.is_player = source.mIsPlayer ? 1u : 0u;
+        destination.is_player =
+            source.mIsPlayer || source.mID == selected_vehicle_id ? 1u : 0u;
         destination.in_pits = source.mInPits ? 1u : 0u;
         destination.in_garage = source.mInGarageStall ? 1u : 0u;
         destination.flag = static_cast<uint32_t>(source.mFlag);
@@ -321,7 +354,6 @@ extern "C" int lmu_read_snapshot(LmuSnapshot* output, uint32_t spectator_mode) {
         std::memcpy(destination.vehicle_filename, source.mVehFilename, sizeof(destination.vehicle_filename));
 
         const TelemInfoV01* vehicle_telemetry = nullptr;
-        const unsigned long active_vehicles = std::min<unsigned long>(telemetry.activeVehicles, MAX_VEHICLES);
         for (unsigned long telemetry_index = 0; telemetry_index < active_vehicles; ++telemetry_index) {
             if (telemetry.telemInfo[telemetry_index].mID == source.mID) {
                 vehicle_telemetry = &telemetry.telemInfo[telemetry_index];
@@ -347,7 +379,7 @@ extern "C" int lmu_read_snapshot(LmuSnapshot* output, uint32_t spectator_mode) {
             for (size_t i = 0; i < 4; ++i) {
                 destination.wheel_compounds[i] = vehicle_telemetry->mWheel[i].mCompoundType;
             }
-            if (source.mIsPlayer) {
+            if (destination.is_player) {
                 double remaining = 100.0;
                 for (size_t wheel_index = 0; wheel_index < 4; ++wheel_index) {
                     const TelemWheelV01& wheel = vehicle_telemetry->mWheel[wheel_index];
@@ -404,7 +436,7 @@ extern "C" int lmu_read_snapshot(LmuSnapshot* output, uint32_t spectator_mode) {
             destination.damage_percent = std::clamp(
                 (body_damage + detached_body_damage + detached_wheel_damage) * 100.0,
                 0.0, 100.0);
-            if (source.mIsPlayer) {
+            if (destination.is_player) {
                 output->player_damage_percent = destination.damage_percent;
                 output->player_part_detached =
                     vehicle_telemetry->mDetached || wheel_detached ? 1u : 0u;
@@ -417,7 +449,7 @@ extern "C" int lmu_read_snapshot(LmuSnapshot* output, uint32_t spectator_mode) {
                 : (source.mLastLapTime > 0.0 ? source.mLastLapTime : source.mBestLapTime);
             output->leader_time_into_lap = source.mTimeIntoLap;
         }
-        if (source.mIsPlayer) {
+        if (destination.is_player) {
             output->player_in_garage = source.mInGarageStall ? 1u : 0u;
             output->player_sector = static_cast<int32_t>(source.mSector);
             output->player_total_laps = static_cast<int32_t>(source.mTotalLaps);
@@ -432,29 +464,6 @@ extern "C" int lmu_read_snapshot(LmuSnapshot* output, uint32_t spectator_mode) {
         }
     }
 
-    const TelemInfoV01* selected_vehicle = nullptr;
-    if (telemetry.playerHasVehicle && telemetry.playerVehicleIdx < telemetry.activeVehicles &&
-        telemetry.playerVehicleIdx < 104) {
-        selected_vehicle = &telemetry.telemInfo[telemetry.playerVehicleIdx];
-    } else if (spectator_mode) {
-        const VehicleScoringInfoV01* player_entry = nullptr;
-        for (int index = 0; index < vehicle_count; ++index) {
-            if (scoring.vehScoringInfo[index].mIsPlayer) {
-                player_entry = &scoring.vehScoringInfo[index];
-                break;
-            }
-        }
-        if (player_entry) {
-            const unsigned long active_vehicles =
-                std::min<unsigned long>(telemetry.activeVehicles, MAX_VEHICLES);
-            for (unsigned long index = 0; index < active_vehicles; ++index) {
-                if (telemetry.telemInfo[index].mID == player_entry->mID) {
-                    selected_vehicle = &telemetry.telemInfo[index];
-                    break;
-                }
-            }
-        }
-    }
     if (!selected_vehicle) {
         return 1;
     }

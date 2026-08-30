@@ -22,6 +22,7 @@ const HISTORY_INTERVAL: Duration = Duration::from_secs(5);
 #[cfg(not(test))]
 const SUPPLEMENT_INTERVAL: Duration = Duration::from_secs(1);
 const STANDINGS_MAX_AGE: Duration = Duration::from_secs(1);
+const FOCUS_MAX_AGE: Duration = Duration::from_secs(3);
 const SUPPLEMENT_MAX_AGE: Duration = Duration::from_secs(3);
 const WEATHER_MAX_AGE: Duration = Duration::from_secs(5);
 #[cfg(not(test))]
@@ -37,6 +38,8 @@ pub(super) struct RestStanding {
     #[serde(rename = "slotID")]
     pub slot_id: i32,
     pub driver_name: String,
+    pub focus: bool,
+    pub has_focus: bool,
     pub car_class: String,
     pub car_number: String,
     pub position: i32,
@@ -651,6 +654,15 @@ impl LocalRestResolver {
         })
     }
 
+    pub(super) fn focused_standing(&self) -> Option<&RestStanding> {
+        if !is_fresh(self.standings_received_at, FOCUS_MAX_AGE) {
+            return None;
+        }
+        self.standings_by_name
+            .values()
+            .find(|standing| standing.focus || standing.has_focus)
+    }
+
     pub(super) fn pit_stop(&self) -> Option<&RestPitStopEstimate> {
         is_fresh(self.supplement_received_at, SUPPLEMENT_MAX_AGE).then_some(&self.pit_stop)
     }
@@ -736,7 +748,7 @@ fn is_fresh(received_at: Option<Instant>, maximum_age: Duration) -> bool {
     received_at.is_some_and(|received| received.elapsed() <= maximum_age)
 }
 
-fn normalized_name(name: &str) -> String {
+pub(super) fn normalized_name(name: &str) -> String {
     name.trim().to_lowercase()
 }
 
@@ -772,10 +784,12 @@ mod tests {
     #[test]
     fn parses_rest_standings_fields_used_by_the_overlay() {
         let value: RestStanding = serde_json::from_str(
-            r#"{"slotID":29,"driverName":"Test Driver","carClass":"LMP2_ELMS","carNumber":"29","position":4,"qualification":7,"serverScored":true,"finishStatus":"FSTAT_NONE","lapsBehindClassLeader":1,"timeBehindClassLeader":2.5,"lapsBehindNext":0,"timeBehindNext":1.2,"pitstops":2,"pitState":"REQUEST","pitting":true,"inGarageStall":false,"fuelFraction":0.5,"veFraction":0.75}"#,
+            r#"{"slotID":29,"driverName":"Test Driver","focus":true,"hasFocus":true,"carClass":"LMP2_ELMS","carNumber":"29","position":4,"qualification":7,"serverScored":true,"finishStatus":"FSTAT_NONE","lapsBehindClassLeader":1,"timeBehindClassLeader":2.5,"lapsBehindNext":0,"timeBehindNext":1.2,"pitstops":2,"pitState":"REQUEST","pitting":true,"inGarageStall":false,"fuelFraction":0.5,"veFraction":0.75}"#,
         )
         .unwrap();
         assert_eq!(value.slot_id, 29);
+        assert!(value.focus);
+        assert!(value.has_focus);
         assert_eq!(value.car_class, "LMP2_ELMS");
         assert_eq!(value.car_number, "29");
         assert_eq!(value.position, 4);

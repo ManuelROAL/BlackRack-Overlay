@@ -6,7 +6,7 @@ use super::consumption_profile::{ConsumptionProfiler, ProfileEstimate};
 use super::driver_ranks::DriverRankResolver;
 use super::event_split::{DriverRankSettings, SessionSplitResolver};
 use super::fuel_strategy::{calculate_resource_strategy, FuelStrategies, ResourceStrategyInput};
-use super::lmu_rest::{LocalRestResolver, RestVehicleDamage};
+use super::lmu_rest::{normalized_name, LocalRestResolver, RestVehicleDamage};
 use super::{StandingEntry, TelemetryFrame, TelemetrySource, TrackMapVehicle};
 
 const MAX_VEHICLES: usize = 104;
@@ -359,7 +359,7 @@ impl Default for LmuSnapshot {
 }
 
 extern "C" {
-    fn lmu_read_snapshot(snapshot: *mut LmuSnapshot, spectator_mode: u32) -> c_int;
+    fn lmu_read_snapshot(snapshot: *mut LmuSnapshot, spectator_vehicle_id: i32) -> c_int;
     #[cfg(test)]
     fn lmu_snapshot_size() -> usize;
 }
@@ -1023,6 +1023,19 @@ struct SourceStageSample {
 }
 
 impl LmuTelemetrySource {
+    fn spectator_vehicle_id(&self) -> Option<i32> {
+        let focused = self.local_rest.focused_standing()?;
+        let focused_name = normalized_name(&focused.driver_name);
+        let snapshot = self.last_valid_snapshot.as_ref()?;
+        let count = (snapshot.standings_count as usize).min(MAX_VEHICLES);
+        snapshot.standings[..count]
+            .iter()
+            .find(|entry| {
+                normalized_name(&Self::string_from_chars(&entry.driver_name)) == focused_name
+            })
+            .map(|entry| entry.vehicle_id)
+    }
+
     fn weather_session_key(session_type: i32) -> &'static str {
         if (0..=4).contains(&session_type) {
             "PRACTICE"
@@ -2897,7 +2910,12 @@ impl TelemetrySource for LmuTelemetrySource {
 
         let snapshot_started = Instant::now();
         let mut snapshot = LmuSnapshot::default();
-        let result = unsafe { lmu_read_snapshot(&mut snapshot, super::spectator_mode() as u32) };
+        let spectator_vehicle_id = if super::spectator_mode() {
+            self.spectator_vehicle_id().unwrap_or(-1)
+        } else {
+            -2
+        };
+        let result = unsafe { lmu_read_snapshot(&mut snapshot, spectator_vehicle_id) };
         let live_snapshot = result > 0 && snapshot.connected != 0;
         if live_snapshot {
             self.last_valid_snapshot = Some(snapshot);
@@ -3876,6 +3894,32 @@ mod tests {
         source.update_session(1);
         assert!(source.vehicle_identities.is_empty());
         assert!(source.scored_finish_positions.is_empty());
+    }
+
+    #[test]
+    fn spectator_resolves_rest_focus_by_driver_identity() {
+        let mut source = LmuTelemetrySource::new();
+        source.local_rest.seed_standings(vec![RestStanding {
+            slot_id: 99,
+            driver_name: "Ricardo Fernandez#9006".into(),
+            focus: true,
+            has_focus: true,
+            ..RestStanding::default()
+        }]);
+        let mut snapshot = LmuSnapshot {
+            standings_count: 2,
+            ..LmuSnapshot::default()
+        };
+        snapshot.standings[0].vehicle_id = 20;
+        set_chars(&mut snapshot.standings[0].driver_name, "Otro piloto");
+        snapshot.standings[1].vehicle_id = 21;
+        set_chars(
+            &mut snapshot.standings[1].driver_name,
+            "RICARDO FERNANDEZ#9006",
+        );
+        source.last_valid_snapshot = Some(snapshot);
+
+        assert_eq!(source.spectator_vehicle_id(), Some(21));
     }
 
     #[test]
