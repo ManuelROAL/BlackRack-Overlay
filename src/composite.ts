@@ -444,7 +444,7 @@ window.addEventListener("message", (event: MessageEvent<RuntimeMessage>) => {
       .find(([, frame]) => frame.contentWindow === event.source)?.[0];
     const size = event.data.payload as Partial<OverlayDesignSize> | undefined;
     if (!overlay || !size || !Number.isFinite(size.width) || !Number.isFinite(size.height)
-      || Number(size.width) <= 0 || Number(size.height) <= 0) return;
+      || Number(size.width) <= 1 || Number(size.height) <= 1) return;
     const nextSize = { width: Number(size.width), height: Number(size.height) };
     const previousSize = designSizes.get(overlay);
     designSizes.set(overlay, nextSize);

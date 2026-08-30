@@ -26,7 +26,9 @@
   visible so the total remains fully inside the panel at every saved scale.
 - Larger text expands row height without widening the panel; labels and values
   retain their opposing alignment and minimum gap. The reported design height is
-  measured from the rendered content instead of estimated from fixed ratios.
+  measured from the rendered content instead of estimated from fixed ratios. Its
+  first report uses the rendered height, so a provisional measurement cannot
+  overwrite the saved visual scale.
 - The shared fixed footer height must be overridden so the total grows naturally
   and remains unclipped throughout the supported 75–200% text-size range.
 - Keep the restrained lime edge accent on the left as the overlay's visual mark,

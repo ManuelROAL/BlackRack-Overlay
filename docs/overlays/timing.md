@@ -74,7 +74,8 @@ El panel consume el ciclo base de 50 Hz y no construye clasificaciones.
   mayor añade solo la altura de línea necesaria, sin ensanchar el panel. La
   superficie mide el contenido renderizado y reserva la altura completa del
   historial configurado para que no deje espacio sobrante ni recorte filas al
-  empezar a recibir vueltas.
+  empezar a recibir vueltas. La primera medida usa el contenido ya renderizado;
+  una altura provisional no puede modificar ni persistir la escala elegida.
 
 ## Invariantes
 

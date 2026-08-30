@@ -79,13 +79,17 @@ export const fitOverlayToContent = (
   content: HTMLElement
 ): (() => void) => {
   const body = document.body;
-  const resizeOverlay = fitOverlay({ width, height: 1 });
-  let measuredHeight = 0;
-
-  const synchronizeHeight = (): void => {
+  const measureHeight = (): number => {
     const bodyStyle = getComputedStyle(body);
     const paddingBottom = Number.parseFloat(bodyStyle.paddingBottom) || 0;
-    const height = Math.ceil(content.offsetTop + content.offsetHeight + paddingBottom);
+    return Math.ceil(content.offsetTop + content.offsetHeight + paddingBottom);
+  };
+  const initialHeight = Math.max(1, measureHeight());
+  const resizeOverlay = fitOverlay({ width, height: initialHeight });
+  let measuredHeight = initialHeight;
+
+  const synchronizeHeight = (): void => {
+    const height = measureHeight();
     if (height === measuredHeight) return;
     measuredHeight = height;
     resizeOverlay({ width, height });
