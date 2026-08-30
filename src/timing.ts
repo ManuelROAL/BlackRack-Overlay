@@ -25,6 +25,13 @@ const personalBest = document.getElementById("timing-personal-best");
 const average = document.getElementById("timing-average");
 const optimal = document.getElementById("timing-optimal");
 const estimated = document.getElementById("timing-estimated");
+const comparisonNodes = {
+  last_seconds: document.getElementById("timing-last-comparison"),
+  session_personal_best_seconds: document.getElementById("timing-session-best-comparison"),
+  personal_best_seconds: document.getElementById("timing-personal-best-comparison"),
+  average_seconds: document.getElementById("timing-average-comparison"),
+  optimal_seconds: document.getElementById("timing-optimal-comparison")
+} as const;
 const history = document.getElementById("timing-history");
 const sectorNodes = [...document.querySelectorAll<HTMLElement>("[data-sector]")];
 const resizeOverlay = card ? fitOverlayToContent(designWidth, card) : () => undefined;
@@ -50,6 +57,14 @@ const lapTime = (seconds: number): string => {
 };
 const sectorTime = (seconds: number): string =>
   Number.isFinite(seconds) && seconds > 0 ? seconds.toFixed(3) : "--.---";
+const renderComparison = (node: HTMLElement | null, seconds: number | null): void => {
+  const available = seconds !== null && Number.isFinite(seconds);
+  node?.toggleAttribute("hidden", !available);
+  if (!node || !available) return;
+  const rounded = Math.abs(seconds) < 0.0005 ? 0 : seconds;
+  node.dataset.trend = rounded < 0 ? "faster" : rounded > 2 ? "much-slower" : rounded > 0 ? "slower" : "equal";
+  setText(node, `${rounded > 0 ? "+" : ""}${rounded.toFixed(3)}`);
+};
 
 const render = (model: TimingViewModel): void => {
   card?.setAttribute("data-state", model.available ? "active" : "waiting");
@@ -65,6 +80,9 @@ const render = (model: TimingViewModel): void => {
   setText(average, lapTime(model.average_seconds));
   setText(optimal, lapTime(model.optimal_seconds));
   setText(estimated, lapTime(model.estimated_seconds));
+  for (const [key, node] of Object.entries(comparisonNodes)) {
+    renderComparison(node, model.comparisons[key as keyof typeof model.comparisons]);
+  }
   for (const [index, node] of sectorNodes.entries()) {
     const sector = model.sectors[index];
     node.dataset.state = sector?.state ?? "pending";

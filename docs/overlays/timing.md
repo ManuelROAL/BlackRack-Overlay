@@ -39,6 +39,13 @@ El panel consume el ciclo base de 50 Hz y no construye clasificaciones.
   combinación coche/circuito.
 - El promedio usa únicamente las vueltas válidas entre las cinco más recientes.
   La óptima suma los mejores sectores personales válidos aprendidos en la sesión.
+- Al completar una vuelta, el panel muestra durante 15 segundos comparativas
+  compactas: `ÚLTIMA` respecto a la vuelta inmediatamente anterior, los mejores
+  de sesión y personal respecto a sus referencias previas y, en vueltas válidas,
+  `PROMEDIO` respecto al promedio previo. Si mejora la óptima, esa fila compara el
+  nuevo valor con el sustituido. Como en doX, también se muestran vueltas más lentas:
+  un delta negativo es más rápido (verde), uno positivo hasta dos segundos es
+  ámbar y por encima es rojo. El tiempo principal permanece visible.
 - La cabecera muestra la vuelta actual y el total estimado (`actual/~total`) con
   la misma estimación de carrera usada por los demás overlays.
 - La estimación proyecta la vuelta actual sobre la mejor traza disponible, con

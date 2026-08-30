@@ -103,6 +103,13 @@ export interface DeltaViewModel {
 
 export interface TimingSectorView { seconds: number; state: "pending" | "neutral" | "personal" | "overall" | "invalid"; }
 export interface TimingLapView { number: number; seconds: number; valid: boolean; state: "normal" | "best" | "invalid"; }
+export interface TimingComparisons {
+  last_seconds: number | null;
+  session_personal_best_seconds: number | null;
+  personal_best_seconds: number | null;
+  average_seconds: number | null;
+  optimal_seconds: number | null;
+}
 export interface TimingViewModel {
   available: boolean;
   lap_number: number;
@@ -115,6 +122,7 @@ export interface TimingViewModel {
   average_seconds: number;
   optimal_seconds: number;
   estimated_seconds: number;
+  comparisons: TimingComparisons;
   active_sector: number;
   sectors: TimingSectorView[];
   history: TimingLapView[];

@@ -17,6 +17,7 @@ const DELTA_DISPLAY_LIMIT_SECONDS: f64 = 9.9999;
 const DELTA_TREND_INTERVAL: Duration = Duration::from_millis(500);
 const MIN_SECTOR_DURATION_SECONDS: f64 = 5.0;
 const TIMING_RESULT_FREEZE: Duration = Duration::from_secs(3);
+const TIMING_COMPARISON_FREEZE: Duration = Duration::from_secs(15);
 const STORE_VERSION: u32 = 1;
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, Eq)]
@@ -237,6 +238,15 @@ pub(crate) struct TimingLapView {
     state: &'static str,
 }
 
+#[derive(Clone, Debug, Default, Serialize)]
+pub(crate) struct TimingComparisons {
+    last_seconds: Option<f64>,
+    session_personal_best_seconds: Option<f64>,
+    personal_best_seconds: Option<f64>,
+    average_seconds: Option<f64>,
+    optimal_seconds: Option<f64>,
+}
+
 #[derive(Clone, Debug, Serialize)]
 pub(crate) struct TimingViewModel {
     available: bool,
@@ -250,6 +260,7 @@ pub(crate) struct TimingViewModel {
     average_seconds: f64,
     optimal_seconds: f64,
     estimated_seconds: f64,
+    comparisons: TimingComparisons,
     active_sector: usize,
     sectors: [TimingSectorView; 3],
     history: Vec<TimingLapView>,
@@ -269,6 +280,7 @@ impl Default for TimingViewModel {
             average_seconds: 0.0,
             optimal_seconds: 0.0,
             estimated_seconds: 0.0,
+            comparisons: TimingComparisons::default(),
             active_sector: 0,
             sectors: std::array::from_fn(|_| TimingSectorView::default()),
             history: Vec::new(),
@@ -790,11 +802,13 @@ pub(crate) struct DeltaEngine {
     last_lap_number: i32,
     generation: u64,
     timing_results_until: Option<Instant>,
+    timing_comparisons_until: Option<Instant>,
     timing_sectors: [Option<f64>; 3],
     timing_sector_states: [&'static str; 3],
     overall_timing_sectors: [Option<f64>; 3],
     session_timing_sectors: [Option<f64>; 3],
     timing_history: Vec<TimingLapView>,
+    timing_comparisons: TimingComparisons,
     smoothed_delta: f64,
     timing_smoothed_delta: f64,
     last_delta_update: Instant,
@@ -822,11 +836,13 @@ impl DeltaEngine {
             last_lap_number: -1,
             generation: 0,
             timing_results_until: None,
+            timing_comparisons_until: None,
             timing_sectors: [None; 3],
             timing_sector_states: ["pending"; 3],
             overall_timing_sectors: [None; 3],
             session_timing_sectors: [None; 3],
             timing_history: Vec::new(),
+            timing_comparisons: TimingComparisons::default(),
             smoothed_delta: 0.0,
             timing_smoothed_delta: 0.0,
             last_delta_update: Instant::now(),
@@ -888,8 +904,10 @@ impl DeltaEngine {
             self.last_timing_update = Instant::now();
             self.reset_delta_trend();
             self.timing_results_until = None;
+            self.timing_comparisons_until = None;
             self.timing_sectors = [None; 3];
             self.timing_sector_states = ["pending"; 3];
+            self.timing_comparisons = TimingComparisons::default();
         } else if self.current_lap.is_none() {
             self.current_lap = Some(CurrentLap::new(frame));
         }
@@ -966,10 +984,12 @@ impl DeltaEngine {
         self.pending_lap = None;
         self.stint = None;
         self.timing_results_until = None;
+        self.timing_comparisons_until = None;
         self.timing_sectors = [None; 3];
         self.timing_sector_states = ["pending"; 3];
         self.session_timing_sectors = [None; 3];
         self.timing_history.clear();
+        self.timing_comparisons = TimingComparisons::default();
         self.timing_smoothed_delta = 0.0;
         self.last_timing_update = Instant::now();
         self.smoothed_delta = 0.0;
@@ -1024,8 +1044,15 @@ impl DeltaEngine {
             return;
         };
 
+        let previous_last = self.timing_history.first().map(|lap| lap.seconds);
+        let previous_average = average_timing_laps(&self.timing_history);
+        let previous_session_best = self.session.best.as_ref().map(|lap| lap.lap_time);
+        let previous_personal_best = self.overall.best.as_ref().map(|lap| lap.lap_time);
+        let previous_optimal = self.session.optimal.total();
+        self.timing_comparisons = TimingComparisons::default();
         let coarse_sectors = three_sector_times(&completed.trace);
         self.timing_results_until = Some(Instant::now() + TIMING_RESULT_FREEZE);
+        self.timing_comparisons_until = Some(Instant::now() + TIMING_COMPARISON_FREEZE);
         if let Some(sectors) = coarse_sectors {
             let reference = active_sector_reference();
             let sector_ends = [
@@ -1096,6 +1123,19 @@ impl DeltaEngine {
         );
         self.timing_history.truncate(5);
 
+        self.timing_comparisons.last_seconds =
+            timing_comparison(completed.trace.lap_time, previous_last);
+        self.timing_comparisons.session_personal_best_seconds =
+            timing_comparison(completed.trace.lap_time, previous_session_best);
+        self.timing_comparisons.personal_best_seconds =
+            timing_comparison(completed.trace.lap_time, previous_personal_best);
+        if completed.eligible {
+            self.timing_comparisons.average_seconds = timing_comparison(
+                average_timing_laps(&self.timing_history),
+                (previous_average > 0.0).then_some(previous_average),
+            );
+        }
+
         if let Some(stint) = self.stint.as_mut() {
             stint.add(&completed);
         }
@@ -1137,6 +1177,8 @@ impl DeltaEngine {
             global_changed = true;
         }
         global_changed |= self.overall.optimal.update(&sectors);
+        self.timing_comparisons.optimal_seconds =
+            timing_improvement(self.session.optimal.total(), previous_optimal);
         self.generation = self.generation.wrapping_add(1);
         if global_changed {
             self.storage.send(StorageCommand::Save {
@@ -1158,6 +1200,13 @@ impl DeltaEngine {
             self.timing_results_until = None;
             self.timing_sectors = [None; 3];
             self.timing_sector_states = ["pending"; 3];
+        }
+        if self
+            .timing_comparisons_until
+            .is_some_and(|until| Instant::now() >= until)
+        {
+            self.timing_comparisons_until = None;
+            self.timing_comparisons = TimingComparisons::default();
         }
         // LMU/rFactor codifica 0=S3, 1=S1 y 2=S2.
         let active_sector = match frame.player_sector {
@@ -1215,6 +1264,7 @@ impl DeltaEngine {
             average_seconds: average_timing_laps(&self.timing_history),
             optimal_seconds: self.session.optimal.total().unwrap_or(0.0),
             estimated_seconds,
+            comparisons: self.timing_comparisons.clone(),
             active_sector,
             sectors: std::array::from_fn(|index| TimingSectorView {
                 seconds: self.timing_sectors[index].unwrap_or(0.0),
@@ -1482,6 +1532,20 @@ fn average_timing_laps(history: &[TimingLapView]) -> f64 {
         0.0
     } else {
         total / f64::from(count)
+    }
+}
+
+fn timing_comparison(current: f64, previous: Option<f64>) -> Option<f64> {
+    previous
+        .filter(|value| current.is_finite() && current > 0.0 && value.is_finite() && *value > 0.0)
+        .map(|value| current - value)
+        .filter(|delta| delta.abs() >= 0.000_5)
+}
+
+fn timing_improvement(current: Option<f64>, previous: Option<f64>) -> Option<f64> {
+    match (current, previous) {
+        (Some(current), Some(previous)) if current + 0.000_5 < previous => Some(current - previous),
+        _ => None,
     }
 }
 
@@ -1827,9 +1891,10 @@ mod tests {
         average_timing_laps, build_sectors, can_show_live_delta, classify_delta_trend,
         handle_storage_command, initialize_database, interpolate, limit_delta_seconds,
         native_session_delta, round_delta_for_trend, sector_count, sector_state,
-        should_reset_delta_at_lap_start, three_sector_times, CurrentLap, DeltaMode, DeltaTrend,
-        Identity, LapTrace, PersistentReferences, ReferenceSet, SectorBank, StorageCommand,
-        TimingLapView, TimingSectorReference, TracePoint, STORE_VERSION,
+        should_reset_delta_at_lap_start, three_sector_times, timing_comparison, timing_improvement,
+        CurrentLap, DeltaMode, DeltaTrend, Identity, LapTrace, PersistentReferences, ReferenceSet,
+        SectorBank, StorageCommand, TimingLapView, TimingSectorReference, TracePoint,
+        STORE_VERSION,
     };
     use crate::telemetry::TelemetryFrame;
 
@@ -1891,6 +1956,17 @@ mod tests {
         ];
 
         assert_eq!(average_timing_laps(&history), 102.0);
+    }
+
+    #[test]
+    fn timing_comparisons_keep_both_signed_directions_and_only_mark_real_improvements() {
+        assert!((timing_comparison(99.495, Some(100.0)).unwrap() + 0.505).abs() < 1e-9);
+        assert_eq!(timing_comparison(100.5, Some(100.0)), Some(0.5));
+        assert_eq!(timing_comparison(100.0, Some(100.0)), None);
+        assert_eq!(timing_comparison(100.0, None), None);
+        assert!((timing_improvement(Some(99.495), Some(100.0)).unwrap() + 0.505).abs() < 1e-9);
+        assert_eq!(timing_improvement(Some(100.5), Some(100.0)), None);
+        assert_eq!(timing_improvement(Some(100.0), None), None);
     }
 
     #[test]
