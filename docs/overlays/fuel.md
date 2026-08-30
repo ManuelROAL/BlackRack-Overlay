@@ -110,6 +110,11 @@ math belongs in Rust. `fuel.ts` only formats serialized plans.
   by adding the current level to the calculated refill, without subtracting any
   calculated surplus. It is not necessarily the next pit load. The summary's
   `CARGA` value remains the next-stop load.
+- Let the user switch the scenario value column between `TOTAL +` and `REFUEL`.
+  `REFUEL` shows the calculated load for each scenario's next stop. When LMU has
+  an active player pit request, calculate that load for the end of the current
+  requested lap instead of the latest lap in the normal pit window. Persist and
+  mirror this choice to OBS; `TOTAL +` remains the default.
 - When exactly one stop remains and the qualifying scenario can also finish with
   one stop, use the larger of the active and qualifying next-fill calculations
   and label it `CARGA Q`. This follows the conservative final-stint behavior of

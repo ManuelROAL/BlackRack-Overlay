@@ -318,6 +318,23 @@
           </label>
         </article>
 
+        <section class="standings-settings-section" data-settings-for="fuel" hidden>
+          <header class="settings-section-heading">
+            <span data-i18n="settings.fuel">CONFIGURACIÓN DE COMBUSTIBLE</span>
+            <strong data-i18n="settings.fuelSub">Valores de los escenarios</strong>
+          </header>
+          <div class="standings-content-settings compact-settings-controls">
+            <label class="standings-name-format-setting">
+              <span data-i18n="settings.fuelScenarioValue">VALOR DE ESCENARIO</span>
+              <select id="fuel-scenario-mode">
+                <option value="total" data-i18n="fuel.totalAdd">TOTAL +</option>
+                <option value="refuel" data-i18n="fuel.refuel">REFUEL</option>
+              </select>
+            </label>
+          </div>
+          <p class="settings-note" data-i18n="settings.fuelNote">Refuel muestra la carga de cada parada y usa la vuelta actual cuando hay una petición de parada activa.</p>
+        </section>
+
         <article class="overlay-option" data-overlay-card="driving" data-overlay-category="car">
           <div class="overlay-icon">T</div>
           <div class="overlay-copy">

@@ -410,6 +410,7 @@ for (const event of [
   "driving://settings",
   "delta://settings",
   "timing://settings",
+  "fuel://settings",
   "trackmap://settings",
   "overlay://background-transparency",
   "overlay://font-size",

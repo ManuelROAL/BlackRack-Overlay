@@ -72,6 +72,13 @@ import {
   type TrackMapSettings
 } from "./trackmap-settings";
 import {
+  defaultFuelSettings,
+  FUEL_SETTINGS_KEY,
+  isFuelScenarioMode,
+  readFuelSettings,
+  type FuelSettings
+} from "./fuel-settings";
+import {
   DEFAULT_OVERLAY_FONT_SIZE,
   DEFAULT_OVERLAY_TRANSPARENCY,
   effectiveOverlayFontSize,
@@ -171,7 +178,7 @@ interface BrowserSourceStatus {
 
 interface OverlayConfigurationExport {
   format: "blackrack-overlay-configuration";
-  schemaVersion: 11;
+  schemaVersion: 12;
   exportedAt: string;
   ui: { locale: Locale };
   overlays: {
@@ -192,6 +199,7 @@ interface OverlayConfigurationExport {
     delta: DeltaSettings;
     timing: TimingSettings;
     trackMap: TrackMapSettings;
+    fuel: FuelSettings;
     performanceProfile: PerformanceProfile;
     spectatorMode: boolean;
     teamMode: boolean;
@@ -314,7 +322,7 @@ if (localeSelect) {
   });
 }
 
-const CURRENT_CONFIGURATION_SCHEMA = 11;
+const CURRENT_CONFIGURATION_SCHEMA = 12;
 const CURRENT_CONFIGURATION_FORMAT = "blackrack-overlay-configuration";
 const LEGACY_CONFIGURATION_FORMAT = "lmu-overlay-configuration";
 const overlayIds: OverlayId[] = ["delta", "timing", "driving", "liftcoast", "tires", "damage", "standings", "relative", "fuel", "pitstop", "flags", "rejoin", "trackmap", "forecast", "conditions"];
@@ -429,6 +437,7 @@ let drivingSettings: DrivingSettings = readDrivingSettings();
 let deltaSettings: DeltaSettings = readDeltaSettings();
 let timingSettings: TimingSettings = readTimingSettings();
 let trackMapSettings: TrackMapSettings = readTrackMapSettings();
+let fuelSettings: FuelSettings = readFuelSettings();
 const overlayTransparency = readOverlayTransparency();
 let overlayTransparencyScope: OverlayTransparencyScope = readOverlayTransparencyScope();
 const overlayFontSize = readOverlayFontSize();
@@ -456,6 +465,7 @@ const syncBrowserSourcePreferences = (): void => {
       delta: deltaSettings,
       timing: timingSettings,
       trackMap: trackMapSettings,
+      fuel: fuelSettings,
       transparency: effectiveOverlayTransparency(overlayTransparency, overlayTransparencyScope),
       fontSize: effectiveOverlayFontSize(overlayFontSize, overlayFontSizeScope),
       locale: getLocale(),
@@ -653,6 +663,11 @@ const renderWheelInputStatus = (status: WheelInputStatus): void => {
     );
   }
 };
+const persistFuelSettings = (): void => {
+  localStorage.setItem(FUEL_SETTINGS_KEY, JSON.stringify(fuelSettings));
+  void emit("fuel://settings", fuelSettings);
+  syncBrowserSourcePreferences();
+};
 
 wheelCaptureButton?.addEventListener("click", () => {
   void invoke<WheelInputStatus>("capture_delta_wheel_button")
@@ -721,6 +736,16 @@ if (trackMapPitPrediction) {
   trackMapPitPrediction.addEventListener("change", () => {
     trackMapSettings = { showPitPrediction: trackMapPitPrediction.checked };
     persistTrackMapSettings();
+  });
+}
+
+const fuelScenarioMode = document.getElementById("fuel-scenario-mode") as HTMLSelectElement | null;
+if (fuelScenarioMode) {
+  fuelScenarioMode.value = fuelSettings.scenarioMode;
+  fuelScenarioMode.addEventListener("change", () => {
+    if (!isFuelScenarioMode(fuelScenarioMode.value)) return;
+    fuelSettings = { scenarioMode: fuelScenarioMode.value };
+    persistFuelSettings();
   });
 }
 
@@ -866,6 +891,10 @@ const resetOverlayConfiguration = async (id: OverlayId): Promise<void> => {
     timingSettings = defaultTimingSettings();
     localStorage.setItem(TIMING_SETTINGS_KEY, JSON.stringify(timingSettings));
     events.push(emit("timing://settings", timingSettings));
+  } else if (id === "fuel") {
+    fuelSettings = defaultFuelSettings();
+    localStorage.setItem(FUEL_SETTINGS_KEY, JSON.stringify(fuelSettings));
+    events.push(emit("fuel://settings", fuelSettings));
   } else if (id === "trackmap") {
     trackMapSettings = defaultTrackMapSettings();
     localStorage.setItem(TRACK_MAP_SETTINGS_KEY, JSON.stringify(trackMapSettings));
@@ -1113,6 +1142,7 @@ const parseOverlayConfiguration = (
   const delta = configurationObject(overlays?.delta);
   const timing = configurationObject(overlays?.timing);
   const trackMap = configurationObject(overlays?.trackMap);
+  const fuel = configurationObject(overlays?.fuel);
   const importedPerformanceProfile = overlays?.performanceProfile;
   const importedSpectatorMode = overlays?.spectatorMode;
   const importedTeamMode = overlays?.teamMode;
@@ -1141,7 +1171,8 @@ const parseOverlayConfiguration = (
     || (numericSchemaVersion >= 10 && typeof importedSpectatorMode !== "boolean")
     || (Number(schemaVersion) >= 2 && !driving)
     || (Number(schemaVersion) >= 3 && !delta) || (Number(schemaVersion) >= 4 && !timing)
-    || (numericSchemaVersion >= 6 && !trackMap)) {
+    || (numericSchemaVersion >= 6 && !trackMap)
+    || (numericSchemaVersion >= 12 && !fuel)) {
     throw new Error(t("config.incompatible"));
   }
   if (transparencyScope.mode !== "global" && transparencyScope.mode !== "individual") {
@@ -1267,6 +1298,10 @@ const parseOverlayConfiguration = (
   if (typeof normalizedTrackMap.showPitPrediction !== "boolean") {
     throw new Error(t("config.invalidMap"));
   }
+  const normalizedFuel = fuel ?? defaultFuelSettings();
+  if (!isFuelScenarioMode(normalizedFuel.scenarioMode)) {
+    throw new Error(t("config.invalidFuel"));
+  }
 
   const fallbackVisibility = defaultVisibility();
   for (const id of overlayIds) {
@@ -1345,6 +1380,7 @@ const parseOverlayConfiguration = (
       delta: normalizedDelta as unknown as DeltaSettings,
       timing: normalizedTimingWithTimes as unknown as TimingSettings,
       trackMap: normalizedTrackMap as unknown as TrackMapSettings,
+      fuel: normalizedFuel as unknown as FuelSettings,
       performanceProfile: isPerformanceProfile(importedPerformanceProfile)
         ? importedPerformanceProfile
         : DEFAULT_PERFORMANCE_PROFILE,
@@ -1380,6 +1416,7 @@ const applyImportedConfiguration = (configuration: OverlayConfigurationExport): 
     [DELTA_SETTINGS_KEY, configuration.overlays.delta],
     [TIMING_SETTINGS_KEY, configuration.overlays.timing],
     [TRACK_MAP_SETTINGS_KEY, configuration.overlays.trackMap],
+    [FUEL_SETTINGS_KEY, configuration.overlays.fuel],
     [PERFORMANCE_PROFILE_KEY, configuration.overlays.performanceProfile],
     [SPECTATOR_MODE_KEY, configuration.overlays.spectatorMode && !configuration.overlays.teamMode],
     [TEAM_MODE_KEY, configuration.overlays.teamMode]
@@ -1435,6 +1472,7 @@ exportConfigurationButton?.addEventListener("click", () => {
         delta: deltaSettings,
         timing: timingSettings,
         trackMap: trackMapSettings,
+        fuel: fuelSettings,
         performanceProfile,
         spectatorMode,
         teamMode

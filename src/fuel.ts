@@ -5,9 +5,10 @@ import { bindOverlayInteractionMode } from "./overlay-interaction";
 import { createOverlayPerformanceTracker } from "./overlay-performance";
 import { bindOverlayTransparency } from "./overlay-appearance";
 import type { ResourceStrategy, TelemetryFrame } from "./telemetry-types";
-import { listenTelemetry } from "./runtime-events";
+import { isTauriRuntime, listenRuntimeEvent, listenTelemetry } from "./runtime-events";
 import { formatNumber, t } from "./i18n";
 import { energyIconUrl, fuelIconUrl } from "./lmu-icons";
+import { readFuelSettings, type FuelSettings } from "./fuel-settings";
 
 fitOverlay(
   { width: 292, height: 198 },
@@ -15,6 +16,7 @@ fitOverlay(
 );
 bindOverlayTransparency("fuel");
 const renderPerformance = createOverlayPerformanceTracker("fuel");
+let settings = readFuelSettings();
 
 type ProfileName = "average" | "qualifying" | "last";
 type PitLevel = "unknown" | "safe" | "caution" | "warning" | "critical";
@@ -67,7 +69,8 @@ const renderProfile = (
   const totalRequired = plan
     ? Math.max(current, 0) + plan.total_additional
     : null;
-  text(`${id}-required`, totalRequired === null ? "--" : format(totalRequired));
+  const displayedValue = settings.scenarioMode === "refuel" ? plan?.next_fill : totalRequired;
+  text(`${id}-required`, displayedValue == null ? "--" : format(displayedValue));
 };
 
 const renderStatus = (frame: TelemetryFrame): void => {
@@ -103,6 +106,7 @@ const render = (frame: TelemetryFrame): void => {
     frame.fuel_qualifying_lap
   ) ?? 0;
   const strategy = frame.fuel_strategies.active;
+  text("scenario-value-label", t(settings.scenarioMode === "refuel" ? "fuel.refuel" : "fuel.totalAdd"));
 
   const shell = document.querySelector<HTMLElement>(".fuel-shell");
   shell?.setAttribute("data-resource-mode", mode);
@@ -177,4 +181,9 @@ const render = (frame: TelemetryFrame): void => {
 void listenTelemetry((frame) =>
   renderPerformance.measure(() => render(frame))
 );
+if (isTauriRuntime()) {
+  void listenRuntimeEvent<FuelSettings>("fuel://settings", (next) => {
+    settings = next;
+  });
+}
 bindOverlayInteractionMode();

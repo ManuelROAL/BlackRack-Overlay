@@ -13,6 +13,7 @@ pub(super) struct ResourceStrategyInput {
     pub pit_cycle_consumption: f64,
     pub pit_out_consumption: f64,
     pub pit_out_lap: bool,
+    pub pit_requested: bool,
 }
 
 #[derive(Clone, Copy, Debug, Serialize)]
@@ -195,7 +196,12 @@ pub(super) fn calculate_resource_strategy(
                 .max(0.0)
                 .min(input.capacity)
         } else {
-            let distance_to_pit = (latest_crossing as f64 - input.lap_progress).max(0.0);
+            let pit_crossing = if input.pit_requested {
+                1
+            } else {
+                latest_crossing
+            };
+            let distance_to_pit = (pit_crossing as f64 - input.lap_progress).max(0.0);
             let remaining_after_pit = (input.laps_remaining - distance_to_pit).max(0.0);
             (input.consumption * remaining_after_pit / stops as f64).min(input.capacity)
         };
@@ -235,6 +241,7 @@ mod tests {
             pit_cycle_consumption: 17.0,
             pit_out_consumption: 8.0,
             pit_out_lap: false,
+            pit_requested: false,
         }
     }
 
@@ -284,6 +291,7 @@ mod tests {
                 pit_cycle_consumption: 4.807,
                 pit_out_consumption: 2.754,
                 pit_out_lap: true,
+                pit_requested: false,
             },
             0.0,
             0,
@@ -293,6 +301,22 @@ mod tests {
         assert!((required - 34.346).abs() < 0.001);
         assert!((strategy.total_additional - 31.378).abs() < 0.001);
         assert_eq!(strategy.stops, 1);
+    }
+
+    #[test]
+    fn pit_request_calculates_the_refill_for_the_requested_lap() {
+        let strategy = calculate_resource_strategy(
+            ResourceStrategyInput {
+                pit_requested: true,
+                ..input()
+            },
+            120.0,
+            0,
+        )
+        .unwrap();
+
+        assert_eq!(strategy.stops, 2);
+        assert!((strategy.next_fill - 89.5).abs() < 1e-9);
     }
 
     #[test]

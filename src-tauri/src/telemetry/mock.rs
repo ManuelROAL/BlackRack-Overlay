@@ -59,6 +59,7 @@ impl TelemetrySource for MockTelemetrySource {
                 pit_cycle_consumption: pit_cycle,
                 pit_out_consumption: pit_out,
                 pit_out_lap: false,
+                pit_requested: false,
             };
         let fuel_strategy = calculate_resource_strategy(
             strategy_input(fuel_liters, 90.0, 12.1, 20.6, 10.1),

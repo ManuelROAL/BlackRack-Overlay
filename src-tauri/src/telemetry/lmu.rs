@@ -1340,6 +1340,13 @@ impl LmuTelemetrySource {
             .any(|entry| entry.is_player != 0 && entry.in_pits != 0)
     }
 
+    fn player_pit_stop_requested(snapshot: &LmuSnapshot) -> bool {
+        let count = (snapshot.standings_count as usize).min(MAX_VEHICLES);
+        snapshot.standings[..count]
+            .iter()
+            .any(|entry| entry.is_player != 0 && entry.pit_state == 1)
+    }
+
     fn update_clean_average(average: Option<f64>, samples: &mut u32, consumed: f64) -> Option<f64> {
         if !consumed.is_finite() || consumed <= 0.0 {
             return average;
@@ -3519,6 +3526,7 @@ impl TelemetrySource for LmuTelemetrySource {
         .into_iter()
         .find(|value| value.is_finite() && *value > 0.0)
         .unwrap_or(0.0);
+        let player_pit_stop_requested = Self::player_pit_stop_requested(&snapshot);
         let strategy_input =
             |current, capacity, consumption, pit_cycle, pit_out| ResourceStrategyInput {
                 current,
@@ -3530,6 +3538,7 @@ impl TelemetrySource for LmuTelemetrySource {
                 pit_cycle_consumption: pit_cycle,
                 pit_out_consumption: pit_out,
                 pit_out_lap: profile_estimate.current_lap_started_in_pits,
+                pit_requested: player_pit_stop_requested,
             };
         let fuel_input = |consumption| {
             strategy_input(
