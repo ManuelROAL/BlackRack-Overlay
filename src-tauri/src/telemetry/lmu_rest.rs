@@ -354,7 +354,8 @@ impl LocalRestResolver {
                     "/rest/garage/UIScreen/RepairAndRefuel",
                 )
                 .ok();
-                let session_info = fetch_json(&client, "/rest/watch/sessionInfo").ok();
+                let session_info: Option<RestSessionInfo> =
+                    fetch_json(&client, "/rest/watch/sessionInfo").ok();
                 let team_info = repair_and_refuel.as_ref().and_then(|response| {
                     session_info.as_ref().and_then(|session| {
                         team_info_for_player(&response.team_info, &session.player_name)
