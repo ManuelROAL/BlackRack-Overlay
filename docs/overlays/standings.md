@@ -130,7 +130,9 @@ duplicate selection or timing semantics.
   from elapsed plus remaining clocks.
 - Category headers show current/initial counts and DNF/DQ difference outside
   practice. Recover initial counts from history when opened late.
-- The pit column normally shows completed stops. From pit entry through the end of
+- The pit column normally shows completed stops from shared-memory
+  `mNumPitstops`; REST `pitstops` must not override it because it can overcount in
+  team races. From pit entry through the end of
   the out lap, show elapsed pit-cycle seconds rounded to the nearest whole second.
   After pit exit, retain the timer and out-lap state only when shared-memory
   `mNumPitstops` has increased from its value at entry; accept a delayed increase

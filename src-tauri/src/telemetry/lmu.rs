@@ -2154,10 +2154,10 @@ impl LmuTelemetrySource {
                 damage_percent: entry.damage_percent.clamp(0.0, 100.0),
                 track_limits_steps: (entry.track_limits_available != 0)
                     .then_some(entry.track_limits_steps),
-                pit_stops: rest
-                    .as_ref()
-                    .map(|standing| standing.pitstops)
-                    .unwrap_or(entry.pit_stops),
+                // REST can overcount this value in team races. Shared memory's
+                // per-vehicle mNumPitstops is the authoritative completed-stop
+                // counter and also drives the pit-cycle confirmation above.
+                pit_stops: entry.pit_stops,
                 pit_stop_requested: entry.pit_state == 1
                     || rest.as_ref().is_some_and(|standing| {
                         matches!(
@@ -4460,7 +4460,7 @@ mod tests {
     }
 
     #[test]
-    fn standings_uses_rest_for_car_number_pit_state_and_energy() {
+    fn standings_uses_rest_supplements_without_overriding_shared_pit_stops() {
         let mut source = LmuTelemetrySource::new();
         source.local_rest.seed_standings(vec![RestStanding {
             slot_id: 20,
@@ -4490,6 +4490,7 @@ mod tests {
             vehicle_id: 20,
             position: 2,
             vehicle_class_id: 0,
+            pit_stops: 1,
             track_limits_steps: 7,
             track_limits_available: 1,
             total_laps: 4,
@@ -4508,7 +4509,7 @@ mod tests {
         assert!((entry.time_behind_leader - 10.0).abs() < 0.1);
         assert_eq!(entry.laps_behind_next, 0);
         assert!((entry.interval - 10.0).abs() < 0.1);
-        assert_eq!(entry.pit_stops, 3);
+        assert_eq!(entry.pit_stops, 1);
         assert!(entry.pit_stop_requested);
         assert!(entry.in_pits);
         assert!((entry.virtual_energy_percent - 64.0).abs() < f64::EPSILON);
