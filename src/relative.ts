@@ -19,7 +19,7 @@ import { formatClock as formatRealClock, formatNumber, formatTimeOfDay, t, type 
 
 let relativeSettings = readRelativeSettings();
 const columnExpansionRatio = (id: RelativeColumnId): number => {
-  if (id === "country" || id === "badge") return 0;
+  if (id === "country" || id === "badge" || id === "driver") return 0;
   if (id === "position") return 0.65;
   if (id === "number") return 0.35;
   return 1;

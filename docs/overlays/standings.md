@@ -185,8 +185,9 @@ duplicate selection or timing semantics.
   edit border follows the rendered content throughout the 75–200% text range.
 - Expand text-bearing column tracks together with the text-size design surface so
   enlarged labels and values cannot overlap neighboring columns. Keep the
-  manufacturer-logo and driver-badge tracks fixed. Position/change and assigned
-  number use limited expansion so large values remain separated without the full
+  manufacturer-logo, driver-badge and 130 px driver-name tracks fixed; truncate
+  driver names with an ellipsis when they exceed that space. Position/change and
+  assigned number use limited expansion so large values remain separated without the full
   text-column margin. Text-bearing tracks retain their base width at 100% and
   below so fixed-minimum contents such as DR/SR badges cannot overlap neighbors.
 - Keep GAP, INT, lap-time, NRG, damage and pit tracks at their compact measured

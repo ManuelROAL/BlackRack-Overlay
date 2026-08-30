@@ -86,8 +86,9 @@ the prepared vehicle IDs and formats them; it must not repeat domain selection.
   23 px for every selected row so the last card is not clipped.
 - Expand text-bearing column tracks together with the text-size design surface so
   enlarged labels and values cannot overlap neighboring columns. Keep the
-  country-flag and driver-badge tracks fixed. Position/change and assigned number
-  use limited expansion so large values remain separated without the full
+  country-flag, driver-badge and 95 px driver-name tracks fixed; truncate driver
+  names with an ellipsis when they exceed that space. Position/change and assigned
+  number use limited expansion so large values remain separated without the full
   text-column margin. Text-bearing tracks retain their base width at 100% and
   below so fixed-minimum contents such as DR/SR badges cannot overlap neighbors.
 - Cache DOM rows and update at the selected performance-profile cadence. Cycles
