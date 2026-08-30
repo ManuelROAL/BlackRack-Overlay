@@ -194,7 +194,7 @@ extern "C" size_t lmu_snapshot_size() {
     return sizeof(LmuSnapshot);
 }
 
-extern "C" int lmu_read_snapshot(LmuSnapshot* output) {
+extern "C" int lmu_read_snapshot(LmuSnapshot* output, uint32_t spectator_mode) {
     if (!output) {
         return -1;
     }
@@ -432,12 +432,34 @@ extern "C" int lmu_read_snapshot(LmuSnapshot* output) {
         }
     }
 
-    if (!telemetry.playerHasVehicle || telemetry.playerVehicleIdx >= telemetry.activeVehicles ||
-        telemetry.playerVehicleIdx >= 104) {
+    const TelemInfoV01* selected_vehicle = nullptr;
+    if (telemetry.playerHasVehicle && telemetry.playerVehicleIdx < telemetry.activeVehicles &&
+        telemetry.playerVehicleIdx < 104) {
+        selected_vehicle = &telemetry.telemInfo[telemetry.playerVehicleIdx];
+    } else if (spectator_mode) {
+        const VehicleScoringInfoV01* player_entry = nullptr;
+        for (int index = 0; index < vehicle_count; ++index) {
+            if (scoring.vehScoringInfo[index].mIsPlayer) {
+                player_entry = &scoring.vehScoringInfo[index];
+                break;
+            }
+        }
+        if (player_entry) {
+            const unsigned long active_vehicles =
+                std::min<unsigned long>(telemetry.activeVehicles, MAX_VEHICLES);
+            for (unsigned long index = 0; index < active_vehicles; ++index) {
+                if (telemetry.telemInfo[index].mID == player_entry->mID) {
+                    selected_vehicle = &telemetry.telemInfo[index];
+                    break;
+                }
+            }
+        }
+    }
+    if (!selected_vehicle) {
         return 1;
     }
 
-    const TelemInfoV01& vehicle = telemetry.telemInfo[telemetry.playerVehicleIdx];
+    const TelemInfoV01& vehicle = *selected_vehicle;
     output->player_active = 1;
     output->player_lap_valid = vehicle.mLapInvalidated ? 0u : 1u;
     output->lap_number = static_cast<int32_t>(vehicle.mLapNumber);

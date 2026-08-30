@@ -415,6 +415,15 @@ struct PerformanceTuning {
 }
 
 static PERFORMANCE_PROFILE: AtomicU8 = AtomicU8::new(PerformanceProfile::Smooth as u8);
+static SPECTATOR_MODE: AtomicBool = AtomicBool::new(false);
+
+pub fn set_spectator_mode(enabled: bool) {
+    SPECTATOR_MODE.store(enabled, Ordering::Relaxed);
+}
+
+fn spectator_mode() -> bool {
+    SPECTATOR_MODE.load(Ordering::Relaxed)
+}
 
 impl PerformanceProfile {
     fn current() -> Self {
@@ -552,6 +561,8 @@ pub struct TelemetryFrame {
     source: &'static str,
     performance_profile: &'static str,
     connected: bool,
+    #[serde(skip)]
+    spectator_mode: bool,
     player_active: bool,
     game_in_foreground: bool,
     game_in_realtime: bool,
@@ -773,7 +784,7 @@ impl TelemetryFrame {
         !self.connected
             || !self.player_active
             || self.player_in_garage
-            || !self.game_in_realtime
+            || (!self.spectator_mode && !self.game_in_realtime)
             || self.game_phase == 9
             || (!self.game_in_foreground && !app_has_focus)
     }
@@ -783,6 +794,7 @@ impl TelemetryFrame {
             source: "lmu",
             performance_profile: "smooth",
             connected,
+            spectator_mode: false,
             player_active: false,
             game_in_foreground: false,
             game_in_realtime: false,
@@ -986,6 +998,7 @@ pub fn spawn_source(app: AppHandle) {
             let source_started = Instant::now();
             let track_map_requested = track_map_due && (track_map_visible || browser_clients);
             let mut frame = source.next_frame(standings_requested, track_map_requested);
+            frame.spectator_mode = spectator_mode();
             frame.performance_profile = tuning.profile.name();
             delta_engine.update(&mut frame);
             standings_models::prepare_overlay_models(&mut frame);
@@ -1173,6 +1186,9 @@ mod tests {
 
         frame.game_in_realtime = false;
         assert!(frame.should_hide_overlays(false));
+        frame.spectator_mode = true;
+        assert!(!frame.should_hide_overlays(false));
+        frame.spectator_mode = false;
         frame.game_in_realtime = true;
 
         frame.game_in_foreground = false;

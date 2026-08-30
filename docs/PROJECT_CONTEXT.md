@@ -31,6 +31,7 @@ on their runtime or source code.
 - All overlays share one host on a single selected monitor.
 - Optional telemetry/performance analysis logging.
 - Optional per-lap strategy CSV with consumption, tyre wear and track conditions.
+- Spectator mode keeps overlays attached to the player's team car between driver stints.
 - Compact tyre/damage schematic plus an independent detailed damage overlay.
 - Compact pit-stop estimate with LMU's official total and service breakdown.
 - Circuit map with live multiclass vehicle positions and a learned per-track path.

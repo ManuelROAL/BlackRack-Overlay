@@ -93,6 +93,7 @@ impl TelemetrySource for MockTelemetrySource {
             source: "mock",
             performance_profile: "smooth",
             connected: true,
+            spectator_mode: false,
             player_active: true,
             game_in_foreground: true,
             game_in_realtime: true,

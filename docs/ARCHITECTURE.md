@@ -163,9 +163,11 @@ blocking HTTP calls into `next_frame()`.
   `ui.locale`.
 - The selected performance profile: WebView `localStorage`; configuration schema
   9 exports it with overlay settings and reapplies it to the Rust scheduler.
+- Spectator mode: WebView `localStorage`; configuration schema 10 exports it and
+  reapplies it to the telemetry source when the control panel starts.
 - Configuration import accepts every positive schema version from both the former
   `lmu-overlay-configuration` and current `blackrack-overlay-configuration`
-  formats. The frontend migrates known fields to schema 9, fills additive overlay
+  formats. The frontend migrates known fields to schema 10, fills additive overlay
   and setting fields from current defaults, and ignores unknown future fields.
 - Learned consumption profiles: application data `consumption-profiles/`.
 - Current and previous startup/frontend failure logs, plus optional JSONL analysis

@@ -359,7 +359,7 @@ impl Default for LmuSnapshot {
 }
 
 extern "C" {
-    fn lmu_read_snapshot(snapshot: *mut LmuSnapshot) -> c_int;
+    fn lmu_read_snapshot(snapshot: *mut LmuSnapshot, spectator_mode: u32) -> c_int;
     #[cfg(test)]
     fn lmu_snapshot_size() -> usize;
 }
@@ -2897,7 +2897,7 @@ impl TelemetrySource for LmuTelemetrySource {
 
         let snapshot_started = Instant::now();
         let mut snapshot = LmuSnapshot::default();
-        let result = unsafe { lmu_read_snapshot(&mut snapshot) };
+        let result = unsafe { lmu_read_snapshot(&mut snapshot, super::spectator_mode() as u32) };
         let live_snapshot = result > 0 && snapshot.connected != 0;
         if live_snapshot {
             self.last_valid_snapshot = Some(snapshot);
@@ -3337,6 +3337,7 @@ impl TelemetrySource for LmuTelemetrySource {
             source: "lmu",
             performance_profile: "smooth",
             connected: true,
+            spectator_mode: super::spectator_mode(),
             player_active: true,
             game_in_foreground: snapshot.game_in_foreground != 0,
             game_in_realtime: snapshot.game_in_realtime != 0,

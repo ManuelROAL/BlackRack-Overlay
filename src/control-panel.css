@@ -529,6 +529,10 @@ select {
   min-width: 0;
 }
 
+.global-setting-group > .switch {
+  justify-self: end;
+}
+
 .global-transparency-control {
   display: grid;
   grid-column: 1 / -1;

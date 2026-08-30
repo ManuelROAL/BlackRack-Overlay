@@ -110,6 +110,11 @@ import {
   savePerformanceProfile,
   type PerformanceProfile
 } from "./performance-settings";
+import {
+  readSpectatorMode,
+  saveSpectatorMode,
+  SPECTATOR_MODE_KEY
+} from "./spectator-settings";
 
 installFrontendDiagnostics("control", (diagnostic) =>
   invoke("record_frontend_error", { ...diagnostic })
@@ -163,7 +168,7 @@ interface BrowserSourceStatus {
 
 interface OverlayConfigurationExport {
   format: "blackrack-overlay-configuration";
-  schemaVersion: 9;
+  schemaVersion: 10;
   exportedAt: string;
   ui: { locale: Locale };
   overlays: {
@@ -185,6 +190,7 @@ interface OverlayConfigurationExport {
     timing: TimingSettings;
     trackMap: TrackMapSettings;
     performanceProfile: PerformanceProfile;
+    spectatorMode: boolean;
   };
 }
 
@@ -214,6 +220,26 @@ const renderPerformanceProfile = (): void => {
 
 renderPerformanceProfile();
 void invoke("set_performance_profile", { profile: performanceProfile });
+
+let spectatorMode = readSpectatorMode();
+const spectatorModeInput = document.getElementById("spectator-mode") as HTMLInputElement | null;
+if (spectatorModeInput) {
+  spectatorModeInput.checked = spectatorMode;
+  spectatorModeInput.addEventListener("change", () => {
+    const previous = spectatorMode;
+    spectatorMode = spectatorModeInput.checked;
+    spectatorModeInput.disabled = true;
+    void invoke("set_spectator_mode", { enabled: spectatorMode }).then(() => {
+      saveSpectatorMode(spectatorMode);
+    }).catch(() => {
+      spectatorMode = previous;
+      spectatorModeInput.checked = previous;
+    }).finally(() => {
+      spectatorModeInput.disabled = false;
+    });
+  });
+}
+void invoke("set_spectator_mode", { enabled: spectatorMode });
 
 for (const button of performanceProfileButtons) {
   button.addEventListener("click", () => {
@@ -245,7 +271,7 @@ if (localeSelect) {
   });
 }
 
-const CURRENT_CONFIGURATION_SCHEMA = 9;
+const CURRENT_CONFIGURATION_SCHEMA = 10;
 const CURRENT_CONFIGURATION_FORMAT = "blackrack-overlay-configuration";
 const LEGACY_CONFIGURATION_FORMAT = "lmu-overlay-configuration";
 const overlayIds: OverlayId[] = ["delta", "timing", "driving", "liftcoast", "tires", "damage", "standings", "relative", "fuel", "pitstop", "flags", "rejoin", "trackmap", "forecast", "conditions"];
@@ -1045,6 +1071,7 @@ const parseOverlayConfiguration = (
   const timing = configurationObject(overlays?.timing);
   const trackMap = configurationObject(overlays?.trackMap);
   const importedPerformanceProfile = overlays?.performanceProfile;
+  const importedSpectatorMode = overlays?.spectatorMode;
   const schemaVersion = root?.schemaVersion;
   const schemaMonitor = typeof overlays?.monitor === "number"
     && Number.isInteger(overlays.monitor) && Number(overlays.monitor) >= 0
@@ -1067,6 +1094,7 @@ const parseOverlayConfiguration = (
     || !layout || !standings || !relative
     || (numericSchemaVersion >= 9 && importedPerformanceProfile !== undefined
       && !isPerformanceProfile(importedPerformanceProfile))
+    || (numericSchemaVersion >= 10 && typeof importedSpectatorMode !== "boolean")
     || (Number(schemaVersion) >= 2 && !driving)
     || (Number(schemaVersion) >= 3 && !delta) || (Number(schemaVersion) >= 4 && !timing)
     || (numericSchemaVersion >= 6 && !trackMap)) {
@@ -1272,7 +1300,8 @@ const parseOverlayConfiguration = (
       trackMap: normalizedTrackMap as unknown as TrackMapSettings,
       performanceProfile: isPerformanceProfile(importedPerformanceProfile)
         ? importedPerformanceProfile
-        : DEFAULT_PERFORMANCE_PROFILE
+        : DEFAULT_PERFORMANCE_PROFILE,
+      spectatorMode: typeof importedSpectatorMode === "boolean" ? importedSpectatorMode : false
     }
   };
 };
@@ -1303,7 +1332,8 @@ const applyImportedConfiguration = (configuration: OverlayConfigurationExport): 
     [DELTA_SETTINGS_KEY, configuration.overlays.delta],
     [TIMING_SETTINGS_KEY, configuration.overlays.timing],
     [TRACK_MAP_SETTINGS_KEY, configuration.overlays.trackMap],
-    [PERFORMANCE_PROFILE_KEY, configuration.overlays.performanceProfile]
+    [PERFORMANCE_PROFILE_KEY, configuration.overlays.performanceProfile],
+    [SPECTATOR_MODE_KEY, configuration.overlays.spectatorMode]
   ];
   const previous = entries.map(([key]) => [key, localStorage.getItem(key)] as const);
   const previousLocale = localStorage.getItem(LOCALE_STORAGE_KEY);
@@ -1356,7 +1386,8 @@ exportConfigurationButton?.addEventListener("click", () => {
         delta: deltaSettings,
         timing: timingSettings,
         trackMap: trackMapSettings,
-        performanceProfile
+        performanceProfile,
+        spectatorMode
       }
     };
     const timestamp = now.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
