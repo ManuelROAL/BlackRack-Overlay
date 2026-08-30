@@ -1667,10 +1667,8 @@ impl LmuTelemetrySource {
         opponent_count: u32,
         settings: DriverRankSettings,
     ) -> f64 {
-        let gain_factor = settings.multiplier * settings.k * 2.0 / f64::from(opponent_count);
-        let internal_rating_gain =
-            gain_factor * (race_result_total + DRIVER_RANK_QUALIFY_WEIGHT * qualify_result_total);
-        internal_rating_gain / DRIVER_RANK_INTERNAL_SCALE
+        let gain_factor = settings.multiplier * settings.k / (2.0 * f64::from(opponent_count));
+        gain_factor * (race_result_total + DRIVER_RANK_QUALIFY_WEIGHT * qualify_result_total)
     }
 
     fn scored_class_positions(
@@ -1874,7 +1872,7 @@ impl LmuTelemetrySource {
                 }
                 continue;
             }
-            let gain_factor = settings.multiplier * settings.k * 2.0 / f64::from(opponent_count);
+            let gain_factor = settings.multiplier * settings.k / (2.0 * f64::from(opponent_count));
             let gain = Self::driver_rank_gain(
                 race_result_total,
                 qualify_result_total,
@@ -4194,14 +4192,14 @@ mod tests {
     }
 
     #[test]
-    fn driver_rank_estimate_uses_the_observed_internal_scale_and_normalization() {
+    fn driver_rank_estimate_uses_pairwise_gain_normalization() {
         let settings = DriverRankSettings::default();
         let expected = LmuTelemetrySource::driver_rank_expected(600.0, 600.0, settings);
         assert_eq!(expected, 0.5);
 
         let gain =
             LmuTelemetrySource::driver_rank_gain(1.0 - expected, 1.0 - expected, 1, settings);
-        assert!((gain - 11.764_705_882_352_94).abs() < 1e-9);
+        assert!((gain - 8.823_529_411_764_707).abs() < 1e-9);
     }
 
     #[test]

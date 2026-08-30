@@ -91,8 +91,9 @@ duplicate selection or timing semantics.
   driver without discarding the profiles already cached for the team.
 - In registered events, the one-time `event/my-split` roster supplements missing
   or `XX` nationality and missing badges without replacing valid `/players` data.
-- The DR estimate is same-class and event-parameter aware. Convert it back from
-  the three-times internal rating scale before serializing visible progress.
+- The DR estimate is same-class and event-parameter aware. Compare drivers on
+  the three-times internal rating scale, then normalize the visible gain with
+  `multiplier * K / (2 * rated opponents)`.
 - Its dedicated diagnostic switch writes the player's current DR when available
   or changed during practice and qualifying, then the initial player estimate and
   each meaningful change during a race, to a unique per-run file under
