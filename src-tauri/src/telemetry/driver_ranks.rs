@@ -51,6 +51,9 @@ pub(super) struct DriverRankResolver {
     logged_refresh: Option<String>,
     logged_lookups: HashMap<String, String>,
     authenticated_player_elo: Option<f64>,
+    authenticated_player_elo_revision: u64,
+    refresh_revision: u64,
+    profile_revisions: HashMap<String, u64>,
 }
 
 impl DriverRankResolver {
@@ -66,6 +69,9 @@ impl DriverRankResolver {
             logged_refresh: None,
             logged_lookups: HashMap::new(),
             authenticated_player_elo: None,
+            authenticated_player_elo_revision: 0,
+            refresh_revision: 0,
+            profile_revisions: HashMap::new(),
         }
     }
 
@@ -174,12 +180,23 @@ impl DriverRankResolver {
         };
         self.receiver = None;
 
+        let authenticated_elo_updated = response.authenticated_player_elo.is_some();
         if let Some(elo) = response.authenticated_player_elo {
             self.authenticated_player_elo = Some(elo);
         }
 
         match response.result {
             Ok(discovered) => {
+                if !discovered.is_empty() || authenticated_elo_updated {
+                    self.refresh_revision = self.refresh_revision.saturating_add(1);
+                    if authenticated_elo_updated {
+                        self.authenticated_player_elo_revision = self.refresh_revision;
+                    }
+                    for name in discovered.keys() {
+                        self.profile_revisions
+                            .insert(name.clone(), self.refresh_revision);
+                    }
+                }
                 if !discovered.is_empty() {
                     for name in &response.requested_names {
                         if discovered.contains_key(&normalized_name(name)) {
@@ -270,6 +287,17 @@ impl DriverRankResolver {
 
     pub(super) fn authenticated_player_elo(&self) -> Option<f64> {
         self.authenticated_player_elo
+    }
+
+    pub(super) fn authenticated_player_elo_revision(&self) -> u64 {
+        self.authenticated_player_elo_revision
+    }
+
+    pub(super) fn profile_revision(&self, driver_name: &str) -> u64 {
+        self.profile_revisions
+            .get(&normalized_name(driver_name))
+            .copied()
+            .unwrap_or(0)
     }
 }
 
@@ -594,6 +622,9 @@ mod tests {
         assert!(resolver.queried_names.contains("test driver"));
         assert!(resolver.resolved_roster_names.contains("test driver"));
         assert_eq!(resolver.authenticated_player_elo(), Some(1378.5));
+        assert_eq!(resolver.refresh_revision, 1);
+        assert_eq!(resolver.authenticated_player_elo_revision(), 1);
+        assert_eq!(resolver.profile_revision("Test Driver"), 1);
     }
 
     #[test]

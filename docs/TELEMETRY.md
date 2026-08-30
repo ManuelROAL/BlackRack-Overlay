@@ -157,12 +157,19 @@ persisted.
   positions and calculations. Every resolved player sample includes RaceControl's
   raw continuous ELO so rank promotion resets cannot be mistaken for exact gains.
   Values are compared at the precision useful for diagnosis, so floating-point
-  noise and unchanged periodic samples are omitted.
+  noise and unchanged periodic samples are omitted independently for each event
+  type. Versioned estimate samples contain the anonymous per-opponent inputs
+  needed to replay every pairwise calculation. A race sequence links those
+  samples to its final prediction and to a later settlement after a fresh
+  RaceControl refresh; that settlement records estimated gain, actual gain,
+  signed error and absolute error.
   The raw ELO comes first from the authenticated RaceControl player profile and
   falls back to the authenticated registration in `event/overview` when present;
   roster profiles remain the source for rank, tier and visible progress.
   Preserve a returned zero as raw evidence: RaceControl currently masks ELO as
   zero in some practice contexts, while registered event overview may expose it.
+  A zero raw ELO is not valid settlement evidence; use the refreshed continuous
+  visual score as the fallback ground truth.
   Enabling it requests the 10 Hz standings
   model even when Standings is hidden; it never records telemetry frames,
   performance samples or complete third-party responses. All sessions in one

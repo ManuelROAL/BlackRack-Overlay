@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::fs::{self, File, OpenOptions};
 use std::io::{BufWriter, Write};
 use std::path::{Path, PathBuf};
@@ -12,7 +13,7 @@ static SETTINGS_PATH: OnceLock<PathBuf> = OnceLock::new();
 static RUN_FILE: OnceLock<PathBuf> = OnceLock::new();
 static ACTIVE_FILE: Mutex<Option<PathBuf>> = Mutex::new(None);
 static EVENTS: Mutex<Vec<serde_json::Value>> = Mutex::new(Vec::new());
-static LAST_SIGNATURE: Mutex<Option<serde_json::Value>> = Mutex::new(None);
+static LAST_SIGNATURES: Mutex<Option<HashMap<String, serde_json::Value>>> = Mutex::new(None);
 
 #[derive(Clone, Deserialize, Serialize)]
 struct Preferences {
@@ -87,7 +88,7 @@ pub(crate) fn status() -> DriverRankEstimateLoggingStatus {
 pub(crate) fn set_enabled(enabled: bool) -> Result<DriverRankEstimateLoggingStatus, String> {
     ENABLED.store(enabled, Ordering::Relaxed);
     if !enabled {
-        *LAST_SIGNATURE
+        *LAST_SIGNATURES
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner()) = None;
         EVENTS
@@ -116,13 +117,19 @@ pub(super) fn queue(event: serde_json::Value) {
     }
 
     let signature = normalized_signature(&event);
-    let mut last_signature = LAST_SIGNATURE
+    let signature_key = event
+        .get("event")
+        .and_then(serde_json::Value::as_str)
+        .unwrap_or("unknown")
+        .to_owned();
+    let mut last_signatures = LAST_SIGNATURES
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner());
-    if last_signature.as_ref() == Some(&signature) {
+    let signatures = last_signatures.get_or_insert_with(HashMap::new);
+    if signatures.get(&signature_key) == Some(&signature) {
         return;
     }
-    *last_signature = Some(signature);
+    signatures.insert(signature_key, signature);
     EVENTS
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
@@ -246,6 +253,10 @@ mod tests {
             "calculation": { "estimated_gain": 1.2344 }
         }));
         queue(serde_json::json!({
+            "event": "driver_rank_race_final",
+            "status": "final"
+        }));
+        queue(serde_json::json!({
             "event": "driver_rank_estimate_sample",
             "status": "estimated",
             "calculation": { "estimated_gain": 1.23449 }
@@ -281,14 +292,16 @@ mod tests {
         assert_ne!(file_name, "dr-estimate.jsonl");
         let contents = fs::read_to_string(path).unwrap();
         let entries = contents.lines().collect::<Vec<_>>();
-        assert_eq!(entries.len(), 3);
+        assert_eq!(entries.len(), 4);
         let entry: serde_json::Value = serde_json::from_str(entries[0]).unwrap();
         assert_eq!(entry["event"], "driver_rank_estimate_sample");
         assert_eq!(entry["status"], "estimated");
         assert!(entry["timestamp_ms"].is_u64());
-        let changed: serde_json::Value = serde_json::from_str(entries[1]).unwrap();
+        let final_entry: serde_json::Value = serde_json::from_str(entries[1]).unwrap();
+        assert_eq!(final_entry["event"], "driver_rank_race_final");
+        let changed: serde_json::Value = serde_json::from_str(entries[2]).unwrap();
         assert_eq!(changed["calculation"]["estimated_gain"], 1.236);
-        let reenabled: serde_json::Value = serde_json::from_str(entries[2]).unwrap();
+        let reenabled: serde_json::Value = serde_json::from_str(entries[3]).unwrap();
         assert_eq!(reenabled["status"], "estimated_after_reenable");
 
         let _ = fs::remove_dir_all(app_data);

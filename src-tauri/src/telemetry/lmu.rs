@@ -14,6 +14,8 @@ use super::{StandingEntry, TelemetryFrame, TelemetrySource, TrackMapVehicle};
 const MAX_VEHICLES: usize = 104;
 const DRIVER_RANK_INTERNAL_SCALE: f64 = 3.0;
 const DRIVER_RANK_QUALIFY_WEIGHT: f64 = 0.176_470_588_235_294;
+const DRIVER_RANK_LOG_SCHEMA_VERSION: u32 = 2;
+const DRIVER_RANK_FORMULA_VERSION: &str = "pairwise-elo-v2";
 
 fn suspension_damage_by_wheel_percent(
     damage: Option<RestVehicleDamage>,
@@ -790,6 +792,7 @@ pub struct LmuTelemetrySource {
     scored_finish_positions: HashMap<i32, i32>,
     vehicle_identities: HashMap<i32, VehicleIdentity>,
     driver_ranks: DriverRankResolver,
+    driver_rank_prerace_scores: HashMap<String, f64>,
     session_split: SessionSplitResolver,
     local_rest: LocalRestResolver,
     rejoin_hold_frames: u16,
@@ -802,6 +805,8 @@ pub struct LmuTelemetrySource {
     last_valid_snapshot_at: Option<Instant>,
     player_lap_distance: PlayerLapDistanceEstimator,
     player_lap_times: PlayerLapTimeHistory,
+    driver_rank_race_sequence: u64,
+    driver_rank_validation: Option<DriverRankValidationState>,
     source_stage_performance: SourceStagePerformance,
 }
 
@@ -917,6 +922,19 @@ impl PlayerLapDistanceEstimator {
     }
 }
 
+#[derive(Clone)]
+struct DriverRankOpponentDiagnostic {
+    vehicle_id: i32,
+    visual_score: f64,
+    internal_score: f64,
+    race_position: i32,
+    qualifying_position: i32,
+    expected: f64,
+    race_result: f64,
+    qualifying_result: f64,
+}
+
+#[derive(Clone)]
 struct DriverRankEstimateDiagnostic {
     status: &'static str,
     vehicle_id: i32,
@@ -934,6 +952,23 @@ struct DriverRankEstimateDiagnostic {
     qualifying_result_total: f64,
     gain_factor: f64,
     estimated_gain: Option<f64>,
+    opponents: Vec<DriverRankOpponentDiagnostic>,
+}
+
+struct DriverRankValidationState {
+    race_sequence: u64,
+    event_id: String,
+    split_number: u32,
+    player_vehicle_id: i32,
+    player_class: String,
+    before_raw_elo: Option<f64>,
+    before_visual_score: Option<f64>,
+    before_refresh_revision: u64,
+    final_estimated_gain: Option<f64>,
+    final_race_position: i32,
+    final_qualifying_position: i32,
+    final_position_source: &'static str,
+    final_logged_signature: Option<String>,
 }
 
 struct SourceStagePerformance {
@@ -1205,6 +1240,7 @@ impl LmuTelemetrySource {
             scored_finish_positions: HashMap::new(),
             vehicle_identities: HashMap::new(),
             driver_ranks: DriverRankResolver::discover(),
+            driver_rank_prerace_scores: HashMap::new(),
             session_split: SessionSplitResolver::discover(),
             local_rest: {
                 #[cfg(test)]
@@ -1226,6 +1262,8 @@ impl LmuTelemetrySource {
             last_valid_snapshot_at: None,
             player_lap_distance: PlayerLapDistanceEstimator::default(),
             player_lap_times: PlayerLapTimeHistory::default(),
+            driver_rank_race_sequence: 0,
+            driver_rank_validation: None,
             source_stage_performance: SourceStagePerformance::new(),
         }
     }
@@ -1246,6 +1284,11 @@ impl LmuTelemetrySource {
         }
 
         let previous_session = self.current_session.replace(session_type);
+        if (10..=13).contains(&session_type)
+            && previous_session.is_none_or(|previous| !(10..=13).contains(&previous))
+        {
+            self.driver_rank_race_sequence = self.driver_rank_race_sequence.saturating_add(1);
+        }
         self.last_lap = -1;
         self.fuel_at_lap_start = None;
         self.fuel_previous_sample = None;
@@ -1286,6 +1329,7 @@ impl LmuTelemetrySource {
         let entered_practice = (0..=4).contains(&session_type);
         if entered_qualifying || entered_practice {
             self.clear_qualifying_reference();
+            self.driver_rank_prerace_scores.clear();
         }
     }
 
@@ -1671,6 +1715,212 @@ impl LmuTelemetrySource {
         gain_factor * (race_result_total + DRIVER_RANK_QUALIFY_WEIGHT * qualify_result_total)
     }
 
+    fn usable_raw_elo(value: Option<f64>) -> Option<f64> {
+        value.filter(|elo| elo.is_finite() && *elo > 0.0)
+    }
+
+    fn driver_rank_actual_gain(
+        before_raw_elo: Option<f64>,
+        after_raw_elo: Option<f64>,
+        before_visual_score: Option<f64>,
+        after_visual_score: Option<f64>,
+    ) -> Option<(f64, &'static str)> {
+        match (
+            Self::usable_raw_elo(before_raw_elo),
+            Self::usable_raw_elo(after_raw_elo),
+        ) {
+            (Some(before), Some(after)) => {
+                Some(((after - before) / DRIVER_RANK_INTERNAL_SCALE, "raw_elo"))
+            }
+            _ => match (before_visual_score, after_visual_score) {
+                (Some(before), Some(after)) if before.is_finite() && after.is_finite() => {
+                    Some((after - before, "visual_score"))
+                }
+                _ => None,
+            },
+        }
+    }
+
+    fn update_driver_rank_validation(
+        &mut self,
+        session_type: i32,
+        game_phase: u32,
+        event_id: &str,
+        split_number: u32,
+        sample: Option<&DriverRankEstimateDiagnostic>,
+        player_raw_elo: Option<f64>,
+        refresh_revision: u64,
+    ) {
+        if !super::dr_estimate_log::enabled() {
+            return;
+        }
+
+        let is_race = (10..=13).contains(&session_type);
+        if is_race {
+            let Some(sample) = sample else {
+                return;
+            };
+            if self
+                .driver_rank_validation
+                .as_ref()
+                .is_none_or(|state| state.race_sequence != self.driver_rank_race_sequence)
+            {
+                if let Some(previous) = self.driver_rank_validation.take() {
+                    super::dr_estimate_log::queue(serde_json::json!({
+                        "event": "driver_rank_validation",
+                        "log_schema_version": DRIVER_RANK_LOG_SCHEMA_VERSION,
+                        "formula_version": DRIVER_RANK_FORMULA_VERSION,
+                        "app_version": env!("CARGO_PKG_VERSION"),
+                        "status": "unsettled",
+                        "reason": "new_race_started_before_fresh_rank",
+                        "race_sequence": previous.race_sequence,
+                        "event_id": previous.event_id,
+                        "split_number": previous.split_number,
+                        "comparison": {
+                            "estimated_gain": previous.final_estimated_gain,
+                            "actual_gain": null,
+                            "error": null,
+                            "absolute_error": null,
+                        },
+                    }));
+                }
+                self.driver_rank_validation = Some(DriverRankValidationState {
+                    race_sequence: self.driver_rank_race_sequence,
+                    event_id: event_id.to_owned(),
+                    split_number,
+                    player_vehicle_id: sample.vehicle_id,
+                    player_class: sample.vehicle_class.clone(),
+                    before_raw_elo: Self::usable_raw_elo(player_raw_elo),
+                    before_visual_score: sample.visual_score,
+                    before_refresh_revision: refresh_revision,
+                    final_estimated_gain: None,
+                    final_race_position: 0,
+                    final_qualifying_position: 0,
+                    final_position_source: "unavailable",
+                    final_logged_signature: None,
+                });
+            }
+
+            let Some(state) = self.driver_rank_validation.as_mut() else {
+                return;
+            };
+            if state.event_id.is_empty() && !event_id.is_empty() {
+                state.event_id = event_id.to_owned();
+            }
+            if state.split_number == 0 && split_number > 0 {
+                state.split_number = split_number;
+            }
+            if game_phase < 8 && refresh_revision >= state.before_refresh_revision {
+                if let Some(raw_elo) = Self::usable_raw_elo(player_raw_elo) {
+                    state.before_raw_elo = Some(raw_elo);
+                }
+                if sample.visual_score.is_some() {
+                    state.before_visual_score = sample.visual_score;
+                }
+                state.before_refresh_revision = refresh_revision;
+            }
+            if game_phase < 8 || sample.estimated_gain.is_none() {
+                return;
+            }
+
+            state.final_estimated_gain = sample.estimated_gain;
+            state.final_race_position = sample.race_position;
+            state.final_qualifying_position = sample.qualifying_position;
+            state.final_position_source = sample.race_position_source;
+            let signature = format!(
+                "{:.3}|{}|{}|{}",
+                sample.estimated_gain.unwrap_or_default(),
+                sample.race_position,
+                sample.qualifying_position,
+                sample.race_position_source
+            );
+            if state.final_logged_signature.as_deref() == Some(signature.as_str()) {
+                return;
+            }
+            state.final_logged_signature = Some(signature);
+            super::dr_estimate_log::queue(serde_json::json!({
+                "event": "driver_rank_race_final",
+                "log_schema_version": DRIVER_RANK_LOG_SCHEMA_VERSION,
+                "formula_version": DRIVER_RANK_FORMULA_VERSION,
+                "app_version": env!("CARGO_PKG_VERSION"),
+                "race_sequence": state.race_sequence,
+                "event_id": state.event_id,
+                "split_number": state.split_number,
+                "player": {
+                    "vehicle_id": state.player_vehicle_id,
+                    "vehicle_class": state.player_class,
+                    "before_raw_elo": state.before_raw_elo,
+                    "before_visual_score": state.before_visual_score,
+                    "before_refresh_revision": state.before_refresh_revision,
+                },
+                "result": {
+                    "estimated_gain": state.final_estimated_gain,
+                    "race_position": state.final_race_position,
+                    "qualifying_position": state.final_qualifying_position,
+                    "position_source": state.final_position_source,
+                },
+            }));
+            return;
+        }
+
+        let Some(state) = self.driver_rank_validation.take() else {
+            return;
+        };
+        let Some(estimated_gain) = state.final_estimated_gain else {
+            self.driver_rank_validation = Some(state);
+            return;
+        };
+        if refresh_revision <= state.before_refresh_revision {
+            self.driver_rank_validation = Some(state);
+            return;
+        }
+
+        let current_visual_score = sample.and_then(|value| value.visual_score);
+        let after_raw_elo = Self::usable_raw_elo(player_raw_elo);
+        let Some((actual_gain, actual_source)) = Self::driver_rank_actual_gain(
+            state.before_raw_elo,
+            after_raw_elo,
+            state.before_visual_score,
+            current_visual_score,
+        ) else {
+            self.driver_rank_validation = Some(state);
+            return;
+        };
+        let error = actual_gain - estimated_gain;
+        super::dr_estimate_log::queue(serde_json::json!({
+            "event": "driver_rank_validation",
+            "log_schema_version": DRIVER_RANK_LOG_SCHEMA_VERSION,
+            "formula_version": DRIVER_RANK_FORMULA_VERSION,
+            "app_version": env!("CARGO_PKG_VERSION"),
+            "status": "settled",
+            "race_sequence": state.race_sequence,
+            "event_id": state.event_id,
+            "split_number": state.split_number,
+            "player": {
+                "vehicle_id": state.player_vehicle_id,
+                "vehicle_class": state.player_class,
+                "before_raw_elo": state.before_raw_elo,
+                "after_raw_elo": after_raw_elo,
+                "before_visual_score": state.before_visual_score,
+                "after_visual_score": current_visual_score,
+                "before_refresh_revision": state.before_refresh_revision,
+                "after_refresh_revision": refresh_revision,
+            },
+            "comparison": {
+                "estimated_gain": estimated_gain,
+                "actual_gain": actual_gain,
+                "actual_source": actual_source,
+                "error": error,
+                "absolute_error": error.abs(),
+            },
+            "result": {
+                "race_position": state.final_race_position,
+                "qualifying_position": state.final_qualifying_position,
+                "position_source": state.final_position_source,
+            },
+        }));
+    }
+
     fn scored_class_positions(
         entries: &[StandingEntry],
         scored_overall_positions: &HashMap<i32, i32>,
@@ -1757,6 +2007,7 @@ impl LmuTelemetrySource {
                 qualifying_result_total: 0.0,
                 gain_factor: 0.0,
                 estimated_gain: None,
+                opponents: Vec::new(),
             });
         }
         if !(10..=13).contains(&session_type) {
@@ -1817,6 +2068,7 @@ impl LmuTelemetrySource {
                         qualifying_result_total: 0.0,
                         gain_factor: 0.0,
                         estimated_gain: None,
+                        opponents: Vec::new(),
                     });
                 }
                 continue;
@@ -1824,6 +2076,7 @@ impl LmuTelemetrySource {
             let mut race_result_total = 0.0;
             let mut qualify_result_total = 0.0;
             let mut opponent_count = 0_u32;
+            let mut opponent_diagnostics = Vec::new();
             for (other_index, opponent) in entries.iter().enumerate() {
                 if other_index == index || opponent.vehicle_class != entry.vehicle_class {
                     continue;
@@ -1848,6 +2101,18 @@ impl LmuTelemetrySource {
                 race_result_total += race_result - expected;
                 qualify_result_total += qualify_result - expected;
                 opponent_count += 1;
+                if entry.is_player {
+                    opponent_diagnostics.push(DriverRankOpponentDiagnostic {
+                        vehicle_id: opponent.vehicle_id,
+                        visual_score: opponent_rank_score,
+                        internal_score: opponent_rating,
+                        race_position: opponent_race_position,
+                        qualifying_position: opponent_start,
+                        expected,
+                        race_result,
+                        qualifying_result: qualify_result,
+                    });
+                }
             }
             if opponent_count == 0 {
                 if entry.is_player {
@@ -1868,6 +2133,7 @@ impl LmuTelemetrySource {
                         qualifying_result_total: qualify_result_total,
                         gain_factor: 0.0,
                         estimated_gain: None,
+                        opponents: opponent_diagnostics,
                     });
                 }
                 continue;
@@ -1897,6 +2163,7 @@ impl LmuTelemetrySource {
                     qualifying_result_total: qualify_result_total,
                     gain_factor,
                     estimated_gain: Some(gain),
+                    opponents: opponent_diagnostics,
                 });
             }
             gains.push((index, gain));
@@ -2004,6 +2271,7 @@ impl LmuTelemetrySource {
         let mut driver_qualifying_overall_positions = HashMap::<i32, i32>::new();
         let mut scored_overall_positions = HashMap::<i32, i32>::new();
         let mut player_driver_elo = None;
+        let mut player_profile_revision = 0;
         let player_entry = raw_entries
             .iter()
             .find(|entry| entry.is_player != 0)
@@ -2128,9 +2396,20 @@ impl LmuTelemetrySource {
             }
             if entry.is_player != 0 && ranks.driver_elo.is_finite() && ranks.driver_elo >= 0.0 {
                 player_driver_elo = Some(ranks.driver_elo);
+                player_profile_revision = self.driver_ranks.profile_revision(&identity.driver_name);
             }
             if let Some(score) = Self::driver_rank_score(&ranks.driver, ranks.driver_progress) {
-                driver_rank_scores.insert(entry.vehicle_id, score);
+                let driver_key = normalized_name(&identity.driver_name);
+                let estimate_score = if (10..=13).contains(&snapshot.session_type) {
+                    *self
+                        .driver_rank_prerace_scores
+                        .entry(driver_key)
+                        .or_insert(score)
+                } else {
+                    self.driver_rank_prerace_scores.insert(driver_key, score);
+                    score
+                };
+                driver_rank_scores.insert(entry.vehicle_id, estimate_score);
             }
             if let Some(qualification) = rest
                 .as_ref()
@@ -2264,8 +2543,18 @@ impl LmuTelemetrySource {
             self.session_split.value().driver_rank_settings,
         );
 
+        let authenticated_player_elo = self.driver_ranks.authenticated_player_elo();
+        let authenticated_elo_revision = self.driver_ranks.authenticated_player_elo_revision();
+        let (validation_player_elo, player_rank_refresh_revision) = if authenticated_player_elo
+            .is_some()
+            && authenticated_elo_revision > player_profile_revision
+        {
+            (authenticated_player_elo, authenticated_elo_revision)
+        } else {
+            (player_driver_elo, player_profile_revision)
+        };
         if player_driver_elo.is_none() {
-            player_driver_elo = self.driver_ranks.authenticated_player_elo();
+            player_driver_elo = authenticated_player_elo;
         }
         if player_driver_elo.is_none() {
             player_driver_elo = self.session_split.value().player_driver_elo;
@@ -2273,11 +2562,17 @@ impl LmuTelemetrySource {
 
         if log_driver_rank_sample {
             let split = self.session_split.value();
-            if let Some(sample) = driver_rank_diagnostic {
+            if let Some(sample) = driver_rank_diagnostic.as_ref() {
                 if (0..=8).contains(&snapshot.session_type) {
                     super::dr_estimate_log::queue(serde_json::json!({
                         "event": "driver_rank_current_sample",
+                        "log_schema_version": DRIVER_RANK_LOG_SCHEMA_VERSION,
+                        "formula_version": DRIVER_RANK_FORMULA_VERSION,
+                        "app_version": env!("CARGO_PKG_VERSION"),
+                        "race_sequence": self.driver_rank_race_sequence,
                         "event_id": split.event_id,
+                        "split_number": split.number,
+                        "split_count": split.count,
                         "session_type": snapshot.session_type,
                         "status": sample.status,
                         "player": {
@@ -2293,7 +2588,13 @@ impl LmuTelemetrySource {
                 } else {
                     super::dr_estimate_log::queue(serde_json::json!({
                         "event": "driver_rank_estimate_sample",
+                        "log_schema_version": DRIVER_RANK_LOG_SCHEMA_VERSION,
+                        "formula_version": DRIVER_RANK_FORMULA_VERSION,
+                        "app_version": env!("CARGO_PKG_VERSION"),
+                        "race_sequence": self.driver_rank_race_sequence,
                         "event_id": split.event_id,
+                        "split_number": split.number,
+                        "split_count": split.count,
                         "session_type": snapshot.session_type,
                         "game_phase": snapshot.game_phase,
                         "status": sample.status,
@@ -2320,6 +2621,16 @@ impl LmuTelemetrySource {
                             "qualifying_weight": DRIVER_RANK_QUALIFY_WEIGHT,
                             "gain_factor": sample.gain_factor,
                             "estimated_gain": sample.estimated_gain,
+                            "opponents": sample.opponents.iter().map(|opponent| serde_json::json!({
+                                "vehicle_id": opponent.vehicle_id,
+                                "visual_score": opponent.visual_score,
+                                "internal_score": opponent.internal_score,
+                                "race_position": opponent.race_position,
+                                "qualifying_position": opponent.qualifying_position,
+                                "expected": opponent.expected,
+                                "race_result": opponent.race_result,
+                                "qualifying_result": opponent.qualifying_result,
+                            })).collect::<Vec<_>>(),
                         },
                         "settings": {
                             "multiplier": split.driver_rank_settings.multiplier,
@@ -2331,6 +2642,17 @@ impl LmuTelemetrySource {
                 }
             }
         }
+
+        let split = self.session_split.value().clone();
+        self.update_driver_rank_validation(
+            snapshot.session_type,
+            snapshot.game_phase,
+            &split.event_id,
+            split.number,
+            driver_rank_diagnostic.as_ref(),
+            validation_player_elo,
+            player_rank_refresh_revision,
+        );
 
         if !gap_sample.is_empty() {
             super::queue_analysis_event(serde_json::json!({
@@ -4155,6 +4477,11 @@ mod tests {
         .unwrap();
 
         assert_eq!(live.race_position, 2);
+        assert_eq!(live.opponents.len(), 2);
+        assert!(live
+            .opponents
+            .iter()
+            .all(|opponent| (opponent.expected - 0.5).abs() < f64::EPSILON));
         assert_eq!(scored.live_race_position, 2);
         assert_eq!(scored.race_position, 3);
         assert_eq!(scored.race_position_source, "rest_server_scored");
@@ -4200,6 +4527,27 @@ mod tests {
         let gain =
             LmuTelemetrySource::driver_rank_gain(1.0 - expected, 1.0 - expected, 1, settings);
         assert!((gain - 8.823_529_411_764_707).abs() < 1e-9);
+    }
+
+    #[test]
+    fn driver_rank_validation_prefers_raw_elo_and_falls_back_to_visual_score() {
+        let raw = LmuTelemetrySource::driver_rank_actual_gain(
+            Some(1_290.0),
+            Some(1_299.0),
+            Some(430.0),
+            Some(500.0),
+        )
+        .unwrap();
+        assert_eq!(raw, (3.0, "raw_elo"));
+
+        let visual = LmuTelemetrySource::driver_rank_actual_gain(
+            Some(0.0),
+            Some(0.0),
+            Some(430.0),
+            Some(433.0),
+        )
+        .unwrap();
+        assert_eq!(visual, (3.0, "visual_score"));
     }
 
     #[test]

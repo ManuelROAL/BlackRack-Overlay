@@ -94,6 +94,9 @@ duplicate selection or timing semantics.
 - The DR estimate is same-class and event-parameter aware. Compare drivers on
   the three-times internal rating scale, then normalize the visible gain with
   `multiplier * K / (2 * rated opponents)`.
+- Freeze each driver's latest pre-race visual score for the race estimate. A
+  driver first discovered during the race is frozen when their rank becomes
+  available, so asynchronous profile refreshes cannot rewrite earlier inputs.
 - Its dedicated diagnostic switch writes the player's current DR when available
   or changed during practice and qualifying, then the initial player estimate and
   each meaningful change during a race, to a unique per-run file under
@@ -107,6 +110,13 @@ duplicate selection or timing semantics.
   10 Hz standings model active while enabled. It accumulates all sessions and
   enable/disable cycles in one app run; later launches create a distinct file and
   retain the previous logs.
+- Version 2 samples identify the app and formula, event, split and race sequence,
+  and include each anonymous rated opponent's positions, score, expected result
+  and head-to-head outcomes. At the checkered flag, write the final prediction;
+  after a fresh RaceControl profile refresh in a later session, write a settlement
+  with actual gain, prediction error and source. Prefer continuous raw ELO for
+  settlement and fall back to the continuous visual score only when raw ELO is
+  unavailable or masked as zero.
 - During the live race, DR head-to-head results follow the responsive class order
   from shared memory. After the checkered flag, prefer LMU REST `position` only
   when `serverScored` is true and every car in that class has a positive scored
