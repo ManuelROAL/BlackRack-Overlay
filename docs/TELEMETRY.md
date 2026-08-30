@@ -48,6 +48,10 @@ restore per-overlay native listeners or direct cross-realm object events.
   normalized driver name to shared-memory scoring before selecting the telemetry
   vehicle. Never equate REST `slotID` with shared-memory `mID` without that
   identity match.
+- Team mode is separate from spectator mode. Validate the local REST `teamInfo`
+  roster against `sessionInfo.playerName`, then match its drivers, team or vehicle
+  identity to shared-memory scoring. This keeps the registered team car selected
+  regardless of the active spectator camera. The two modes are mutually exclusive.
 - Shared-memory vehicle `mID` and REST `slotID` are different namespaces. Match
   cross-source vehicles by normalized driver identity; accept a numeric slot
   fallback only when identity agrees.

@@ -54,9 +54,10 @@ telemetry semantics and file ownership live under `docs/overlays/`; use
   updating host geometry.
 - Automatically hide overlays when LMU is not foreground, the player is inactive,
   the game is not realtime, the player is in the garage or the session has ended.
-  Spectator mode permits non-realtime viewing and treats the currently watched
-  entry as the reference vehicle between driving stints; garage and session-end
-  hiding still apply.
+  Spectator and team modes permit non-realtime viewing. Spectator mode treats the
+  currently watched entry as the reference vehicle; team mode keeps the player's
+  registered team car as the reference regardless of the active camera. They are
+  mutually exclusive; garage and session-end hiding still apply.
   Keep overlays visible while the control panel has focus so configuration changes
   can be previewed; the remaining automatic visibility conditions still apply. Do
   not capture Escape for visibility.

@@ -267,15 +267,15 @@ extern "C" int lmu_read_snapshot(LmuSnapshot* output, int32_t spectator_vehicle_
     const unsigned long active_vehicles =
         std::min<unsigned long>(telemetry.activeVehicles, MAX_VEHICLES);
     const TelemInfoV01* selected_vehicle = nullptr;
-    if (telemetry.playerHasVehicle && telemetry.playerVehicleIdx < active_vehicles) {
-        selected_vehicle = &telemetry.telemInfo[telemetry.playerVehicleIdx];
-    } else if (spectator_vehicle_id >= 0) {
+    if (spectator_vehicle_id >= 0) {
         for (unsigned long index = 0; index < active_vehicles; ++index) {
             if (telemetry.telemInfo[index].mID == spectator_vehicle_id) {
                 selected_vehicle = &telemetry.telemInfo[index];
                 break;
             }
         }
+    } else if (telemetry.playerHasVehicle && telemetry.playerVehicleIdx < active_vehicles) {
+        selected_vehicle = &telemetry.telemInfo[telemetry.playerVehicleIdx];
     } else if (spectator_vehicle_id == -1) {
         const VehicleScoringInfoV01* player_entry = nullptr;
         for (int index = 0; index < vehicle_count; ++index) {

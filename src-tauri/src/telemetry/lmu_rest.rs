@@ -83,10 +83,11 @@ pub(super) struct RestPitStopEstimate {
     pub ve: f64,
 }
 
-#[derive(Clone, Copy, Debug, Default, Deserialize)]
+#[derive(Clone, Debug, Default, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 struct RestSessionInfo {
     max_time: f64,
+    player_name: String,
 }
 
 #[derive(Clone, Debug, Default, Deserialize)]
@@ -111,9 +112,19 @@ pub(super) struct RestVehicleDamage {
 #[derive(Clone, Debug, Default, Deserialize)]
 #[serde(default)]
 struct RestRepairAndRefuel {
+    #[serde(rename = "teamInfo")]
+    team_info: RestTeamInfo,
     wearables: RestWearables,
     #[serde(rename = "pitMenu")]
     pit_menu: RestPitMenu,
+}
+
+#[derive(Clone, Debug, Default, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+struct RestTeamInfo {
+    driver_names: Vec<String>,
+    team_name: String,
+    vehicle_name: String,
 }
 
 #[derive(Clone, Debug, Default, Deserialize)]
@@ -234,6 +245,7 @@ struct SupplementUpdate {
     vehicle_damage: Option<RestVehicleDamage>,
     fuel_ratio_assigned: Option<f64>,
     session_info: Option<RestSessionInfo>,
+    team_info: Option<RestTeamInfo>,
     steering_range_degrees: Option<f64>,
 }
 
@@ -258,6 +270,9 @@ pub(super) struct LocalRestResolver {
     session_max_time_seconds: f64,
     steering_range_degrees: Option<f64>,
     fuel_ratio_assigned: f64,
+    team_driver_names: Vec<String>,
+    team_name: String,
+    team_vehicle_name: String,
     supplement_received_at: Option<Instant>,
     vehicle_damage_received_at: Option<Instant>,
     weather_nodes: RestWeatherSession,
@@ -339,6 +354,12 @@ impl LocalRestResolver {
                     "/rest/garage/UIScreen/RepairAndRefuel",
                 )
                 .ok();
+                let session_info = fetch_json(&client, "/rest/watch/sessionInfo").ok();
+                let team_info = repair_and_refuel.as_ref().and_then(|response| {
+                    session_info.as_ref().and_then(|session| {
+                        team_info_for_player(&response.team_info, &session.player_name)
+                    })
+                });
                 let update = SupplementUpdate {
                     pit_stop: fetch_json(&client, "/rest/strategy/pitstop-estimate").ok(),
                     vehicle_damage: repair_and_refuel
@@ -350,7 +371,8 @@ impl LocalRestResolver {
                     fuel_ratio_assigned: repair_and_refuel
                         .as_ref()
                         .map(|response| fuel_ratio_assigned(response).unwrap_or(0.0)),
-                    session_info: fetch_json(&client, "/rest/watch/sessionInfo").ok(),
+                    session_info,
+                    team_info,
                     steering_range_degrees,
                 };
                 if supplement_sender.send(update).is_err() {
@@ -411,6 +433,9 @@ impl LocalRestResolver {
             session_max_time_seconds: 0.0,
             steering_range_degrees: None,
             fuel_ratio_assigned: 0.0,
+            team_driver_names: Vec::new(),
+            team_name: String::new(),
+            team_vehicle_name: String::new(),
             supplement_received_at: None,
             vehicle_damage_received_at: None,
             weather_nodes: RestWeatherSession::default(),
@@ -436,6 +461,9 @@ impl LocalRestResolver {
             session_max_time_seconds: 0.0,
             steering_range_degrees: None,
             fuel_ratio_assigned: 0.0,
+            team_driver_names: Vec::new(),
+            team_name: String::new(),
+            team_vehicle_name: String::new(),
             supplement_received_at: None,
             vehicle_damage_received_at: None,
             weather_nodes: RestWeatherSession::default(),
@@ -508,6 +536,11 @@ impl LocalRestResolver {
             if let Some(session_info) = update.session_info {
                 self.latch_session_max_time(session_info.max_time);
             }
+            if let Some(team_info) = update.team_info {
+                self.team_driver_names = team_info.driver_names;
+                self.team_name = team_info.team_name;
+                self.team_vehicle_name = team_info.vehicle_name;
+            }
             if let Some(fuel_ratio_assigned) = update.fuel_ratio_assigned {
                 self.fuel_ratio_assigned = fuel_ratio_assigned;
                 received = true;
@@ -543,6 +576,18 @@ impl LocalRestResolver {
         self.replace_history(history);
     }
 
+    #[cfg(test)]
+    pub(super) fn seed_team_reference(
+        &mut self,
+        driver_names: Vec<String>,
+        team_name: &str,
+        vehicle_name: &str,
+    ) {
+        self.team_driver_names = driver_names;
+        self.team_name = team_name.to_owned();
+        self.team_vehicle_name = vehicle_name.to_owned();
+    }
+
     fn replace_history(&mut self, history: HashMap<String, Vec<RestStandingHistory>>) {
         self.history_by_slot.clear();
         self.history_by_name.clear();
@@ -571,6 +616,9 @@ impl LocalRestResolver {
         self.session_max_time_seconds = 0.0;
         self.steering_range_degrees = None;
         self.fuel_ratio_assigned = 0.0;
+        self.team_driver_names.clear();
+        self.team_name.clear();
+        self.team_vehicle_name.clear();
         self.weather_nodes = RestWeatherSession::default();
         self.weather_received_at = None;
     }
@@ -663,6 +711,14 @@ impl LocalRestResolver {
             .find(|standing| standing.focus || standing.has_focus)
     }
 
+    pub(super) fn team_reference(&self) -> Option<(&[String], &str, &str)> {
+        (!self.team_driver_names.is_empty()).then_some((
+            self.team_driver_names.as_slice(),
+            self.team_name.as_str(),
+            self.team_vehicle_name.as_str(),
+        ))
+    }
+
     pub(super) fn pit_stop(&self) -> Option<&RestPitStopEstimate> {
         is_fresh(self.supplement_received_at, SUPPLEMENT_MAX_AGE).then_some(&self.pit_stop)
     }
@@ -704,6 +760,16 @@ fn fuel_ratio_assigned(response: &RestRepairAndRefuel) -> Option<f64> {
         .parse::<f64>()
         .ok()?;
     (ratio.is_finite() && ratio > 0.0).then_some(ratio)
+}
+
+fn team_info_for_player(info: &RestTeamInfo, player_name: &str) -> Option<RestTeamInfo> {
+    let player = normalized_driver_identity(player_name);
+    (!player.is_empty()
+        && info
+            .driver_names
+            .iter()
+            .any(|name| normalized_driver_identity(name) == player))
+    .then(|| info.clone())
 }
 
 fn steering_range(value: &str) -> Option<f64> {
@@ -752,6 +818,19 @@ pub(super) fn normalized_name(name: &str) -> String {
     name.trim().to_lowercase()
 }
 
+pub(super) fn normalized_driver_identity(name: &str) -> String {
+    let normalized = normalized_name(name);
+    normalized
+        .rsplit_once('#')
+        .filter(|(_, suffix)| {
+            !suffix.is_empty() && suffix.chars().all(|value| value.is_ascii_digit())
+        })
+        .map_or_else(
+            || normalized.clone(),
+            |(base, _)| base.trim_end().to_owned(),
+        )
+}
+
 fn normalized_class(value: &str) -> String {
     let compact = value
         .trim()
@@ -775,9 +854,10 @@ fn normalized_class(value: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::{
-        fuel_ratio_assigned, normalized_name, steering_range, LocalRestResolver, RestGarageData,
-        RestPitStopEstimate, RestRepairAndRefuel, RestSessionInfo, RestStanding,
-        RestStandingHistory, RestWeatherSession,
+        fuel_ratio_assigned, normalized_driver_identity, normalized_name, steering_range,
+        team_info_for_player, LocalRestResolver, RestGarageData, RestPitStopEstimate,
+        RestRepairAndRefuel, RestSessionInfo, RestStanding, RestStandingHistory, RestTeamInfo,
+        RestWeatherSession,
     };
     use std::collections::HashMap;
 
@@ -810,8 +890,23 @@ mod tests {
 
     #[test]
     fn parses_official_session_max_time() {
-        let session: RestSessionInfo = serde_json::from_str(r#"{"maxTime":14400}"#).unwrap();
+        let session: RestSessionInfo =
+            serde_json::from_str(r#"{"maxTime":14400,"playerName":"Manuel Rodriguez Alvarez"}"#)
+                .unwrap();
         assert_eq!(session.max_time, 14_400.0);
+        assert_eq!(session.player_name, "Manuel Rodriguez Alvarez");
+    }
+
+    #[test]
+    fn accepts_only_team_info_containing_the_local_player() {
+        let info = RestTeamInfo {
+            driver_names: vec!["Manuel Rodriguez Alvarez#1234".into(), "Compañero".into()],
+            team_name: "BlackRack Racing".into(),
+            vehicle_name: "Ferrari 296 #29".into(),
+        };
+        assert!(team_info_for_player(&info, "Manuel Rodriguez Alvarez").is_some());
+        assert!(team_info_for_player(&info, "Otro piloto").is_none());
+        assert_eq!(normalized_driver_identity(" Piloto#9006 "), "piloto");
     }
 
     #[test]

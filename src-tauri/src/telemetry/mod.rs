@@ -416,13 +416,32 @@ struct PerformanceTuning {
 
 static PERFORMANCE_PROFILE: AtomicU8 = AtomicU8::new(PerformanceProfile::Smooth as u8);
 static SPECTATOR_MODE: AtomicBool = AtomicBool::new(false);
+static TEAM_MODE: AtomicBool = AtomicBool::new(false);
 
 pub fn set_spectator_mode(enabled: bool) {
     SPECTATOR_MODE.store(enabled, Ordering::Relaxed);
+    if enabled {
+        TEAM_MODE.store(false, Ordering::Relaxed);
+    }
+}
+
+pub fn set_team_mode(enabled: bool) {
+    TEAM_MODE.store(enabled, Ordering::Relaxed);
+    if enabled {
+        SPECTATOR_MODE.store(false, Ordering::Relaxed);
+    }
 }
 
 fn spectator_mode() -> bool {
     SPECTATOR_MODE.load(Ordering::Relaxed)
+}
+
+fn team_mode() -> bool {
+    TEAM_MODE.load(Ordering::Relaxed)
+}
+
+fn observer_mode() -> bool {
+    spectator_mode() || team_mode()
 }
 
 impl PerformanceProfile {
@@ -998,7 +1017,7 @@ pub fn spawn_source(app: AppHandle) {
             let source_started = Instant::now();
             let track_map_requested = track_map_due && (track_map_visible || browser_clients);
             let mut frame = source.next_frame(standings_requested, track_map_requested);
-            frame.spectator_mode = spectator_mode();
+            frame.spectator_mode = observer_mode();
             frame.performance_profile = tuning.profile.name();
             delta_engine.update(&mut frame);
             standings_models::prepare_overlay_models(&mut frame);

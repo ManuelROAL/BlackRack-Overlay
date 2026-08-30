@@ -112,8 +112,11 @@ import {
 } from "./performance-settings";
 import {
   readSpectatorMode,
+  readTeamMode,
   saveSpectatorMode,
-  SPECTATOR_MODE_KEY
+  saveTeamMode,
+  SPECTATOR_MODE_KEY,
+  TEAM_MODE_KEY
 } from "./spectator-settings";
 
 installFrontendDiagnostics("control", (diagnostic) =>
@@ -191,6 +194,7 @@ interface OverlayConfigurationExport {
     trackMap: TrackMapSettings;
     performanceProfile: PerformanceProfile;
     spectatorMode: boolean;
+    teamMode: boolean;
   };
 }
 
@@ -222,24 +226,63 @@ renderPerformanceProfile();
 void invoke("set_performance_profile", { profile: performanceProfile });
 
 let spectatorMode = readSpectatorMode();
+let teamMode = readTeamMode();
+if (spectatorMode && teamMode) {
+  spectatorMode = false;
+  saveSpectatorMode(false);
+}
 const spectatorModeInput = document.getElementById("spectator-mode") as HTMLInputElement | null;
+const teamModeInput = document.getElementById("team-mode") as HTMLInputElement | null;
 if (spectatorModeInput) {
   spectatorModeInput.checked = spectatorMode;
   spectatorModeInput.addEventListener("change", () => {
     const previous = spectatorMode;
+    const previousTeam = teamMode;
     spectatorMode = spectatorModeInput.checked;
+    if (spectatorMode) {
+      teamMode = false;
+      if (teamModeInput) teamModeInput.checked = false;
+    }
     spectatorModeInput.disabled = true;
     void invoke("set_spectator_mode", { enabled: spectatorMode }).then(() => {
       saveSpectatorMode(spectatorMode);
+      saveTeamMode(teamMode);
     }).catch(() => {
       spectatorMode = previous;
+      teamMode = previousTeam;
       spectatorModeInput.checked = previous;
+      if (teamModeInput) teamModeInput.checked = previousTeam;
     }).finally(() => {
       spectatorModeInput.disabled = false;
     });
   });
 }
-void invoke("set_spectator_mode", { enabled: spectatorMode });
+if (teamModeInput) {
+  teamModeInput.checked = teamMode;
+  teamModeInput.addEventListener("change", () => {
+    const previous = teamMode;
+    const previousSpectator = spectatorMode;
+    teamMode = teamModeInput.checked;
+    if (teamMode) {
+      spectatorMode = false;
+      if (spectatorModeInput) spectatorModeInput.checked = false;
+    }
+    teamModeInput.disabled = true;
+    void invoke("set_team_mode", { enabled: teamMode }).then(() => {
+      saveTeamMode(teamMode);
+      saveSpectatorMode(spectatorMode);
+    }).catch(() => {
+      teamMode = previous;
+      spectatorMode = previousSpectator;
+      teamModeInput.checked = previous;
+      if (spectatorModeInput) spectatorModeInput.checked = previousSpectator;
+    }).finally(() => {
+      teamModeInput.disabled = false;
+    });
+  });
+}
+void invoke("set_spectator_mode", { enabled: spectatorMode })
+  .then(() => invoke("set_team_mode", { enabled: teamMode }));
 
 for (const button of performanceProfileButtons) {
   button.addEventListener("click", () => {
@@ -1072,6 +1115,7 @@ const parseOverlayConfiguration = (
   const trackMap = configurationObject(overlays?.trackMap);
   const importedPerformanceProfile = overlays?.performanceProfile;
   const importedSpectatorMode = overlays?.spectatorMode;
+  const importedTeamMode = overlays?.teamMode;
   const schemaVersion = root?.schemaVersion;
   const schemaMonitor = typeof overlays?.monitor === "number"
     && Number.isInteger(overlays.monitor) && Number(overlays.monitor) >= 0
@@ -1301,7 +1345,8 @@ const parseOverlayConfiguration = (
       performanceProfile: isPerformanceProfile(importedPerformanceProfile)
         ? importedPerformanceProfile
         : DEFAULT_PERFORMANCE_PROFILE,
-      spectatorMode: typeof importedSpectatorMode === "boolean" ? importedSpectatorMode : false
+      spectatorMode: typeof importedSpectatorMode === "boolean" ? importedSpectatorMode : false,
+      teamMode: typeof importedTeamMode === "boolean" ? importedTeamMode : false
     }
   };
 };
@@ -1333,7 +1378,8 @@ const applyImportedConfiguration = (configuration: OverlayConfigurationExport): 
     [TIMING_SETTINGS_KEY, configuration.overlays.timing],
     [TRACK_MAP_SETTINGS_KEY, configuration.overlays.trackMap],
     [PERFORMANCE_PROFILE_KEY, configuration.overlays.performanceProfile],
-    [SPECTATOR_MODE_KEY, configuration.overlays.spectatorMode]
+    [SPECTATOR_MODE_KEY, configuration.overlays.spectatorMode && !configuration.overlays.teamMode],
+    [TEAM_MODE_KEY, configuration.overlays.teamMode]
   ];
   const previous = entries.map(([key]) => [key, localStorage.getItem(key)] as const);
   const previousLocale = localStorage.getItem(LOCALE_STORAGE_KEY);
@@ -1387,7 +1433,8 @@ exportConfigurationButton?.addEventListener("click", () => {
         timing: timingSettings,
         trackMap: trackMapSettings,
         performanceProfile,
-        spectatorMode
+        spectatorMode,
+        teamMode
       }
     };
     const timestamp = now.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");

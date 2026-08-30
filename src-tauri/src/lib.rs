@@ -993,6 +993,11 @@ fn set_spectator_mode(enabled: bool) {
 }
 
 #[tauri::command]
+fn set_team_mode(enabled: bool) {
+    telemetry::set_team_mode(enabled);
+}
+
+#[tauri::command]
 fn get_driver_rank_estimate_logging() -> telemetry::DriverRankEstimateLoggingStatus {
     telemetry::driver_rank_estimate_logging_status()
 }
@@ -1480,6 +1485,7 @@ pub fn run() {
             set_telemetry_logging,
             set_performance_profile,
             set_spectator_mode,
+            set_team_mode,
             get_driver_rank_estimate_logging,
             set_driver_rank_estimate_logging,
             get_strategy_logging,

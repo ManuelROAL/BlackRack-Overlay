@@ -6,7 +6,9 @@ use super::consumption_profile::{ConsumptionProfiler, ProfileEstimate};
 use super::driver_ranks::DriverRankResolver;
 use super::event_split::{DriverRankSettings, SessionSplitResolver};
 use super::fuel_strategy::{calculate_resource_strategy, FuelStrategies, ResourceStrategyInput};
-use super::lmu_rest::{normalized_name, LocalRestResolver, RestVehicleDamage};
+use super::lmu_rest::{
+    normalized_driver_identity, normalized_name, LocalRestResolver, RestVehicleDamage,
+};
 use super::{StandingEntry, TelemetryFrame, TelemetrySource, TrackMapVehicle};
 
 const MAX_VEHICLES: usize = 104;
@@ -1032,6 +1034,43 @@ impl LmuTelemetrySource {
             .iter()
             .find(|entry| {
                 normalized_name(&Self::string_from_chars(&entry.driver_name)) == focused_name
+            })
+            .map(|entry| entry.vehicle_id)
+    }
+
+    fn team_vehicle_id(&self) -> Option<i32> {
+        let (driver_names, team_name, vehicle_name) = self.local_rest.team_reference()?;
+        let normalized_drivers = driver_names
+            .iter()
+            .map(|name| normalized_driver_identity(name))
+            .collect::<HashSet<_>>();
+        let normalized_team = normalized_name(team_name);
+        let normalized_vehicle = normalized_name(vehicle_name);
+        let snapshot = self.last_valid_snapshot.as_ref()?;
+        let count = (snapshot.standings_count as usize).min(MAX_VEHICLES);
+        let standings = &snapshot.standings[..count];
+        standings
+            .iter()
+            .find(|entry| {
+                normalized_drivers.contains(&normalized_driver_identity(&Self::string_from_chars(
+                    &entry.driver_name,
+                )))
+            })
+            .or_else(|| {
+                (!normalized_team.is_empty()).then(|| {
+                    standings.iter().find(|entry| {
+                        normalized_name(&Self::string_from_chars(&entry.team_name))
+                            == normalized_team
+                    })
+                })?
+            })
+            .or_else(|| {
+                (!normalized_vehicle.is_empty()).then(|| {
+                    standings.iter().find(|entry| {
+                        normalized_name(&Self::string_from_chars(&entry.vehicle_name))
+                            == normalized_vehicle
+                    })
+                })?
             })
             .map(|entry| entry.vehicle_id)
     }
@@ -2910,7 +2949,9 @@ impl TelemetrySource for LmuTelemetrySource {
 
         let snapshot_started = Instant::now();
         let mut snapshot = LmuSnapshot::default();
-        let spectator_vehicle_id = if super::spectator_mode() {
+        let spectator_vehicle_id = if super::team_mode() {
+            self.team_vehicle_id().unwrap_or(-1)
+        } else if super::spectator_mode() {
             self.spectator_vehicle_id().unwrap_or(-1)
         } else {
             -2
@@ -3355,7 +3396,7 @@ impl TelemetrySource for LmuTelemetrySource {
             source: "lmu",
             performance_profile: "smooth",
             connected: true,
-            spectator_mode: super::spectator_mode(),
+            spectator_mode: super::observer_mode(),
             player_active: true,
             game_in_foreground: snapshot.game_in_foreground != 0,
             game_in_realtime: snapshot.game_in_realtime != 0,
@@ -3920,6 +3961,30 @@ mod tests {
         source.last_valid_snapshot = Some(snapshot);
 
         assert_eq!(source.spectator_vehicle_id(), Some(21));
+    }
+
+    #[test]
+    fn team_mode_resolves_registered_team_independently_of_focus() {
+        let mut source = LmuTelemetrySource::new();
+        source.local_rest.seed_team_reference(
+            vec!["Manuel Rodriguez Alvarez".into(), "Compañero Equipo".into()],
+            "BlackRack Racing",
+            "Ferrari 296 #29",
+        );
+        let mut snapshot = LmuSnapshot {
+            standings_count: 2,
+            ..LmuSnapshot::default()
+        };
+        snapshot.standings[0].vehicle_id = 20;
+        set_chars(&mut snapshot.standings[0].driver_name, "Piloto observado");
+        snapshot.standings[1].vehicle_id = 29;
+        set_chars(
+            &mut snapshot.standings[1].driver_name,
+            "COMPAÑERO EQUIPO#9006",
+        );
+        source.last_valid_snapshot = Some(snapshot);
+
+        assert_eq!(source.team_vehicle_id(), Some(29));
     }
 
     #[test]
