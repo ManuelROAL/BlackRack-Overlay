@@ -165,6 +165,9 @@ blocking HTTP calls into `next_frame()`.
   9 exports it with overlay settings and reapplies it to the Rust scheduler.
 - Spectator mode: WebView `localStorage`; configuration schema 10 exports it and
   reapplies it to the telemetry source when the control panel starts.
+- Overlay visual scale: composite-layout `localStorage`; configuration schema 11
+  exports it so startup preserves the chosen size while iframe design dimensions
+  settle or change with configurable content.
 - Configuration import accepts every positive schema version from both the former
   `lmu-overlay-configuration` and current `blackrack-overlay-configuration`
   formats. The frontend migrates known fields to schema 10, fills additive overlay

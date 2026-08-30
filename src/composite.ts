@@ -217,8 +217,9 @@ const fitPlacementToMonitor = (placement: OverlayPlacement): OverlayPlacement =>
   const designSize = designSizes.get(placement.overlay);
   let width = Math.max(minimumWidth, placement.width);
   let height = Math.max(72, placement.height);
+  let fittedScale = placement.scale;
   if (designSize) {
-    const requestedScale = Math.min(
+    const requestedScale = fittedScale ?? Math.min(
       width / designSize.width,
       height / designSize.height
     );
@@ -231,9 +232,9 @@ const fitPlacementToMonitor = (placement: OverlayPlacement): OverlayPlacement =>
       window.innerWidth / designSize.width,
       window.innerHeight / designSize.height
     );
-    const scale = Math.min(maximumScale, Math.max(minimumScale, requestedScale));
-    width = designSize.width * scale;
-    height = designSize.height * scale;
+    fittedScale = Math.min(maximumScale, Math.max(minimumScale, requestedScale));
+    width = designSize.width * fittedScale;
+    height = designSize.height * fittedScale;
   } else {
     width = Math.min(width, window.innerWidth);
     height = Math.min(height, window.innerHeight);
@@ -242,6 +243,7 @@ const fitPlacementToMonitor = (placement: OverlayPlacement): OverlayPlacement =>
     ...placement,
     width,
     height,
+    ...(fittedScale === undefined ? {} : { scale: fittedScale }),
     x: clampPanelCoordinate(placement.x, width, window.innerWidth),
     y: clampPanelCoordinate(placement.y, height, window.innerHeight)
   };
@@ -299,7 +301,8 @@ const bindPointerMove = (
             const scale = Math.max(minimumScale, Math.min(requestedScale, maximumScale));
             return {
               width: designSize.width * scale,
-              height: designSize.height * scale
+              height: designSize.height * scale,
+              scale
             };
           })()
         };
@@ -373,7 +376,8 @@ const synchronizePanels = async (): Promise<void> => {
     const placement = layout[overlay];
     const fitted = fitPlacementToMonitor(placement);
     normalized ||= fitted.x !== placement.x || fitted.y !== placement.y
-      || fitted.width !== placement.width || fitted.height !== placement.height;
+      || fitted.width !== placement.width || fitted.height !== placement.height
+      || fitted.scale !== placement.scale;
     layout[overlay] = fitted;
     if (visible.has(overlay)) createPanel(overlay, fitted);
     else removePanel(overlay);
@@ -452,18 +456,20 @@ window.addEventListener("message", (event: MessageEvent<RuntimeMessage>) => {
     const panel = panels.get(overlay);
     if (!layout || !panel) return;
     const current = layout[overlay];
-    const scale = previousSize
+    const scale = current.scale ?? (previousSize
       ? Math.min(current.width / previousSize.width, current.height / previousSize.height)
       : overlay === "timing"
         ? current.width / nextSize.width
-        : Math.min(current.width / nextSize.width, current.height / nextSize.height);
+        : Math.min(current.width / nextSize.width, current.height / nextSize.height));
     const fitted = fitPlacementToMonitor({
       ...current,
       width: nextSize.width * scale,
-      height: nextSize.height * scale
+      height: nextSize.height * scale,
+      scale
     });
     const changed = Math.abs(fitted.width - current.width) > 0.5
-      || Math.abs(fitted.height - current.height) > 0.5;
+      || Math.abs(fitted.height - current.height) > 0.5
+      || fitted.scale !== current.scale;
     if (changed) {
       layout[overlay] = fitted;
       applyPlacement(panel, fitted);

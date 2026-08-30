@@ -171,7 +171,7 @@ interface BrowserSourceStatus {
 
 interface OverlayConfigurationExport {
   format: "blackrack-overlay-configuration";
-  schemaVersion: 10;
+  schemaVersion: 11;
   exportedAt: string;
   ui: { locale: Locale };
   overlays: {
@@ -314,7 +314,7 @@ if (localeSelect) {
   });
 }
 
-const CURRENT_CONFIGURATION_SCHEMA = 10;
+const CURRENT_CONFIGURATION_SCHEMA = 11;
 const CURRENT_CONFIGURATION_FORMAT = "blackrack-overlay-configuration";
 const LEGACY_CONFIGURATION_FORMAT = "lmu-overlay-configuration";
 const overlayIds: OverlayId[] = ["delta", "timing", "driving", "liftcoast", "tires", "damage", "standings", "relative", "fuel", "pitstop", "flags", "rejoin", "trackmap", "forecast", "conditions"];
@@ -1287,7 +1287,10 @@ const parseOverlayConfiguration = (
       || !placement || placement.overlay !== id
       || ![placement.x, placement.y, placement.width, placement.height]
         .every((value) => typeof value === "number" && Number.isFinite(value))
-      || Number(placement.width) <= 0 || Number(placement.height) <= 0) {
+      || Number(placement.width) <= 0 || Number(placement.height) <= 0
+      || (placement.scale !== undefined
+        && (typeof placement.scale !== "number"
+          || !Number.isFinite(placement.scale) || placement.scale <= 0))) {
       throw new Error(t("config.invalidOverlay", { overlay: id }));
     }
   }

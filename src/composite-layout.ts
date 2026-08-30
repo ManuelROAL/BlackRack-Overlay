@@ -19,6 +19,7 @@ export interface OverlayPlacement {
   y: number;
   width: number;
   height: number;
+  scale?: number;
 }
 
 export type CompositeLayout = Record<OverlayId, OverlayPlacement>;
@@ -49,7 +50,9 @@ const validPlacement = (value: unknown, overlay: OverlayId): value is OverlayPla
   const placement = value as Partial<OverlayPlacement>;
   return placement.overlay === overlay
     && [placement.x, placement.y, placement.width, placement.height]
-      .every((number) => typeof number === "number" && Number.isFinite(number));
+      .every((number) => typeof number === "number" && Number.isFinite(number))
+    && (placement.scale === undefined
+      || (typeof placement.scale === "number" && Number.isFinite(placement.scale) && placement.scale > 0));
 };
 
 const migrateCompactPanels = (placement: OverlayPlacement): OverlayPlacement => {

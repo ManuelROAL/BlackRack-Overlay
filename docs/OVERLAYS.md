@@ -50,8 +50,9 @@ telemetry semantics and file ownership live under `docs/overlays/`; use
 - A panel may be deliberately cropped at the monitor edge, but movement retains a
   32 px visible strip so it remains recoverable.
 - Resize scales the complete design proportionally. When configurable content
-  changes the reported design size, preserve the user's visual scale while
-  updating host geometry.
+  changes the reported design size, preserve the user's explicitly persisted
+  visual scale while updating host geometry. Do not infer that scale again from
+  transient iframe dimensions during startup.
 - Automatically hide overlays when LMU is not foreground, the player is inactive,
   the game is not realtime, the player is in the garage or the session has ended.
   Spectator and team modes permit non-realtime viewing. Spectator mode treats the
