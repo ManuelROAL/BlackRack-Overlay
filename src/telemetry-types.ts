@@ -294,6 +294,15 @@ export interface FuelStrategies {
   last: ResourceStrategy | null;
   conservative_next_fill: number;
   conservative_fill_active: boolean;
+  stint_targets: Array<StintTarget | null>;
+}
+
+export interface StintTarget {
+  extra_laps: number;
+  target_consumption: number;
+  saving_percent: number;
+  stops_saved: number;
+  net_time_seconds: number | null;
 }
 
 export interface StrengthOfFieldModel {

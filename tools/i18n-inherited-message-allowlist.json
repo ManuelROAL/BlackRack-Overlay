@@ -20,6 +20,5 @@
   { "key": "rejoin.reason", "reason": "Rejoin is the stable warning kind." },
   { "key": "standings.split", "reason": "Split is established motorsport notation." },
   { "key": "relative.aria", "reason": "Relative is the overlay product name." },
-  { "key": "fuel.plan", "reason": "Compact plan label is identical in both locales." },
   { "key": "fuel.full", "reason": "Compact full-power state is established notation." }
 ]

@@ -1,6 +1,8 @@
 use std::time::Instant;
 
-use super::fuel_strategy::{calculate_resource_strategy, FuelStrategies, ResourceStrategyInput};
+use super::fuel_strategy::{
+    calculate_resource_strategy, calculate_stint_targets, FuelStrategies, ResourceStrategyInput,
+};
 use super::{
     FlagWarning, RejoinWarning, StandingEntry, TelemetryDemand, TelemetryFrame, TelemetrySource,
     TrackMapVehicle,
@@ -89,6 +91,20 @@ impl TelemetrySource for MockTelemetrySource {
                     minimum_stops,
                 )
             };
+            let stint_targets = calculate_stint_targets(
+                strategy_input(
+                    virtual_energy_percent,
+                    100.0,
+                    virtual_energy_per_lap,
+                    14.4,
+                    7.0,
+                ),
+                215.0,
+                minimum_stops,
+                8.8,
+                208.4,
+                31.7,
+            );
             FuelStrategies {
                 active: active_strategy,
                 fuel: fuel_strategy,
@@ -96,6 +112,7 @@ impl TelemetrySource for MockTelemetrySource {
                 average: energy_strategy(virtual_energy_per_lap),
                 qualifying: energy_strategy(8.8),
                 last: energy_strategy(8.55),
+                stint_targets,
                 ..FuelStrategies::default()
             }
             .with_qualifying_guidance()

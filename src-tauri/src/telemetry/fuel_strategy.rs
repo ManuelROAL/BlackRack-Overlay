@@ -32,6 +32,15 @@ pub(crate) struct ResourceStrategy {
     pub autonomy_delta: f64,
 }
 
+#[derive(Clone, Copy, Debug, Serialize)]
+pub(crate) struct StintTarget {
+    pub extra_laps: u32,
+    pub target_consumption: f64,
+    pub saving_percent: f64,
+    pub stops_saved: u32,
+    pub net_time_seconds: Option<f64>,
+}
+
 #[derive(Clone, Debug, Default, Serialize)]
 pub(crate) struct FuelStrategies {
     pub active: Option<ResourceStrategy>,
@@ -42,6 +51,7 @@ pub(crate) struct FuelStrategies {
     pub last: Option<ResourceStrategy>,
     pub conservative_next_fill: f64,
     pub conservative_fill_active: bool,
+    pub stint_targets: [Option<StintTarget>; 3],
 }
 
 impl FuelStrategies {
@@ -72,6 +82,60 @@ impl FuelStrategies {
         }
         self
     }
+}
+
+pub(super) fn calculate_stint_targets(
+    input: ResourceStrategyInput,
+    lap_seconds: f64,
+    minimum_stops: u32,
+    qualifying_consumption: f64,
+    qualifying_lap_seconds: f64,
+    pit_stop_seconds: f64,
+) -> [Option<StintTarget>; 3] {
+    if !valid_positive(input.consumption) || !valid_positive(input.capacity) {
+        return [None; 3];
+    }
+
+    let baseline_stops = stops_required(input).max(minimum_stops);
+    let baseline_stint_laps = (input.capacity / input.consumption).floor().max(1.0) as u32;
+    let pace_cost_per_resource = if valid_positive(qualifying_consumption)
+        && qualifying_consumption > input.consumption + 1e-6
+        && valid_positive(qualifying_lap_seconds)
+        && lap_seconds >= qualifying_lap_seconds
+    {
+        Some((lap_seconds - qualifying_lap_seconds) / (qualifying_consumption - input.consumption))
+    } else {
+        None
+    };
+
+    std::array::from_fn(|index| {
+        let extra_laps = index as u32 + 1;
+        let target_consumption = input.capacity / f64::from(baseline_stint_laps + extra_laps);
+        let target_strategy = calculate_resource_strategy(
+            ResourceStrategyInput {
+                consumption: target_consumption,
+                ..input
+            },
+            lap_seconds,
+            minimum_stops,
+        )?;
+        let stops_saved = baseline_stops.saturating_sub(target_strategy.stops);
+        let saving_percent =
+            ((input.consumption - target_consumption) / input.consumption * 100.0).max(0.0);
+        let net_time_seconds = pace_cost_per_resource.and_then(|pace_cost| {
+            valid_positive(pit_stop_seconds).then(|| {
+                let lap_cost = pace_cost * (input.consumption - target_consumption).max(0.0);
+                f64::from(stops_saved) * pit_stop_seconds - lap_cost * input.laps_remaining
+            })
+        });
+        Some(StintTarget {
+            extra_laps,
+            target_consumption,
+            saving_percent,
+            stops_saved,
+            net_time_seconds,
+        })
+    })
 }
 
 fn valid_positive(value: f64) -> bool {
@@ -424,5 +488,48 @@ mod tests {
         assert!(strategies.conservative_fill_active);
         assert_eq!(strategies.conservative_next_fill, qualifying.next_fill);
         assert!(strategies.conservative_next_fill > active.next_fill);
+    }
+
+    #[test]
+    fn stint_targets_extend_the_integer_full_tank_range() {
+        let targets = calculate_stint_targets(input(), 120.0, 0, 11.0, 118.0, 30.0);
+
+        let plus_one = targets[0].unwrap();
+        assert_eq!(plus_one.extra_laps, 1);
+        assert!((plus_one.target_consumption - (100.0 / 11.0)).abs() < 1e-9);
+        assert!(plus_one.saving_percent > 9.0);
+    }
+
+    #[test]
+    fn stint_target_time_compares_saved_stops_with_estimated_pace_cost() {
+        let targets = calculate_stint_targets(
+            ResourceStrategyInput {
+                current: 90.0,
+                capacity: 100.0,
+                consumption: 10.0,
+                laps_remaining: 20.0,
+                pit_cycle_consumption: 0.0,
+                pit_out_consumption: 0.0,
+                ..input()
+            },
+            101.0,
+            0,
+            11.0,
+            100.0,
+            30.0,
+        );
+
+        let plus_one = targets[0].unwrap();
+        assert_eq!(plus_one.stops_saved, 1);
+        assert!(plus_one.net_time_seconds.unwrap() > 0.0);
+    }
+
+    #[test]
+    fn stint_target_time_is_unknown_without_a_pace_or_pit_reference() {
+        let targets = calculate_stint_targets(input(), 120.0, 0, 0.0, 0.0, 0.0);
+        assert!(targets
+            .iter()
+            .flatten()
+            .all(|target| target.net_time_seconds.is_none()));
     }
 }

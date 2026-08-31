@@ -48,6 +48,34 @@ const format = (value: number, decimals = 2): string =>
 const consumptionReference = (...values: number[]): number | undefined =>
   values.find((value) => Number.isFinite(value) && value > 0);
 
+const formatTimeDelta = (value: number | null): string => {
+  if (value == null || !Number.isFinite(value)) return "";
+  const sign = value > 0.5 ? "+" : value < -0.5 ? "−" : "±";
+  return `${sign}${formatNumber(Math.abs(value), 0)}s`;
+};
+
+const renderStintTargets = (frame: TelemetryFrame, unit: string): void => {
+  for (let index = 0; index < 3; index += 1) {
+    const target = frame.fuel_strategies.stint_targets[index];
+    const number = index + 1;
+    text(`stint-target-${number}`, target ? `${format(target.target_consumption)}${unit}` : "--");
+    text(
+      `stint-target-${number}-meta`,
+      target ? `+${target.extra_laps}${formatTimeDelta(target.net_time_seconds) ? ` · ${formatTimeDelta(target.net_time_seconds)}` : ""}` : `+${number}`
+    );
+    tone(
+      `stint-target-${number}`,
+      target?.net_time_seconds == null
+        ? "neutral"
+        : target.net_time_seconds > 0.5
+          ? "good"
+          : target.net_time_seconds < -0.5
+            ? "bad"
+            : "warn"
+    );
+  }
+};
+
 const pitLevel = (playerActive: boolean, autonomy: number): PitLevel => {
   if (!playerActive || !Number.isFinite(autonomy) || autonomy < 0) return "unknown";
   if (autonomy <= 1) return "critical";
@@ -111,6 +139,7 @@ const render = (frame: TelemetryFrame): void => {
   const shell = document.querySelector<HTMLElement>(".fuel-shell");
   shell?.setAttribute("data-resource-mode", mode);
   renderResourceIcon("active-table-label", "active-table-icon", energyMode);
+  renderStintTargets(frame, unit);
   text("resource-current", frame.player_active ? format(current, 1) : "--");
   text("resource-unit", unit);
   if (strategy) {
@@ -123,31 +152,12 @@ const render = (frame: TelemetryFrame): void => {
           : t("fuel.lapRange", { first: strategy.earliest_pit_lap, last: strategy.latest_pit_lap })
         : t("fuel.noPit")
     );
-    text("stop-plan", strategy.stops > 0 ? `${strategy.stops}→${strategy.target_stops}` : "0");
-
-    const retainsStops = strategy.target_stops >= strategy.stops;
-    const fullAllowed = qualifying > 0 && strategy.target_consumption >= qualifying;
-    const displayedTarget = fullAllowed ? qualifying : strategy.target_consumption;
-    text("target-label", t(fullAllowed ? "fuel.full" : retainsStops ? "fuel.hold" : "fuel.target"));
-    text("target-consumption", format(displayedTarget));
-    text("saving-required", fullAllowed ? `${formatNumber(0, 1)}%` : `−${format(strategy.saving_percent, 1)}%`);
-    tone("saving-required", fullAllowed || strategy.saving_percent <= 2 ? "good" : strategy.saving_percent <= 7 ? "warn" : "bad");
-    const nextFill = frame.fuel_strategies.conservative_next_fill > 0
-      ? frame.fuel_strategies.conservative_next_fill
-      : strategy.next_fill;
-    text("next-fill-label", t(frame.fuel_strategies.conservative_fill_active ? "fuel.qualifyingLoad" : "fuel.load"));
-    text("next-fill", strategy.stops > 0 ? `${format(nextFill, 1)}${unit}` : "--");
-
     const pit = document.getElementById("pit-status");
     if (pit) pit.dataset.level = pitLevel(frame.player_active, strategy.autonomy);
   } else {
     for (const [id, value] of [
-      ["strategy-autonomy", "--"], ["pit-window", "--"], ["stop-plan", "--"],
-      ["target-consumption", "--"], ["saving-required", "--"],
-      ["next-fill", "--"]
+      ["strategy-autonomy", "--"], ["pit-window", "--"]
     ]) text(id, value);
-    text("target-label", t("fuel.target"));
-    text("next-fill-label", t("fuel.load"));
     const pit = document.getElementById("pit-status");
     if (pit) pit.dataset.level = "unknown";
   }

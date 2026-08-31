@@ -5,7 +5,9 @@ use std::time::{Duration, Instant};
 use super::consumption_profile::{ConsumptionProfiler, ProfileEstimate};
 use super::driver_ranks::DriverRankResolver;
 use super::event_split::{DriverRankSettings, SessionSplitResolver};
-use super::fuel_strategy::{calculate_resource_strategy, FuelStrategies, ResourceStrategyInput};
+use super::fuel_strategy::{
+    calculate_resource_strategy, calculate_stint_targets, FuelStrategies, ResourceStrategyInput,
+};
 use super::lmu_rest::{
     normalized_driver_identity, normalized_name, LocalRestResolver, RestVehicleDamage,
 };
@@ -3647,15 +3649,13 @@ impl TelemetrySource for LmuTelemetrySource {
             } else {
                 fuel_input(planned_fuel_per_lap)
             };
-            let active_strategy = calculate_resource_strategy(
-                active_input,
-                lap_seconds,
-                if virtual_energy_active {
-                    fuel_strategy.map_or(0, |strategy| strategy.stops)
-                } else {
-                    0
-                },
-            );
+            let parallel_minimum_stops = if virtual_energy_active {
+                fuel_strategy.map_or(0, |strategy| strategy.stops)
+            } else {
+                0
+            };
+            let active_strategy =
+                calculate_resource_strategy(active_input, lap_seconds, parallel_minimum_stops);
             let active_minimum_stops = active_strategy.map_or(0, |strategy| strategy.stops);
             let active_scenario = |consumption| {
                 let input = if virtual_energy_active {
@@ -3665,6 +3665,31 @@ impl TelemetrySource for LmuTelemetrySource {
                 };
                 calculate_resource_strategy(input, lap_seconds, active_minimum_stops)
             };
+            let target_consumption = if virtual_energy_active {
+                virtual_energy_per_lap
+            } else {
+                fuel_per_lap
+            };
+            let target_input = if virtual_energy_active {
+                energy_input(target_consumption)
+            } else {
+                fuel_input(target_consumption)
+            };
+            let qualifying_consumption = if virtual_energy_active {
+                self.energy_qualifying_lap.unwrap_or(0.0)
+            } else {
+                self.fuel_qualifying_lap.unwrap_or(0.0)
+            };
+            let stint_targets = calculate_stint_targets(
+                target_input,
+                lap_seconds,
+                parallel_minimum_stops,
+                qualifying_consumption,
+                self.qualifying_reference_time.unwrap_or(0.0),
+                rest_pit_stop
+                    .as_ref()
+                    .map_or(0.0, |estimate| estimate.total),
+            );
             let strategies = FuelStrategies {
                 active: active_strategy,
                 fuel: virtual_energy_active.then_some(fuel_strategy).flatten(),
@@ -3688,6 +3713,7 @@ impl TelemetrySource for LmuTelemetrySource {
                 } else {
                     self.fuel_last_lap.unwrap_or(0.0)
                 }),
+                stint_targets,
                 ..FuelStrategies::default()
             }
             .with_qualifying_guidance();

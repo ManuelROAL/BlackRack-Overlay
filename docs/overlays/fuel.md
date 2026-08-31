@@ -77,10 +77,10 @@ calculated only for a visible native panel or connected `/fuel` route.
 - Let the scenario table define the panel width: its label column and three
   numeric columns fill the complete usable surface without empty side gutters.
 - When text size expands the design surface, distribute the added width and
-  only the required row height through the summary, plan and scenario tracks; do
+  only the required row height through the summary, stint-target and scenario tracks; do
   not scale the complete height proportionally or leave added width unused.
 - Preserve the established track proportions and a tight 2 px horizontal gap
-  between plan and scenario columns; distribute only text-size expansion across
+  between stint-target and scenario columns; distribute only text-size expansion across
   those tracks.
 - Center each scenario value horizontally under its numeric column heading while
   keeping the scenario names left-aligned.
@@ -98,8 +98,15 @@ calculated only for a visible native panel or connected `/fuel` route.
   the scenario header instead of spelling out `NRG` or `FUEL`.
   Use the lime energy bar for regulated cars and the orange fuel bar for cars
   without virtual energy.
-- Keep the race plan focused on stops, target consumption, required saving and
-  next-stop load. Do not show the presentation-only live stint delta.
+- Replace the former race-plan strip with three full-stint targets for reaching
+  the next integer tank range plus one, two or three laps. Rust calculates each
+  target consumption from usable capacity and the clean-average reference.
+- When qualifying pace/consumption and LMU's current pit-time estimate are
+  available, estimate the net remaining-race time for each stint target. Compare
+  stops avoided with the linearly estimated lap-time cost of the extra saving;
+  color a positive result green, a negative result red and a near-zero result
+  amber. Keep the target neutral and omit the time when those references are not
+  available; never invent a pace cost in the frontend.
 - Omit diagnostic context (confidence, pit-cycle delta, qualifying gain and
   pit-service estimate) from the driving overlay; those values are not needed for
   the immediate stop/save decision.
