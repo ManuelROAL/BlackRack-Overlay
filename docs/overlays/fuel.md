@@ -103,7 +103,10 @@ calculated only for a visible native panel or connected `/fuel` route.
   target consumption from usable capacity and the clean-average reference.
 - When qualifying pace/consumption and LMU's current pit-time estimate are
   available, estimate the net remaining-race time for each stint target. Compare
-  stops avoided with the linearly estimated lap-time cost of the extra saving;
+  stops avoided and the shorter total resource service with the linearly
+  estimated lap-time cost of the extra saving. Scale LMU's active fuel/energy
+  service time by the average load per remaining stop, and preserve the longest
+  parallel service as the minimum stop duration;
   color a positive result green, a negative result red and a near-zero result
   amber. Keep the target neutral and omit the time when those references are not
   available; never invent a pace cost in the frontend.

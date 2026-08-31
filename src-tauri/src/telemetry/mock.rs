@@ -104,6 +104,8 @@ impl TelemetrySource for MockTelemetrySource {
                 8.8,
                 208.4,
                 31.7,
+                5.2,
+                12.0,
             );
             FuelStrategies {
                 active: active_strategy,

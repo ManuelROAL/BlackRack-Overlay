@@ -91,12 +91,18 @@ pub(super) fn calculate_stint_targets(
     qualifying_consumption: f64,
     qualifying_lap_seconds: f64,
     pit_stop_seconds: f64,
+    resource_service_seconds: f64,
+    other_service_seconds: f64,
 ) -> [Option<StintTarget>; 3] {
     if !valid_positive(input.consumption) || !valid_positive(input.capacity) {
         return [None; 3];
     }
 
-    let baseline_stops = stops_required(input).max(minimum_stops);
+    let Some(baseline_strategy) = calculate_resource_strategy(input, lap_seconds, minimum_stops)
+    else {
+        return [None; 3];
+    };
+    let baseline_stops = baseline_strategy.stops;
     let baseline_stint_laps = (input.capacity / input.consumption).floor().max(1.0) as u32;
     let pace_cost_per_resource = if valid_positive(qualifying_consumption)
         && qualifying_consumption > input.consumption + 1e-6
@@ -125,7 +131,30 @@ pub(super) fn calculate_stint_targets(
         let net_time_seconds = pace_cost_per_resource.and_then(|pace_cost| {
             valid_positive(pit_stop_seconds).then(|| {
                 let lap_cost = pace_cost * (input.consumption - target_consumption).max(0.0);
-                f64::from(stops_saved) * pit_stop_seconds - lap_cost * input.laps_remaining
+                let fallback_service_gain = f64::from(stops_saved) * pit_stop_seconds;
+                let service_gain = if baseline_stops > 0
+                    && valid_positive(resource_service_seconds)
+                    && valid_positive(baseline_strategy.total_additional)
+                {
+                    let baseline_fill =
+                        baseline_strategy.total_additional / f64::from(baseline_stops);
+                    let seconds_per_unit = resource_service_seconds / baseline_fill;
+                    let baseline_service = pit_stop_seconds
+                        .max(resource_service_seconds)
+                        .max(other_service_seconds.max(0.0));
+                    let target_service = if target_strategy.stops > 0 {
+                        let target_fill =
+                            target_strategy.total_additional / f64::from(target_strategy.stops);
+                        (target_fill * seconds_per_unit).max(other_service_seconds.max(0.0))
+                    } else {
+                        0.0
+                    };
+                    f64::from(baseline_stops) * baseline_service
+                        - f64::from(target_strategy.stops) * target_service
+                } else {
+                    fallback_service_gain
+                };
+                service_gain - lap_cost * input.laps_remaining
             })
         });
         Some(StintTarget {
@@ -492,7 +521,7 @@ mod tests {
 
     #[test]
     fn stint_targets_extend_the_integer_full_tank_range() {
-        let targets = calculate_stint_targets(input(), 120.0, 0, 11.0, 118.0, 30.0);
+        let targets = calculate_stint_targets(input(), 120.0, 0, 11.0, 118.0, 30.0, 10.0, 0.0);
 
         let plus_one = targets[0].unwrap();
         assert_eq!(plus_one.extra_laps, 1);
@@ -517,6 +546,8 @@ mod tests {
             11.0,
             100.0,
             30.0,
+            10.0,
+            0.0,
         );
 
         let plus_one = targets[0].unwrap();
@@ -526,10 +557,36 @@ mod tests {
 
     #[test]
     fn stint_target_time_is_unknown_without_a_pace_or_pit_reference() {
-        let targets = calculate_stint_targets(input(), 120.0, 0, 0.0, 0.0, 0.0);
+        let targets = calculate_stint_targets(input(), 120.0, 0, 0.0, 0.0, 0.0, 0.0, 0.0);
         assert!(targets
             .iter()
             .flatten()
             .all(|target| target.net_time_seconds.is_none()));
+    }
+
+    #[test]
+    fn stint_target_time_includes_shorter_refuelling_with_the_same_stop_count() {
+        let targets = calculate_stint_targets(
+            ResourceStrategyInput {
+                current: 50.0,
+                capacity: 100.0,
+                consumption: 10.0,
+                laps_remaining: 12.0,
+                pit_cycle_consumption: 0.0,
+                pit_out_consumption: 0.0,
+                ..input()
+            },
+            100.0,
+            0,
+            11.0,
+            100.0,
+            10.0,
+            10.0,
+            0.0,
+        );
+
+        let plus_one = targets[0].unwrap();
+        assert_eq!(plus_one.stops_saved, 0);
+        assert!(plus_one.net_time_seconds.unwrap() > 0.0);
     }
 }

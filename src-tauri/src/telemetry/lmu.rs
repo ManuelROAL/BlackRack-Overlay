@@ -3680,6 +3680,25 @@ impl TelemetrySource for LmuTelemetrySource {
             } else {
                 self.fuel_qualifying_lap.unwrap_or(0.0)
             };
+            let resource_service_seconds = rest_pit_stop.as_ref().map_or(0.0, |estimate| {
+                if virtual_energy_active {
+                    estimate.ve
+                } else {
+                    estimate.fuel
+                }
+            });
+            let other_service_seconds = rest_pit_stop.as_ref().map_or(0.0, |estimate| {
+                let parallel_resource = if virtual_energy_active {
+                    estimate.fuel
+                } else {
+                    estimate.ve
+                };
+                parallel_resource
+                    .max(estimate.tires)
+                    .max(estimate.damage + estimate.brakes + estimate.brake_ducts)
+                    .max(estimate.penalties)
+                    .max(estimate.driver_swap)
+            });
             let stint_targets = calculate_stint_targets(
                 target_input,
                 lap_seconds,
@@ -3689,6 +3708,8 @@ impl TelemetrySource for LmuTelemetrySource {
                 rest_pit_stop
                     .as_ref()
                     .map_or(0.0, |estimate| estimate.total),
+                resource_service_seconds,
+                other_service_seconds,
             );
             let strategies = FuelStrategies {
                 active: active_strategy,
