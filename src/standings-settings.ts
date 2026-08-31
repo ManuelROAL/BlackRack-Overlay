@@ -75,7 +75,7 @@ export const STANDINGS_COLUMNS: StandingsColumnDefinition[] = [
   { id: "number", labelKey: "column.number", header: "", width: 28, configurable: true, identity: true },
   { id: "manufacturer", labelKey: "column.manufacturer", header: "", width: 28, configurable: true, identity: true },
   { id: "badge", labelKey: "column.badge", header: "", width: 27, configurable: true, identity: true },
-  { id: "driver", labelKey: "column.driver", header: "", width: 130, configurable: false, identity: true },
+  { id: "driver", labelKey: "column.driver", header: "", width: 195, configurable: false, identity: true },
   { id: "ranks", labelKey: "column.ranks", header: "", width: 95, configurable: true, identity: true },
   { id: "gap", labelKey: "column.gap", header: "GAP", width: 46, configurable: true, identity: false },
   { id: "interval", labelKey: "column.interval", header: "INT", width: 46, configurable: true, identity: false },
@@ -173,6 +173,8 @@ export const visibleStandingsColumns = (
   return order
     .map((id) => columns.get(id))
     .filter((column): column is StandingsColumnDefinition =>
-      column !== undefined && (!column.configurable || settings.columns[column.id])
+      column !== undefined
+        && column.id !== "pitStops"
+        && (!column.configurable || settings.columns[column.id])
     );
 };

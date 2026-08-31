@@ -29,6 +29,7 @@ import {
   STANDINGS_COLUMNS,
   STANDINGS_HEADER_OPTIONS,
   STANDINGS_SETTINGS_KEY,
+  type StandingsColumnId,
   type StandingsSettings
 } from "./standings-settings";
 import {
@@ -1764,15 +1765,18 @@ const bindColumnOrder = <Id extends string>(
   render();
 };
 
-bindColumnOrder(
+bindColumnOrder<StandingsColumnId>(
   document.getElementById("standings-column-order"),
-  STANDINGS_COLUMNS,
-  () => standingsSettings.columnOrder,
+  STANDINGS_COLUMNS.filter(({ id }) => id !== "pitStops"),
+  () => standingsSettings.columnOrder.filter((id) => id !== "pitStops"),
   (columnOrder) => {
-    standingsSettings = { ...standingsSettings, columnOrder };
+    standingsSettings = {
+      ...standingsSettings,
+      columnOrder: [...columnOrder.filter((id) => id !== "signals"), "pitStops", "signals"]
+    };
     persistStandingsSettings();
   },
-  new Set(["signals"])
+  new Set<StandingsColumnId>(["signals"])
 );
 
 const appendToggle = (

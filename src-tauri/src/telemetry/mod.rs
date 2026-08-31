@@ -546,6 +546,7 @@ pub struct StandingEntry {
     track_limits_steps: Option<u32>,
     pit_stops: u32,
     pit_stop_requested: bool,
+    pit_stop_lap: Option<i32>,
     pit_stop_time_seconds: Option<f64>,
     tire_compound: String,
     tire_compounds: [String; 4],

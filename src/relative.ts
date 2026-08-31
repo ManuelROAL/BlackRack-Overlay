@@ -768,6 +768,7 @@ if (import.meta.env.DEV && new URLSearchParams(window.location.search).has("prev
       track_limits_steps: index * 2,
       pit_stops: Math.floor(index / 3),
       pit_stop_requested: index === 2,
+      pit_stop_lap: index === count - 1 || index === 2 ? 19 + index : null,
       pit_stop_time_seconds: index === count - 1 || index === 2 ? 31.7 : null,
       tire_compound: index % 5 === 4 ? "W" : "M",
       tire_compounds: index % 5 === 4 ? ["W", "W", "W", "W"] : ["M", "M", "M", "M"],

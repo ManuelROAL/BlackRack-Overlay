@@ -406,14 +406,42 @@ interface CachedRow {
 
 const rowCache = new Map<string, CachedRow>();
 
-const pitTimeLabel = (seconds: number): string => Math.round(Math.max(0, seconds)).toString();
+const pitTimeLabel = (seconds: number): string => {
+  const rounded = Math.round(Math.max(0, seconds));
+  const minutes = Math.floor(rounded / 60);
+  const remainder = rounded % 60;
+  return minutes > 0 ? `${minutes}m${remainder.toString().padStart(2, "0")}s` : `${remainder}s`;
+};
+
+const appendDriverPitStatus = (cell: HTMLElement, entry: StandingEntry): void => {
+  if (!settings.columns.pitStops || entry.pit_stop_time_seconds === null) return;
+  const summary = node("span", "driver-pit-summary");
+  const time = pitTimeLabel(entry.pit_stop_time_seconds);
+  if (entry.in_pits) {
+    summary.classList.add("timing");
+    summary.append(node("b", "driver-pit-time", time));
+    summary.title = t("standings.pitTimer", { time });
+  } else if (entry.pit_stop_lap !== null && entry.pit_stops > 0) {
+    summary.append(
+      node("b", "driver-pit-lap", `L${entry.pit_stop_lap}`),
+      node("b", "driver-pit-time", time),
+      node("b", "driver-pit-count", `P${entry.pit_stops}`)
+    );
+    summary.title = t("standings.pitSummary", {
+      count: entry.pit_stops,
+      lap: entry.pit_stop_lap,
+      time
+    });
+  }
+  if (summary.childElementCount > 0) cell.append(summary);
+};
 
 const cellSignature = (entry: StandingEntry, column: StandingsColumnId, trackLimit: number): string => {
   switch (column) {
     case "position": return `${entry.position}|${entry.position_change}`;
     case "number": return liveCarNumbers.get(entry.vehicle_id) || entry.car_number || "--";
     case "badge": return entry.driver_badge;
-    case "driver": return `${entry.driver_name}|${entry.nationality}|${settings.driverNameFormat}`;
+    case "driver": return `${entry.driver_name}|${entry.nationality}|${settings.driverNameFormat}|${settings.columns.pitStops}|${entry.in_pits}|${entry.pit_stops}|${entry.pit_stop_lap ?? ""}|${entry.pit_stop_time_seconds === null ? "" : pitTimeLabel(entry.pit_stop_time_seconds)}`;
     case "manufacturer": return `${entry.team_name}|${entry.vehicle_name}`;
     case "ranks": return `${entry.driver_rank}|${Math.round(entry.driver_rank_progress)}|${Math.round(entry.estimated_driver_rank_gain)}|${entry.estimated_driver_rank_gain_available}|${entry.safety_rank}`;
     case "gap": return entry.position === 1 ? `V ${entry.total_laps}` : formatDifference(entry.laps_behind_leader, entry.time_behind_leader);
@@ -453,6 +481,7 @@ const createCell = (entry: StandingEntry, column: StandingsColumnId, trackLimit:
       const name = node("b", "driver-name", formatDriverName(fullName, settings.driverNameFormat));
       name.title = fullName;
       cell.append(name);
+      appendDriverPitStatus(cell, entry);
       return cell;
     }
     case "manufacturer": {
@@ -864,6 +893,11 @@ window.addEventListener("overlay-font-size-change", () => {
 void document.fonts.ready.then(synchronizeOverlayHeight);
 
 if (import.meta.env.DEV && new URLSearchParams(window.location.search).has("preview")) {
+  settings = {
+    ...settings,
+    columns: { ...settings.columns, pitStops: true }
+  };
+  applyColumnLayout();
   const previewClasses: Array<[string, number]> = [
     ["LMP2_ELMS", 3],
     ["LMGT3", 10],
@@ -904,8 +938,9 @@ if (import.meta.env.DEV && new URLSearchParams(window.location.search).has("prev
       virtual_energy_per_lap: classIndex === 1 ? 3.1 : 0,
       damage_percent: index === 3 ? 16 : 0,
       track_limits_steps: index * 2,
-      pit_stops: Math.floor(index / 3),
+      pit_stops: index === 2 ? 1 : Math.floor(index / 3),
       pit_stop_requested: index === 2,
+      pit_stop_lap: index === count - 1 || index === 2 ? 19 + index : null,
       pit_stop_time_seconds: index === count - 1 || index === 2 ? 31.7 : null,
       tire_compound: index % 5 === 4 ? "W" : index % 5 === 3 ? "S/M/H/W" : "M",
       tire_compounds: index % 5 === 4

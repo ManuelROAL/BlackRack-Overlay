@@ -34,6 +34,7 @@ export interface StandingEntry {
   track_limits_steps: number | null;
   pit_stops: number;
   pit_stop_requested: boolean;
+  pit_stop_lap: number | null;
   pit_stop_time_seconds: number | null;
   tire_compound: string;
   tire_compounds: [string, string, string, string];

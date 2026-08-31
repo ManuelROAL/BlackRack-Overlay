@@ -36,7 +36,6 @@
 .standing-energy { padding-inline: 7px 5px; }
 .standing-damage { padding-inline: 5px; }
 .standing-track-limits { padding-inline: 3px; }
-.standing-pit-stops,
 .tire-compound { padding-inline: 4px; }
 .standing-signals { padding-left: 8px; }
 
@@ -610,8 +609,52 @@ body[data-overlay-fit="true"].standings-body .standings-shell {
 }
 
 .driver-name {
-  flex: 0 1 auto;
+  flex: 1 1 auto;
   min-width: 0;
+}
+
+.driver-pit-summary {
+  display: inline-flex;
+  min-width: 0;
+  flex: 0 0 auto;
+  align-items: stretch;
+  gap: 2px;
+  margin-left: auto;
+  color: #f4f6f8;
+  font-size: calc(10px * var(--overlay-font-scale, 1));
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.driver-pit-summary b {
+  display: grid;
+  min-width: 22px;
+  height: 17px;
+  padding: 0 4px;
+  place-items: center;
+  border-radius: 2px;
+  background: rgb(42 48 55 / 92%);
+  white-space: nowrap;
+}
+
+.driver-pit-summary .driver-pit-lap {
+  color: #172000;
+  background: #c7eb31;
+}
+
+.driver-pit-summary .driver-pit-time {
+  min-width: 35px;
+}
+
+.driver-pit-summary .driver-pit-count {
+  color: #dce5ed;
+  background: rgb(44 82 112 / 92%);
+}
+
+.driver-pit-summary.timing .driver-pit-time {
+  color: #fff4e5;
+  background: rgb(184 104 22 / 92%);
+  box-shadow: 0 0 7px rgb(255 173 67 / 30%);
 }
 
 .country-flag {
@@ -786,33 +829,6 @@ body[data-overlay-fit="true"].standings-body .standings-shell {
 .standing-track-limits[data-track-limit-tone="critical"] {
   border-radius: 3px;
   background: rgb(255 64 82 / 26%);
-}
-
-.standing-pit-stops {
-  display: grid;
-  min-width: 24px;
-  height: 17px;
-  padding: 0 3px;
-  place-items: center;
-  border: 0;
-  border-radius: 4px;
-  color: #dce2e8;
-  background: transparent;
-  font: inherit;
-  font-variant-numeric: tabular-nums;
-  line-height: 1;
-}
-
-.standing-pit-stops.requested {
-  color: #eaffef;
-  background: rgb(35 155 72 / 78%);
-  box-shadow: 0 0 7px rgb(49 208 91 / 38%);
-}
-
-.standing-pit-stops.timing {
-  color: #fff4e5;
-  background: rgb(184 104 22 / 88%);
-  box-shadow: 0 0 7px rgb(255 173 67 / 34%);
 }
 
 .tire-compound {

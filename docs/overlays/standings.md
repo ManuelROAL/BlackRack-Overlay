@@ -30,9 +30,11 @@ duplicate selection or timing semantics.
 - Normalize LMU's abbreviated `Hyper` class label to the `HYPERCAR` heading and
   Hypercar red tone, consistently with longer Hypercar names and GTP aliases.
 - Columns are position, assigned number, manufacturer, badge, driver, DR/SR,
-  GAP, INT, best, last, AVG 5, NRG, damage, track-limit steps, pit, tyre and
+  GAP, INT, best, last, AVG 5, NRG, damage, track-limit steps, tyre and
   signals. Position and driver are mandatory; signals stays fixed at the far
-  right. Other columns are independently visible and reorderable.
+  right. Other columns are independently visible and reorderable. Pit data is an
+  independently visible status integrated into the driver cell rather than a
+  separate reorderable column.
 - Use the session-assigned number. Driver-name presentation is independently
   configurable as full name, initial plus surname, name plus surname initial,
   surname only, name only or surname plus name initial. Prefer bundled
@@ -142,14 +144,14 @@ duplicate selection or timing semantics.
   from elapsed plus remaining clocks.
 - Category headers show current/initial counts and DNF/DQ difference outside
   practice. Recover initial counts from history when opened late.
-- The pit column normally shows completed stops from shared-memory
+- Pit status shares the driver cell and stays empty until a stop is observed.
+  While the car is in pit lane, show only its elapsed pit-cycle timer. Once the
+  stop is confirmed, retain `L<lap>`, the final compact duration and `P<count>`
+  for the latest stop. The completed-stop count comes from shared-memory
   `mNumPitstops`; REST `pitstops` must not override it because it can overcount in
-  team races. From pit entry through the end of
-  the out lap, show elapsed pit-cycle seconds rounded to the nearest whole second.
-  After pit exit, retain the timer and out-lap state only when shared-memory
-  `mNumPitstops` has increased from its value at entry; accept a delayed increase
-  before the next finish-line crossing. Do not invent elapsed time when the app
-  starts during a partial stop. A pit request is green when no timer is shown.
+  team races. Accept a delayed counter increase before the next finish-line
+  crossing, and do not invent elapsed time or a stop lap when the app starts
+  during a partial stop.
 - Opponent track-limit steps come from the matched all-vehicle telemetry slot.
   Unmatched means unavailable (`--`), not zero. Four raw SDK steps equal one game
   point. Warning thresholds are 60% and 80% of the session penalty threshold.
@@ -175,9 +177,9 @@ duplicate selection or timing semantics.
   vertical column without leaving excess space after the longest class name.
 - Player tint is translucent lime with lime edge markers over the category layer;
   pit state remains distinguishable. Stop the player background before signals.
-- Compact NRG, damage, track-limit and pit cells are neutral until a meaningful
-  warning or active state applies. The pit request uses green; an active pit
-  timer uses the same amber/orange semantic family as PIT and OUT.
+- Compact NRG, damage and track-limit cells are neutral until a meaningful
+  warning applies. The integrated pit lap uses lime, while its active timer uses
+  the same amber/orange semantic family as PIT and OUT.
 - Cache row/header nodes and replace only changed cells/signatures. The general
   performance profile changes roster request and renderer cadence together.
 - Derive the design height from the rendered header, class sections, rows,
@@ -188,13 +190,13 @@ duplicate selection or timing semantics.
   enlarged labels and values cannot overlap neighboring columns. Manufacturer
   logos, driver badges, tyres and header SVG icons grow at half the rate of text
   (150% at the 200% text setting), together with their tracks where applicable.
-  Keep the 130 px driver-name track fixed and truncate driver names with an
+  Keep the 195 px driver track fixed and truncate driver names with an
   ellipsis. Position/change and
   assigned number use limited expansion, including the nested position/change
   tracks, so large values remain separated without the full text-column margin.
   Text-bearing tracks retain their base width at 100% and
   below so fixed-minimum contents such as DR/SR badges cannot overlap neighbors.
-- Keep GAP, INT, lap-time, NRG, damage and pit tracks at their compact measured
+- Keep GAP, INT, lap-time, NRG and damage tracks at their compact measured
   minimums; retain a small internal gutter and let text scaling grow those tracks.
 - The entry-specific transparent `.overlay-shell` override must have greater
   specificity than the shared rule because production CSS extraction reverses the
