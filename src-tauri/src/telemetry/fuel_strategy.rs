@@ -93,6 +93,7 @@ pub(super) fn calculate_stint_targets(
     pit_stop_seconds: f64,
     resource_service_seconds: f64,
     other_service_seconds: f64,
+    pit_traversal_seconds: f64,
 ) -> [Option<StintTarget>; 3] {
     if !valid_positive(input.consumption) || !valid_positive(input.capacity) {
         return [None; 3];
@@ -129,7 +130,9 @@ pub(super) fn calculate_stint_targets(
         let saving_percent =
             ((input.consumption - target_consumption) / input.consumption * 100.0).max(0.0);
         let net_time_seconds = pace_cost_per_resource.and_then(|pace_cost| {
-            valid_positive(pit_stop_seconds).then(|| {
+            (valid_positive(pit_stop_seconds)
+                && (stops_saved == 0 || valid_positive(pit_traversal_seconds)))
+            .then(|| {
                 let lap_cost = pace_cost * (input.consumption - target_consumption).max(0.0);
                 let fallback_service_gain = f64::from(stops_saved) * pit_stop_seconds;
                 let service_gain = if baseline_stops > 0
@@ -154,7 +157,8 @@ pub(super) fn calculate_stint_targets(
                 } else {
                     fallback_service_gain
                 };
-                service_gain - lap_cost * input.laps_remaining
+                let traversal_gain = f64::from(stops_saved) * pit_traversal_seconds.max(0.0);
+                service_gain + traversal_gain - lap_cost * input.laps_remaining
             })
         });
         Some(StintTarget {
@@ -521,7 +525,7 @@ mod tests {
 
     #[test]
     fn stint_targets_extend_the_integer_full_tank_range() {
-        let targets = calculate_stint_targets(input(), 120.0, 0, 11.0, 118.0, 30.0, 10.0, 0.0);
+        let targets = calculate_stint_targets(input(), 120.0, 0, 11.0, 118.0, 30.0, 10.0, 0.0, 0.0);
 
         let plus_one = targets[0].unwrap();
         assert_eq!(plus_one.extra_laps, 1);
@@ -548,6 +552,7 @@ mod tests {
             30.0,
             10.0,
             0.0,
+            42.0,
         );
 
         let plus_one = targets[0].unwrap();
@@ -557,11 +562,37 @@ mod tests {
 
     #[test]
     fn stint_target_time_is_unknown_without_a_pace_or_pit_reference() {
-        let targets = calculate_stint_targets(input(), 120.0, 0, 0.0, 0.0, 0.0, 0.0, 0.0);
+        let targets = calculate_stint_targets(input(), 120.0, 0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
         assert!(targets
             .iter()
             .flatten()
             .all(|target| target.net_time_seconds.is_none()));
+    }
+
+    #[test]
+    fn removed_stop_needs_learned_pitlane_time_before_showing_a_balance() {
+        let targets = calculate_stint_targets(
+            ResourceStrategyInput {
+                current: 90.0,
+                capacity: 100.0,
+                consumption: 10.0,
+                laps_remaining: 20.0,
+                pit_cycle_consumption: 0.0,
+                pit_out_consumption: 0.0,
+                ..input()
+            },
+            101.0,
+            0,
+            11.0,
+            100.0,
+            30.0,
+            10.0,
+            0.0,
+            0.0,
+        );
+
+        assert_eq!(targets[0].unwrap().stops_saved, 1);
+        assert!(targets[0].unwrap().net_time_seconds.is_none());
     }
 
     #[test]
@@ -583,10 +614,33 @@ mod tests {
             10.0,
             10.0,
             0.0,
+            0.0,
         );
 
         let plus_one = targets[0].unwrap();
         assert_eq!(plus_one.stops_saved, 0);
         assert!(plus_one.net_time_seconds.unwrap() > 0.0);
+    }
+
+    #[test]
+    fn parallel_driver_swap_sets_a_floor_instead_of_adding_to_refuelling() {
+        let target_input = ResourceStrategyInput {
+            current: 50.0,
+            capacity: 100.0,
+            consumption: 10.0,
+            laps_remaining: 12.0,
+            pit_cycle_consumption: 0.0,
+            pit_out_consumption: 0.0,
+            ..input()
+        };
+        let refuelling_is_longer =
+            calculate_stint_targets(target_input, 100.0, 0, 11.0, 100.0, 30.0, 30.0, 26.0, 0.0)[0]
+                .unwrap();
+        let driver_swap_is_longer =
+            calculate_stint_targets(target_input, 100.0, 0, 11.0, 100.0, 26.0, 20.0, 26.0, 0.0)[0]
+                .unwrap();
+
+        assert!((refuelling_is_longer.net_time_seconds.unwrap() - 4.0).abs() < 1e-9);
+        assert!(driver_swap_is_longer.net_time_seconds.unwrap().abs() < 1e-9);
     }
 }

@@ -17,6 +17,7 @@ use super::{
 };
 
 const MAX_VEHICLES: usize = 104;
+const DRIVER_SWAP_SERVICE_SECONDS: f64 = 26.0;
 const DRIVER_RANK_INTERNAL_SCALE: f64 = 3.0;
 const DRIVER_RANK_QUALIFY_WEIGHT: f64 = 0.176_470_588_235_294;
 const DRIVER_RANK_LOG_SCHEMA_VERSION: u32 = 2;
@@ -3697,8 +3698,16 @@ impl TelemetrySource for LmuTelemetrySource {
                     .max(estimate.tires)
                     .max(estimate.damage + estimate.brakes + estimate.brake_ducts)
                     .max(estimate.penalties)
-                    .max(estimate.driver_swap)
+                    .max(if estimate.driver_swap > 0.0 {
+                        DRIVER_SWAP_SERVICE_SECONDS
+                    } else {
+                        0.0
+                    })
             });
+            let pit_traversal_seconds = super::track_map_model::learned_pit_traversal_seconds(
+                &track_name,
+                snapshot.track_length,
+            );
             let stint_targets = calculate_stint_targets(
                 target_input,
                 lap_seconds,
@@ -3710,6 +3719,7 @@ impl TelemetrySource for LmuTelemetrySource {
                     .map_or(0.0, |estimate| estimate.total),
                 resource_service_seconds,
                 other_service_seconds,
+                pit_traversal_seconds,
             );
             let strategies = FuelStrategies {
                 active: active_strategy,

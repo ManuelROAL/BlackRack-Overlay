@@ -93,6 +93,18 @@ pub(crate) fn learned_track_points(cache_key: &str) -> Option<(Vec<LearnedTrackP
     .flatten()
 }
 
+pub(crate) fn learned_pit_traversal_seconds(track_name: &str, track_length: f64) -> f64 {
+    let cache_key = track_map_cache_key(track_name, track_length);
+    with_store(|store| {
+        store
+            .data
+            .tracks
+            .get(&cache_key)
+            .map_or(0.0, |track| median(&track.pit_traversal_samples))
+    })
+    .unwrap_or(0.0)
+}
+
 pub(crate) fn migrate_legacy_track_map_learning(
     cache_key: &str,
     track_name: String,

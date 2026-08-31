@@ -106,7 +106,12 @@ calculated only for a visible native panel or connected `/fuel` route.
   stops avoided and the shorter total resource service with the linearly
   estimated lap-time cost of the extra saving. Scale LMU's active fuel/energy
   service time by the average load per remaining stop, and preserve the longest
-  parallel service as the minimum stop duration;
+  parallel service as the minimum stop duration. A requested driver change sets
+  a 26-second parallel-service floor; it is never added on top of a longer
+  refuel. Add the median moving pitlane time learned by Track Map once for every
+  stop the target actually removes. If a target removes a stop but no complete
+  pit passage has been learned yet, keep its time and color neutral rather than
+  underestimating the gain;
   color a positive result green, a negative result red and a near-zero result
   amber. Keep the target neutral and omit the time when those references are not
   available; never invent a pace cost in the frontend.
