@@ -35,6 +35,30 @@ verification. Keep adding the rules and decisions that arise in the overlay's
 dedicated task/chat to that file instead of growing `AGENTS.md` or a central
 document.
 
+## Context and concurrency efficiency
+
+- Use a dedicated Git worktree for every concurrent implementation task. Keep the
+  local checkout for one foreground task, integration or read-only coordination;
+  do not start parallel writers in the same checkout when a worktree is available.
+- Keep command output proportional to the question. Start with `rg -n`, scoped
+  paths/globs, `git status --short`, `git diff --stat` or `git diff --name-only`;
+  inspect detailed content only for the relevant matches and task-owned files.
+- Do not concatenate several large files, repository-wide searches or full diffs
+  into one command. Read focused ranges, normally no more than 100-200 lines at a
+  time, and narrow the next query when an output limit is reached.
+- Read each required authoritative document once per task. Do not reread unchanged
+  files or repeat searches whose result is already present in the current context.
+- Never print the complete diff of a dirty shared worktree merely to identify task
+  changes. Compare only the explicit task paths and use compact summaries first.
+- Use modest tool-output limits. If output is truncated, rerun a narrower command
+  instead of requesting the same broad output with a larger limit.
+- Batch related edits before verification. Do not repeat a successful build or test
+  without an intervening relevant change; preserve full failure diagnostics, but
+  keep successful and repetitive output concise when the tool permits it.
+- A lock failure, changed `HEAD` or overlapping task path is a concurrency signal,
+  not a reason for repeated broad status/diff/retry loops. Re-evaluate ownership,
+  move the task to a worktree when possible, or use the bounded fallback below.
+
 ## Common engineering rules
 
 - Preserve unrelated user changes.
@@ -114,12 +138,15 @@ successful compilation alone is not performance evidence.
   and owning documentation are all up to date.
 - If a required verification cannot run, report that explicitly instead of
   presenting the work as fully complete.
-- Multiple sessions may share the same worktree and Git index. Unrelated staged
-  changes are not a reason to wait: create the task commit with a temporary
-  alternate `GIT_INDEX_FILE` and stage only this task there. Never alter unrelated
-  entries in the real index; after committing, synchronize only the committed task
-  paths there so they match the new `HEAD`. Recheck `HEAD` before committing; if
-  another session advanced it, rebuild the temporary index and retry.
+- Concurrent implementation sessions should use separate worktrees. If a task is
+  already running in a shared checkout, unrelated staged changes are not a reason
+  to wait: create the task commit with a temporary alternate `GIT_INDEX_FILE` and
+  stage only explicit task paths there. Never use interactive `git add -p`, print a
+  repository-wide diff or alter unrelated real-index entries. Recheck `HEAD` before
+  committing; if it changed, rebuild the temporary index once from the new `HEAD`.
+  If it changes again or task paths overlap, stop committing and report the
+  collision instead of entering another repair loop. After a successful commit,
+  synchronize only the committed task paths into the real index.
 - After completing and verifying a change, create the Git commit directly with a
   concise message that summarizes only the work completed in the current task.
   Do not include copy-ready commit messages in the handoff. Preserve unrelated
