@@ -100,7 +100,8 @@ export const listenTelemetry = (
     return listenRuntimeEvent<TelemetryFrame>("telemetry://frame", handler);
   }
 
-  const events = new EventSource("/api/events");
+  const overlay = window.location.pathname.split("/").filter(Boolean).pop() || "unknown";
+  const events = new EventSource(`/api/events?overlay=${encodeURIComponent(overlay)}`);
   events.onmessage = ({ data }) => {
     try {
       handler(JSON.parse(data) as TelemetryFrame);

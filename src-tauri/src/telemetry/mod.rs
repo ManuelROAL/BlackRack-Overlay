@@ -799,7 +799,17 @@ pub struct WeatherForecastModel {
 }
 
 trait TelemetrySource: Send + 'static {
-    fn next_frame(&mut self, include_standings: bool, include_track_map: bool) -> TelemetryFrame;
+    fn next_frame(
+        &mut self,
+        include_standings: bool,
+        include_track_map: bool,
+        include_fuel_strategy: bool,
+        include_flag_warning: bool,
+        include_rejoin_warning: bool,
+        include_rest_standings: bool,
+        include_rest_supplement: bool,
+        include_rest_weather: bool,
+    ) -> TelemetryFrame;
 }
 
 impl TelemetryFrame {
@@ -1015,17 +1025,71 @@ pub fn spawn_source(app: AppHandle) {
             let standings_visible = super::overlay_is_active(&app, "standings");
             let relative_visible = super::overlay_is_active(&app, "relative");
             let track_map_visible = super::overlay_is_active(&app, "trackmap");
-            let browser_clients = crate::browser_source::has_clients();
+            let browser_standings = crate::browser_source::overlay_has_clients("standings");
+            let browser_relative = crate::browser_source::overlay_has_clients("relative");
+            let browser_track_map = crate::browser_source::overlay_has_clients("trackmap");
             let standings_requested = (standings_due
-                && (standings_visible || browser_clients || dr_estimate_log::enabled()))
+                && (standings_visible
+                    || browser_standings
+                    || browser_relative
+                    || dr_estimate_log::enabled()))
                 || (relative_due && relative_visible);
             let source_started = Instant::now();
-            let track_map_requested = track_map_due && (track_map_visible || browser_clients);
-            let mut frame = source.next_frame(standings_requested, track_map_requested);
+            let track_map_requested =
+                (track_map_due && track_map_visible) || (standings_due && browser_track_map);
+            let fuel_requested = super::overlay_is_active(&app, "fuel")
+                || (standings_due && crate::browser_source::overlay_has_clients("fuel"));
+            let flags_requested = super::overlay_is_active(&app, "flags")
+                || (standings_due && crate::browser_source::overlay_has_clients("flags"));
+            let rejoin_requested = super::overlay_is_active(&app, "rejoin")
+                || (standings_due && crate::browser_source::overlay_has_clients("rejoin"));
+            let overlay_requested = |label| {
+                super::overlay_is_active(&app, label)
+                    || crate::browser_source::overlay_has_clients(label)
+            };
+            let rest_supplement_requested = team_mode()
+                || [
+                    "standings",
+                    "relative",
+                    "fuel",
+                    "timing",
+                    "driving",
+                    "damage",
+                    "pitstop",
+                    "trackmap",
+                ]
+                .into_iter()
+                .any(overlay_requested);
+            let rest_standings_requested = standings_visible
+                || relative_visible
+                || browser_standings
+                || browser_relative
+                || dr_estimate_log::enabled()
+                || spectator_mode();
+            let rest_weather_requested =
+                overlay_requested("forecast") || overlay_requested("conditions");
+            let mut frame = source.next_frame(
+                standings_requested,
+                track_map_requested,
+                fuel_requested,
+                flags_requested,
+                rejoin_requested,
+                rest_standings_requested,
+                rest_supplement_requested,
+                rest_weather_requested,
+            );
             frame.spectator_mode = observer_mode();
             frame.performance_profile = tuning.profile.name();
-            delta_engine.update(&mut frame);
-            standings_models::prepare_overlay_models(&mut frame);
+            let delta_requested = super::overlay_is_active(&app, "delta")
+                || (standings_due && crate::browser_source::overlay_has_clients("delta"));
+            let timing_requested = super::overlay_is_active(&app, "timing")
+                || (standings_due && crate::browser_source::overlay_has_clients("timing"));
+            delta_engine.update(&mut frame, delta_requested, timing_requested);
+            standings_models::prepare_overlay_models(
+                &mut frame,
+                standings_visible || browser_standings,
+                relative_visible || browser_relative,
+            );
             if track_map_requested {
                 track_map_model.update(&mut frame);
             }

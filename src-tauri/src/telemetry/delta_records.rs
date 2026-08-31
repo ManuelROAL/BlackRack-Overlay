@@ -852,7 +852,12 @@ impl DeltaEngine {
         }
     }
 
-    pub(crate) fn update(&mut self, frame: &mut TelemetryFrame) {
+    pub(crate) fn update(
+        &mut self,
+        frame: &mut TelemetryFrame,
+        delta_requested: bool,
+        timing_requested: bool,
+    ) {
         self.poll_load();
         let mode = active_mode();
         if !frame.connected || !frame.player_active {
@@ -916,8 +921,12 @@ impl DeltaEngine {
             lap.observe(frame);
         }
 
-        frame.delta_model = self.view_model(frame, mode);
-        frame.timing_model = self.timing_view_model(frame);
+        if delta_requested {
+            frame.delta_model = self.view_model(frame, mode);
+        }
+        if timing_requested {
+            frame.timing_model = self.timing_view_model(frame);
+        }
     }
 
     fn select_identity(&mut self, identity: Identity) {

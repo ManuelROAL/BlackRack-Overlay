@@ -8,6 +8,9 @@
 - OBS route: `/flags`
 - Cadence: 50 Hz while active; 250 ms while inactive
 
+Candidate scanning and warning inference run only while the native panel or the
+`/flags` OBS route is active.
+
 ## Priority and display
 
 - Checkered always has highest priority and shows no distance or car details.

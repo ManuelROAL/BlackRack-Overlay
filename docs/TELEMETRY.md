@@ -26,6 +26,11 @@ position, pedal behavior or learned braking points.
 The source snapshot runs at 50 Hz. Rust schedules each consumer according to its
 documented cadence in `docs/overlays/README.md`:
 
+- Overlay-specific view models and strategy/warning calculations run only while
+  their native panel or matching OBS route has demand. Lap traces, consumption
+  learning and the shared player/session state continue at source cadence so an
+  overlay can be enabled without losing completed-lap history.
+
 - Base overlays, including Delta and Timing, share one serialized frame
   per cycle. Distance interpolation, reference selection and the player's
   official scoring-sector transitions are calculated in Rust before delivery.
@@ -33,6 +38,9 @@ documented cadence in `docs/overlays/README.md`:
   cycles reuse the constructed roster.
 - Track Map receives a stripped coordinate-only batch and never requests enriched
   standings.
+- Browser-source SSE clients declare their overlay route. Only Standings and
+  Relative routes request the enriched roster; legacy clients without a route
+  retain full demand for compatibility.
 
 Native delivery uses filtered `telemetry://batch` events. Each monitor host
 forwards only locally mounted named targets and projects the frame through the
@@ -88,6 +96,11 @@ restore per-overlay native listeners or direct cross-realm object events.
   it.
 
 ## Local REST endpoints
+
+The REST workers have independent demand gates. Standings/history poll only for
+Standings, Relative, spectator identity or DR logging; the bundled supplement
+polls only for consumers of session, strategy, steering, damage or pit data; and
+weather polls only for Forecast or Conditions. Disconnecting LMU disables all three.
 
 - `/rest/watch/sessionInfo`: 1 Hz for the official configured session `maxTime`.
 - `/rest/sessions/weather`: 1 Hz for the three five-slot session forecasts;

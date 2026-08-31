@@ -403,7 +403,11 @@ fn prepare_relative(
     RelativeViewModel { rows }
 }
 
-pub(super) fn prepare_overlay_models(frame: &mut TelemetryFrame) {
+pub(super) fn prepare_overlay_models(
+    frame: &mut TelemetryFrame,
+    standings_requested: bool,
+    relative_requested: bool,
+) {
     if frame.standings.is_empty() {
         frame.standings_model = StandingsViewModel::default();
         frame.relative_model = RelativeViewModel::default();
@@ -412,10 +416,14 @@ pub(super) fn prepare_overlay_models(frame: &mut TelemetryFrame) {
     let settings = *settings_store()
         .read()
         .unwrap_or_else(|poisoned| poisoned.into_inner());
-    frame.standings_model =
-        prepare_standings(&frame.standings, settings.standings, frame.session_type);
-    frame.relative_model =
-        prepare_relative(&frame.standings, settings.relative, frame.session_type);
+    if standings_requested {
+        frame.standings_model =
+            prepare_standings(&frame.standings, settings.standings, frame.session_type);
+    }
+    if relative_requested {
+        frame.relative_model =
+            prepare_relative(&frame.standings, settings.relative, frame.session_type);
+    }
 }
 
 #[cfg(test)]

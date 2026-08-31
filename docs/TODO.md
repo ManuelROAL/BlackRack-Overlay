@@ -37,8 +37,6 @@ the largest remaining cost.
 
 - If the full standings build is still expensive, reduce String/HashMap churn in
   `LmuTelemetrySource::standings` with reusable buffers or stable identity records.
-- Make browser-source demand route-aware: currently any connected browser client
-  requests a full standings frame, even if it only displays fuel or flags.
 - Re-measure WebView2 memory and GPU composition with the single-host model across
   mixed-refresh (for example 180 Hz / 60 Hz) monitor configurations.
 - Investigate image decode/memory behavior for the large country/manufacturer asset

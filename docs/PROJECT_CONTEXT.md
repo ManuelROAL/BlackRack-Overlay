@@ -80,13 +80,15 @@ remove enrichment such as DR/SR or split data, but must not stop the overlays.
 ## Current optimization state
 
 The hot telemetry source runs at 50 Hz. Full standings construction has been
-removed from every source cycle: it is requested at 10 Hz for Standings or a local
-browser-source client, and at 20 Hz while the more time-sensitive Relative window
-is visible.
-Delta, Timing, Trailing + Pedal, Lift & Coast, tyres, fuel and active flags consume
-the 50 Hz raw snapshot. Delta also calculates and renders from that 50 Hz snapshot. Rejoin,
-Relative and detailed damage run at 20 Hz, while standings
-history/identity state is maintained at 10 Hz.
+removed from every source cycle: it is requested at 10 Hz for Standings or its
+route-specific browser client, and at 20 Hz while the more time-sensitive Relative
+window is visible. Unrelated OBS routes no longer request that roster.
+The shared snapshot, lap reconstruction and consumption learning remain at 50 Hz.
+Delta/Timing view models, fuel scenarios and Flags/Rejoin scans now run only with
+their native panel or matching OBS route active. Relative and detailed damage run
+at 20 Hz, while standings history/identity state is maintained at 10 Hz.
+Local REST standings, supplement and weather workers also stop independently when
+their overlay/observer/logging consumers are absent.
 
 The backend optimizations are compiled and covered by the Rust regression suite,
 but still need a new real-race/replay performance capture to quantify the

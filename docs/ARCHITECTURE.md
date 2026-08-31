@@ -120,13 +120,16 @@ profile and diagnostics.
 
 ## Scheduling and freshness
 
-- Base source cycle and critical domain calculations always remain at 20 ms (50 Hz).
-  Performance profiles change only delivery/rendering: Smooth uses 20 ms for fast
-  overlays, Balanced 40 ms and Efficiency 60 ms.
+- The base source cycle, lap reconstruction and consumption learning remain at
+  20 ms (50 Hz). Overlay-only view models, strategy scenarios and warning scans
+  run only with native or route-specific OBS demand. Performance profiles change
+  delivery/rendering cadence: Smooth uses 20 ms for fast overlays, Balanced 40 ms
+  and Efficiency 60 ms.
 - Fuel follows the selected fast-overlay cadence. Active flags and rejoin warnings
   retain their safety-oriented cadence independently of the profile.
-- Full standings: Smooth 100 ms, Balanced 160 ms, Efficiency 240 ms; it is only requested by an active Standings
-  panel or a connected browser-source client.
+- Full standings: Smooth 100 ms, Balanced 160 ms, Efficiency 240 ms; it is only
+  requested by an active Standings/Relative panel, their matching OBS route or
+  the explicit DR-estimate logger.
 - Relative: Smooth 50 ms, Balanced 80 ms, Efficiency 120 ms while active. Cycles coinciding
   with Standings reuse the same constructed roster.
 - Track Map: Smooth 33 ms, Balanced 60 ms and Efficiency 120 ms. Every profile
@@ -137,6 +140,8 @@ profile and diagnostics.
 - Automatic visibility: 250 ms.
 - Control-panel status: 500 ms.
 - Local REST standings: 200 ms, maximum accepted age 1 second.
+  Standings, supplement and weather workers sleep independently when none of their
+  native or route-specific OBS consumers is active.
 - Local REST session/usage/pit estimate: 1 second, maximum age 3 seconds.
 
 Network and local REST work runs outside the telemetry thread. Do not introduce

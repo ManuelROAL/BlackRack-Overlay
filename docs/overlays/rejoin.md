@@ -8,6 +8,9 @@
 - OBS route: `/rejoin`
 - Cadence: 20 Hz while active; 250 ms while inactive
 
+Rear-traffic scanning and arming state run only while the native panel or the
+`/rejoin` OBS route is active.
+
 ## Arming and candidate semantics
 
 - Arm while the player is in pitlane, below 8 m/s, or has all four wheels on

@@ -4,7 +4,7 @@ use reqwest::blocking::Client;
 use serde::de::DeserializeOwned;
 use serde::Deserialize;
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicU8, Ordering};
 #[cfg(not(test))]
 use std::sync::mpsc;
 use std::sync::mpsc::Receiver;
@@ -12,6 +12,25 @@ use std::sync::{Arc, Mutex};
 #[cfg(not(test))]
 use std::thread;
 use std::time::{Duration, Instant};
+
+const STANDINGS_DEMAND: u8 = 1 << 0;
+const SUPPLEMENT_DEMAND: u8 = 1 << 1;
+const WEATHER_DEMAND: u8 = 1 << 2;
+
+fn rest_demand(
+    connected: bool,
+    standings_requested: bool,
+    supplement_requested: bool,
+    weather_requested: bool,
+) -> u8 {
+    if connected {
+        u8::from(standings_requested) * STANDINGS_DEMAND
+            | u8::from(supplement_requested) * SUPPLEMENT_DEMAND
+            | u8::from(weather_requested) * WEATHER_DEMAND
+    } else {
+        0
+    }
+}
 
 #[cfg(not(test))]
 const LOCAL_API: &str = "http://127.0.0.1:6397";
@@ -277,22 +296,22 @@ pub(super) struct LocalRestResolver {
     vehicle_damage_received_at: Option<Instant>,
     weather_nodes: RestWeatherSession,
     weather_received_at: Option<Instant>,
-    enabled: Arc<AtomicBool>,
+    demand: Arc<AtomicU8>,
 }
 
 impl LocalRestResolver {
     #[cfg(not(test))]
     pub(super) fn discover() -> Self {
-        let enabled = Arc::new(AtomicBool::new(false));
+        let demand = Arc::new(AtomicU8::new(0));
         let (standings_sender, standings_receiver) = mpsc::channel();
-        let standings_enabled = Arc::clone(&enabled);
+        let standings_demand = Arc::clone(&demand);
         thread::spawn(move || {
             let Some(client) = http_client() else {
                 return;
             };
             let mut history_received_at: Option<Instant> = None;
             loop {
-                if !standings_enabled.load(Ordering::Relaxed) {
+                if standings_demand.load(Ordering::Relaxed) & STANDINGS_DEMAND == 0 {
                     thread::sleep(Duration::from_secs(1));
                     continue;
                 }
@@ -321,14 +340,14 @@ impl LocalRestResolver {
         });
 
         let (supplement_sender, supplement_receiver) = mpsc::channel();
-        let supplement_enabled = Arc::clone(&enabled);
+        let supplement_demand = Arc::clone(&demand);
         thread::spawn(move || {
             let Some(client) = http_client() else {
                 return;
             };
             let mut garage_received_at: Option<Instant> = None;
             loop {
-                if !supplement_enabled.load(Ordering::Relaxed) {
+                if supplement_demand.load(Ordering::Relaxed) & SUPPLEMENT_DEMAND == 0 {
                     thread::sleep(Duration::from_secs(1));
                     continue;
                 }
@@ -384,7 +403,7 @@ impl LocalRestResolver {
         });
 
         let (weather_sender, weather_receiver) = mpsc::channel();
-        let weather_enabled = Arc::clone(&enabled);
+        let weather_demand = Arc::clone(&demand);
         let weather_session = Arc::new(Mutex::new(String::new()));
         let weather_session_slot = Arc::clone(&weather_session);
         thread::spawn(move || {
@@ -392,7 +411,7 @@ impl LocalRestResolver {
                 return;
             };
             loop {
-                if !weather_enabled.load(Ordering::Relaxed) {
+                if weather_demand.load(Ordering::Relaxed) & WEATHER_DEMAND == 0 {
                     thread::sleep(Duration::from_secs(1));
                     continue;
                 }
@@ -441,7 +460,7 @@ impl LocalRestResolver {
             vehicle_damage_received_at: None,
             weather_nodes: RestWeatherSession::default(),
             weather_received_at: None,
-            enabled,
+            demand,
         }
     }
 
@@ -469,12 +488,25 @@ impl LocalRestResolver {
             vehicle_damage_received_at: None,
             weather_nodes: RestWeatherSession::default(),
             weather_received_at: None,
-            enabled: Arc::new(AtomicBool::new(false)),
+            demand: Arc::new(AtomicU8::new(0)),
         }
     }
 
-    pub(super) fn refresh(&mut self, active: bool, weather_session: &str) {
-        self.enabled.store(active, Ordering::Relaxed);
+    pub(super) fn refresh(
+        &mut self,
+        connected: bool,
+        standings_requested: bool,
+        supplement_requested: bool,
+        weather_requested: bool,
+        weather_session: &str,
+    ) {
+        let demand = rest_demand(
+            connected,
+            standings_requested,
+            supplement_requested,
+            weather_requested,
+        );
+        self.demand.store(demand, Ordering::Relaxed);
         {
             let mut slot = self
                 .weather_session
@@ -855,12 +887,20 @@ fn normalized_class(value: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::{
-        fuel_ratio_assigned, normalized_driver_identity, normalized_name, steering_range,
-        team_info_for_player, LocalRestResolver, RestGarageData, RestPitStopEstimate,
-        RestRepairAndRefuel, RestSessionInfo, RestStanding, RestStandingHistory, RestTeamInfo,
-        RestWeatherSession,
+        fuel_ratio_assigned, normalized_driver_identity, normalized_name, rest_demand,
+        steering_range, team_info_for_player, LocalRestResolver, RestGarageData,
+        RestPitStopEstimate, RestRepairAndRefuel, RestSessionInfo, RestStanding,
+        RestStandingHistory, RestTeamInfo, RestWeatherSession,
     };
     use std::collections::HashMap;
+
+    #[test]
+    fn rest_workers_follow_independent_connected_demands() {
+        assert_eq!(rest_demand(false, true, true, true), 0);
+        assert_eq!(rest_demand(true, false, false, false), 0);
+        assert_eq!(rest_demand(true, true, false, false).count_ones(), 1);
+        assert_eq!(rest_demand(true, false, true, true).count_ones(), 2);
+    }
 
     #[test]
     fn parses_rest_standings_fields_used_by_the_overlay() {

@@ -11,6 +11,8 @@
 
 All stop, target-consumption, pit-window, refill and parallel-resource strategy
 math belongs in Rust. `fuel.ts` only formats serialized plans.
+Consumption learning remains shared, while the multi-scenario strategy model is
+calculated only for a visible native panel or connected `/fuel` route.
 
 ## Resource and strategy semantics
 

@@ -18,7 +18,17 @@ impl MockTelemetrySource {
 }
 
 impl TelemetrySource for MockTelemetrySource {
-    fn next_frame(&mut self, include_standings: bool, include_track_map: bool) -> TelemetryFrame {
+    fn next_frame(
+        &mut self,
+        include_standings: bool,
+        include_track_map: bool,
+        include_fuel_strategy: bool,
+        include_flag_warning: bool,
+        include_rejoin_warning: bool,
+        _include_rest_standings: bool,
+        _include_rest_supplement: bool,
+        _include_rest_weather: bool,
+    ) -> TelemetryFrame {
         let elapsed = self.started_at.elapsed().as_secs_f64();
         let throttle = ((elapsed * 0.72).sin() * 0.48 + 0.52).clamp(0.0, 1.0);
         let brake = (((elapsed * 0.39).sin() - 0.58) * 2.1).clamp(0.0, 1.0);
@@ -48,47 +58,51 @@ impl TelemetrySource for MockTelemetrySource {
         let lap_progress = current_lap_seconds / 215.0;
         let laps_remaining = session_laps_remaining - lap_progress;
         let completed_laps = (elapsed / 215.0).floor() as i32;
-        let strategy_input =
-            |current, capacity, consumption, pit_cycle, pit_out| ResourceStrategyInput {
-                current,
-                capacity,
-                consumption,
-                laps_remaining,
-                lap_progress,
-                completed_laps,
-                pit_cycle_consumption: pit_cycle,
-                pit_out_consumption: pit_out,
-                pit_out_lap: false,
-                pit_requested: false,
-            };
-        let fuel_strategy = calculate_resource_strategy(
-            strategy_input(fuel_liters, 90.0, 12.1, 20.6, 10.1),
-            215.0,
-            0,
-        );
-        let active_strategy = calculate_resource_strategy(
-            strategy_input(virtual_energy_percent, 100.0, 8.5, 14.4, 7.0),
-            215.0,
-            fuel_strategy.map_or(0, |strategy| strategy.stops),
-        );
-        let minimum_stops = active_strategy.map_or(0, |strategy| strategy.stops);
-        let energy_strategy = |consumption| {
-            calculate_resource_strategy(
-                strategy_input(virtual_energy_percent, 100.0, consumption, 14.4, 7.0),
+        let fuel_strategies = if include_fuel_strategy {
+            let strategy_input =
+                |current, capacity, consumption, pit_cycle, pit_out| ResourceStrategyInput {
+                    current,
+                    capacity,
+                    consumption,
+                    laps_remaining,
+                    lap_progress,
+                    completed_laps,
+                    pit_cycle_consumption: pit_cycle,
+                    pit_out_consumption: pit_out,
+                    pit_out_lap: false,
+                    pit_requested: false,
+                };
+            let fuel_strategy = calculate_resource_strategy(
+                strategy_input(fuel_liters, 90.0, 12.1, 20.6, 10.1),
                 215.0,
-                minimum_stops,
-            )
+                0,
+            );
+            let active_strategy = calculate_resource_strategy(
+                strategy_input(virtual_energy_percent, 100.0, 8.5, 14.4, 7.0),
+                215.0,
+                fuel_strategy.map_or(0, |strategy| strategy.stops),
+            );
+            let minimum_stops = active_strategy.map_or(0, |strategy| strategy.stops);
+            let energy_strategy = |consumption| {
+                calculate_resource_strategy(
+                    strategy_input(virtual_energy_percent, 100.0, consumption, 14.4, 7.0),
+                    215.0,
+                    minimum_stops,
+                )
+            };
+            FuelStrategies {
+                active: active_strategy,
+                fuel: fuel_strategy,
+                estimated: energy_strategy(8.5),
+                average: energy_strategy(virtual_energy_per_lap),
+                qualifying: energy_strategy(8.8),
+                last: energy_strategy(8.55),
+                ..FuelStrategies::default()
+            }
+            .with_qualifying_guidance()
+        } else {
+            FuelStrategies::default()
         };
-        let fuel_strategies = FuelStrategies {
-            active: active_strategy,
-            fuel: fuel_strategy,
-            estimated: energy_strategy(8.5),
-            average: energy_strategy(virtual_energy_per_lap),
-            qualifying: energy_strategy(8.8),
-            last: energy_strategy(8.55),
-            ..FuelStrategies::default()
-        }
-        .with_qualifying_guidance();
 
         let mut frame = TelemetryFrame {
             source: "mock",
@@ -336,7 +350,9 @@ impl TelemetrySource for MockTelemetrySource {
             lap_delta_seconds: (elapsed * 0.31).sin() * 0.72,
             delta_model: Default::default(),
             timing_model: Default::default(),
-            flag_warning: if (elapsed as u64 / 8) % 2 == 0 {
+            flag_warning: if !include_flag_warning {
+                FlagWarning::default()
+            } else if (elapsed as u64 / 8) % 2 == 0 {
                 FlagWarning {
                     kind: "yellow",
                     active: true,
@@ -353,23 +369,27 @@ impl TelemetrySource for MockTelemetrySource {
                     vehicle_class: "HYPERCAR".into(),
                 }
             },
-            rejoin_warning: RejoinWarning {
-                active: true,
-                reason: if (elapsed as u64 / 8) % 2 == 0 {
-                    "rejoin"
-                } else {
-                    "pit_exit"
-                },
-                safety: match (elapsed as u64 / 4) % 3 {
-                    0 => "danger",
-                    1 => "caution",
-                    _ => "safe",
-                },
-                rear_car_available: true,
-                distance_meters: 184.0,
-                time_to_arrival_seconds: 7.4,
-                car_position: 2,
-                vehicle_class: "HYPERCAR".into(),
+            rejoin_warning: if include_rejoin_warning {
+                RejoinWarning {
+                    active: true,
+                    reason: if (elapsed as u64 / 8) % 2 == 0 {
+                        "rejoin"
+                    } else {
+                        "pit_exit"
+                    },
+                    safety: match (elapsed as u64 / 4) % 3 {
+                        0 => "danger",
+                        1 => "caution",
+                        _ => "safe",
+                    },
+                    rear_car_available: true,
+                    distance_meters: 184.0,
+                    time_to_arrival_seconds: 7.4,
+                    car_position: 2,
+                    vehicle_class: "HYPERCAR".into(),
+                }
+            } else {
+                RejoinWarning::default()
             },
             standings: vec![
                 StandingEntry {

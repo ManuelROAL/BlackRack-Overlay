@@ -12,8 +12,9 @@
 - Cadence: enriched roster and renderer at 10 Hz in Smooth, 6.25 Hz in Balanced
   and approximately 4.2 Hz in Efficiency
 
-Rust owns class grouping, class order/counts, SOF and visible-row selection. The
-renderer resolves prepared vehicle IDs and owns presentation only; it must not
+Rust owns class grouping, class order/counts, SOF and visible-row selection. Its
+view model is built only for a visible native panel or connected `/standings` route.
+The renderer resolves prepared vehicle IDs and owns presentation only; it must not
 duplicate selection or timing semantics.
 
 ## Rows, classes and columns

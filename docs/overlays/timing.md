@@ -19,6 +19,8 @@ estrechamente relacionada en varios micro-overlays.
 
 Rust posee toda la semántica temporal. TypeScript únicamente formatea el modelo.
 El panel consume el ciclo base de 50 Hz y no construye clasificaciones.
+La reconstrucción y persistencia de vueltas continúa en la fuente compartida; el
+modelo visual de Timing sólo se construye con el panel nativo o `/timing` en uso.
 
 ## Comportamiento
 

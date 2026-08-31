@@ -3,7 +3,7 @@ use std::fs;
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU32, AtomicUsize, Ordering};
 use std::sync::{mpsc, Mutex, OnceLock, RwLock};
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
@@ -32,6 +32,7 @@ const BROWSER_OVERLAYS: [(&str, &str); 16] = [
     ("forecast", "forecast.html"),
     ("conditions", "conditions.html"),
 ];
+const ALL_OVERLAY_DEMANDS: u32 = (1 << BROWSER_OVERLAYS.len()) - 1;
 
 #[derive(Clone, Deserialize, Serialize)]
 struct Preferences {
@@ -80,6 +81,7 @@ struct ServiceState {
 struct BrowserSourceService {
     enabled: AtomicBool,
     clients: AtomicUsize,
+    overlay_demands: AtomicU32,
     state: Mutex<ServiceState>,
     preferences: RwLock<serde_json::Value>,
 }
@@ -102,6 +104,7 @@ pub(crate) fn configure(app: &AppHandle) {
     let _ = SERVICE.set(BrowserSourceService {
         enabled: AtomicBool::new(false),
         clients: AtomicUsize::new(0),
+        overlay_demands: AtomicU32::new(0),
         state: Mutex::new(ServiceState {
             settings_path,
             app: app.clone(),
@@ -174,6 +177,7 @@ pub(crate) fn set_enabled(enabled: bool) -> BrowserSourceStatus {
     } else if !enabled {
         service.enabled.store(false, Ordering::Relaxed);
         service.clients.store(0, Ordering::Relaxed);
+        service.overlay_demands.store(0, Ordering::Relaxed);
         if let Some(runtime) = state.runtime.take() {
             let _ = runtime.shutdown.send(());
             let _ = runtime.thread.join();
@@ -232,9 +236,16 @@ pub(crate) fn publish_frame(frame: &TelemetryFrame) {
     }
 }
 
-pub(crate) fn has_clients() -> bool {
+pub(crate) fn overlay_has_clients(label: &str) -> bool {
+    let Some(index) = BROWSER_OVERLAYS
+        .iter()
+        .position(|(candidate, _)| *candidate == label)
+    else {
+        return false;
+    };
     service().is_some_and(|service| {
-        service.enabled.load(Ordering::Relaxed) && service.clients.load(Ordering::Relaxed) > 0
+        service.enabled.load(Ordering::Relaxed)
+            && service.overlay_demands.load(Ordering::Relaxed) & (1 << index) != 0
     })
 }
 
@@ -280,7 +291,12 @@ fn server_loop(
     frames: mpsc::Receiver<String>,
     shutdown: mpsc::Receiver<()>,
 ) {
-    let mut subscribers = Vec::<TcpStream>::new();
+    struct Subscriber {
+        stream: TcpStream,
+        overlay_demand: u32,
+    }
+
+    let mut subscribers = Vec::<Subscriber>::new();
     loop {
         if shutdown.try_recv().is_ok() {
             break;
@@ -290,7 +306,10 @@ fn server_loop(
                 let path = target.split('?').next().unwrap_or(&target);
                 if path == "/api/events" {
                     if write_sse_headers(&mut stream).is_ok() {
-                        subscribers.push(stream);
+                        subscribers.push(Subscriber {
+                            stream,
+                            overlay_demand: event_overlay_demand(&target),
+                        });
                     }
                 } else if path == "/api/trackmap" {
                     serve_track_map(&mut stream, &target);
@@ -302,16 +321,39 @@ fn server_loop(
 
         while let Ok(frame) = frames.try_recv() {
             let message = format!("data: {frame}\n\n");
-            subscribers.retain_mut(|stream| stream.write_all(message.as_bytes()).is_ok());
+            subscribers
+                .retain_mut(|subscriber| subscriber.stream.write_all(message.as_bytes()).is_ok());
         }
         if let Some(service) = service() {
             service.clients.store(subscribers.len(), Ordering::Relaxed);
+            service.overlay_demands.store(
+                subscribers
+                    .iter()
+                    .fold(0, |demands, subscriber| demands | subscriber.overlay_demand),
+                Ordering::Relaxed,
+            );
         }
         thread::sleep(Duration::from_millis(10));
     }
     if let Some(service) = service() {
         service.clients.store(0, Ordering::Relaxed);
+        service.overlay_demands.store(0, Ordering::Relaxed);
     }
+}
+
+fn event_overlay_demand(target: &str) -> u32 {
+    let overlay = target.split_once('?').and_then(|(_, query)| {
+        query
+            .split('&')
+            .find_map(|part| part.strip_prefix("overlay="))
+    });
+    overlay
+        .and_then(|label| {
+            BROWSER_OVERLAYS
+                .iter()
+                .position(|(candidate, _)| *candidate == label)
+        })
+        .map_or(ALL_OVERLAY_DEMANDS, |index| 1 << index)
 }
 
 fn request_path(stream: &mut TcpStream) -> Option<String> {
@@ -432,7 +474,7 @@ fn browser_overlay_entry(request_path: &str) -> Option<&'static str> {
 
 #[cfg(test)]
 mod tests {
-    use super::{browser_overlay_entry, BROWSER_OVERLAYS};
+    use super::{browser_overlay_entry, event_overlay_demand, BROWSER_OVERLAYS};
 
     #[test]
     fn every_browser_overlay_has_a_route() {
@@ -445,5 +487,23 @@ mod tests {
     #[test]
     fn unknown_routes_are_not_treated_as_overlays() {
         assert_eq!(browser_overlay_entry("/unknown"), None);
+    }
+
+    #[test]
+    fn event_clients_declare_their_overlay_demand() {
+        let standings = event_overlay_demand("/api/events?overlay=standings");
+        let fuel = event_overlay_demand("/api/events?overlay=fuel&lang=es");
+        assert_ne!(standings, fuel);
+        assert_eq!(standings.count_ones(), 1);
+        assert_eq!(fuel.count_ones(), 1);
+    }
+
+    #[test]
+    fn legacy_or_unknown_event_clients_keep_full_demand() {
+        assert_eq!(event_overlay_demand("/api/events").count_ones(), 16);
+        assert_eq!(
+            event_overlay_demand("/api/events?overlay=unknown").count_ones(),
+            16
+        );
     }
 }

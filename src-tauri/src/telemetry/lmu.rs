@@ -9,7 +9,9 @@ use super::fuel_strategy::{calculate_resource_strategy, FuelStrategies, Resource
 use super::lmu_rest::{
     normalized_driver_identity, normalized_name, LocalRestResolver, RestVehicleDamage,
 };
-use super::{StandingEntry, TelemetryFrame, TelemetrySource, TrackMapVehicle};
+use super::{
+    FlagWarning, RejoinWarning, StandingEntry, TelemetryFrame, TelemetrySource, TrackMapVehicle,
+};
 
 const MAX_VEHICLES: usize = 104;
 const DRIVER_RANK_INTERNAL_SCALE: f64 = 3.0;
@@ -3272,7 +3274,17 @@ impl LmuTelemetrySource {
 }
 
 impl TelemetrySource for LmuTelemetrySource {
-    fn next_frame(&mut self, include_standings: bool, include_track_map: bool) -> TelemetryFrame {
+    fn next_frame(
+        &mut self,
+        include_standings: bool,
+        include_track_map: bool,
+        include_fuel_strategy: bool,
+        include_flag_warning: bool,
+        include_rejoin_warning: bool,
+        include_rest_standings: bool,
+        include_rest_supplement: bool,
+        include_rest_weather: bool,
+    ) -> TelemetryFrame {
         const TRANSIENT_SNAPSHOT_HOLD: Duration = Duration::from_secs(2);
         const STANDINGS_STATE_INTERVAL: Duration = Duration::from_millis(200);
 
@@ -3299,6 +3311,9 @@ impl TelemetrySource for LmuTelemetrySource {
         let rest_started = Instant::now();
         self.local_rest.refresh(
             snapshot.connected != 0,
+            include_rest_standings,
+            include_rest_supplement,
+            include_rest_weather,
             Self::weather_session_key(snapshot.session_type),
         );
         let rest_us = rest_started.elapsed().as_micros();
@@ -3329,7 +3344,12 @@ impl TelemetrySource for LmuTelemetrySource {
         self.session_split.refresh();
         // Standings sigue el criterio preventivo de TinyPedal. El overlay de
         // banderas exige además una amarilla sectorial y proximidad.
-        let standings_yellow_culprits = Self::slow_yellow_vehicles(&snapshot);
+        let standings_yellow_culprits =
+            if include_standings || include_track_map || include_flag_warning {
+                Self::slow_yellow_vehicles(&snapshot)
+            } else {
+                Default::default()
+            };
         let session_us = session_started.elapsed().as_micros();
         let standings_state_due = include_standings
             || self
@@ -3371,8 +3391,16 @@ impl TelemetrySource for LmuTelemetrySource {
         }
 
         let warnings_started = Instant::now();
-        let flag_warning = Self::flag_warning(&snapshot, &standings_yellow_culprits);
-        let rejoin_warning = self.update_rejoin_warning(&snapshot);
+        let flag_warning = if include_flag_warning {
+            Self::flag_warning(&snapshot, &standings_yellow_culprits)
+        } else {
+            FlagWarning::default()
+        };
+        let rejoin_warning = if include_rejoin_warning {
+            self.update_rejoin_warning(&snapshot)
+        } else {
+            RejoinWarning::default()
+        };
         let warnings_us = warnings_started.elapsed().as_micros();
         let frame_started = Instant::now();
 
@@ -3528,110 +3556,123 @@ impl TelemetrySource for LmuTelemetrySource {
         .into_iter()
         .find(|value| value.is_finite() && *value > 0.0)
         .unwrap_or(0.0);
-        let player_pit_stop_requested = Self::player_pit_stop_requested(&snapshot);
-        let strategy_input =
-            |current, capacity, consumption, pit_cycle, pit_out| ResourceStrategyInput {
-                current,
-                capacity,
-                consumption,
-                laps_remaining: session_lap_equivalents_remaining,
-                lap_progress,
-                completed_laps: snapshot.player_total_laps,
-                pit_cycle_consumption: pit_cycle,
-                pit_out_consumption: pit_out,
-                pit_out_lap: profile_estimate.current_lap_started_in_pits,
-                pit_requested: player_pit_stop_requested,
-            };
-        let fuel_input = |consumption| {
-            strategy_input(
-                snapshot.fuel_liters,
-                snapshot.fuel_capacity_liters,
-                consumption,
-                profile_estimate.fuel_pit_cycle_consumption,
-                profile_estimate.fuel_pit_out_consumption,
-            )
-        };
-        let energy_input = |consumption| {
-            strategy_input(
-                virtual_energy_percent,
-                100.0,
-                consumption,
-                profile_estimate.energy_pit_cycle_consumption,
-                profile_estimate.energy_pit_out_consumption,
-            )
-        };
-        let fuel_strategy =
-            calculate_resource_strategy(fuel_input(planned_fuel_per_lap), lap_seconds, 0);
-        let active_input = if virtual_energy_active {
-            energy_input(planned_energy_per_lap)
-        } else {
-            fuel_input(planned_fuel_per_lap)
-        };
-        let active_strategy = calculate_resource_strategy(
-            active_input,
-            lap_seconds,
-            if virtual_energy_active {
-                fuel_strategy.map_or(0, |strategy| strategy.stops)
-            } else {
-                0
-            },
-        );
-        let active_minimum_stops = active_strategy.map_or(0, |strategy| strategy.stops);
-        let active_scenario = |consumption| {
-            let input = if virtual_energy_active {
-                energy_input(consumption)
-            } else {
-                fuel_input(consumption)
-            };
-            calculate_resource_strategy(input, lap_seconds, active_minimum_stops)
-        };
-        let fuel_strategies = FuelStrategies {
-            active: active_strategy,
-            fuel: virtual_energy_active.then_some(fuel_strategy).flatten(),
-            estimated: active_scenario(if virtual_energy_active {
-                planned_energy_per_lap
-            } else {
-                planned_fuel_per_lap
-            }),
-            average: active_scenario(if virtual_energy_active {
-                virtual_energy_per_lap
-            } else {
-                fuel_per_lap
-            }),
-            qualifying: active_scenario(if virtual_energy_active {
-                self.energy_qualifying_lap.unwrap_or(0.0)
-            } else {
-                self.fuel_qualifying_lap.unwrap_or(0.0)
-            }),
-            last: active_scenario(if virtual_energy_active {
-                self.energy_last_lap.unwrap_or(0.0)
-            } else {
-                self.fuel_last_lap.unwrap_or(0.0)
-            }),
-            ..FuelStrategies::default()
-        }
-        .with_qualifying_guidance();
-        let fuel_needed_liters = fuel_strategy
-            .map(|strategy| {
-                snapshot.fuel_liters + strategy.total_additional - strategy.end_remaining
-            })
-            .unwrap_or(0.0);
         let (
+            fuel_strategies,
+            fuel_needed_liters,
             virtual_energy_needed_percent,
             virtual_energy_next_stint_percent,
             virtual_energy_stints_remaining,
-        ) = if let Some(strategy) = if virtual_energy_active {
-            active_strategy
-        } else {
-            None
-        } {
+        ) = if include_fuel_strategy {
+            let player_pit_stop_requested = Self::player_pit_stop_requested(&snapshot);
+            let strategy_input =
+                |current, capacity, consumption, pit_cycle, pit_out| ResourceStrategyInput {
+                    current,
+                    capacity,
+                    consumption,
+                    laps_remaining: session_lap_equivalents_remaining,
+                    lap_progress,
+                    completed_laps: snapshot.player_total_laps,
+                    pit_cycle_consumption: pit_cycle,
+                    pit_out_consumption: pit_out,
+                    pit_out_lap: profile_estimate.current_lap_started_in_pits,
+                    pit_requested: player_pit_stop_requested,
+                };
+            let fuel_input = |consumption| {
+                strategy_input(
+                    snapshot.fuel_liters,
+                    snapshot.fuel_capacity_liters,
+                    consumption,
+                    profile_estimate.fuel_pit_cycle_consumption,
+                    profile_estimate.fuel_pit_out_consumption,
+                )
+            };
+            let energy_input = |consumption| {
+                strategy_input(
+                    virtual_energy_percent,
+                    100.0,
+                    consumption,
+                    profile_estimate.energy_pit_cycle_consumption,
+                    profile_estimate.energy_pit_out_consumption,
+                )
+            };
+            let fuel_strategy =
+                calculate_resource_strategy(fuel_input(planned_fuel_per_lap), lap_seconds, 0);
+            let active_input = if virtual_energy_active {
+                energy_input(planned_energy_per_lap)
+            } else {
+                fuel_input(planned_fuel_per_lap)
+            };
+            let active_strategy = calculate_resource_strategy(
+                active_input,
+                lap_seconds,
+                if virtual_energy_active {
+                    fuel_strategy.map_or(0, |strategy| strategy.stops)
+                } else {
+                    0
+                },
+            );
+            let active_minimum_stops = active_strategy.map_or(0, |strategy| strategy.stops);
+            let active_scenario = |consumption| {
+                let input = if virtual_energy_active {
+                    energy_input(consumption)
+                } else {
+                    fuel_input(consumption)
+                };
+                calculate_resource_strategy(input, lap_seconds, active_minimum_stops)
+            };
+            let strategies = FuelStrategies {
+                active: active_strategy,
+                fuel: virtual_energy_active.then_some(fuel_strategy).flatten(),
+                estimated: active_scenario(if virtual_energy_active {
+                    planned_energy_per_lap
+                } else {
+                    planned_fuel_per_lap
+                }),
+                average: active_scenario(if virtual_energy_active {
+                    virtual_energy_per_lap
+                } else {
+                    fuel_per_lap
+                }),
+                qualifying: active_scenario(if virtual_energy_active {
+                    self.energy_qualifying_lap.unwrap_or(0.0)
+                } else {
+                    self.fuel_qualifying_lap.unwrap_or(0.0)
+                }),
+                last: active_scenario(if virtual_energy_active {
+                    self.energy_last_lap.unwrap_or(0.0)
+                } else {
+                    self.fuel_last_lap.unwrap_or(0.0)
+                }),
+                ..FuelStrategies::default()
+            }
+            .with_qualifying_guidance();
+            let needed_fuel = fuel_strategy
+                .map(|strategy| {
+                    snapshot.fuel_liters + strategy.total_additional - strategy.end_remaining
+                })
+                .unwrap_or(0.0);
+            let energy_plan = if let Some(strategy) = if virtual_energy_active {
+                active_strategy
+            } else {
+                None
+            } {
+                (
+                    virtual_energy_percent + strategy.total_additional - strategy.end_remaining,
+                    strategy.next_fill,
+                    strategy.stops,
+                )
+            } else {
+                (0.0, 0.0, 0)
+            };
             (
-                virtual_energy_percent + strategy.total_additional - strategy.end_remaining,
-                strategy.next_fill,
-                strategy.stops,
+                strategies,
+                needed_fuel,
+                energy_plan.0,
+                energy_plan.1,
+                energy_plan.2,
             )
         } else {
-            (0.0, 0.0, 0)
+            (FuelStrategies::default(), 0.0, 0.0, 0.0, 0)
         };
         let track_map_vehicles = if include_track_map {
             snapshot.standings[..snapshot.standings_count.min(MAX_VEHICLES as u32) as usize]
@@ -3660,48 +3701,52 @@ impl TelemetrySource for LmuTelemetrySource {
         } else {
             Vec::new()
         };
-        let weather_forecast = self.local_rest.weather_forecast().map(|session| {
-            let mut nodes = session.forecast_nodes();
-            let session_length = if snapshot.session_end_seconds > snapshot.session_elapsed_seconds
-            {
-                snapshot.session_end_seconds
-            } else {
-                self.local_rest.session_max_time_seconds()
-            };
-            let progress = if session_length > 0.0 {
-                (snapshot.session_elapsed_seconds / session_length).clamp(0.0, 1.0)
-            } else if snapshot.session_time_remaining > 0.0 {
-                (snapshot.session_elapsed_seconds
-                    / (snapshot.session_elapsed_seconds + snapshot.session_time_remaining))
-                    .clamp(0.0, 1.0)
-            } else {
-                0.0
-            };
-            let current_index = if nodes.is_empty() {
-                0
-            } else {
-                ((progress / 0.2).floor().min((nodes.len() - 1) as f64)) as i32
-            };
-            let next_index = (current_index + 1).min(nodes.len() as i32);
-            if session_length > 0.0 {
-                for (index, node) in nodes.iter_mut().enumerate() {
-                    if index as i32 >= next_index {
-                        let minutes = ((index as f64 * 0.2 * session_length
-                            - snapshot.session_elapsed_seconds)
-                            / 60.0)
-                            .round();
-                        node.minutes_from_now = Some(minutes.max(0.0) as i32);
+        let weather_forecast = if include_rest_weather {
+            self.local_rest.weather_forecast().map(|session| {
+                let mut nodes = session.forecast_nodes();
+                let session_length =
+                    if snapshot.session_end_seconds > snapshot.session_elapsed_seconds {
+                        snapshot.session_end_seconds
+                    } else {
+                        self.local_rest.session_max_time_seconds()
+                    };
+                let progress = if session_length > 0.0 {
+                    (snapshot.session_elapsed_seconds / session_length).clamp(0.0, 1.0)
+                } else if snapshot.session_time_remaining > 0.0 {
+                    (snapshot.session_elapsed_seconds
+                        / (snapshot.session_elapsed_seconds + snapshot.session_time_remaining))
+                        .clamp(0.0, 1.0)
+                } else {
+                    0.0
+                };
+                let current_index = if nodes.is_empty() {
+                    0
+                } else {
+                    ((progress / 0.2).floor().min((nodes.len() - 1) as f64)) as i32
+                };
+                let next_index = (current_index + 1).min(nodes.len() as i32);
+                if session_length > 0.0 {
+                    for (index, node) in nodes.iter_mut().enumerate() {
+                        if index as i32 >= next_index {
+                            let minutes = ((index as f64 * 0.2 * session_length
+                                - snapshot.session_elapsed_seconds)
+                                / 60.0)
+                                .round();
+                            node.minutes_from_now = Some(minutes.max(0.0) as i32);
+                        }
                     }
                 }
-            }
-            super::WeatherForecastModel {
-                available: true,
-                session: Self::weather_session_key(snapshot.session_type).to_owned(),
-                current_index,
-                next_index,
-                nodes,
-            }
-        });
+                super::WeatherForecastModel {
+                    available: true,
+                    session: Self::weather_session_key(snapshot.session_type).to_owned(),
+                    current_index,
+                    next_index,
+                    nodes,
+                }
+            })
+        } else {
+            None
+        };
         let current_humidity_percent = weather_forecast
             .as_ref()
             .and_then(|model| {

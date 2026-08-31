@@ -48,6 +48,7 @@ or replay capture.
 6. With Standings visible, requested roster cycles should be about one fifth of
    source cycles; with Relative, about two fifths. With neither nor OBS demand,
    requested cycles should be zero.
+   An OBS route other than Standings/Relative must also leave roster demand at zero.
 7. Check flags, Rejoin, driver swaps, GAP/INT, pit timers, host count, geometry,
    click-through behavior and Track Map geometry/pit prediction.
 
@@ -58,8 +59,6 @@ identifies the largest remaining cost.
 
 - Reduce String/HashMap churn in full roster construction only if it remains the
   dominant cost.
-- Make browser-source roster demand route-aware if unrelated OBS pages still force
-  enriched Standings data.
 - Re-measure WebView2 memory/GPU composition for one- and multi-monitor hosts.
 - Investigate large image decode/memory cost without breaking offline assets.
 

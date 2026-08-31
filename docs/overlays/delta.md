@@ -40,6 +40,8 @@ import/export because it identifies local hardware.
 Rust owns all timing semantics. TypeScript only formats the supplied view model
 and scales the bar. The normal native cadence is 50 Hz; the optional browser
 source follows the existing shared SSE publication cadence.
+Lap reconstruction and persistence continue in the shared source, but the live
+Delta view model is built only for a visible native panel or connected `/delta` route.
 
 ## Modes
 

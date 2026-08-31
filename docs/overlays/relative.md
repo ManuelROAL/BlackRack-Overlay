@@ -10,7 +10,8 @@
 - Cadence: enriched roster and renderer at 20 Hz in Smooth, 12.5 Hz in Balanced
   and approximately 8.3 Hz in Efficiency
 
-Rust owns physical row selection, row roles and selected gaps. TypeScript resolves
+Rust owns physical row selection, row roles and selected gaps. Its view model is
+built only when the native panel or `/relative` route is active. TypeScript resolves
 the prepared vehicle IDs and formats them; it must not repeat domain selection.
 
 ## Physical ordering
