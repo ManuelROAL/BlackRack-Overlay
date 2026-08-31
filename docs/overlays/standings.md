@@ -193,7 +193,7 @@ duplicate selection or timing semantics.
   enlarged labels and values cannot overlap neighboring columns. Manufacturer
   logos, driver badges, tyres and header SVG icons grow at half the rate of text
   (150% at the 200% text setting), together with their tracks where applicable.
-  Keep the 195 px driver track at 100% and expand it at half the text-growth
+  Keep the 145 px driver track at 100% and expand it at half the text-growth
   rate so the integrated pit summary remains anchored at its right edge;
   truncate driver names with an ellipsis. Position/change and
   assigned number use limited expansion, including the nested position/change
