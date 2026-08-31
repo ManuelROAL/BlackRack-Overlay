@@ -125,6 +125,7 @@ import {
   SPECTATOR_MODE_KEY,
   TEAM_MODE_KEY
 } from "./spectator-settings";
+import { OVERLAY_GUIDE, OVERLAY_GUIDE_ORDER } from "./overlay-guide";
 
 installFrontendDiagnostics("control", (diagnostic) =>
   invoke("record_frontend_error", { ...diagnostic })
@@ -861,6 +862,66 @@ const overlayDisplayName = (id: OverlayId): string =>
   document.querySelector<HTMLElement>(`[data-overlay-card="${id}"] .overlay-copy strong`)
     ?.textContent?.trim() || id;
 
+const overlayGuideDialog = document.getElementById("overlay-guide") as HTMLDialogElement | null;
+const overlayGuideNavigation = document.getElementById("overlay-guide-navigation");
+let selectedGuideOverlay: OverlayId = "standings";
+
+const renderOverlayGuide = (id: OverlayId): void => {
+  selectedGuideOverlay = id;
+  const entry = OVERLAY_GUIDE[id];
+  const icon = document.getElementById("overlay-guide-icon");
+  const title = document.getElementById("overlay-guide-overlay-title");
+  const purpose = document.getElementById("overlay-guide-purpose");
+  const reading = document.getElementById("overlay-guide-reading");
+  const tip = document.getElementById("overlay-guide-tip");
+  if (icon) icon.textContent = entry.icon;
+  if (title) title.textContent = t(entry.title);
+  if (purpose) purpose.textContent = t(entry.purpose);
+  if (reading) reading.textContent = t(entry.reading);
+  if (tip) tip.textContent = t(entry.tip);
+  overlayGuideNavigation?.querySelectorAll<HTMLButtonElement>("button[data-guide-overlay]").forEach((button) => {
+    const selected = button.dataset.guideOverlay === id;
+    button.classList.toggle("active", selected);
+    button.setAttribute("aria-current", selected ? "true" : "false");
+  });
+};
+
+if (overlayGuideNavigation) {
+  for (const id of OVERLAY_GUIDE_ORDER) {
+    const entry = OVERLAY_GUIDE[id];
+    const button = document.createElement("button");
+    const icon = document.createElement("span");
+    const label = document.createElement("b");
+    button.type = "button";
+    button.dataset.guideOverlay = id;
+    icon.textContent = entry.icon;
+    icon.setAttribute("aria-hidden", "true");
+    label.textContent = t(entry.title);
+    button.append(icon, label);
+    button.addEventListener("click", () => renderOverlayGuide(id));
+    overlayGuideNavigation.append(button);
+  }
+}
+
+const openOverlayGuide = (id: OverlayId): void => {
+  if (!overlayGuideDialog) return;
+  renderOverlayGuide(id);
+  if (!overlayGuideDialog.open) overlayGuideDialog.showModal();
+  window.setTimeout(() => {
+    overlayGuideNavigation
+      ?.querySelector<HTMLButtonElement>(`button[data-guide-overlay="${id}"]`)
+      ?.scrollIntoView({ block: "nearest" });
+  });
+};
+
+document.getElementById("open-overlay-guide")?.addEventListener("click", () => {
+  openOverlayGuide(selectedGuideOverlay);
+});
+overlayGuideDialog?.addEventListener("click", (event) => {
+  if (event.target === overlayGuideDialog) overlayGuideDialog.close();
+});
+renderOverlayGuide(selectedGuideOverlay);
+
 const resetOverlayConfiguration = async (id: OverlayId): Promise<void> => {
   if (!await confirmReset(
     t("overlay.configConfirm", { overlay: overlayDisplayName(id) })
@@ -957,6 +1018,16 @@ for (const id of overlayIds) {
       if (settings?.matches("[data-settings-for]")) settings.hidden = !expanded;
     });
     card.insertBefore(detailsToggle, switchElement);
+
+    const guideButton = document.createElement("button");
+    guideButton.type = "button";
+    guideButton.className = "overlay-guide-button";
+    guideButton.textContent = "?";
+    guideButton.title = t("guide.openFor", { overlay: overlayDisplayName(id) });
+    guideButton.setAttribute("aria-label", t("guide.openFor", { overlay: overlayDisplayName(id) }));
+    guideButton.setAttribute("aria-controls", "overlay-guide");
+    guideButton.addEventListener("click", () => openOverlayGuide(id));
+    card.insertBefore(guideButton, switchElement);
 
     const control = document.createElement("label");
     control.className = "overlay-transparency";

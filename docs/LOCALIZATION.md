@@ -101,6 +101,9 @@ in TypeScript while raw operating-system details remain diagnostic.
 parameters, supported-locale metadata, bindings across all 15 HTML documents,
 typed calls and the documented visible-copy allowlist before TypeScript and Vite.
 The OBS index is a catalog-driven Vite entry rather than duplicated Rust copy.
+The bundled overlay guide follows the same rule: its typed overlay mapping lives
+in `src/overlay-guide.ts`, and headings, explanations, tips and accessibility
+labels resolve exclusively through the shared catalogs.
 The phase-4 browser pass covered both locales at normal/compact viewports and all
 overlay design sizes; it found and fixed the Spanish Detailed Damage bodywork
 label. Native WebView2 checks at 100%, 125% and 150% remain a release-validation

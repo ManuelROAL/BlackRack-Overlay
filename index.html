@@ -42,6 +42,7 @@
           <h1 data-i18n="control.choose">Elige qué quieres ver en pista</h1>
         </div>
         <div class="bulk-actions">
+          <button id="open-overlay-guide" type="button" data-i18n="guide.open">Guía</button>
           <button id="show-all" type="button" data-i18n="control.showAll">Abrir todas</button>
           <button id="hide-all" type="button" data-i18n="control.hideAll">Ocultar todas</button>
         </div>
@@ -705,6 +706,42 @@
         <div class="reset-confirmation-actions">
           <button type="submit" value="cancel" data-i18n="reset.cancel">CANCELAR</button>
           <button class="primary" type="submit" value="confirm" data-i18n="reset.confirm">RESTABLECER</button>
+        </div>
+      </form>
+    </dialog>
+    <dialog id="overlay-guide" class="overlay-guide" aria-labelledby="overlay-guide-title">
+      <form method="dialog">
+        <header class="overlay-guide-header">
+          <div>
+            <span data-i18n="guide.eyebrow">GUÍA DE OVERLAYS</span>
+            <strong id="overlay-guide-title" data-i18n="guide.title">Entiende cada dato en pista</strong>
+            <p data-i18n="guide.intro">Elige un overlay para conocer su función y cómo interpretarlo.</p>
+          </div>
+          <button class="overlay-guide-close" type="submit" value="close" aria-label="Cerrar guía" data-i18n-aria-label="guide.close">×</button>
+        </header>
+        <div class="overlay-guide-body">
+          <nav id="overlay-guide-navigation" class="overlay-guide-navigation" aria-label="Overlays de la guía" data-i18n-aria-label="guide.navigation"></nav>
+          <article class="overlay-guide-content">
+            <header class="overlay-guide-overlay-heading">
+              <span id="overlay-guide-icon" class="overlay-guide-icon" aria-hidden="true"></span>
+              <div>
+                <small data-i18n="guide.overlay">OVERLAY</small>
+                <strong id="overlay-guide-overlay-title"></strong>
+              </div>
+            </header>
+            <section>
+              <h2 data-i18n="guide.shows">QUÉ MUESTRA</h2>
+              <p id="overlay-guide-purpose"></p>
+            </section>
+            <section>
+              <h2 data-i18n="guide.reading">CÓMO LEERLO</h2>
+              <p id="overlay-guide-reading"></p>
+            </section>
+            <aside>
+              <h2 data-i18n="guide.tip">CONSEJO DE USO</h2>
+              <p id="overlay-guide-tip"></p>
+            </aside>
+          </article>
         </div>
       </form>
     </dialog>

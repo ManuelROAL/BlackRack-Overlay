@@ -1362,7 +1362,7 @@ select {
 
 .overlay-list > .overlay-option:not(.expanded) > .overlay-details-toggle {
   display: flex;
-  grid-column: 2 / 4;
+  grid-column: 2;
   grid-row: 2;
   align-items: center;
   justify-content: space-between;
@@ -1383,6 +1383,38 @@ select {
   grid-column: 2;
   grid-row: 3;
   align-self: end;
+}
+
+.overlay-guide-button {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border: 1px solid rgb(255 255 255 / 11%);
+  border-radius: 50%;
+  color: #8b97a4;
+  background: #0b1016;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.overlay-guide-button:hover {
+  border-color: rgb(216 255 62 / 42%);
+  color: #d8ff3e;
+}
+
+.overlay-list > .overlay-option:not(.expanded) > .overlay-guide-button {
+  grid-column: 3;
+  grid-row: 2;
+  justify-self: end;
+}
+
+.overlay-list > .overlay-option.expanded > .overlay-guide-button {
+  grid-column: 4;
+  grid-row: 3;
+  align-self: end;
+  justify-self: end;
 }
 
 .overlay-list > .overlay-option:not(.expanded) > .overlay-reset-actions {
@@ -1532,6 +1564,227 @@ select {
 .reset-confirmation-actions .primary:hover {
   color: #080b10;
   background: #e2ff70;
+}
+
+.overlay-guide {
+  width: min(720px, calc(100vw - 36px));
+  max-height: min(720px, calc(100vh - 36px));
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid rgb(216 255 62 / 24%);
+  border-radius: 12px;
+  color: #eef2f5;
+  background: #0b1017;
+  box-shadow: 0 22px 70px rgb(0 0 0 / 70%);
+}
+
+.overlay-guide::backdrop {
+  background: rgb(2 5 8 / 78%);
+  backdrop-filter: blur(3px);
+}
+
+.overlay-guide form {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  max-height: min(720px, calc(100vh - 36px));
+}
+
+.overlay-guide-header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 20px 22px 17px;
+  border-bottom: 1px solid rgb(255 255 255 / 8%);
+  background: linear-gradient(120deg, rgb(216 255 62 / 7%), transparent 55%);
+}
+
+.overlay-guide-header > div {
+  display: grid;
+  gap: 4px;
+}
+
+.overlay-guide-header span,
+.overlay-guide-overlay-heading small,
+.overlay-guide-content h2 {
+  color: #d8ff3e;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .14em;
+}
+
+.overlay-guide-header strong {
+  font-size: 19px;
+  letter-spacing: -.02em;
+}
+
+.overlay-guide-header p {
+  margin: 1px 0 0;
+  color: #87939f;
+  font-size: 10px;
+}
+
+.overlay-guide-close {
+  display: grid;
+  flex: 0 0 auto;
+  width: 31px;
+  height: 31px;
+  padding: 0;
+  place-items: center;
+  border: 1px solid rgb(255 255 255 / 11%);
+  border-radius: 6px;
+  color: #919ca8;
+  background: rgb(255 255 255 / 3%);
+  cursor: pointer;
+  font-size: 18px;
+}
+
+.overlay-guide-close:hover {
+  border-color: rgb(216 255 62 / 35%);
+  color: #eef2f5;
+}
+
+.overlay-guide-body {
+  display: grid;
+  grid-template-columns: 205px minmax(0, 1fr);
+  min-height: 0;
+}
+
+.overlay-guide-navigation {
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  padding: 12px;
+  overflow-y: auto;
+  border-right: 1px solid rgb(255 255 255 / 8%);
+  background: #090e14;
+  scrollbar-color: #39434e #090e14;
+  scrollbar-width: thin;
+}
+
+.overlay-guide-navigation::-webkit-scrollbar,
+.overlay-guide-content::-webkit-scrollbar {
+  width: 7px;
+}
+
+.overlay-guide-navigation::-webkit-scrollbar-track,
+.overlay-guide-content::-webkit-scrollbar-track {
+  background: #090e14;
+}
+
+.overlay-guide-navigation::-webkit-scrollbar-thumb,
+.overlay-guide-content::-webkit-scrollbar-thumb {
+  border-radius: 8px;
+  background: #39434e;
+}
+
+.overlay-guide-navigation button {
+  display: grid;
+  grid-template-columns: 27px minmax(0, 1fr);
+  align-items: center;
+  gap: 9px;
+  min-height: 34px;
+  padding: 5px 8px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: #8c98a4;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 750;
+  text-align: left;
+}
+
+.overlay-guide-navigation button span {
+  display: grid;
+  width: 27px;
+  height: 27px;
+  place-items: center;
+  border: 1px solid rgb(255 255 255 / 8%);
+  border-radius: 5px;
+  color: #6f7b87;
+  background: #0b1118;
+  font-size: 9px;
+  font-weight: 900;
+}
+
+.overlay-guide-navigation button:hover,
+.overlay-guide-navigation button.active {
+  border-color: rgb(216 255 62 / 20%);
+  color: #eef2f5;
+  background: rgb(216 255 62 / 6%);
+}
+
+.overlay-guide-navigation button.active span {
+  color: #d8ff3e;
+  border-color: rgb(216 255 62 / 24%);
+}
+
+.overlay-guide-content {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  min-width: 0;
+  padding: 22px 24px 26px;
+  overflow-y: auto;
+  scrollbar-color: #39434e #090e14;
+  scrollbar-width: thin;
+}
+
+.overlay-guide-overlay-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid rgb(255 255 255 / 8%);
+}
+
+.overlay-guide-icon {
+  display: grid;
+  width: 46px;
+  height: 46px;
+  place-items: center;
+  border: 1px solid rgb(216 255 62 / 26%);
+  border-radius: 8px;
+  color: #d8ff3e;
+  background: rgb(216 255 62 / 6%);
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.overlay-guide-overlay-heading > div {
+  display: grid;
+  gap: 3px;
+}
+
+.overlay-guide-overlay-heading strong {
+  font-size: 18px;
+}
+
+.overlay-guide-content section,
+.overlay-guide-content aside {
+  display: grid;
+  gap: 6px;
+}
+
+.overlay-guide-content h2,
+.overlay-guide-content p {
+  margin: 0;
+}
+
+.overlay-guide-content p {
+  color: #b0bac4;
+  font-size: 11px;
+  line-height: 1.48;
+}
+
+.overlay-guide-content aside {
+  margin-top: 2px;
+  padding: 12px 13px;
+  border: 1px solid rgb(216 255 62 / 15%);
+  border-radius: 7px;
+  background: rgb(216 255 62 / 4%);
 }
 
 .overlay-transparency,
@@ -1868,8 +2121,45 @@ select {
   }
 
   .overlay-list > .overlay-option.expanded > .overlay-reset-actions {
+    grid-column: 2 / 4;
+    grid-row: 5;
+  }
+
+  .overlay-list > .overlay-option.expanded > .overlay-guide-button {
     grid-column: 3;
     grid-row: 4;
+  }
+
+  .overlay-guide {
+    width: calc(100vw - 24px);
+    max-height: calc(100vh - 24px);
+  }
+
+  .overlay-guide form {
+    max-height: calc(100vh - 24px);
+  }
+
+  .overlay-guide-header {
+    padding: 16px;
+  }
+
+  .overlay-guide-header p {
+    max-width: 260px;
+  }
+
+  .overlay-guide-body {
+    grid-template-columns: 1fr;
+  }
+
+  .overlay-guide-navigation {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    max-height: 146px;
+    border-right: 0;
+    border-bottom: 1px solid rgb(255 255 255 / 8%);
+  }
+
+  .overlay-guide-content {
+    padding: 18px;
   }
 
   .standings-content-settings {

@@ -81,6 +81,13 @@ telemetry semantics and file ownership live under `docs/overlays/`; use
   width: descriptions may use two lines, configuration must read as an action,
   and enabled state should remain clear without turning every card into a bright
   outline. Collapse the catalog to one column when the window is narrow.
+- The overlay catalog provides a global guide action and one contextual help
+  action per card. Both open the same bundled, accessible dialog; contextual
+  help selects that overlay directly. `src/overlay-guide.ts` owns the complete
+  ordered overlay-to-copy mapping, while localized user-facing explanations live
+  in `src/i18n/catalogs.ts`. Keep this guide complete when adding an overlay and
+  keep technical implementation detail in `docs/overlays/` rather than exposing
+  it verbatim to users.
 - Use the same hierarchy and help-text treatment in every overlay configuration
   disclosure. Expanded controls and reorder grids must reflow without horizontal
   overflow at the narrow control-panel breakpoint.
@@ -125,6 +132,9 @@ telemetry semantics and file ownership live under `docs/overlays/`; use
 - Composite hosts consume grouped `telemetry://batch` events, forward only named
   locally mounted targets, and project each frame onto the reused per-overlay
   allowlist in `src/composite.ts` before same-origin `postMessage`.
+- Native visibility and the exact connected OBS route jointly define backend
+  demand. Disabled overlays do not build their presentation models; an unrelated
+  OBS page must not activate another overlay's calculations.
 - Update that allowlist whenever a renderer consumes a serialized field. Do not
   restore per-overlay native listeners or direct cross-realm object events.
 - The optional browser server listens only on `http://127.0.0.1:47636`, uses a
