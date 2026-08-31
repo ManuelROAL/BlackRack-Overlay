@@ -30,8 +30,8 @@ let settings = readStandingsSettings();
 const STANDINGS_EMPTY_HEIGHT = 72;
 const columnExpansionRatio = (id: StandingsColumnId): number => {
   if (id === "manufacturer" || id === "badge" || id === "driver") return 0;
-  if (id === "position") return 0.65;
-  if (id === "number") return 0.35;
+  if (id === "position") return 0.75;
+  if (id === "number") return 0.5;
   return 1;
 };
 const expandableColumnsWidth = (): number => visibleStandingsColumns(settings)

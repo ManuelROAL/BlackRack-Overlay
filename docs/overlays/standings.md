@@ -188,8 +188,9 @@ duplicate selection or timing semantics.
   enlarged labels and values cannot overlap neighboring columns. Keep the
   manufacturer-logo, driver-badge and 130 px driver-name tracks fixed; truncate
   driver names with an ellipsis when they exceed that space. Position/change and
-  assigned number use limited expansion so large values remain separated without the full
-  text-column margin. Text-bearing tracks retain their base width at 100% and
+  assigned number use limited expansion, including the nested position/change
+  tracks, so large values remain separated without the full text-column margin.
+  Text-bearing tracks retain their base width at 100% and
   below so fixed-minimum contents such as DR/SR badges cannot overlap neighbors.
 - Keep GAP, INT, lap-time, NRG, damage and pit tracks at their compact measured
   minimums; retain a small internal gutter and let text scaling grow those tracks.

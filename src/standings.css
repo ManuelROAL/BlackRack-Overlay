@@ -508,7 +508,9 @@ body[data-overlay-fit="true"].standings-body .standings-shell {
 
 .standing-position-cell {
   display: grid;
-  grid-template-columns: 12px 17px;
+  grid-template-columns:
+    calc(2px + 10px * var(--overlay-font-track-expansion, 1))
+    calc(5px + 12px * var(--overlay-font-track-expansion, 1));
   align-items: center;
   justify-content: center;
   column-gap: 2px;
