@@ -31,9 +31,11 @@
 - Left-to-right composition is: a circular dial combining the rotating
   steering-centre arc, central gear, speed and the FFB bar below it;
   clutch/brake/throttle meters; and the wide five-second trace.
-- An optional 12-segment RPM strip spans the top of the panel. It illuminates
-  progressively from 55% of `max_rpm`, changes from green to yellow and red, and
-  turns white at the limiter. It is disabled by default.
+- An optional 12-segment RPM strip spans the top of the panel. Based on the
+  established TinyPedal behavior rather than copied source, it illuminates
+  progressively from 84% to 96% of `max_rpm`: four green, four yellow and four
+  red segments. At 96% all segments flash cyan; at 99.99% they flash magenta.
+  It is disabled by default.
 - Represent the in-game steering angle with the rotating white centre arc; do
   not add a separate numeric angle readout.
 - Keep the trace free of a title and color legend. The established pedal-line and

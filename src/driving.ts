@@ -23,6 +23,9 @@ const RPM_LEDS_HEIGHT = 14;
 const TELEMETRY_RATE_HZ = 50;
 const HISTORY_SECONDS = 5;
 const HISTORY_SIZE = TELEMETRY_RATE_HZ * HISTORY_SECONDS;
+const RPM_LED_START = 0.84;
+const RPM_LED_CRITICAL = 0.96;
+const RPM_LED_OVER_REV = 0.9999;
 const history = {
   throttle: [] as number[],
   brake: [] as number[],
@@ -109,11 +112,16 @@ const setRpmLeds = (rpm: number, maxRpm: number): void => {
   const ratio = Number.isFinite(rpm) && Number.isFinite(maxRpm) && maxRpm > 0
     ? Math.max(0, Math.min(1, rpm / maxRpm))
     : 0;
-  const activeCount = Math.ceil(Math.max(0, ratio - 0.55) / 0.45 * rpmLeds.length);
-  const limiter = ratio >= 0.985;
+  const critical = ratio >= RPM_LED_CRITICAL;
+  const warningVisible = !critical || Math.floor(performance.now() / 125) % 2 === 0;
+  const activeCount = critical
+    ? rpmLeds.length
+    : Math.ceil(Math.max(0, ratio - RPM_LED_START)
+      / (RPM_LED_CRITICAL - RPM_LED_START) * rpmLeds.length);
   rpmLeds.forEach((led, index) => {
-    led.classList.toggle("active", index < activeCount);
-    led.classList.toggle("limiter", limiter);
+    led.classList.toggle("active", warningVisible && index < activeCount);
+    led.classList.toggle("critical", warningVisible && critical);
+    led.classList.toggle("over-rev", warningVisible && ratio >= RPM_LED_OVER_REV);
   });
 };
 
