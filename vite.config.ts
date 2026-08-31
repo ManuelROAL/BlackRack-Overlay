@@ -31,6 +31,7 @@ export default defineConfig({
         driving: "driving.html",
         liftcoast: "liftcoast.html",
         tires: "tires.html",
+        tiretemps: "tiretemps.html",
         damage: "damage.html",
         standings: "standings.html",
         relative: "relative.html",

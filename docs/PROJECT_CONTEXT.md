@@ -34,6 +34,7 @@ on their runtime or source code.
 - Spectator mode keeps overlays attached to the car currently watched between driving stints.
 - Team mode keeps overlays attached to the player's registered team car regardless of the spectator camera.
 - Compact tyre/damage schematic plus an independent detailed damage overlay.
+- Detailed three-zone tyre temperatures with four brake-disc readings.
 - Compact pit-stop estimate with LMU's official total and service breakdown.
 - Circuit map with live multiclass vehicle positions and a learned per-track path.
 - Weather forecast with the game's condition icons and a current-conditions panel

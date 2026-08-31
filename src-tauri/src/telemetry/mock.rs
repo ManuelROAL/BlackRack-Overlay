@@ -263,6 +263,12 @@ impl TelemetrySource for MockTelemetrySource {
             player_part_detached: false,
             player_rear_wing_detached: false,
             player_tire_temperature_c: [76.2, 83.3, 76.7, 81.1],
+            player_tire_zone_temperature_c: [
+                [72.0, 77.0, 81.0],
+                [84.0, 82.0, 78.0],
+                [73.0, 76.0, 79.0],
+                [82.0, 80.0, 76.0],
+            ],
             player_brake_temperature_c: [540.0, 575.0, 420.0, 445.0],
             player_tire_remaining_by_wheel_percent: [94.0, 94.0, 95.0, 95.0],
             player_tire_flat_spot_percent: [0.08, 0.0, 0.15, 0.03],

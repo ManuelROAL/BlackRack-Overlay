@@ -290,6 +290,7 @@ struct PerformanceMonitor {
     emitted_driving: u64,
     emitted_liftcoast: u64,
     emitted_tires: u64,
+    emitted_tiretemps: u64,
     emitted_damage: u64,
     emitted_pitstop: u64,
     emitted_fuel: u64,
@@ -326,6 +327,7 @@ impl PerformanceMonitor {
             emitted_driving: 0,
             emitted_liftcoast: 0,
             emitted_tires: 0,
+            emitted_tiretemps: 0,
             emitted_damage: 0,
             emitted_pitstop: 0,
             emitted_fuel: 0,
@@ -373,6 +375,7 @@ impl PerformanceMonitor {
                 "driving": self.emitted_driving,
                 "liftcoast": self.emitted_liftcoast,
                 "tires": self.emitted_tires,
+                "tiretemps": self.emitted_tiretemps,
                 "damage": self.emitted_damage,
                 "pitstop": self.emitted_pitstop,
                 "fuel": self.emitted_fuel,
@@ -685,6 +688,7 @@ pub struct TelemetryFrame {
     player_part_detached: bool,
     player_rear_wing_detached: bool,
     player_tire_temperature_c: [f64; 4],
+    player_tire_zone_temperature_c: [[f64; 3]; 4],
     player_brake_temperature_c: [f64; 4],
     player_tire_remaining_by_wheel_percent: [f64; 4],
     player_tire_flat_spot_percent: [f64; 4],
@@ -915,6 +919,7 @@ impl TelemetryFrame {
             player_part_detached: false,
             player_rear_wing_detached: false,
             player_tire_temperature_c: [-1.0; 4],
+            player_tire_zone_temperature_c: [[-1.0; 3]; 4],
             player_brake_temperature_c: [-1.0; 4],
             player_tire_remaining_by_wheel_percent: [-1.0; 4],
             player_tire_flat_spot_percent: [0.0; 4],
@@ -1074,6 +1079,7 @@ pub fn spawn_source(app: AppHandle) {
             let emit_driving = driving_due && super::overlay_is_active(&app, "driving");
             let emit_liftcoast = driving_due && super::overlay_is_active(&app, "liftcoast");
             let emit_tires = driving_due && super::overlay_is_active(&app, "tires");
+            let emit_tiretemps = driving_due && super::overlay_is_active(&app, "tiretemps");
             let emit_damage =
                 interval_due(&mut last_damage, now, tuning.secondary_overlay_interval)
                     && super::overlay_is_active(&app, "damage");
@@ -1106,6 +1112,7 @@ pub fn spawn_source(app: AppHandle) {
                 ("driving", emit_driving),
                 ("liftcoast", emit_liftcoast),
                 ("tires", emit_tires),
+                ("tiretemps", emit_tiretemps),
                 ("damage", emit_damage),
                 ("pitstop", emit_pitstop),
                 ("fuel", emit_fuel),
@@ -1114,7 +1121,7 @@ pub fn spawn_source(app: AppHandle) {
                 ("forecast", emit_forecast),
                 ("conditions", emit_conditions),
             ];
-            let mut base_targets = [""; 12];
+            let mut base_targets = [""; 13];
             let mut base_target_count = 0;
             for (label, should_emit) in base_emissions {
                 if should_emit {
@@ -1128,6 +1135,7 @@ pub fn spawn_source(app: AppHandle) {
                 performance.emitted_driving += u64::from(emit_driving);
                 performance.emitted_liftcoast += u64::from(emit_liftcoast);
                 performance.emitted_tires += u64::from(emit_tires);
+                performance.emitted_tiretemps += u64::from(emit_tiretemps);
                 performance.emitted_damage += u64::from(emit_damage);
                 performance.emitted_pitstop += u64::from(emit_pitstop);
                 performance.emitted_fuel += u64::from(emit_fuel);
