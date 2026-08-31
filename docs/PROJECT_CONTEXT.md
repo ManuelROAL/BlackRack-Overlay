@@ -19,6 +19,8 @@ on their runtime or source code.
   backed by persistent lap/stint records.
 - Timing panel with selectable lap-time rows, three-sector feedback
   and recent laps.
+- Compact session stint history with laps, duration, resource use, tyre compound,
+  wear, pace delta and consistency.
 - Configurable multiclass standings.
 - Endurance fuel/virtual-energy calculator.
 - Yellow, blue and checkered flag overlay.

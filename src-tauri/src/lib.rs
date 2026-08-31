@@ -22,9 +22,10 @@ use tauri::{
 };
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 
-const OVERLAY_LABELS: [&str; 16] = [
+const OVERLAY_LABELS: [&str; 17] = [
     "delta",
     "timing",
+    "stinthistory",
     "driving",
     "liftcoast",
     "tires",
@@ -914,6 +915,7 @@ fn default_overlay_geometry(label: &str) -> (f64, f64, f64, f64) {
     match label {
         "delta" => (610.0, 20.0, 420.0, 72.0),
         "timing" => (610.0, 110.0, 250.0, 292.0),
+        "stinthistory" => (1020.0, 650.0, 520.0, 134.0),
         "driving" => (20.0, 380.0, 468.0, 120.0),
         "liftcoast" => (20.0, 520.0, 190.0, 64.0),
         "tires" => (588.0, 380.0, 174.0, 130.0),

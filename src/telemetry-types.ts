@@ -129,6 +129,24 @@ export interface TimingViewModel {
   history: TimingLapView[];
 }
 
+export interface StintHistoryEntryView {
+  number: number;
+  current: boolean;
+  laps: number;
+  time_seconds: number;
+  resource_used: number;
+  tire_wear_percent: number;
+  tire_compounds: [string, string, string, string];
+  delta_seconds: number | null;
+  consistency_percent: number | null;
+}
+
+export interface StintHistoryViewModel {
+  available: boolean;
+  uses_virtual_energy: boolean;
+  entries: StintHistoryEntryView[];
+}
+
 export interface TelemetryFrame {
   source: string;
   performance_profile: "smooth" | "balanced" | "efficiency";
@@ -265,6 +283,7 @@ export interface TelemetryFrame {
   lap_delta_seconds: number;
   delta_model: DeltaViewModel;
   timing_model: TimingViewModel;
+  stint_history_model: StintHistoryViewModel;
   flag_warning: FlagWarning;
   rejoin_warning: RejoinWarning;
   standings: StandingEntry[];

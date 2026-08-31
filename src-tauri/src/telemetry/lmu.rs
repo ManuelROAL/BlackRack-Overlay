@@ -4047,6 +4047,7 @@ impl TelemetrySource for LmuTelemetrySource {
             lap_delta_seconds: snapshot.lap_delta_seconds,
             delta_model: Default::default(),
             timing_model: Default::default(),
+            stint_history_model: Default::default(),
             flag_warning,
             rejoin_warning,
             standings,

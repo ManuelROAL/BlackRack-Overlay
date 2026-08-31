@@ -287,6 +287,7 @@ struct PerformanceMonitor {
     overruns: u64,
     emitted_delta: u64,
     emitted_timing: u64,
+    emitted_stint_history: u64,
     emitted_driving: u64,
     emitted_liftcoast: u64,
     emitted_tires: u64,
@@ -324,6 +325,7 @@ impl PerformanceMonitor {
             overruns: 0,
             emitted_delta: 0,
             emitted_timing: 0,
+            emitted_stint_history: 0,
             emitted_driving: 0,
             emitted_liftcoast: 0,
             emitted_tires: 0,
@@ -372,6 +374,7 @@ impl PerformanceMonitor {
             "emitted": {
                 "delta": self.emitted_delta,
                 "timing": self.emitted_timing,
+                "stint_history": self.emitted_stint_history,
                 "driving": self.emitted_driving,
                 "liftcoast": self.emitted_liftcoast,
                 "tires": self.emitted_tires,
@@ -727,6 +730,7 @@ pub struct TelemetryFrame {
     lap_delta_seconds: f64,
     delta_model: delta_records::DeltaViewModel,
     timing_model: delta_records::TimingViewModel,
+    stint_history_model: delta_records::StintHistoryViewModel,
     flag_warning: FlagWarning,
     rejoin_warning: RejoinWarning,
     standings: Vec<StandingEntry>,
@@ -965,6 +969,7 @@ impl TelemetryFrame {
             lap_delta_seconds: 0.0,
             delta_model: delta_records::DeltaViewModel::default(),
             timing_model: delta_records::TimingViewModel::default(),
+            stint_history_model: delta_records::StintHistoryViewModel::default(),
             flag_warning: FlagWarning::default(),
             rejoin_warning: RejoinWarning::default(),
             standings: Vec::new(),
@@ -995,6 +1000,7 @@ pub fn spawn_source(app: AppHandle) {
         let now = Instant::now();
         let mut last_driving = now.checked_sub(SOURCE_INTERVAL).unwrap_or(now);
         let mut last_fuel = now.checked_sub(SOURCE_INTERVAL).unwrap_or(now);
+        let mut last_stint_history = now.checked_sub(IDLE_WARNING_INTERVAL).unwrap_or(now);
         let mut last_standings = now.checked_sub(SOURCE_INTERVAL).unwrap_or(now);
         let mut last_relative = now.checked_sub(SOURCE_INTERVAL).unwrap_or(now);
         let mut last_track_map = now.checked_sub(SOURCE_INTERVAL).unwrap_or(now);
@@ -1087,7 +1093,14 @@ pub fn spawn_source(app: AppHandle) {
                 || (standings_due && crate::browser_source::overlay_has_clients("delta"));
             let timing_requested = super::overlay_is_active(&app, "timing")
                 || (standings_due && crate::browser_source::overlay_has_clients("timing"));
-            delta_engine.update(&mut frame, delta_requested, timing_requested);
+            let stint_history_requested = super::overlay_is_active(&app, "stinthistory")
+                || crate::browser_source::overlay_has_clients("stinthistory");
+            delta_engine.update(
+                &mut frame,
+                delta_requested,
+                timing_requested,
+                stint_history_requested,
+            );
             standings_models::prepare_overlay_models(
                 &mut frame,
                 standings_visible || browser_standings,
@@ -1143,6 +1156,9 @@ pub fn spawn_source(app: AppHandle) {
             let driving_due = interval_due(&mut last_driving, now, tuning.fast_overlay_interval);
             let emit_delta = driving_due && super::overlay_is_active(&app, "delta");
             let emit_timing = driving_due && super::overlay_is_active(&app, "timing");
+            let emit_stint_history =
+                interval_due(&mut last_stint_history, now, IDLE_WARNING_INTERVAL)
+                    && super::overlay_is_active(&app, "stinthistory");
             let emit_driving = driving_due && super::overlay_is_active(&app, "driving");
             let emit_liftcoast = driving_due && super::overlay_is_active(&app, "liftcoast");
             let emit_tires = driving_due && super::overlay_is_active(&app, "tires");
@@ -1176,6 +1192,7 @@ pub fn spawn_source(app: AppHandle) {
             let base_emissions = [
                 ("delta", emit_delta),
                 ("timing", emit_timing),
+                ("stinthistory", emit_stint_history),
                 ("driving", emit_driving),
                 ("liftcoast", emit_liftcoast),
                 ("tires", emit_tires),
@@ -1188,7 +1205,7 @@ pub fn spawn_source(app: AppHandle) {
                 ("forecast", emit_forecast),
                 ("conditions", emit_conditions),
             ];
-            let mut base_targets = [""; 13];
+            let mut base_targets = [""; 14];
             let mut base_target_count = 0;
             for (label, should_emit) in base_emissions {
                 if should_emit {
@@ -1199,6 +1216,7 @@ pub fn spawn_source(app: AppHandle) {
             if super::emit_overlay_frames(&app, &base_targets[..base_target_count], &frame) {
                 performance.emitted_delta += u64::from(emit_delta);
                 performance.emitted_timing += u64::from(emit_timing);
+                performance.emitted_stint_history += u64::from(emit_stint_history);
                 performance.emitted_driving += u64::from(emit_driving);
                 performance.emitted_liftcoast += u64::from(emit_liftcoast);
                 performance.emitted_tires += u64::from(emit_tires);

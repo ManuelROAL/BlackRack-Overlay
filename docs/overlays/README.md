@@ -8,6 +8,7 @@ UI behavior, telemetry semantics, cadence and special invariants.
 | --- | --- | --- | --- | --- |
 | Delta / lap records | [delta.md](delta.md) | `delta.html` | `/delta` | 50 Hz |
 | Timing | [timing.md](timing.md) | `timing.html` | `/timing` | 50 Hz |
+| Stint history | [stinthistory.md](stinthistory.md) | `stinthistory.html` | `/stinthistory` | 4 Hz |
 | Standings | [standings.md](standings.md) | `standings.html` | `/standings` | 10 Hz |
 | Relative | [relative.md](relative.md) | `relative.html` | `/relative` | 20 Hz |
 | Fuel / energy | [fuel.md](fuel.md) | `fuel.html` | `/fuel` | 50 Hz |

@@ -266,6 +266,26 @@ pub(crate) struct TimingViewModel {
     history: Vec<TimingLapView>,
 }
 
+#[derive(Clone, Debug, Serialize)]
+pub(crate) struct StintHistoryEntryView {
+    number: u32,
+    current: bool,
+    laps: u32,
+    time_seconds: f64,
+    resource_used: f64,
+    tire_wear_percent: f64,
+    tire_compounds: [String; 4],
+    delta_seconds: Option<f64>,
+    consistency_percent: Option<f64>,
+}
+
+#[derive(Clone, Debug, Default, Serialize)]
+pub(crate) struct StintHistoryViewModel {
+    available: bool,
+    uses_virtual_energy: bool,
+    entries: Vec<StintHistoryEntryView>,
+}
+
 impl Default for TimingViewModel {
     fn default() -> Self {
         Self {
@@ -698,20 +718,45 @@ struct StintAccumulator {
     fuel_used: f64,
     energy_used: f64,
     tire_used: f64,
+    clean_lap_count: u32,
+    clean_lap_time: f64,
+    tire_start_average: Option<f64>,
+    tire_current_average: Option<f64>,
+    tire_compounds: [String; 4],
 }
 
 impl StintAccumulator {
-    fn new(number: u32, lap: i32) -> Self {
+    fn new(number: u32, frame: &TelemetryFrame) -> Self {
+        let tire_average = average_tire_remaining(frame);
         Self {
             number,
-            started_lap: lap,
-            ended_lap: lap,
+            started_lap: frame.lap_number,
+            ended_lap: frame.lap_number,
             lap_count: 0,
             best_lap: 0.0,
             total_time: 0.0,
             fuel_used: 0.0,
             energy_used: 0.0,
             tire_used: 0.0,
+            clean_lap_count: 0,
+            clean_lap_time: 0.0,
+            tire_start_average: tire_average,
+            tire_current_average: tire_average,
+            tire_compounds: frame.player_tire_compounds.clone(),
+        }
+    }
+
+    fn observe(&mut self, frame: &TelemetryFrame) {
+        if let Some(average) = average_tire_remaining(frame) {
+            self.tire_start_average.get_or_insert(average);
+            self.tire_current_average = Some(average);
+        }
+        if frame
+            .player_tire_compounds
+            .iter()
+            .any(|compound| !compound.trim().is_empty())
+        {
+            self.tire_compounds = frame.player_tire_compounds.clone();
         }
     }
 
@@ -722,8 +767,42 @@ impl StintAccumulator {
         self.fuel_used += lap.fuel_used;
         self.energy_used += lap.energy_used;
         self.tire_used += lap.tire_used;
-        if lap.eligible && (self.best_lap <= 0.0 || lap.trace.lap_time < self.best_lap) {
-            self.best_lap = lap.trace.lap_time;
+        if lap.eligible {
+            self.clean_lap_count += 1;
+            self.clean_lap_time += lap.trace.lap_time;
+            if self.best_lap <= 0.0 || lap.trace.lap_time < self.best_lap {
+                self.best_lap = lap.trace.lap_time;
+            }
+        }
+    }
+
+    fn history_view(&self, current: bool, uses_virtual_energy: bool) -> StintHistoryEntryView {
+        let average_non_best = (self.clean_lap_count > 1 && self.best_lap > 0.0)
+            .then(|| (self.clean_lap_time - self.best_lap) / (self.clean_lap_count - 1) as f64)
+            .filter(|average| average.is_finite() && *average > 0.0);
+        let delta_seconds = average_non_best.map(|average| (average - self.best_lap).max(0.0));
+        let consistency_percent =
+            average_non_best.map(|average| (self.best_lap / average * 100.0).clamp(0.0, 100.0));
+        let tire_wear_percent = self
+            .tire_start_average
+            .zip(self.tire_current_average)
+            .map_or(self.tire_used, |(start, current)| {
+                (start - current).max(0.0)
+            });
+        StintHistoryEntryView {
+            number: self.number,
+            current,
+            laps: self.lap_count,
+            time_seconds: self.total_time,
+            resource_used: if uses_virtual_energy {
+                self.energy_used
+            } else {
+                self.fuel_used
+            },
+            tire_wear_percent,
+            tire_compounds: self.tire_compounds.clone(),
+            delta_seconds,
+            consistency_percent,
         }
     }
 
@@ -796,6 +875,7 @@ pub(crate) struct DeltaEngine {
     current_lap: Option<CurrentLap>,
     pending_lap: Option<CurrentLap>,
     stint: Option<StintAccumulator>,
+    stint_history: Vec<StintHistoryEntryView>,
     session_id: String,
     last_session_type: i32,
     last_session_elapsed: f64,
@@ -830,6 +910,7 @@ impl DeltaEngine {
             current_lap: None,
             pending_lap: None,
             stint: None,
+            stint_history: Vec::new(),
             session_id: String::new(),
             last_session_type: -1,
             last_session_elapsed: 0.0,
@@ -857,6 +938,7 @@ impl DeltaEngine {
         frame: &mut TelemetryFrame,
         delta_requested: bool,
         timing_requested: bool,
+        stint_history_requested: bool,
     ) {
         self.poll_load();
         let mode = active_mode();
@@ -869,6 +951,7 @@ impl DeltaEngine {
             self.pending_lap = None;
             self.reset_delta_trend();
             frame.timing_model = TimingViewModel::default();
+            frame.stint_history_model = StintHistoryViewModel::default();
             return;
         }
 
@@ -879,6 +962,7 @@ impl DeltaEngine {
             };
             self.reset_delta_trend();
             frame.timing_model = TimingViewModel::default();
+            frame.stint_history_model = StintHistoryViewModel::default();
             return;
         };
         if self.identity.as_ref().map(|item| item.key.as_str()) != Some(identity.key.as_str()) {
@@ -927,6 +1011,9 @@ impl DeltaEngine {
         if timing_requested {
             frame.timing_model = self.timing_view_model(frame);
         }
+        if stint_history_requested {
+            frame.stint_history_model = self.stint_history_view_model(frame);
+        }
     }
 
     fn select_identity(&mut self, identity: Identity) {
@@ -942,6 +1029,7 @@ impl DeltaEngine {
         self.last_lap = None;
         self.current_lap = None;
         self.pending_lap = None;
+        self.stint_history.clear();
         self.timing_sectors = [None; 3];
         self.timing_sector_states = ["pending"; 3];
         self.overall_timing_sectors = [None; 3];
@@ -992,6 +1080,7 @@ impl DeltaEngine {
         self.current_lap = None;
         self.pending_lap = None;
         self.stint = None;
+        self.stint_history.clear();
         self.timing_results_until = None;
         self.timing_comparisons_until = None;
         self.timing_sectors = [None; 3];
@@ -1020,18 +1109,38 @@ impl DeltaEngine {
             .as_ref()
             .is_some_and(|stint| stint.number != number);
         if changed {
-            if let Some(record) = self
-                .stint
-                .take()
-                .and_then(|item| item.record(self.session_id.clone()))
-            {
-                self.storage.send(StorageCommand::RecordStint(record));
+            if let Some(item) = self.stint.take() {
+                if item.lap_count > 0 {
+                    self.stint_history
+                        .insert(0, item.history_view(false, frame.virtual_energy_active));
+                    self.stint_history.truncate(4);
+                }
+                if let Some(record) = item.record(self.session_id.clone()) {
+                    self.storage.send(StorageCommand::RecordStint(record));
+                }
             }
             self.stint_best = None;
             self.generation = self.generation.wrapping_add(1);
         }
         if self.stint.is_none() {
-            self.stint = Some(StintAccumulator::new(number, frame.lap_number));
+            self.stint = Some(StintAccumulator::new(number, frame));
+        }
+        if let Some(stint) = self.stint.as_mut() {
+            stint.observe(frame);
+        }
+    }
+
+    fn stint_history_view_model(&self, frame: &TelemetryFrame) -> StintHistoryViewModel {
+        let mut entries = Vec::with_capacity(5);
+        if let Some(current) = self.stint.as_ref().filter(|stint| stint.lap_count > 0) {
+            entries.push(current.history_view(true, frame.virtual_energy_active));
+        }
+        entries.extend(self.stint_history.iter().cloned());
+        entries.truncate(5);
+        StintHistoryViewModel {
+            available: !entries.is_empty(),
+            uses_virtual_energy: frame.virtual_energy_active,
+            entries,
         }
     }
 
@@ -1544,6 +1653,16 @@ fn average_timing_laps(history: &[TimingLapView]) -> f64 {
     }
 }
 
+fn average_tire_remaining(frame: &TelemetryFrame) -> Option<f64> {
+    let values = frame
+        .player_tire_remaining_by_wheel_percent
+        .iter()
+        .copied()
+        .filter(|value| value.is_finite() && *value >= 0.0)
+        .collect::<Vec<_>>();
+    (!values.is_empty()).then(|| values.iter().sum::<f64>() / values.len() as f64)
+}
+
 fn timing_comparison(current: f64, previous: Option<f64>) -> Option<f64> {
     previous
         .filter(|value| current.is_finite() && current > 0.0 && value.is_finite() && *value > 0.0)
@@ -1901,9 +2020,9 @@ mod tests {
         handle_storage_command, initialize_database, interpolate, limit_delta_seconds,
         native_session_delta, round_delta_for_trend, sector_count, sector_state,
         should_reset_delta_at_lap_start, three_sector_times, timing_comparison, timing_improvement,
-        CurrentLap, DeltaMode, DeltaTrend, Identity, LapTrace, PersistentReferences, ReferenceSet,
-        SectorBank, StorageCommand, TimingLapView, TimingSectorReference, TracePoint,
-        STORE_VERSION,
+        CompletedLap, CurrentLap, DeltaMode, DeltaTrend, Identity, LapTrace, PersistentReferences,
+        ReferenceSet, SectorBank, StintAccumulator, StorageCommand, TimingLapView,
+        TimingSectorReference, TracePoint, STORE_VERSION,
     };
     use crate::telemetry::TelemetryFrame;
 
@@ -1965,6 +2084,38 @@ mod tests {
         ];
 
         assert_eq!(average_timing_laps(&history), 102.0);
+    }
+
+    #[test]
+    fn stint_history_excludes_non_clean_laps_from_delta_and_consistency() {
+        let mut frame = active_frame();
+        frame.player_stint = 2;
+        frame.player_tire_remaining_by_wheel_percent = [90.0; 4];
+        frame.player_tire_compounds = ["M".into(), "M".into(), "M".into(), "M".into()];
+        let mut stint = StintAccumulator::new(2, &frame);
+        let completed = |number, seconds, eligible| CompletedLap {
+            number,
+            eligible,
+            category: if eligible { "clean" } else { "pit" },
+            trace: linear_lap(seconds, 1_000.0),
+            fuel_used: 2.5,
+            energy_used: 4.0,
+            tire_used: 1.0,
+        };
+        stint.add(&completed(3, 100.0, true));
+        stint.add(&completed(4, 102.0, true));
+        stint.add(&completed(5, 150.0, false));
+        frame.player_tire_remaining_by_wheel_percent = [84.0; 4];
+        stint.observe(&frame);
+
+        let view = stint.history_view(true, false);
+
+        assert_eq!(view.laps, 3);
+        assert_eq!(view.resource_used, 7.5);
+        assert_eq!(view.tire_wear_percent, 6.0);
+        assert_eq!(view.delta_seconds, Some(2.0));
+        assert!((view.consistency_percent.unwrap() - 98.039_215_686).abs() < 0.001);
+        assert_eq!(view.tire_compounds, ["M", "M", "M", "M"]);
     }
 
     #[test]

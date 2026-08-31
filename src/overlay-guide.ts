@@ -101,6 +101,13 @@ export const OVERLAY_GUIDE: Record<OverlayId, OverlayGuideEntry> = {
     reading: "guide.timing.reading",
     tip: "guide.timing.tip"
   },
+  stinthistory: {
+    icon: "S",
+    title: "card.stintHistory",
+    purpose: "guide.stintHistory.purpose",
+    reading: "guide.stintHistory.reading",
+    tip: "guide.stintHistory.tip"
+  },
   trackmap: {
     icon: "M",
     title: "card.trackmap",
@@ -138,6 +145,7 @@ export const OVERLAY_GUIDE_ORDER = [
   "rejoin",
   "delta",
   "timing",
+  "stinthistory",
   "trackmap",
   "forecast",
   "conditions"

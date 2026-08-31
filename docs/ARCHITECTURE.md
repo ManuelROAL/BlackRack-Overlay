@@ -136,6 +136,7 @@ profile and diagnostics.
   retains the complete lightweight coordinate roster.
 - Detailed damage and pit-stop estimate: Smooth 50 ms, Balanced 80 ms and
   Efficiency 120 ms.
+- Stint history: 250 ms; its model is prepared only with native or OBS demand.
 - Active Rejoin warning: 50 ms; inactive flag/rejoin warning: 250 ms.
 - Automatic visibility: 250 ms.
 - Control-panel status: 500 ms.

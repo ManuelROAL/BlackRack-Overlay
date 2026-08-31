@@ -28,6 +28,7 @@ export default defineConfig({
         composite: "composite.html",
         delta: "delta.html",
         timing: "timing.html",
+        stinthistory: "stinthistory.html",
         driving: "driving.html",
         liftcoast: "liftcoast.html",
         tires: "tires.html",

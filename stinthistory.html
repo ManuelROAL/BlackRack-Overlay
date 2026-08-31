@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title data-i18n="title.stintHistory">Historial de stint</title>
+  </head>
+  <body class="stint-history-body">
+    <main id="stint-history-card" class="overlay-shell stint-history-card" data-state="waiting" data-tauri-drag-region>
+      <header class="stint-history-header">
+        <span data-i18n="stinthistory.title">HISTORIAL DE STINT</span>
+        <b id="stint-history-count">--</b>
+      </header>
+      <div class="stint-history-table" role="table" aria-label="Historial de stint" data-i18n-aria-label="stinthistory.aria">
+        <div class="stint-history-columns" role="row">
+          <span role="columnheader" data-i18n="stinthistory.stint">STINT</span>
+          <span role="columnheader" data-i18n="stinthistory.laps">VUELTAS</span>
+          <span role="columnheader" data-i18n="stinthistory.time">TIEMPO</span>
+          <span id="stint-history-resource-label" role="columnheader" data-i18n="stinthistory.fuel">FUEL</span>
+          <span role="columnheader" data-i18n="stinthistory.tire">NEUM.</span>
+          <span role="columnheader" data-i18n="stinthistory.wear">DESG.</span>
+          <span role="columnheader" data-i18n="stinthistory.delta">DELTA</span>
+          <span role="columnheader" data-i18n="stinthistory.consistency">CONS.</span>
+        </div>
+        <div id="stint-history-rows" class="stint-history-rows" role="rowgroup"></div>
+        <p id="stint-history-empty" data-i18n="stinthistory.empty">COMPLETA UNA VUELTA CRONOMETRADA</p>
+      </div>
+    </main>
+    <script type="module" src="/src/stinthistory.ts"></script>
+  </body>
+</html>

@@ -14,7 +14,7 @@ use crate::telemetry::TelemetryFrame;
 const ADDRESS: &str = "127.0.0.1:47636";
 const BASE_URL: &str = "http://127.0.0.1:47636";
 const BROWSER_INDEX_ENTRY: &str = "browser.html";
-const BROWSER_OVERLAYS: [(&str, &str); 16] = [
+const BROWSER_OVERLAYS: [(&str, &str); 17] = [
     ("standings", "standings.html"),
     ("relative", "relative.html"),
     ("fuel", "fuel.html"),
@@ -23,6 +23,7 @@ const BROWSER_OVERLAYS: [(&str, &str); 16] = [
     ("rejoin", "rejoin.html"),
     ("delta", "delta.html"),
     ("timing", "timing.html"),
+    ("stinthistory", "stinthistory.html"),
     ("driving", "driving.html"),
     ("liftcoast", "liftcoast.html"),
     ("tires", "tires.html"),
@@ -500,10 +501,13 @@ mod tests {
 
     #[test]
     fn legacy_or_unknown_event_clients_keep_full_demand() {
-        assert_eq!(event_overlay_demand("/api/events").count_ones(), 16);
+        assert_eq!(
+            event_overlay_demand("/api/events").count_ones(),
+            BROWSER_OVERLAYS.len() as u32
+        );
         assert_eq!(
             event_overlay_demand("/api/events?overlay=unknown").count_ones(),
-            16
+            BROWSER_OVERLAYS.len() as u32
         );
     }
 }

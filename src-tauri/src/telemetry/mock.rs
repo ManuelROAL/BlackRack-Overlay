@@ -366,6 +366,7 @@ impl TelemetrySource for MockTelemetrySource {
             lap_delta_seconds: (elapsed * 0.31).sin() * 0.72,
             delta_model: Default::default(),
             timing_model: Default::default(),
+            stint_history_model: Default::default(),
             flag_warning: if !include_flag_warning {
                 FlagWarning::default()
             } else if (elapsed as u64 / 8) % 2 == 0 {
