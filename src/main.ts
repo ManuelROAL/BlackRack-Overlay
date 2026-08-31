@@ -25,6 +25,7 @@ import {
 } from "./driver-name-format";
 import {
   defaultStandingsSettings,
+  normalizeStandingsColumnOrder,
   readStandingsSettings,
   STANDINGS_COLUMNS,
   STANDINGS_HEADER_OPTIONS,
@@ -1316,7 +1317,10 @@ const parseOverlayConfiguration = (
   };
   const defaultStandings = defaultStandingsSettings();
   const normalizedStandingsColumns = mergeBooleanRecord(standings.columns, defaultStandings.columns);
-  const normalizedStandingsOrder = mergeOrder(standings.columnOrder, defaultStandings.columnOrder);
+  const importedStandingsOrder = mergeOrder(standings.columnOrder, defaultStandings.columnOrder);
+  const normalizedStandingsOrder = importedStandingsOrder
+    ? normalizeStandingsColumnOrder(importedStandingsOrder)
+    : null;
   const normalizedStandingsHeader = mergeBooleanRecord(standings.header, defaultStandings.header);
   if (!normalizedStandingsColumns
     || !normalizedStandingsOrder
@@ -1666,20 +1670,27 @@ const bindColumnOrder = <Id extends string>(
   definitions: ReadonlyArray<{ id: Id; labelKey: TranslationKey }>,
   getOrder: () => Id[],
   setOrder: (order: Id[]) => void,
-  lockedIds: ReadonlySet<Id> = new Set()
+  lockedIds: ReadonlySet<Id> = new Set(),
+  acceptsOrder: (order: ReadonlyArray<Id>) => boolean = () => true
 ): void => {
   if (!container) return;
   const definitionsById = new Map(definitions.map((definition) => [definition.id, definition]));
   let draggedId: Id | null = null;
 
-  const move = (sourceId: Id, targetIndex: number): void => {
-    if (lockedIds.has(sourceId)) return;
+  const movedOrder = (sourceId: Id, targetIndex: number): Id[] | null => {
+    if (lockedIds.has(sourceId)) return null;
     const order = [...getOrder()];
     const sourceIndex = order.indexOf(sourceId);
-    if (sourceIndex < 0) return;
+    if (sourceIndex < 0) return null;
     order.splice(sourceIndex, 1);
     const insertionIndex = Math.max(0, Math.min(targetIndex, order.length));
     order.splice(insertionIndex, 0, sourceId);
+    return acceptsOrder(order) ? order : null;
+  };
+
+  const move = (sourceId: Id, targetIndex: number): void => {
+    const order = movedOrder(sourceId, targetIndex);
+    if (!order) return;
     setOrder(order);
     render();
   };
@@ -1711,7 +1722,8 @@ const bindColumnOrder = <Id extends string>(
       previous.type = "button";
       previous.className = "column-order-button";
       previous.textContent = "←";
-      previous.disabled = locked || index === 0 || lockedIds.has(order[index - 1]);
+      previous.disabled = locked || index === 0 || lockedIds.has(order[index - 1])
+        || movedOrder(id, index - 1) === null;
       previous.title = t("settings.left", { label: translatedLabel });
       previous.setAttribute("aria-label", previous.title);
       previous.addEventListener("click", () => move(id, index - 1));
@@ -1720,7 +1732,8 @@ const bindColumnOrder = <Id extends string>(
       next.type = "button";
       next.className = "column-order-button";
       next.textContent = "→";
-      next.disabled = locked || index === order.length - 1 || lockedIds.has(order[index + 1]);
+      next.disabled = locked || index === order.length - 1 || lockedIds.has(order[index + 1])
+        || movedOrder(id, index + 1) === null;
       next.title = t("settings.right", { label: translatedLabel });
       next.setAttribute("aria-label", next.title);
       next.addEventListener("click", () => move(id, index + 1));
@@ -1776,7 +1789,17 @@ bindColumnOrder<StandingsColumnId>(
     };
     persistStandingsSettings();
   },
-  new Set<StandingsColumnId>(["signals"])
+  new Set<StandingsColumnId>(["signals"]),
+  (order) => {
+    const identityById = new Map(STANDINGS_COLUMNS.map(({ id, identity }) => [id, identity]));
+    let reachedHeaderColumn = false;
+    for (const id of order) {
+      if (id === "signals") continue;
+      if (!identityById.get(id)) reachedHeaderColumn = true;
+      else if (reachedHeaderColumn) return false;
+    }
+    return true;
+  }
 );
 
 const appendToggle = (

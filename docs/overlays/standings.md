@@ -35,6 +35,9 @@ duplicate selection or timing semantics.
   right. Other columns are independently visible and reorderable. Pit data is an
   independently visible status integrated into the driver cell rather than a
   separate reorderable column.
+- Reordering preserves the category-header boundary: identity columns without a
+  label remain inside the colored category heading, while labeled data columns
+  remain outside it. Signals stays fixed at the far right.
 - Use the session-assigned number. Driver-name presentation is independently
   configurable as full name, initial plus surname, name plus surname initial,
   surname only, name only or surname plus name initial. Prefer bundled

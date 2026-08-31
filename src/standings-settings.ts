@@ -90,6 +90,23 @@ export const STANDINGS_COLUMNS: StandingsColumnDefinition[] = [
   { id: "signals", labelKey: "column.signals", header: "", width: 96, configurable: true, identity: false }
 ];
 
+export const normalizeStandingsColumnOrder = (
+  order: ReadonlyArray<StandingsColumnId>
+): StandingsColumnId[] => {
+  const completeOrder = [
+    ...new Set(order),
+    ...STANDINGS_COLUMNS.map(({ id }) => id).filter((id) => !order.includes(id))
+  ];
+  const identityIds = new Set(
+    STANDINGS_COLUMNS.filter(({ identity }) => identity).map(({ id }) => id)
+  );
+  return [
+    ...completeOrder.filter((id) => identityIds.has(id)),
+    ...completeOrder.filter((id) => !identityIds.has(id) && id !== "signals"),
+    "signals"
+  ];
+};
+
 export const defaultStandingsSettings = (): StandingsSettings => {
   const columns = Object.fromEntries(STANDINGS_COLUMNS.map(({ id }) => [id, true])) as Record<
     StandingsColumnId,
@@ -97,7 +114,7 @@ export const defaultStandingsSettings = (): StandingsSettings => {
   >;
   return {
     columns,
-    columnOrder: STANDINGS_COLUMNS.map(({ id }) => id),
+    columnOrder: normalizeStandingsColumnOrder(STANDINGS_COLUMNS.map(({ id }) => id)),
     showHeader: true,
     header: Object.fromEntries(STANDINGS_HEADER_OPTIONS.map(({ id }) => [id, true])) as Record<
       StandingsHeaderOptionId,
@@ -136,14 +153,10 @@ export const readStandingsSettings = (): StandingsSettings => {
       const storedOrder = stored.columnOrder.filter(
         (id): id is StandingsColumnId => typeof id === "string" && validIds.has(id as StandingsColumnId)
       );
-      settings.columnOrder = [
+      settings.columnOrder = normalizeStandingsColumnOrder([
         ...new Set(storedOrder),
         ...settings.columnOrder.filter((id) => !storedOrder.includes(id))
-      ];
-      settings.columnOrder = [
-        ...settings.columnOrder.filter((id) => id !== "signals"),
-        "signals"
-      ];
+      ]);
     }
     if (typeof stored.showHeader === "boolean") settings.showHeader = stored.showHeader;
     for (const option of STANDINGS_HEADER_OPTIONS) {
