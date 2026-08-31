@@ -109,9 +109,8 @@ const setRpmLeds = (rpm: number, maxRpm: number): void => {
   const ratio = Number.isFinite(rpm) && Number.isFinite(maxRpm) && maxRpm > 0
     ? Math.max(0, Math.min(1, rpm / maxRpm))
     : 0;
-  const thresholds = [0.85, 0.925, 0.985];
-  const activeCount = thresholds.filter((threshold) => ratio >= threshold).length;
-  const limiter = ratio >= 0.995;
+  const activeCount = Math.ceil(Math.max(0, ratio - 0.55) / 0.45 * rpmLeds.length);
+  const limiter = ratio >= 0.985;
   rpmLeds.forEach((led, index) => {
     led.classList.toggle("active", index < activeCount);
     led.classList.toggle("limiter", limiter);

@@ -30,10 +30,9 @@
 - Left-to-right composition is: a circular dial combining the rotating
   steering-centre arc, central gear, speed and the FFB bar below it;
   clutch/brake/throttle meters; and the wide five-second trace.
-- An optional three-stage RPM strip sits at the top of the panel, matching the
-  number of shift lights in LMU's HUD. Until the HUD states can be sourced
-  directly, its green, yellow and red stages use 85%, 92.5% and 98.5% of
-  `max_rpm`; all three turn white at the limiter. It is disabled by default.
+- An optional 12-segment RPM strip spans the top of the panel. It illuminates
+  progressively from 55% of `max_rpm`, changes from green to yellow and red, and
+  turns white at the limiter. It is disabled by default.
 - Represent the in-game steering angle with the rotating white centre arc; do
   not add a separate numeric angle readout.
 - Keep the trace free of a title and color legend. The established pedal-line and
