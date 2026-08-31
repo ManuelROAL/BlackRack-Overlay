@@ -1065,6 +1065,10 @@ for (const id of overlayIds) {
 
     const resetActions = document.createElement("div");
     resetActions.className = "overlay-reset-actions";
+    resetActions.setAttribute("aria-label", t("overlay.resetActions"));
+    const resetLabel = document.createElement("span");
+    resetLabel.className = "overlay-reset-label";
+    resetLabel.textContent = t("overlay.resetActions");
     const resetConfiguration = document.createElement("button");
     resetConfiguration.type = "button";
     resetConfiguration.textContent = t("overlay.configShort");
@@ -1077,7 +1081,7 @@ for (const id of overlayIds) {
     resetPosition.title = t("overlay.positionTitle");
     resetPosition.setAttribute("aria-label", t("overlay.positionAria", { overlay: overlayDisplayName(id) }));
     resetPosition.addEventListener("click", () => void resetOverlayPosition(id, resetPosition));
-    resetActions.append(resetConfiguration, resetPosition);
+    resetActions.append(resetLabel, resetConfiguration, resetPosition);
     card.insertBefore(resetActions, switchElement);
 
     range.addEventListener("input", () => {

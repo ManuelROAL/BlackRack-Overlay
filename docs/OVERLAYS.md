@@ -110,8 +110,9 @@ telemetry semantics and file ownership live under `docs/overlays/`; use
   by the Windows Settings Identify action. Fall back to the native display name
   when Windows does not provide a friendly name.
 - Configuration reset affects only the selected panel's defaults. Position reset
-  affects only its geometry on its assigned monitor. Neither reset changes
-  visibility or another overlay; confirmation uses the styled in-panel dialog.
+  affects only its geometry on its assigned monitor. Both actions sit under an
+  explicit localized reset label, neither changes visibility or another overlay,
+  and confirmation uses the styled in-panel dialog.
 - Import/export uses one versioned JSON document with visibility, transparency,
   monitor selection, geometry, performance profile and content preferences. Use native dialogs,
   validate before applying, and map unavailable monitors to the primary display.
