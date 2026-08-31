@@ -24,9 +24,9 @@ fn rest_demand(
     weather_requested: bool,
 ) -> u8 {
     if connected {
-        u8::from(standings_requested) * STANDINGS_DEMAND
-            | u8::from(supplement_requested) * SUPPLEMENT_DEMAND
-            | u8::from(weather_requested) * WEATHER_DEMAND
+        (u8::from(standings_requested) * STANDINGS_DEMAND)
+            | (u8::from(supplement_requested) * SUPPLEMENT_DEMAND)
+            | (u8::from(weather_requested) * WEATHER_DEMAND)
     } else {
         0
     }
@@ -769,9 +769,11 @@ impl LocalRestResolver {
     }
 
     pub(super) fn fuel_ratio_assigned(&self) -> f64 {
-        is_fresh(self.supplement_received_at, SUPPLEMENT_MAX_AGE)
-            .then_some(self.fuel_ratio_assigned)
-            .unwrap_or(0.0)
+        if is_fresh(self.supplement_received_at, SUPPLEMENT_MAX_AGE) {
+            self.fuel_ratio_assigned
+        } else {
+            0.0
+        }
     }
 
     pub(super) fn weather_forecast(&self) -> Option<&RestWeatherSession> {

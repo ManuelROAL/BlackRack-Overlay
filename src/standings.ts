@@ -7,7 +7,6 @@ import { bindOverlayTransparency } from "./overlay-appearance";
 import type { StandingEntry, StandingsClassModel, TelemetryFrame } from "./telemetry-types";
 import {
   readStandingsSettings,
-  STANDINGS_COLUMNS,
   visibleStandingsColumns,
   type StandingsColumnId,
   type StandingsSettings

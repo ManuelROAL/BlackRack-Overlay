@@ -35,7 +35,7 @@ export const defaultDeltaSettings = (): DeltaSettings => ({
 export const isDeltaMode = (value: unknown): value is DeltaMode =>
   typeof value === "string" && modeValues.has(value as DeltaMode);
 
-export const normalizeDeltaSettings = (value: unknown): DeltaSettings => {
+const normalizeDeltaSettings = (value: unknown): DeltaSettings => {
   const fallback = defaultDeltaSettings();
   if (!value || typeof value !== "object") return fallback;
   const stored = value as Partial<DeltaSettings>;

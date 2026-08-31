@@ -10,7 +10,8 @@ use super::lmu_rest::{
     normalized_driver_identity, normalized_name, LocalRestResolver, RestVehicleDamage,
 };
 use super::{
-    FlagWarning, RejoinWarning, StandingEntry, TelemetryFrame, TelemetrySource, TrackMapVehicle,
+    FlagWarning, RejoinWarning, StandingEntry, TelemetryDemand, TelemetryFrame, TelemetrySource,
+    TrackMapVehicle,
 };
 
 const MAX_VEHICLES: usize = 104;
@@ -413,7 +414,7 @@ impl TireWearTracker {
 
                 // Un aumento de goma en boxes identifica un cambio de neumático.
                 // Una caída imposible también descarta la muestra anterior.
-                if in_pits && (wear < 0.0 || wear > 1.0) {
+                if in_pits && !(0.0..=1.0).contains(&wear) {
                     self.flat_spot_wear[index] = 0.0;
                 }
             }
@@ -630,9 +631,9 @@ impl CarHistory {
                         );
                         self.last_lap_seconds = if Self::valid_lap_time(official_last_lap) {
                             official_last_lap
-                        } else if self.current_lap_invalid && Self::valid_lap_time(reconstructed) {
-                            reconstructed
-                        } else if Self::plausible_reconstructed_lap(entry, reconstructed) {
+                        } else if (self.current_lap_invalid && Self::valid_lap_time(reconstructed))
+                            || Self::plausible_reconstructed_lap(entry, reconstructed)
+                        {
                             reconstructed
                         } else {
                             0.0
@@ -679,9 +680,11 @@ impl CarHistory {
 
     fn normalize_official_lap(lap_time: f64) -> f64 {
         let normalized = lap_time.abs();
-        Self::valid_lap_time(normalized)
-            .then_some(normalized)
-            .unwrap_or(0.0)
+        if Self::valid_lap_time(normalized) {
+            normalized
+        } else {
+            0.0
+        }
     }
 
     fn official_lap_is_invalid(lap_time: f64) -> bool {
@@ -857,21 +860,31 @@ struct PlayerLapDistanceEstimator {
     last_lap_seconds: f64,
 }
 
+struct PlayerLapDistanceSample {
+    raw_distance: f64,
+    current_lap_seconds: f64,
+    speed_kph: f64,
+    gear: i32,
+    lap_number: i32,
+    track_length: f64,
+    lap_changed: bool,
+}
+
 impl PlayerLapDistanceEstimator {
     fn reset(&mut self) {
         *self = Self::default();
     }
 
-    fn update(
-        &mut self,
-        raw_distance: f64,
-        current_lap_seconds: f64,
-        speed_kph: f64,
-        gear: i32,
-        lap_number: i32,
-        track_length: f64,
-        lap_changed: bool,
-    ) -> f64 {
+    fn update(&mut self, sample: PlayerLapDistanceSample) -> f64 {
+        let PlayerLapDistanceSample {
+            raw_distance,
+            current_lap_seconds,
+            speed_kph,
+            gear,
+            lap_number,
+            track_length,
+            lap_changed,
+        } = sample;
         if !raw_distance.is_finite()
             || !current_lap_seconds.is_finite()
             || !track_length.is_finite()
@@ -957,6 +970,16 @@ struct DriverRankEstimateDiagnostic {
     gain_factor: f64,
     estimated_gain: Option<f64>,
     opponents: Vec<DriverRankOpponentDiagnostic>,
+}
+
+struct DriverRankValidationInput<'a> {
+    session_type: i32,
+    game_phase: u32,
+    event_id: &'a str,
+    split_number: u32,
+    sample: Option<&'a DriverRankEstimateDiagnostic>,
+    player_raw_elo: Option<f64>,
+    refresh_revision: u64,
 }
 
 struct DriverRankValidationState {
@@ -1752,16 +1775,16 @@ impl LmuTelemetrySource {
         }
     }
 
-    fn update_driver_rank_validation(
-        &mut self,
-        session_type: i32,
-        game_phase: u32,
-        event_id: &str,
-        split_number: u32,
-        sample: Option<&DriverRankEstimateDiagnostic>,
-        player_raw_elo: Option<f64>,
-        refresh_revision: u64,
-    ) {
+    fn update_driver_rank_validation(&mut self, input: DriverRankValidationInput<'_>) {
+        let DriverRankValidationInput {
+            session_type,
+            game_phase,
+            event_id,
+            split_number,
+            sample,
+            player_raw_elo,
+            refresh_revision,
+        } = input;
         if !super::dr_estimate_log::enabled() {
             return;
         }
@@ -2430,7 +2453,7 @@ impl LmuTelemetrySource {
                 driver_qualifying_overall_positions.insert(entry.vehicle_id, qualification);
             }
             let (relative_ahead_seconds, relative_behind_seconds) = player_entry
-                .map(|player| Self::relative_gaps_seconds(&player, entry))
+                .map(|player| Self::relative_gaps_seconds(player, entry))
                 .unwrap_or((0.0, 0.0));
             let relative_gap_seconds = if relative_ahead_seconds.abs() <= relative_behind_seconds {
                 relative_ahead_seconds
@@ -2655,15 +2678,15 @@ impl LmuTelemetrySource {
         }
 
         let split = self.session_split.value().clone();
-        self.update_driver_rank_validation(
-            snapshot.session_type,
-            snapshot.game_phase,
-            &split.event_id,
-            split.number,
-            driver_rank_diagnostic.as_ref(),
-            validation_player_elo,
-            player_rank_refresh_revision,
-        );
+        self.update_driver_rank_validation(DriverRankValidationInput {
+            session_type: snapshot.session_type,
+            game_phase: snapshot.game_phase,
+            event_id: &split.event_id,
+            split_number: split.number,
+            sample: driver_rank_diagnostic.as_ref(),
+            player_raw_elo: validation_player_elo,
+            refresh_revision: player_rank_refresh_revision,
+        });
 
         if !gap_sample.is_empty() {
             super::queue_analysis_event(serde_json::json!({
@@ -3274,17 +3297,17 @@ impl LmuTelemetrySource {
 }
 
 impl TelemetrySource for LmuTelemetrySource {
-    fn next_frame(
-        &mut self,
-        include_standings: bool,
-        include_track_map: bool,
-        include_fuel_strategy: bool,
-        include_flag_warning: bool,
-        include_rejoin_warning: bool,
-        include_rest_standings: bool,
-        include_rest_supplement: bool,
-        include_rest_weather: bool,
-    ) -> TelemetryFrame {
+    fn next_frame(&mut self, demand: TelemetryDemand) -> TelemetryFrame {
+        let TelemetryDemand {
+            include_standings,
+            include_track_map,
+            include_fuel_strategy,
+            include_flag_warning,
+            include_rejoin_warning,
+            include_rest_standings,
+            include_rest_supplement,
+            include_rest_weather,
+        } = demand;
         const TRANSIENT_SNAPSHOT_HOLD: Duration = Duration::from_secs(2);
         const STANDINGS_STATE_INTERVAL: Duration = Duration::from_millis(200);
 
@@ -3460,15 +3483,15 @@ impl TelemetrySource for LmuTelemetrySource {
             !player_validity_is_synchronized || snapshot.player_lap_valid != 0;
         let synchronized_progress =
             synchronized_lap_progress(raw_lap_progress, snapshot.current_lap_seconds, lap_changed);
-        let lap_distance = self.player_lap_distance.update(
-            synchronized_progress * snapshot.track_length,
-            snapshot.current_lap_seconds,
-            snapshot.speed_kph,
-            snapshot.gear,
-            snapshot.lap_number,
-            snapshot.track_length,
+        let lap_distance = self.player_lap_distance.update(PlayerLapDistanceSample {
+            raw_distance: synchronized_progress * snapshot.track_length,
+            current_lap_seconds: snapshot.current_lap_seconds,
+            speed_kph: snapshot.speed_kph,
+            gear: snapshot.gear,
+            lap_number: snapshot.lap_number,
+            track_length: snapshot.track_length,
             lap_changed,
-        );
+        });
         let lap_progress = if snapshot.track_length > 1.0 {
             (lap_distance / snapshot.track_length).clamp(0.0, 1.0)
         } else {
@@ -3845,17 +3868,19 @@ impl TelemetrySource for LmuTelemetrySource {
             } else {
                 0.0
             },
-            fuel_ratio_average: virtual_energy_active
-                .then(|| fuel_energy_ratio(fuel_per_lap, virtual_energy_per_lap))
-                .unwrap_or(0.0),
-            fuel_ratio_last: virtual_energy_active
-                .then(|| {
-                    fuel_energy_ratio(
-                        self.fuel_last_lap.unwrap_or(0.0),
-                        self.energy_last_lap.unwrap_or(0.0),
-                    )
-                })
-                .unwrap_or(0.0),
+            fuel_ratio_average: if virtual_energy_active {
+                fuel_energy_ratio(fuel_per_lap, virtual_energy_per_lap)
+            } else {
+                0.0
+            },
+            fuel_ratio_last: if virtual_energy_active {
+                fuel_energy_ratio(
+                    self.fuel_last_lap.unwrap_or(0.0),
+                    self.energy_last_lap.unwrap_or(0.0),
+                )
+            } else {
+                0.0
+            },
             estimated_fuel_laps,
             session_laps_remaining,
             session_laps_remaining_estimated,
@@ -4007,13 +4032,33 @@ mod tests {
     use super::{
         fuel_energy_ratio, lmu_snapshot_size, rear_wing_detached,
         suspension_damage_by_wheel_percent, synchronized_lap_progress, CarHistory, LmuSnapshot,
-        LmuStandingEntry, LmuTelemetrySource, PlayerLapDistanceEstimator, PlayerLapTimeHistory,
-        TireWearTracker,
+        LmuStandingEntry, LmuTelemetrySource, PlayerLapDistanceEstimator, PlayerLapDistanceSample,
+        PlayerLapTimeHistory, TireWearTracker,
     };
     use crate::telemetry::event_split::DriverRankSettings;
     use crate::telemetry::lmu_rest::{RestStanding, RestVehicleDamage};
     use crate::telemetry::StandingEntry;
     use std::collections::{HashMap, HashSet};
+
+    fn lap_distance_sample(
+        raw_distance: f64,
+        current_lap_seconds: f64,
+        speed_kph: f64,
+        gear: i32,
+        lap_number: i32,
+        track_length: f64,
+        lap_changed: bool,
+    ) -> PlayerLapDistanceSample {
+        PlayerLapDistanceSample {
+            raw_distance,
+            current_lap_seconds,
+            speed_kph,
+            gear,
+            lap_number,
+            track_length,
+            lap_changed,
+        }
+    }
 
     #[test]
     fn fuel_energy_ratio_requires_both_valid_consumptions() {
@@ -4062,27 +4107,33 @@ mod tests {
     #[test]
     fn player_lap_distance_advances_between_scoring_updates() {
         let mut estimator = PlayerLapDistanceEstimator::default();
-        assert_eq!(estimator.update(0.0, 0.0, 180.0, 3, 4, 5_000.0, true), 0.0);
         assert_eq!(
-            estimator.update(0.0, 0.02, 180.0, 3, 4, 5_000.0, false),
+            estimator.update(lap_distance_sample(0.0, 0.0, 180.0, 3, 4, 5_000.0, true)),
+            0.0
+        );
+        assert_eq!(
+            estimator.update(lap_distance_sample(0.0, 0.02, 180.0, 3, 4, 5_000.0, false)),
             1.0
         );
         assert_eq!(
-            estimator.update(0.0, 0.04, 180.0, 3, 4, 5_000.0, false),
+            estimator.update(lap_distance_sample(0.0, 0.04, 180.0, 3, 4, 5_000.0, false)),
             2.0
         );
 
-        let refreshed = estimator.update(10.0, 0.2, 180.0, 3, 4, 5_000.0, false);
+        let refreshed =
+            estimator.update(lap_distance_sample(10.0, 0.2, 180.0, 3, 4, 5_000.0, false));
         assert!((refreshed - 10.0).abs() < 0.001);
-        let held = estimator.update(10.0, 0.22, 180.0, 3, 4, 5_000.0, false);
+        let held = estimator.update(lap_distance_sample(10.0, 0.22, 180.0, 3, 4, 5_000.0, false));
         assert!((held - 11.0).abs() < 0.001);
     }
 
     #[test]
     fn player_lap_distance_resets_at_the_lap_boundary() {
         let mut estimator = PlayerLapDistanceEstimator::default();
-        estimator.update(4_990.0, 95.0, 180.0, 4, 3, 5_000.0, false);
-        let reset = estimator.update(0.0, 0.02, 180.0, 3, 4, 5_000.0, true);
+        estimator.update(lap_distance_sample(
+            4_990.0, 95.0, 180.0, 4, 3, 5_000.0, false,
+        ));
+        let reset = estimator.update(lap_distance_sample(0.0, 0.02, 180.0, 3, 4, 5_000.0, true));
         assert_eq!(reset, 0.0);
     }
 

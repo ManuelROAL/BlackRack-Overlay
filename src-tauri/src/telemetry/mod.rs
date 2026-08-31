@@ -798,18 +798,20 @@ pub struct WeatherForecastModel {
     nodes: Vec<WeatherForecastNode>,
 }
 
+#[derive(Clone, Copy, Default)]
+struct TelemetryDemand {
+    include_standings: bool,
+    include_track_map: bool,
+    include_fuel_strategy: bool,
+    include_flag_warning: bool,
+    include_rejoin_warning: bool,
+    include_rest_standings: bool,
+    include_rest_supplement: bool,
+    include_rest_weather: bool,
+}
+
 trait TelemetrySource: Send + 'static {
-    fn next_frame(
-        &mut self,
-        include_standings: bool,
-        include_track_map: bool,
-        include_fuel_strategy: bool,
-        include_flag_warning: bool,
-        include_rejoin_warning: bool,
-        include_rest_standings: bool,
-        include_rest_supplement: bool,
-        include_rest_weather: bool,
-    ) -> TelemetryFrame;
+    fn next_frame(&mut self, demand: TelemetryDemand) -> TelemetryFrame;
 }
 
 impl TelemetryFrame {
@@ -1068,16 +1070,16 @@ pub fn spawn_source(app: AppHandle) {
                 || spectator_mode();
             let rest_weather_requested =
                 overlay_requested("forecast") || overlay_requested("conditions");
-            let mut frame = source.next_frame(
-                standings_requested,
-                track_map_requested,
-                fuel_requested,
-                flags_requested,
-                rejoin_requested,
-                rest_standings_requested,
-                rest_supplement_requested,
-                rest_weather_requested,
-            );
+            let mut frame = source.next_frame(TelemetryDemand {
+                include_standings: standings_requested,
+                include_track_map: track_map_requested,
+                include_fuel_strategy: fuel_requested,
+                include_flag_warning: flags_requested,
+                include_rejoin_warning: rejoin_requested,
+                include_rest_standings: rest_standings_requested,
+                include_rest_supplement: rest_supplement_requested,
+                include_rest_weather: rest_weather_requested,
+            });
             frame.spectator_mode = observer_mode();
             frame.performance_profile = tuning.profile.name();
             let delta_requested = super::overlay_is_active(&app, "delta")

@@ -4,7 +4,7 @@ import { fitOverlay } from "./overlay-fit";
 import { bindOverlayInteractionMode } from "./overlay-interaction";
 import { createOverlayPerformanceTracker } from "./overlay-performance";
 import { bindOverlayTransparency } from "./overlay-appearance";
-import type { RejoinWarning, TelemetryFrame } from "./telemetry-types";
+import type { RejoinWarning } from "./telemetry-types";
 import { listenTelemetry } from "./runtime-events";
 import { formatNumber, t } from "./i18n";
 

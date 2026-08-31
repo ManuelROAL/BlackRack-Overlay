@@ -1117,7 +1117,7 @@ fn open_support_page() -> Result<(), String> {
         if result as isize <= 32 {
             return Err("No se pudo abrir Ko-fi en el navegador predeterminado".into());
         }
-        return Ok(());
+        Ok(())
     }
 
     #[cfg(not(windows))]
@@ -1181,7 +1181,7 @@ fn save_shortcut_settings(app: &AppHandle, settings: &ShortcutSettings) -> Resul
 }
 
 fn validate_overlay_configuration(contents: &str) -> Result<(), String> {
-    let parsed: serde_json::Value = serde_json::from_str(&contents)
+    let parsed: serde_json::Value = serde_json::from_str(contents)
         .map_err(|error| format!("La configuración no es JSON válido: {error}"))?;
     let schema_version = parsed
         .get("schemaVersion")
@@ -1629,7 +1629,6 @@ pub fn run() {
                 save_control_window_position(window);
                 startup_log::record("control window close requested; exiting normally");
                 window.app_handle().exit(0);
-                return;
             }
         })
         .run(tauri::generate_context!())

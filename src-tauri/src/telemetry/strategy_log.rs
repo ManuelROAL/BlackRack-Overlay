@@ -77,10 +77,11 @@ fn csv_text(value: &str) -> String {
 }
 
 fn number(value: f64) -> String {
-    value
-        .is_finite()
-        .then(|| format!("{value:.3}"))
-        .unwrap_or_default()
+    if value.is_finite() {
+        format!("{value:.3}")
+    } else {
+        String::new()
+    }
 }
 
 #[derive(Clone)]

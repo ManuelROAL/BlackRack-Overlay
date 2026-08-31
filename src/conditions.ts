@@ -10,7 +10,7 @@ import { weatherIconUrl } from "./weather-icons";
 
 type ConditionValue = "air" | "track" | "wind" | "humidity" | "rain" | "grip" | "wetness";
 
-const setOverlaySize = fitOverlay(
+fitOverlay(
   { width: 390, height: 90 },
   { widthTextRatio: 0.72, heightTextRatio: 0.12 }
 );

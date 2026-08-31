@@ -2,7 +2,8 @@ use std::time::Instant;
 
 use super::fuel_strategy::{calculate_resource_strategy, FuelStrategies, ResourceStrategyInput};
 use super::{
-    FlagWarning, RejoinWarning, StandingEntry, TelemetryFrame, TelemetrySource, TrackMapVehicle,
+    FlagWarning, RejoinWarning, StandingEntry, TelemetryDemand, TelemetryFrame, TelemetrySource,
+    TrackMapVehicle,
 };
 
 pub struct MockTelemetrySource {
@@ -18,17 +19,15 @@ impl MockTelemetrySource {
 }
 
 impl TelemetrySource for MockTelemetrySource {
-    fn next_frame(
-        &mut self,
-        include_standings: bool,
-        include_track_map: bool,
-        include_fuel_strategy: bool,
-        include_flag_warning: bool,
-        include_rejoin_warning: bool,
-        _include_rest_standings: bool,
-        _include_rest_supplement: bool,
-        _include_rest_weather: bool,
-    ) -> TelemetryFrame {
+    fn next_frame(&mut self, demand: TelemetryDemand) -> TelemetryFrame {
+        let TelemetryDemand {
+            include_standings,
+            include_track_map,
+            include_fuel_strategy,
+            include_flag_warning,
+            include_rejoin_warning,
+            ..
+        } = demand;
         let elapsed = self.started_at.elapsed().as_secs_f64();
         let throttle = ((elapsed * 0.72).sin() * 0.48 + 0.52).clamp(0.0, 1.0);
         let brake = (((elapsed * 0.39).sin() - 0.58) * 2.1).clamp(0.0, 1.0);

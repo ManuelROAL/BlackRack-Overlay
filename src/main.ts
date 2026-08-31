@@ -131,6 +131,10 @@ installFrontendDiagnostics("control", (diagnostic) =>
   invoke("record_frontend_error", { ...diagnostic })
 );
 
+const reportInitializationError = (context: string) => (error: unknown): void => {
+  console.error(`Could not initialize ${context}:`, error);
+};
+
 interface OverlayState {
   label: OverlayId;
   visible: boolean;
@@ -141,9 +145,6 @@ interface TelemetryLoggingStatus {
   directory: string;
   active_file: string | null;
 }
-
-type StrategyLoggingStatus = TelemetryLoggingStatus;
-type DriverRankEstimateLoggingStatus = TelemetryLoggingStatus;
 
 interface LmuDependencyStatus {
   telemetry_plugin_available: boolean;
@@ -232,7 +233,8 @@ const renderPerformanceProfile = (): void => {
 };
 
 renderPerformanceProfile();
-void invoke("set_performance_profile", { profile: performanceProfile });
+void invoke("set_performance_profile", { profile: performanceProfile })
+  .catch(reportInitializationError("performance profile"));
 
 let spectatorMode = readSpectatorMode();
 let teamMode = readTeamMode();
@@ -291,7 +293,8 @@ if (teamModeInput) {
   });
 }
 void invoke("set_spectator_mode", { enabled: spectatorMode })
-  .then(() => invoke("set_team_mode", { enabled: teamMode }));
+  .then(() => invoke("set_team_mode", { enabled: teamMode }))
+  .catch(reportInitializationError("spectator modes"));
 
 for (const button of performanceProfileButtons) {
   button.addEventListener("click", () => {
@@ -319,7 +322,9 @@ if (localeSelect) {
   localeSelect.addEventListener("change", () => {
     if (!isLocale(localeSelect.value) || localeSelect.value === getLocale()) return;
     setLocale(localeSelect.value);
-    void emit("locale://change", { locale: localeSelect.value }).finally(() => window.location.reload());
+    void emit("locale://change", { locale: localeSelect.value })
+      .catch(reportInitializationError("locale propagation"))
+      .finally(() => window.location.reload());
   });
 }
 
@@ -680,7 +685,8 @@ wheelClearButton?.addEventListener("click", () => {
     .then(renderWheelInputStatus)
     .catch(() => { if (wheelMessage) wheelMessage.textContent = t("wheel.error"); });
 });
-void listen<WheelInputStatus>("wheel-input://status", ({ payload }) => renderWheelInputStatus(payload));
+void listen<WheelInputStatus>("wheel-input://status", ({ payload }) => renderWheelInputStatus(payload))
+  .catch(reportInitializationError("wheel input listener"));
 void invoke<WheelInputStatus>("get_wheel_input_status").then(renderWheelInputStatus).catch(() => {
   renderWheelInputStatus({ available: false, capturing: false, binding: null, error: "unavailable" });
 });
@@ -689,7 +695,7 @@ void listen<import("./delta-settings").DeltaMode>("delta://mode-changed", ({ pay
   deltaSettings = { ...deltaSettings, mode };
   if (deltaModeSelect) deltaModeSelect.value = mode;
   persistDeltaSettings();
-});
+}).catch(reportInitializationError("delta mode listener"));
 if (deltaRangeSelect) {
   for (const option of deltaRangeSelect.options) option.textContent = `±${formatNumber(Number(option.value))} s`;
   deltaRangeSelect.value = String(deltaSettings.displayRange);
@@ -1960,137 +1966,120 @@ for (const [key, label] of [
   });
 }
 
-const loggingInput = document.getElementById("telemetry-logging") as HTMLInputElement | null;
+interface LoggingControlOptions {
+  inputId: string;
+  cardId: string;
+  descriptionId: string;
+  pathId: string;
+  enabledDescription: TranslationKey;
+  disabledDescription: TranslationKey;
+  activePath: TranslationKey;
+  disabledPath: TranslationKey;
+  getCommand: string;
+  setCommand: string;
+  changeError: string;
+  loadError: string;
+  pollIntervalMs?: number;
+  onRender?: (status: TelemetryLoggingStatus) => void;
+}
 
-const driverRankEstimateLoggingInput = document.getElementById("dr-estimate-logging") as HTMLInputElement | null;
+const bindLoggingControl = (options: LoggingControlOptions): void => {
+  const input = document.getElementById(options.inputId) as HTMLInputElement | null;
+  const render = (status: TelemetryLoggingStatus): void => {
+    options.onRender?.(status);
+    if (input) input.checked = status.enabled;
+    document.getElementById(options.cardId)?.classList.toggle("active", status.enabled);
+    const description = document.getElementById(options.descriptionId);
+    if (description) {
+      description.textContent = t(status.enabled
+        ? options.enabledDescription
+        : options.disabledDescription);
+    }
+    const path = document.getElementById(options.pathId);
+    if (path) {
+      const location = status.active_file ?? status.directory;
+      const name = location.split(/[\\/]/).filter(Boolean).at(-1) ?? location;
+      path.textContent = t(status.enabled ? options.activePath : options.disabledPath, { name });
+      path.title = location;
+    }
+  };
+  const refresh = async (): Promise<void> => {
+    render(await invoke<TelemetryLoggingStatus>(options.getCommand));
+  };
 
-const strategyLoggingInput = document.getElementById("strategy-logging") as HTMLInputElement | null;
+  input?.addEventListener("change", () => {
+    const enabled = input.checked;
+    input.disabled = true;
+    void invoke<TelemetryLoggingStatus>(options.setCommand, { enabled })
+      .then(render)
+      .then(() => new Promise((resolve) => window.setTimeout(resolve, 200)))
+      .then(refresh)
+      .catch((error) => {
+        console.error(options.changeError, error);
+        input.checked = !enabled;
+      })
+      .finally(() => {
+        input.disabled = false;
+      });
+  });
 
-const renderStrategyLoggingStatus = (status: StrategyLoggingStatus): void => {
-  if (strategyLoggingInput) strategyLoggingInput.checked = status.enabled;
-  document.getElementById("strategy-logging-card")?.classList.toggle("active", status.enabled);
-  const description = document.getElementById("strategy-logging-description");
-  if (description) description.textContent = t(status.enabled ? "strategyLog.onSub" : "strategyLog.offSub");
-  const path = document.getElementById("strategy-logging-path");
-  if (path) {
-    const location = status.active_file ?? status.directory;
-    const name = location.split(/[\\/]/).filter(Boolean).at(-1) ?? location;
-    path.textContent = t(status.enabled ? "strategyLog.active" : "strategyLog.disabled", { name });
-    path.title = location;
+  void refresh().catch((error) => console.error(options.loadError, error));
+  if (options.pollIntervalMs) {
+    window.setInterval(() => {
+      void refresh().catch(() => undefined);
+    }, options.pollIntervalMs);
   }
 };
 
-const refreshStrategyLoggingStatus = async (): Promise<void> => {
-  renderStrategyLoggingStatus(await invoke<StrategyLoggingStatus>("get_strategy_logging"));
-};
-
-strategyLoggingInput?.addEventListener("change", () => {
-  const enabled = strategyLoggingInput.checked;
-  strategyLoggingInput.disabled = true;
-  void invoke<StrategyLoggingStatus>("set_strategy_logging", { enabled })
-    .then(renderStrategyLoggingStatus)
-    .then(() => new Promise((resolve) => window.setTimeout(resolve, 200)))
-    .then(refreshStrategyLoggingStatus)
-    .catch((error) => {
-      console.error("No se pudo cambiar el registro estratégico:", error);
-      strategyLoggingInput.checked = !enabled;
-    })
-    .finally(() => {
-      strategyLoggingInput.disabled = false;
-    });
+bindLoggingControl({
+  inputId: "strategy-logging",
+  cardId: "strategy-logging-card",
+  descriptionId: "strategy-logging-description",
+  pathId: "strategy-logging-path",
+  enabledDescription: "strategyLog.onSub",
+  disabledDescription: "strategyLog.offSub",
+  activePath: "strategyLog.active",
+  disabledPath: "strategyLog.disabled",
+  getCommand: "get_strategy_logging",
+  setCommand: "set_strategy_logging",
+  changeError: "No se pudo cambiar el registro estratégico:",
+  loadError: "No se pudo leer el estado del registro estratégico:",
+  pollIntervalMs: 5_000
 });
 
-void refreshStrategyLoggingStatus().catch((error) =>
-  console.error("No se pudo leer el estado del registro estratégico:", error)
-);
-
-window.setInterval(() => {
-  void refreshStrategyLoggingStatus().catch(() => undefined);
-}, 5_000);
-
-const renderDriverRankEstimateLoggingStatus = (status: DriverRankEstimateLoggingStatus): void => {
-  if (driverRankEstimateLoggingInput) driverRankEstimateLoggingInput.checked = status.enabled;
-  document.getElementById("dr-estimate-logging-card")?.classList.toggle("active", status.enabled);
-  const description = document.getElementById("dr-estimate-logging-description");
-  if (description) description.textContent = t(status.enabled ? "drEstimateLog.onSub" : "drEstimateLog.offSub");
-  const path = document.getElementById("dr-estimate-logging-path");
-  if (path) {
-    const location = status.active_file ?? status.directory;
-    const name = location.split(/[\\/]/).filter(Boolean).at(-1) ?? location;
-    path.textContent = t(status.enabled ? "drEstimateLog.active" : "drEstimateLog.disabled", { name });
-    path.title = location;
-  }
-};
-
-const refreshDriverRankEstimateLoggingStatus = async (): Promise<void> => {
-  renderDriverRankEstimateLoggingStatus(
-    await invoke<DriverRankEstimateLoggingStatus>("get_driver_rank_estimate_logging")
-  );
-};
-
-driverRankEstimateLoggingInput?.addEventListener("change", () => {
-  const enabled = driverRankEstimateLoggingInput.checked;
-  driverRankEstimateLoggingInput.disabled = true;
-  void invoke<DriverRankEstimateLoggingStatus>("set_driver_rank_estimate_logging", { enabled })
-    .then(renderDriverRankEstimateLoggingStatus)
-    .then(() => new Promise((resolve) => window.setTimeout(resolve, 200)))
-    .then(refreshDriverRankEstimateLoggingStatus)
-    .catch((error) => {
-      console.error("No se pudo cambiar el registro de estimación de DR:", error);
-      driverRankEstimateLoggingInput.checked = !enabled;
-    })
-    .finally(() => {
-      driverRankEstimateLoggingInput.disabled = false;
-    });
+bindLoggingControl({
+  inputId: "dr-estimate-logging",
+  cardId: "dr-estimate-logging-card",
+  descriptionId: "dr-estimate-logging-description",
+  pathId: "dr-estimate-logging-path",
+  enabledDescription: "drEstimateLog.onSub",
+  disabledDescription: "drEstimateLog.offSub",
+  activePath: "drEstimateLog.active",
+  disabledPath: "drEstimateLog.disabled",
+  getCommand: "get_driver_rank_estimate_logging",
+  setCommand: "set_driver_rank_estimate_logging",
+  changeError: "No se pudo cambiar el registro de estimación de DR:",
+  loadError: "No se pudo leer el estado del registro de estimación de DR:",
+  pollIntervalMs: 5_000
 });
 
-void refreshDriverRankEstimateLoggingStatus().catch((error) =>
-  console.error("No se pudo leer el estado del registro de estimación de DR:", error)
-);
-
-window.setInterval(() => {
-  void refreshDriverRankEstimateLoggingStatus().catch(() => undefined);
-}, 5_000);
-
-const renderLoggingStatus = (status: TelemetryLoggingStatus): void => {
-  void emit("performance://logging", { enabled: status.enabled });
-  if (loggingInput) loggingInput.checked = status.enabled;
-  document.getElementById("logging-card")?.classList.toggle("active", status.enabled);
-
-  const description = document.getElementById("logging-description");
-  if (description) {
-    description.textContent = status.enabled
-      ? t("logging.onSub")
-      : t("logging.offSub");
+bindLoggingControl({
+  inputId: "telemetry-logging",
+  cardId: "logging-card",
+  descriptionId: "logging-description",
+  pathId: "logging-path",
+  enabledDescription: "logging.onSub",
+  disabledDescription: "logging.offSub",
+  activePath: "logging.active",
+  disabledPath: "logging.disabled",
+  getCommand: "get_telemetry_logging",
+  setCommand: "set_telemetry_logging",
+  changeError: "No se pudo cambiar el registro de telemetría:",
+  loadError: "No se pudo leer el estado del registro de telemetría:",
+  onRender: (status) => {
+    void emit("performance://logging", { enabled: status.enabled })
+      .catch(reportInitializationError("performance logging state"));
   }
-
-  const path = document.getElementById("logging-path");
-  if (path) {
-    const location = status.active_file ?? status.directory;
-    const name = location.split(/[\\/]/).filter(Boolean).at(-1) ?? location;
-    path.textContent = t(status.enabled ? "logging.active" : "logging.disabled", { name });
-    path.title = location;
-  }
-};
-
-const refreshLoggingStatus = async (): Promise<void> => {
-  renderLoggingStatus(await invoke<TelemetryLoggingStatus>("get_telemetry_logging"));
-};
-
-loggingInput?.addEventListener("change", () => {
-  const enabled = loggingInput.checked;
-  loggingInput.disabled = true;
-  void invoke<TelemetryLoggingStatus>("set_telemetry_logging", { enabled })
-    .then(renderLoggingStatus)
-    .then(() => new Promise((resolve) => window.setTimeout(resolve, 200)))
-    .then(refreshLoggingStatus)
-    .catch((error) => {
-      console.error("No se pudo cambiar el registro de telemetría:", error);
-      loggingInput.checked = !enabled;
-    })
-    .finally(() => {
-      loggingInput.disabled = false;
-    });
 });
 
 const browserSourceInput = document.getElementById("browser-source-enabled") as HTMLInputElement | null;
@@ -2194,7 +2183,8 @@ const renderConnection = (frame: TelemetryFrame): void => {
   }
 };
 
-void listen<TelemetryFrame>("telemetry://frame", ({ payload }) => renderConnection(payload));
+void listen<TelemetryFrame>("telemetry://frame", ({ payload }) => renderConnection(payload))
+  .catch(reportInitializationError("telemetry listener"));
 const renderInteractionMode = (mode: InteractionMode): void => {
   const status = document.getElementById("interaction-status");
   if (status) status.textContent = t(mode.click_through ? "mode.game" : "mode.edit");
@@ -2202,7 +2192,8 @@ const renderInteractionMode = (mode: InteractionMode): void => {
   if (button) button.textContent = t(mode.click_through ? "mode.toEdit" : "mode.toGame");
 };
 
-void listen<InteractionMode>("overlay://interaction-mode", ({ payload }) => renderInteractionMode(payload));
+void listen<InteractionMode>("overlay://interaction-mode", ({ payload }) => renderInteractionMode(payload))
+  .catch(reportInitializationError("interaction mode listener"));
 
 document.getElementById("toggle-interaction-mode")?.addEventListener("click", () => {
   void invoke<InteractionMode>("toggle_interaction_mode_command").catch((error) => {
@@ -2211,15 +2202,18 @@ document.getElementById("toggle-interaction-mode")?.addEventListener("click", ()
   });
 });
 
-void restoreWindows();
-void bindMonitorSelector();
-void refreshLoggingStatus();
+void restoreWindows().catch(reportInitializationError("overlay visibility"));
+void bindMonitorSelector().catch(reportInitializationError("monitor selector"));
 syncBrowserSourcePreferences();
-void invoke<BrowserSourceStatus>("get_browser_source_status").then(renderBrowserSourceStatus);
+void invoke<BrowserSourceStatus>("get_browser_source_status")
+  .then(renderBrowserSourceStatus)
+  .catch(reportInitializationError("browser source status"));
 void invoke<ShortcutSettingsStatus>("get_shortcut_settings")
   .then(renderShortcutSettings)
   .catch((error) => setShortcutMessage(t("shortcuts.loadError", { detail: String(error) }), "error"));
-void invoke<InteractionMode>("get_interaction_mode").then(renderInteractionMode);
+void invoke<InteractionMode>("get_interaction_mode")
+  .then(renderInteractionMode)
+  .catch(reportInitializationError("interaction mode"));
 void invoke<LmuDependencyStatus>("get_lmu_dependency_status").then((status) => {
   lmuDependencyStatus = status;
-});
+}).catch(reportInitializationError("LMU dependency status"));

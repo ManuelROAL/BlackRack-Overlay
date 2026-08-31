@@ -11,7 +11,7 @@ export const LOCALE_OPTIONS: ReadonlyArray<{ code: Locale; label: string }> = [
 export const isLocale = (value: unknown): value is Locale =>
   typeof value === "string" && (SUPPORTED_LOCALES as readonly string[]).includes(value);
 
-export const resolveLocale = (): Locale => {
+const resolveLocale = (): Locale => {
   const queryOverride = new URLSearchParams(window.location.search).get("lang");
   if (isLocale(queryOverride)) return queryOverride;
   const override = document.documentElement.dataset.localeOverride;

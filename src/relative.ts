@@ -180,11 +180,6 @@ const formatLapTime = (seconds: number): string => {
   return `${minutes}:${(seconds % 60).toFixed(3).padStart(6, "0")}`;
 };
 
-const formatDifference = (laps: number, seconds: number): string => {
-  if (laps > 0) return t("common.lapsBehind", { count: laps });
-  return `+${decimal(Math.max(seconds, 0), 1)}`;
-};
-
 const countryFlagModules = import.meta.glob<string>(
   "./assets/countries/*.{svg,png}",
   { eager: true, query: "?url", import: "default" }

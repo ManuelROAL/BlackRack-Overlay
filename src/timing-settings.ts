@@ -38,7 +38,7 @@ export const defaultTimingSettings = (): TimingSettings => ({
 export const isTimingSectorReference = (value: unknown): value is TimingSectorReference =>
   typeof value === "string" && sectorReferenceValues.has(value as TimingSectorReference);
 
-export const normalizeTimingSettings = (value: unknown): TimingSettings => {
+const normalizeTimingSettings = (value: unknown): TimingSettings => {
   const fallback = defaultTimingSettings();
   if (!value || typeof value !== "object") return fallback;
   const stored = value as Partial<TimingSettings>;

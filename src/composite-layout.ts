@@ -206,8 +206,6 @@ export const saveOverlayPlacement = async (placement: OverlayPlacement): Promise
 };
 
 export const resetOverlayPlacement = async (overlay: OverlayId): Promise<OverlayPlacement> => {
-  const initializedLayout = await ensureCompositeLayout();
-  const layout = readCompositeLayout() ?? initializedLayout;
   const placement = await invoke<OverlayPlacement>("get_default_overlay_placement", {
     label: overlay
   });

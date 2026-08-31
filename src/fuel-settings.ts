@@ -13,7 +13,7 @@ export const defaultFuelSettings = (): FuelSettings => ({
 export const isFuelScenarioMode = (value: unknown): value is FuelScenarioMode =>
   value === "total" || value === "refuel";
 
-export const normalizeFuelSettings = (value: unknown): FuelSettings => {
+const normalizeFuelSettings = (value: unknown): FuelSettings => {
   const fallback = defaultFuelSettings();
   if (!value || typeof value !== "object") return fallback;
   const stored = value as Partial<FuelSettings>;
