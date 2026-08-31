@@ -29,7 +29,8 @@ import { formatClock as formatRealClock, formatNumber, formatTimeOfDay, t, type 
 let settings = readStandingsSettings();
 const STANDINGS_EMPTY_HEIGHT = 72;
 const columnExpansionRatio = (id: StandingsColumnId): number => {
-  if (id === "manufacturer" || id === "badge" || id === "driver") return 0;
+  if (id === "driver") return 0;
+  if (id === "manufacturer" || id === "badge" || id === "tire") return 0.5;
   if (id === "position") return 0.75;
   if (id === "number") return 0.5;
   return 1;

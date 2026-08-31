@@ -19,7 +19,8 @@ import { formatClock as formatRealClock, formatNumber, formatTimeOfDay, t, type 
 
 let relativeSettings = readRelativeSettings();
 const columnExpansionRatio = (id: RelativeColumnId): number => {
-  if (id === "country" || id === "badge" || id === "driver") return 0;
+  if (id === "driver") return 0;
+  if (id === "country" || id === "badge" || id === "tire") return 0.5;
   if (id === "position") return 0.75;
   if (id === "number") return 0.5;
   return 1;
@@ -37,7 +38,7 @@ const expandableColumnsWidth = (): number => visibleRelativeColumns(relativeSett
 const updateOverlayFit = fitOverlay({
   width: relativeBaseWidth(),
   height: relativeBaseHeight()
-}, { widthTextRatio: () => expandableColumnsWidth() / relativeBaseWidth(), heightTextRatio: 0.15 });
+}, { widthTextRatio: () => expandableColumnsWidth() / relativeBaseWidth(), heightTextRatio: 0.35 });
 bindOverlayTransparency("relative");
 const renderPerformance = createOverlayPerformanceTracker("relative");
 

@@ -583,9 +583,9 @@ body[data-overlay-fit="true"].standings-body .standings-shell {
 
 .manufacturer-logo {
   display: block;
-  width: 20px;
-  height: 20px;
-  flex: 0 0 20px;
+  width: calc(10px + 10px * var(--overlay-font-track-expansion, 1));
+  height: calc(10px + 10px * var(--overlay-font-track-expansion, 1));
+  flex: 0 0 auto;
   object-fit: contain;
 }
 
@@ -598,14 +598,14 @@ body[data-overlay-fit="true"].standings-body .standings-shell {
 
 .driver-badge-image {
   display: block;
-  width: 21px;
-  height: 21px;
+  width: calc(10.5px + 10.5px * var(--overlay-font-track-expansion, 1));
+  height: calc(10.5px + 10.5px * var(--overlay-font-track-expansion, 1));
   object-fit: contain;
 }
 
 .driver-badge-fallback {
   color: #4e9fec;
-  font-size: calc(17px * var(--overlay-font-scale, 1));
+  font-size: calc(8.5px + 8.5px * var(--overlay-font-track-expansion, 1));
   line-height: 1;
 }
 
@@ -616,9 +616,9 @@ body[data-overlay-fit="true"].standings-body .standings-shell {
 
 .country-flag {
   display: block;
-  width: 17px;
-  height: 12px;
-  flex: 0 0 17px;
+  width: calc(8.5px + 8.5px * var(--overlay-font-track-expansion, 1));
+  height: calc(6px + 6px * var(--overlay-font-track-expansion, 1));
+  flex: 0 0 auto;
   border-radius: 1px;
   object-fit: cover;
   box-shadow: 0 0 0 1px rgb(255 255 255 / 13%);
@@ -816,8 +816,8 @@ body[data-overlay-fit="true"].standings-body .standings-shell {
 }
 
 .tire-compound {
-  width: 18px;
-  height: 18px;
+  width: calc(9px + 9px * var(--overlay-font-track-expansion, 1));
+  height: calc(9px + 9px * var(--overlay-font-track-expansion, 1));
   justify-self: center;
 }
 
@@ -829,8 +829,8 @@ body[data-overlay-fit="true"].standings-body .standings-shell {
 
 .tire-compound-grid {
   display: grid;
-  width: 18px;
-  height: 18px;
+  width: calc(9px + 9px * var(--overlay-font-track-expansion, 1));
+  height: calc(9px + 9px * var(--overlay-font-track-expansion, 1));
   grid-template-columns: repeat(2, 1fr);
   grid-template-rows: repeat(2, 1fr);
   gap: 2px;

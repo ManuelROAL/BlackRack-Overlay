@@ -185,9 +185,10 @@ duplicate selection or timing semantics.
   72 px empty-state minimum. Scale the complete table without clipping so the
   edit border follows the rendered content throughout the 75–200% text range.
 - Expand text-bearing column tracks together with the text-size design surface so
-  enlarged labels and values cannot overlap neighboring columns. Keep the
-  manufacturer-logo, driver-badge and 130 px driver-name tracks fixed; truncate
-  driver names with an ellipsis when they exceed that space. Position/change and
+  enlarged labels and values cannot overlap neighboring columns. Manufacturer
+  logos, driver badges and tyres grow at half the rate of text (150% at the 200%
+  text setting), together with their tracks. Keep the 130 px driver-name track
+  fixed and truncate driver names with an ellipsis. Position/change and
   assigned number use limited expansion, including the nested position/change
   tracks, so large values remain separated without the full text-column margin.
   Text-bearing tracks retain their base width at 100% and
