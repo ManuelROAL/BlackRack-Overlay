@@ -93,20 +93,13 @@ const telemetryFields: Record<OverlayId, readonly (keyof TelemetryFrame)[]> = {
     "relative_model", "standings"
   ],
   fuel: [
-    "connected", "player_active", "session_type", "track_name", "player_total_laps",
+    "connected", "player_active",
     "fuel_liters", "fuel_capacity_liters", "fuel_per_lap", "fuel_last_lap",
     "fuel_qualifying_lap", "fuel_reference_per_lap", "fuel_projected_lap",
-    "fuel_pit_cycle_consumption", "fuel_pit_out_consumption", "fuel_ratio_assigned",
-    "fuel_ratio_average", "fuel_ratio_last", "session_laps_remaining",
-    "session_total_laps_estimated", "virtual_energy_active", "virtual_energy_percent",
+    "fuel_ratio_assigned", "fuel_ratio_average", "fuel_ratio_last",
+    "virtual_energy_active", "virtual_energy_percent",
     "virtual_energy_per_lap", "virtual_energy_last_lap", "virtual_energy_qualifying_lap",
-    "virtual_energy_reference_per_lap", "virtual_energy_projected_lap",
-    "virtual_energy_pit_cycle_consumption", "virtual_energy_pit_out_consumption",
-    "fuel_strategies", "player_tire_remaining_percent", "player_stint",
-    "pit_stop_estimate_available", "pit_stop_estimate_seconds", "pit_stop_fuel_seconds",
-    "pit_stop_energy_seconds", "pit_stop_tire_seconds", "pit_stop_damage_seconds",
-    "pit_stop_penalty_seconds", "pit_stop_driver_swap_seconds", "lap_progress",
-    "consumption_profile_samples"
+    "fuel_strategies"
   ],
   pitstop: [
     "virtual_energy_active", "pit_stop_estimate_available", "pit_stop_estimate_seconds",

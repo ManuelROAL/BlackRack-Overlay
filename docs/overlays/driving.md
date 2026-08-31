@@ -27,6 +27,7 @@
 
 - Keep one continuous compact dark surface with thin internal separators and a
   restrained lime edge accent, not independent cards.
+- Use a 468 × 120 px base surface before optional blocks compact its width.
 - Left-to-right composition is: a circular dial combining the rotating
   steering-centre arc, central gear, speed and the FFB bar below it;
   clutch/brake/throttle meters; and the wide five-second trace.

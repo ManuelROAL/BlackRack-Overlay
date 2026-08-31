@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "check:i18n": "node tools/validate-i18n.mjs && node tools/audit-visible-copy.mjs",
-    "build": "npm run check:i18n && tsc && vite build",
+    "check:overlays": "node tools/validate-overlays.mjs",
+    "build": "npm run check:i18n && npm run check:overlays && tsc && vite build",
     "tauri": "tauri"
   },
   "dependencies": {

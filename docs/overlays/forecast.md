@@ -34,6 +34,7 @@
 - Keep the panel as a horizontal strip with a slim heading and one column per
   visible slot: relative time, condition icon, air temperature and rain
   probability. The first column is live and labelled `NOW`.
+- Use a 366 × 112 px base surface with all five forecast slots visible.
 - Column count is dynamic (5 down to 1 future nodes plus NOW); the overlay reports its design width
   so the host follows the content while preserving the user's visual scale.
 - Expand each visible forecast column with the text-size surface so translated

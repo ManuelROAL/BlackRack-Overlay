@@ -1054,7 +1054,7 @@ pub fn spawn_source(app: AppHandle) {
                     "standings",
                     "relative",
                     "fuel",
-                    "timing",
+                    "tires",
                     "driving",
                     "damage",
                     "pitstop",

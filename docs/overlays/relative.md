@@ -83,7 +83,8 @@ the prepared vehicle IDs and formats them; it must not repeat domain selection.
   player and pit layers, including LMGT3 contrast.
 - Derive design width from active columns with a compact 344 px minimum. New and
   reset configurations default to number, driver, physical time and Signals;
-  advanced identity, timing and strategy columns remain configurable. Reserve
+  their base surface is 344 × 255 px. Advanced identity, timing and strategy
+  columns remain configurable. Reserve
   23 px for every selected row so the last card is not clipped.
 - Expand text-bearing column tracks together with the text-size design surface so
   enlarged labels and values cannot overlap neighboring columns. Keep the

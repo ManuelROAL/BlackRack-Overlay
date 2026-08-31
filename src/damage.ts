@@ -17,22 +17,27 @@ const values = Object.fromEntries(
 ) as Record<keyof typeof rows, HTMLElement>;
 const renderPerformance = createOverlayPerformanceTracker("damage");
 
+const updateRow = (kind: keyof typeof rows, text: string, state: string): void => {
+  if (values[kind].textContent !== text) values[kind].textContent = text;
+  if (rows[kind].dataset.state !== state) rows[kind].dataset.state = state;
+};
+
 const updateValue = (kind: keyof typeof rows, damage: number): void => {
   const available = Number.isFinite(damage) && damage >= 0;
   const value = available ? Math.max(0, Math.min(100, damage)) : -1;
-  values[kind].textContent = available ? `${Math.round(value)}%` : "--%";
-  rows[kind].dataset.state = !available
+  const state = !available
     ? "unavailable"
     : value >= 50 ? "critical" : value >= 15 ? "heavy" : value > 0 ? "warning" : "normal";
+  updateRow(kind, available ? `${Math.round(value)}%` : "--%", state);
 };
 
 const updateTireWear = (wear: number): void => {
   const available = Number.isFinite(wear) && wear >= 0;
   const value = available ? Math.max(0, Math.min(100, wear)) : -1;
-  values.tires.textContent = available ? `${Math.round(value)}%` : "--%";
-  rows.tires.dataset.state = !available
+  const state = !available
     ? "unavailable"
     : value >= 75 ? "critical" : value >= 50 ? "heavy" : value >= 30 ? "warning" : "normal";
+  updateRow("tires", available ? `${Math.round(value)}%` : "--%", state);
 };
 
 const render = (frame: TelemetryFrame): void => {

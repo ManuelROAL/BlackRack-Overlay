@@ -55,7 +55,21 @@ const validPlacement = (value: unknown, overlay: OverlayId): value is OverlayPla
       || (typeof placement.scale === "number" && Number.isFinite(placement.scale) && placement.scale > 0));
 };
 
+const correctedDefaultSizes: Partial<Record<OverlayId, readonly [number, number, number, number]>> = {
+  driving: [540, 120, 468, 120],
+  standings: [980, 500, 970, 500],
+  relative: [980, 300, 344, 255],
+  forecast: [352, 118, 366, 112],
+  conditions: [480, 96, 390, 90]
+};
+
 const migrateCompactPanels = (placement: OverlayPlacement): OverlayPlacement => {
+  const correctedDefault = correctedDefaultSizes[placement.overlay];
+  if (correctedDefault
+    && placement.width === correctedDefault[0]
+    && placement.height === correctedDefault[1]) {
+    return { ...placement, width: correctedDefault[2], height: correctedDefault[3] };
+  }
   if (placement.overlay === "timing" && placement.width === 366) {
     const migratedHeight = placement.height === 150
       ? 130
