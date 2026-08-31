@@ -151,8 +151,8 @@ body[data-overlay-fit="true"].standings-body .standings-shell {
 }
 
 .standings-session-timing-icon {
-  width: 12px;
-  height: 12px;
+  width: calc(6px + 6px * var(--overlay-font-track-expansion, 1));
+  height: calc(6px + 6px * var(--overlay-font-track-expansion, 1));
   object-fit: contain;
 }
 
@@ -175,8 +175,8 @@ body[data-overlay-fit="true"].standings-body .standings-shell {
 }
 
 .standings-header-icon {
-  width: 12px;
-  height: 12px;
+  width: calc(6px + 6px * var(--overlay-font-track-expansion, 1));
+  height: calc(6px + 6px * var(--overlay-font-track-expansion, 1));
   object-fit: contain;
 }
 
@@ -288,8 +288,8 @@ body[data-overlay-fit="true"].standings-body .standings-shell {
 
 .class-car-icon {
   display: block;
-  width: 12px;
-  height: 12px;
+  width: calc(6px + 6px * var(--overlay-font-track-expansion, 1));
+  height: calc(6px + 6px * var(--overlay-font-track-expansion, 1));
   flex: 0 0 auto;
   filter: brightness(0);
   object-fit: contain;
@@ -325,8 +325,8 @@ body[data-overlay-fit="true"].standings-body .standings-shell {
 }
 
 .column-label-icon {
-  width: 13px;
-  height: 13px;
+  width: calc(6.5px + 6.5px * var(--overlay-font-track-expansion, 1));
+  height: calc(6.5px + 6.5px * var(--overlay-font-track-expansion, 1));
   object-fit: contain;
   opacity: 0.72;
 }

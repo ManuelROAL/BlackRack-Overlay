@@ -186,9 +186,10 @@ duplicate selection or timing semantics.
   edit border follows the rendered content throughout the 75–200% text range.
 - Expand text-bearing column tracks together with the text-size design surface so
   enlarged labels and values cannot overlap neighboring columns. Manufacturer
-  logos, driver badges and tyres grow at half the rate of text (150% at the 200%
-  text setting), together with their tracks. Keep the 130 px driver-name track
-  fixed and truncate driver names with an ellipsis. Position/change and
+  logos, driver badges, tyres and header SVG icons grow at half the rate of text
+  (150% at the 200% text setting), together with their tracks where applicable.
+  Keep the 130 px driver-name track fixed and truncate driver names with an
+  ellipsis. Position/change and
   assigned number use limited expansion, including the nested position/change
   tracks, so large values remain separated without the full text-column margin.
   Text-bearing tracks retain their base width at 100% and

@@ -113,8 +113,8 @@ body[data-overlay-fit="true"].relative-body .standings-shell {
 }
 
 .relative-temperature-icon {
-  width: 12px;
-  height: 12px;
+  width: calc(6px + 6px * var(--overlay-font-track-expansion, 1));
+  height: calc(6px + 6px * var(--overlay-font-track-expansion, 1));
   object-fit: contain;
 }
 
@@ -126,8 +126,8 @@ body[data-overlay-fit="true"].relative-body .standings-shell {
 }
 
 .relative-timing-icon {
-  width: 12px;
-  height: 12px;
+  width: calc(6px + 6px * var(--overlay-font-track-expansion, 1));
+  height: calc(6px + 6px * var(--overlay-font-track-expansion, 1));
   object-fit: contain;
 }
 

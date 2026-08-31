@@ -88,9 +88,10 @@ the prepared vehicle IDs and formats them; it must not repeat domain selection.
   23 px for every selected row so the last card is not clipped.
 - Expand text-bearing column tracks together with the text-size design surface so
   enlarged labels and values cannot overlap neighboring columns. Country flags,
-  driver badges and tyres grow at half the rate of text (150% at the 200% text
-  setting), together with their tracks. Keep the 95 px driver-name track fixed
-  and truncate driver names with an ellipsis. Position/change and assigned
+  driver badges, tyres and header SVG icons grow at half the rate of text (150%
+  at the 200% text setting), together with their tracks where applicable. Keep
+  the 95 px driver-name track fixed and truncate driver names with an ellipsis.
+  Position/change and assigned
   number use limited expansion, including the nested position/change tracks, so
   large values remain separated without the full text-column margin. Text-bearing
   tracks retain their base width at 100% and
