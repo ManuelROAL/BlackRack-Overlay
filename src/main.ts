@@ -1267,7 +1267,8 @@ const parseOverlayConfiguration = (
     || typeof driving.showSteering !== "boolean"
     || typeof driving.showForceFeedback !== "boolean"
     || typeof driving.showSpeed !== "boolean"
-    || typeof driving.showGear !== "boolean")) {
+    || typeof driving.showGear !== "boolean"
+    || (driving.showRpmLeds !== undefined && typeof driving.showRpmLeds !== "boolean"))) {
     throw new Error(t("config.invalidDriving"));
   }
   const normalizedDelta = delta ?? defaultDeltaSettings();
@@ -1376,7 +1377,12 @@ const parseOverlayConfiguration = (
           ? relative.driverNameFormat
           : defaultRelative.driverNameFormat
       },
-      driving: driving ? driving as unknown as DrivingSettings : defaultDriving,
+      driving: driving ? {
+        ...(driving as unknown as DrivingSettings),
+        showRpmLeds: typeof driving.showRpmLeds === "boolean"
+          ? driving.showRpmLeds
+          : defaultDriving.showRpmLeds
+      } : defaultDriving,
       delta: normalizedDelta as unknown as DeltaSettings,
       timing: normalizedTimingWithTimes as unknown as TimingSettings,
       trackMap: normalizedTrackMap as unknown as TrackMapSettings,
@@ -1870,7 +1876,8 @@ for (const [key, label] of [
   ["showSteering", t("readout.steering")],
   ["showForceFeedback", t("readout.ffb")],
   ["showSpeed", t("readout.speed")],
-  ["showGear", t("readout.gear")]
+  ["showGear", t("readout.gear")],
+  ["showRpmLeds", t("readout.rpmLeds")]
 ] as const) {
   appendToggle(drivingReadoutOptions, label, drivingSettings[key], (checked) => {
     drivingSettings = { ...drivingSettings, [key]: checked };

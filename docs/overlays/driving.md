@@ -30,6 +30,9 @@
 - Left-to-right composition is: a circular dial combining the rotating
   steering-centre arc, central gear, speed and the FFB bar below it;
   clutch/brake/throttle meters; and the wide five-second trace.
+- An optional 12-segment RPM strip spans the top of the panel. It illuminates
+  progressively from 55% of `max_rpm`, changes from green to yellow and red, and
+  turns white at the limiter. It is disabled by default.
 - Represent the in-game steering angle with the rotating white centre arc; do
   not add a separate numeric angle readout.
 - Keep the trace free of a title and color legend. The established pedal-line and
@@ -37,7 +40,7 @@
 - Render TC intervention markers in electric blue and ABS intervention markers in
   vivid yellow so both alerts remain distinct from the pedal traces.
 - Graph pedals and current-input pedals are independently selectable. Steering,
-  FFB, speed and gear are independently selectable too.
+  FFB, speed, gear and the RPM strip are independently selectable too.
 - Compact panel width when a complete block is hidden while preserving current
   visual scale. Mirror every option in OBS browser-source preferences.
 - Keep gear, speed and the FFB readout vertically separated throughout the
@@ -53,8 +56,9 @@
 
 ## Verification focus
 
-Check rapid steering/FFB/pedal changes, TC/ABS single-sample markers, five-second
-history, all visibility combinations, compact sizing and OBS preference parity.
+Check rapid steering/FFB/pedal changes, the RPM strip through its color thresholds
+and limiter state, TC/ABS single-sample markers, five-second history, all visibility
+combinations, compact sizing and OBS preference parity.
 
 ## Localization
 

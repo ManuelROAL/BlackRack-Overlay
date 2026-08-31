@@ -7,6 +7,7 @@ export interface DrivingSettings {
   showForceFeedback: boolean;
   showSpeed: boolean;
   showGear: boolean;
+  showRpmLeds: boolean;
 }
 
 export const DRIVING_SETTINGS_KEY = "blackrack-overlay.driving.v1";
@@ -21,7 +22,8 @@ export const defaultDrivingSettings = (): DrivingSettings => ({
   showSteering: true,
   showForceFeedback: true,
   showSpeed: true,
-  showGear: true
+  showGear: true,
+  showRpmLeds: false
 });
 
 export const readDrivingSettings = (): DrivingSettings => {
@@ -34,6 +36,7 @@ export const readDrivingSettings = (): DrivingSettings => {
       showForceFeedback?: boolean;
       showSpeed?: boolean;
       showGear?: boolean;
+      showRpmLeds?: boolean;
     };
     for (const { id } of DRIVING_PEDALS) {
       if (typeof stored.graphPedals?.[id] === "boolean") {
@@ -49,6 +52,7 @@ export const readDrivingSettings = (): DrivingSettings => {
     }
     if (typeof stored.showSpeed === "boolean") settings.showSpeed = stored.showSpeed;
     if (typeof stored.showGear === "boolean") settings.showGear = stored.showGear;
+    if (typeof stored.showRpmLeds === "boolean") settings.showRpmLeds = stored.showRpmLeds;
   } catch {
     localStorage.removeItem(DRIVING_SETTINGS_KEY);
   }

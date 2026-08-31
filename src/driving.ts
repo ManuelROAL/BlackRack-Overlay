@@ -18,7 +18,8 @@ import {
   listenTelemetry
 } from "./runtime-events";
 
-const HEIGHT = 120;
+const BASE_HEIGHT = 120;
+const RPM_LEDS_HEIGHT = 14;
 const TELEMETRY_RATE_HZ = 50;
 const HISTORY_SECONDS = 5;
 const HISTORY_SIZE = TELEMETRY_RATE_HZ * HISTORY_SECONDS;
@@ -35,6 +36,7 @@ const shell = document.querySelector<HTMLElement>(".driving-shell");
 const driveDial = document.querySelector<HTMLElement>(".drive-dial");
 const trailingPanel = document.querySelector<HTMLElement>(".trailing-panel");
 const pedalPanel = document.querySelector<HTMLElement>(".pedal-panel");
+const rpmLeds = Array.from(document.querySelectorAll<HTMLElement>(".rpm-leds i"));
 const elements = new Map<string, HTMLElement>();
 for (const element of document.querySelectorAll<HTMLElement>("[id]")) {
   elements.set(element.id, element);
@@ -55,7 +57,8 @@ const drivingWidth = (): number => {
   return Math.max(120, 14 + widths.reduce((total, width) => total + width, 0));
 };
 
-const updateOverlayFit = fitOverlay({ width: drivingWidth(), height: HEIGHT });
+const drivingHeight = (): number => BASE_HEIGHT + (settings.showRpmLeds ? RPM_LEDS_HEIGHT : 0);
+const updateOverlayFit = fitOverlay({ width: drivingWidth(), height: drivingHeight() });
 bindOverlayTransparency("driving");
 
 const resizeHandle = document.querySelector<HTMLElement>("[data-resize-handle]");
@@ -99,6 +102,19 @@ const setSteering = (angle: number): void => {
     const transform = `rotate(${Math.round(safeAngle * 10) / 10}deg)`;
     if (wheel.style.transform !== transform) wheel.style.transform = transform;
   }
+};
+
+const setRpmLeds = (rpm: number, maxRpm: number): void => {
+  if (!settings.showRpmLeds) return;
+  const ratio = Number.isFinite(rpm) && Number.isFinite(maxRpm) && maxRpm > 0
+    ? Math.max(0, Math.min(1, rpm / maxRpm))
+    : 0;
+  const activeCount = Math.ceil(Math.max(0, ratio - 0.55) / 0.45 * rpmLeds.length);
+  const limiter = ratio >= 0.985;
+  rpmLeds.forEach((led, index) => {
+    led.classList.toggle("active", index < activeCount);
+    led.classList.toggle("limiter", limiter);
+  });
 };
 
 const push = (values: number[], value: number): void => {
@@ -182,11 +198,16 @@ const applySettings = (next: DrivingSettings): void => {
     driveDial.hidden = !settings.showGear && !settings.showSteering
       && !settings.showSpeed && !settings.showForceFeedback;
   }
+  const rpmLedStrip = elements.get("rpm-leds");
+  if (rpmLedStrip) rpmLedStrip.hidden = !settings.showRpmLeds;
+  shell?.classList.toggle("has-rpm-leds", settings.showRpmLeds);
   const width = drivingWidth();
+  const height = drivingHeight();
   if (shell) {
     shell.style.width = `${width}px`;
+    shell.style.height = `${height}px`;
   }
-  updateOverlayFit({ width, height: HEIGHT });
+  updateOverlayFit({ width, height });
   drawTrailing();
 };
 
@@ -214,6 +235,7 @@ const render = (frame: TelemetryFrame): void => {
   setLevel("clutch-level", clutch);
   setForceFeedback(frame.force_feedback);
   setSteering(frame.steering_angle_degrees);
+  setRpmLeds(frame.rpm, frame.max_rpm);
 };
 
 void listenTelemetry(render);

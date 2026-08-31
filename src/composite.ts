@@ -62,7 +62,7 @@ const telemetryFields: Record<OverlayId, readonly (keyof TelemetryFrame)[]> = {
   timing: ["timing_model"],
   driving: [
     "speed_kph", "gear", "throttle", "brake", "tc_active", "abs_active",
-    "steering_angle_degrees", "force_feedback"
+    "steering_angle_degrees", "force_feedback", "rpm", "max_rpm"
   ],
   liftcoast: ["lift_and_coast_progress"],
   tires: [
