@@ -112,7 +112,8 @@ telemetry semantics and file ownership live under `docs/overlays/`; use
 - Configuration reset affects only the selected panel's defaults. Position reset
   affects only its geometry on its assigned monitor. Both actions sit under an
   explicit localized reset label, neither changes visibility or another overlay,
-  and confirmation uses the styled in-panel dialog.
+  confirmation uses the styled in-panel dialog, and neither action changes the
+  selected top-level control-panel view.
 - Import/export uses one versioned JSON document with visibility, transparency,
   monitor selection, geometry, performance profile and content preferences. Use native dialogs,
   validate before applying, and map unavailable monitors to the primary display.

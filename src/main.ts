@@ -361,6 +361,8 @@ const preferences = readPreferences();
 
 const viewButtons = [...document.querySelectorAll<HTMLButtonElement>("[data-control-view]")];
 const viewSections = [...document.querySelectorAll<HTMLElement>("[data-view-section]")];
+const PENDING_CONTROL_VIEW_KEY = "blackrack-overlay.pending-control-view.v1";
+const controlViews = new Set(viewButtons.map((button) => button.dataset.controlView).filter(Boolean));
 
 const selectControlView = (view: string): void => {
   for (const button of viewButtons) {
@@ -376,7 +378,9 @@ const selectControlView = (view: string): void => {
 for (const button of viewButtons) {
   button.addEventListener("click", () => selectControlView(button.dataset.controlView ?? "overlays"));
 }
-selectControlView("general");
+const pendingControlView = sessionStorage.getItem(PENDING_CONTROL_VIEW_KEY);
+sessionStorage.removeItem(PENDING_CONTROL_VIEW_KEY);
+selectControlView(pendingControlView && controlViews.has(pendingControlView) ? pendingControlView : "general");
 
 const appVersion = document.getElementById("app-version");
 getVersion()
@@ -982,6 +986,10 @@ const resetOverlayConfiguration = async (id: OverlayId): Promise<void> => {
   } satisfies OverlayFontSizeChange));
   syncBrowserSourcePreferences();
   await Promise.all(events);
+  const activeView = document.querySelector<HTMLElement>(".control-panel")?.dataset.activeView;
+  if (activeView && controlViews.has(activeView)) {
+    sessionStorage.setItem(PENDING_CONTROL_VIEW_KEY, activeView);
+  }
   window.location.reload();
 };
 
