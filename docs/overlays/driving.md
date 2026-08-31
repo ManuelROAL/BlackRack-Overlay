@@ -33,9 +33,10 @@
   clutch/brake/throttle meters; and the wide five-second trace.
 - An optional 12-segment RPM strip spans the top of the panel. Based on the
   established TinyPedal behavior rather than copied source, it illuminates
-  progressively from 84% to 96% of `max_rpm`: four green, four yellow and four
-  red segments. At 96% all segments flash cyan; at 99.99% they flash magenta.
-  It is disabled by default.
+  progressively from 84% to 96% of `max_rpm`, symmetrically from both outer
+  edges toward the centre. Each side advances from two green through two yellow
+  to two red segments, placing the four red segments in the centre. At 96% all
+  segments flash cyan; at 99.99% they flash magenta. It is disabled by default.
 - Represent the in-game steering angle with the rotating white centre arc; do
   not add a separate numeric angle readout.
 - Keep the trace free of a title and color legend. The established pedal-line and

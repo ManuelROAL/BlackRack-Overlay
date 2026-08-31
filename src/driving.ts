@@ -114,12 +114,14 @@ const setRpmLeds = (rpm: number, maxRpm: number): void => {
     : 0;
   const critical = ratio >= RPM_LED_CRITICAL;
   const warningVisible = !critical || Math.floor(performance.now() / 125) % 2 === 0;
-  const activeCount = critical
-    ? rpmLeds.length
+  const pairCount = Math.ceil(rpmLeds.length / 2);
+  const activePairs = critical
+    ? pairCount
     : Math.ceil(Math.max(0, ratio - RPM_LED_START)
-      / (RPM_LED_CRITICAL - RPM_LED_START) * rpmLeds.length);
+      / (RPM_LED_CRITICAL - RPM_LED_START) * pairCount);
   rpmLeds.forEach((led, index) => {
-    led.classList.toggle("active", warningVisible && index < activeCount);
+    const distanceFromEdge = Math.min(index, rpmLeds.length - 1 - index);
+    led.classList.toggle("active", warningVisible && distanceFromEdge < activePairs);
     led.classList.toggle("critical", warningVisible && critical);
     led.classList.toggle("over-rev", warningVisible && ratio >= RPM_LED_OVER_REV);
   });
