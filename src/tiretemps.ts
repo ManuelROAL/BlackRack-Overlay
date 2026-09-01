@@ -21,6 +21,7 @@ const zoneTitleKeys: Record<Zone, TranslationKey> = {
 };
 const wheels = Array.from(document.querySelectorAll<HTMLElement>("[data-wheel]"));
 const brakes = Array.from(document.querySelectorAll<HTMLElement>("[data-brake]"));
+const contactPatches = Array.from(document.querySelectorAll<HTMLElement>(".contact-patch"));
 const renderPerformance = createOverlayPerformanceTracker("tiretemps");
 
 const readable = (value: number, digits = 0): string =>
@@ -39,6 +40,11 @@ const render = (frame: TelemetryFrame): void => {
     const wheel = wheels[wheelIndex];
     const temperatures = frame.player_tire_zone_temperature_c[wheelIndex];
     const compound = frame.player_tire_compounds[wheelIndex] ?? "";
+    const rawSlidingFraction = frame.player_tire_sliding_fraction[wheelIndex];
+    const slidingFraction = Number.isFinite(rawSlidingFraction)
+      ? Math.max(0, Math.min(1, rawSlidingFraction))
+      : 0;
+    setStyle(contactPatches[wheelIndex], "--contact-fraction", String(slidingFraction));
     for (const zoneElement of wheel.querySelectorAll<HTMLElement>("[data-zone]")) {
       const zone = zoneElement.dataset.zone as Zone;
       const temperature = temperatures[zoneIndexes[zone]];
@@ -69,6 +75,7 @@ const previewFrame = {
     [82, 78, 73], [84, 80, 75], [76, 73, 69], [78, 74, 70]
   ],
   player_brake_temperature_c: [575, 605, 438, 462],
+  player_tire_sliding_fraction: [0.38, 0.42, 0.3, 0.35],
   player_tire_compounds: ["M", "M", "M", "M"],
   player_tire_flat: [false, false, false, false],
   player_tire_detached: [false, false, false, false]

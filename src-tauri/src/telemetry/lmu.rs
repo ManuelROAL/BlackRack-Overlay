@@ -4163,6 +4163,7 @@ impl TelemetrySource for LmuTelemetrySource {
             player_tire_temperature_c: snapshot.player_tire_temperature_c,
             player_tire_zone_temperature_c: snapshot.player_tire_zone_temperature_c,
             player_brake_temperature_c: snapshot.player_brake_temperature_c,
+            player_tire_sliding_fraction: snapshot.player_tire_sliding_fraction,
             player_tire_remaining_by_wheel_percent: snapshot.player_tire_remaining_by_wheel_percent,
             tire_life_model,
             player_tire_flat_spot_percent,

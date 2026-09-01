@@ -88,16 +88,18 @@ body.tiretemps-body { padding: 4px; font-family: "Roboto Condensed", sans-serif;
 .tread-zone strong { font-size: calc(10px * var(--overlay-font-scale, 1)); font-weight: 900; line-height: 12px; }
 
 .contact-patch {
+  --contact-fraction: 0;
   position: absolute;
   z-index: 3;
-  right: 7px;
-  bottom: 4px;
-  left: 7px;
-  height: 5px;
-  border-radius: 2px;
+  top: 50%;
+  width: calc(var(--contact-fraction) * 100%);
+  height: 9px;
+  transform: translateY(-50%);
   background: rgb(255 255 255 / 92%);
-  box-shadow: 0 0 0 1px rgb(3 6 9 / 45%);
+  box-shadow: 0 0 0 1px rgb(3 6 9 / 34%);
 }
+.wheel-fl .contact-patch, .wheel-rl .contact-patch { left: 0; }
+.wheel-fr .contact-patch, .wheel-rr .contact-patch { right: 0; }
 
 .brake {
   --brake-color: #69737d;

@@ -19,8 +19,9 @@ own overlays.
 - Match TinyPedal's LMU behavior and expose `mTemperature[0/1/2]` directly as
   inside/centre/outside for every wheel. Do not reverse the left-side samples.
 - All tyre samples and `mBrakeTemp` are converted from Kelvin to Celsius.
-- The white strip on each tyre is a static representation of the asphalt contact
-  patch. It is not a fourth temperature sample and does not change color.
+- The white strip uses LMU's `mGripFract`: its width is the live fraction of the
+  contact patch that is sliding, anchored to the outside edge of each tyre. It is
+  not a fourth temperature sample and does not change color.
 
 ## Presentation and invariants
 
@@ -43,5 +44,6 @@ own overlays.
 ## Verification focus
 
 Test all twelve tread samples independently, direct `0/1/2` zone mapping,
-Kelvin conversion, brake values and colors, puncture/detachment outlines, locale
-labels, native composite projection and the `/tiretemps` OBS route.
+Kelvin conversion, brake values and colors, per-wheel sliding-fraction strips,
+puncture/detachment outlines, locale labels, native composite projection and the
+`/tiretemps` OBS route.

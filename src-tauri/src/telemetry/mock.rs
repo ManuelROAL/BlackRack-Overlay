@@ -306,6 +306,12 @@ impl TelemetrySource for MockTelemetrySource {
                 [82.0, 80.0, 76.0],
             ],
             player_brake_temperature_c: [540.0, 575.0, 420.0, 445.0],
+            player_tire_sliding_fraction: [
+                0.28 + (elapsed * 1.7).sin() * 0.18,
+                0.31 + (elapsed * 1.9 + 0.7).sin() * 0.2,
+                0.2 + (elapsed * 1.5 + 1.4).sin() * 0.14,
+                0.24 + (elapsed * 1.6 + 2.1).sin() * 0.16,
+            ],
             player_tire_remaining_by_wheel_percent: [94.0, 94.0, 95.0, 95.0],
             tire_life_model: include_tire_life.then_some(TireLifeModel {
                 wear_per_lap_percent: [1.2, 1.2, 1.1, 1.1],
