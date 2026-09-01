@@ -665,7 +665,10 @@ impl CurrentLap {
                 official_sector_ends: self.official_sector_ends,
             },
             fuel_used: (self.start_fuel - frame.fuel_liters).max(0.0),
-            energy_used: (self.start_energy - frame.virtual_energy_percent).max(0.0),
+            energy_used: (frame.virtual_energy_last_lap.is_finite()
+                && frame.virtual_energy_last_lap > 0.0)
+                .then_some(frame.virtual_energy_last_lap)
+                .unwrap_or_else(|| (self.start_energy - frame.virtual_energy_percent).max(0.0)),
             tire_used: if self.start_tire >= 0.0 && frame.player_tire_remaining_percent >= 0.0 {
                 (self.start_tire - frame.player_tire_remaining_percent).max(0.0)
             } else {
@@ -2201,6 +2204,22 @@ mod tests {
 
         assert!(!completed.eligible);
         assert_eq!(completed.category, "invalid");
+    }
+
+    #[test]
+    fn completed_pit_lap_keeps_energy_consumed_before_a_second_stop() {
+        let mut start = active_frame();
+        start.virtual_energy_percent = 82.0;
+        let mut lap = CurrentLap::new(&start);
+        lap.points = linear_lap(100.0, 1_000.0).points;
+        let mut boundary = start;
+        boundary.last_lap_seconds = 100.0;
+        boundary.virtual_energy_percent = 90.0;
+        boundary.virtual_energy_last_lap = 7.5;
+
+        let completed = lap.finish(&boundary, 1_000.0).unwrap();
+
+        assert_eq!(completed.energy_used, 7.5);
     }
 
     #[test]

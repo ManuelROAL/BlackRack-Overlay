@@ -30,6 +30,8 @@ compone las filas y selecciona los iconos de compuesto ya incluidos.
   Ambos requieren al menos dos vueltas limpias.
 - Las vueltas inválidas, de formación o que pasan por boxes cuentan para el total,
   duración y consumo del stint, pero no participan en mejor, delta o consistencia.
+- El consumo NRG de una vuelta con boxes incluye la energía recargada durante esa
+  vuelta, por lo que una segunda parada consecutiva no oculta el consumo de salida.
 - El desgaste parte del promedio válido de las cuatro ruedas al comenzar el stint
   y usa la lectura actual; nunca presenta desgaste negativo tras un cambio de goma.
 - El compuesto usa un icono único cuando las cuatro ruedas coinciden y una matriz
@@ -53,7 +55,8 @@ compone las filas y selecciona los iconos de compuesto ya incluidos.
 ## Verificación enfocada
 
 - La prueba Rust comprueba que vueltas no limpias quedan fuera de delta y
-  consistencia sin perder su consumo, tiempo o recuento.
+  consistencia sin perder su consumo, tiempo o recuento, incluso al recargar NRG
+  antes de una segunda parada consecutiva.
 - `cargo test --manifest-path src-tauri\Cargo.toml --lib` cubre agregación,
   reconstrucción y persistencia compartida.
 - `npm.cmd run build` cubre las entradas independiente, compuesta y OBS.
