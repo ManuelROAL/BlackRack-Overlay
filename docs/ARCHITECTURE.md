@@ -26,8 +26,10 @@ Tauri events    analysis JSONL/strategy CSV    browser-source SSE
   - Creates one borderless transparent overlay host on the selected monitor and
     moves/resizes it when the selection changes; monitors without the host
     contribute no composed surface.
-  - Provides the initial composite layout seed; the frontend then persists panel
-    geometry in `localStorage`.
+  - Provides the initial composite layout seed and single-panel reset geometry,
+    fitted to the logical size of the selected monitor so authored defaults never
+    seed off-screen on a smaller or scaled display; the frontend then persists
+    panel geometry in `localStorage`.
   - Forces both the native window and WebView backgrounds to transparent RGBA;
     this is explicit because release WebView2 builds must not fall back to an
     opaque black surface.
@@ -77,6 +79,10 @@ Tauri events    analysis JSONL/strategy CSV    browser-source SSE
   - Returns stable browser-server error kinds to the control panel and retains
     raw operating-system details only for diagnostics.
   - Starts only when enabled and serializes frames only with connected clients.
+  - The server thread waits on the frame channel instead of polling on a fixed
+    interval, and keeps a tighter accept poll only while it is serving requests.
+  - Frames published while that thread is behind are dropped on purpose; the
+    count is reported in the browser source status and in the startup log.
 
 ## Frontend ownership
 

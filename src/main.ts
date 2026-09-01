@@ -192,6 +192,7 @@ interface BrowserSourceStatus {
   running: boolean;
   url: string;
   clients: number;
+  dropped_frames: number;
   error_kind: "not_initialized" | "missing_assets" | "address_unavailable" | "server_configuration" | "server_startup" | "settings_persistence" | null;
   error_detail: string | null;
 }

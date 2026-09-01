@@ -222,48 +222,62 @@ fn refresh_native_overlay_input() {
         WS_EX_TRANSPARENT,
     };
 
+    // The tracker repeats this hit test every 4 ms while the user interacts, so
+    // the regions are evaluated in place and only one decision per window is
+    // copied into a buffer that this thread reuses.
+    thread_local! {
+        static DECISIONS: std::cell::RefCell<Vec<(isize, bool)>> =
+            const { std::cell::RefCell::new(Vec::new()) };
+    }
+
     let mut cursor = POINT { x: 0, y: 0 };
     if unsafe { GetCursorPos(&mut cursor) } == 0 {
         return;
     }
-    // SetWindowPos can synchronously wait for the window's UI thread. Copy the
-    // small hit-test snapshot first so that thread never waits while this mutex
-    // is held; the UI thread also updates the regions through a Tauri command.
-    let (click_through, regions_by_window) = {
-        let input = native_overlay_input()
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
-        (input.click_through, input.regions_by_window.clone())
-    };
-    for (raw_hwnd, regions) in regions_by_window {
-        let hwnd = raw_hwnd as HWND;
-        let should_ignore = click_through
-            || !regions.iter().any(|&(left, top, right, bottom)| {
-                cursor.x >= left && cursor.x < right && cursor.y >= top && cursor.y < bottom
-            });
-        let current_style = unsafe { GetWindowLongPtrW(hwnd, GWL_EXSTYLE) };
-        let transparent_style = WS_EX_TRANSPARENT as isize;
-        let layered_style = WS_EX_LAYERED as isize;
-        let next_style = if should_ignore {
-            current_style | transparent_style | layered_style
-        } else {
-            (current_style & !transparent_style) | layered_style
-        };
-        if next_style != current_style {
-            unsafe {
-                SetWindowLongPtrW(hwnd, GWL_EXSTYLE, next_style);
-                let _ = SetWindowPos(
-                    hwnd,
-                    std::ptr::null_mut(),
-                    0,
-                    0,
-                    0,
-                    0,
-                    SWP_NOZORDER | SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_FRAMECHANGED,
-                );
+    DECISIONS.with_borrow_mut(|decisions| {
+        // SetWindowPos can synchronously wait for the window's UI thread. Resolve
+        // the hit test first so that thread never waits while this mutex is held;
+        // the UI thread also updates the regions through a Tauri command.
+        decisions.clear();
+        {
+            let input = native_overlay_input()
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner());
+            decisions.extend(input.regions_by_window.iter().map(|(&raw_hwnd, regions)| {
+                let should_ignore = input.click_through
+                    || !regions.iter().any(|&(left, top, right, bottom)| {
+                        cursor.x >= left && cursor.x < right && cursor.y >= top && cursor.y < bottom
+                    });
+                (raw_hwnd, should_ignore)
+            }));
+        }
+
+        for &(raw_hwnd, should_ignore) in decisions.iter() {
+            let hwnd = raw_hwnd as HWND;
+            let current_style = unsafe { GetWindowLongPtrW(hwnd, GWL_EXSTYLE) };
+            let transparent_style = WS_EX_TRANSPARENT as isize;
+            let layered_style = WS_EX_LAYERED as isize;
+            let next_style = if should_ignore {
+                current_style | transparent_style | layered_style
+            } else {
+                (current_style & !transparent_style) | layered_style
+            };
+            if next_style != current_style {
+                unsafe {
+                    SetWindowLongPtrW(hwnd, GWL_EXSTYLE, next_style);
+                    let _ = SetWindowPos(
+                        hwnd,
+                        std::ptr::null_mut(),
+                        0,
+                        0,
+                        0,
+                        0,
+                        SWP_NOZORDER | SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_FRAMECHANGED,
+                    );
+                }
             }
         }
-    }
+    });
 }
 
 #[cfg(windows)]
@@ -952,14 +966,48 @@ fn default_overlay_geometry(label: &str) -> (f64, f64, f64, f64) {
     }
 }
 
+// Default geometry is authored for a 1920x1080 logical desktop. Panels anchored
+// near the right or bottom edge would seed off-screen on a smaller or scaled
+// monitor, so every placement is fitted to the host monitor's logical size.
+const SEED_MARGIN: f64 = 20.0;
+
+fn fit_seed_axis(position: f64, size: f64, available: f64) -> (f64, f64) {
+    let size = size.min((available - SEED_MARGIN * 2.0).max(SEED_MARGIN));
+    let max_position = (available - SEED_MARGIN - size).max(0.0);
+    (position.clamp(0.0, max_position), size)
+}
+
+fn fit_seed_geometry(
+    (x, y, width, height): (f64, f64, f64, f64),
+    (available_width, available_height): (f64, f64),
+) -> (f64, f64, f64, f64) {
+    let (x, width) = fit_seed_axis(x, width, available_width);
+    let (y, height) = fit_seed_axis(y, height, available_height);
+    (x, y, width, height)
+}
+
+fn overlay_monitor_logical_size(app: &AppHandle, index: usize) -> Result<(f64, f64), String> {
+    let monitors = sorted_monitors(app)?;
+    let monitor = monitors
+        .get(index)
+        .or_else(|| monitors.first())
+        .ok_or_else(|| "No se detectaron monitores para alojar los overlays".to_string())?;
+    let logical = monitor.size().to_logical::<f64>(monitor.scale_factor());
+    Ok((logical.width, logical.height))
+}
+
 #[tauri::command]
-fn get_default_overlay_placement(label: String) -> Result<OverlayPlacementSeed, String> {
+fn get_default_overlay_placement(
+    app: AppHandle,
+    label: String,
+) -> Result<OverlayPlacementSeed, String> {
     let overlay = OVERLAY_LABELS
         .iter()
         .copied()
         .find(|candidate| *candidate == label)
         .ok_or_else(|| format!("Overlay desconocido: {label}"))?;
-    let (x, y, width, height) = default_overlay_geometry(overlay);
+    let available = overlay_monitor_logical_size(&app, load_overlay_monitor_index(&app))?;
+    let (x, y, width, height) = fit_seed_geometry(default_overlay_geometry(overlay), available);
     Ok(OverlayPlacementSeed {
         overlay,
         x,
@@ -972,17 +1020,15 @@ fn get_default_overlay_placement(label: String) -> Result<OverlayPlacementSeed, 
 #[tauri::command]
 fn get_composite_layout_seed(
     app: AppHandle,
-    _monitor: usize,
+    monitor: usize,
 ) -> Result<Vec<OverlayPlacementSeed>, String> {
-    let displays = overlay_displays(&app)?;
-    if displays.is_empty() {
-        return Err("No se detectaron monitores para alojar los overlays".into());
-    }
+    let available = overlay_monitor_logical_size(&app, monitor)?;
 
     Ok(OVERLAY_LABELS
         .iter()
         .map(|label| {
-            let (x, y, width, height) = default_overlay_geometry(label);
+            let (x, y, width, height) =
+                fit_seed_geometry(default_overlay_geometry(label), available);
             OverlayPlacementSeed {
                 overlay: label,
                 x,
@@ -992,6 +1038,48 @@ fn get_composite_layout_seed(
             }
         })
         .collect())
+}
+
+#[cfg(test)]
+mod layout_seed_tests {
+    use super::{default_overlay_geometry, fit_seed_geometry, OVERLAY_LABELS, SEED_MARGIN};
+
+    const REFERENCE: (f64, f64) = (1920.0, 1080.0);
+
+    #[test]
+    fn authored_defaults_are_kept_on_the_reference_desktop() {
+        for label in OVERLAY_LABELS {
+            let geometry = default_overlay_geometry(label);
+            assert_eq!(
+                fit_seed_geometry(geometry, REFERENCE),
+                geometry,
+                "{label} should keep its authored placement"
+            );
+        }
+    }
+
+    #[test]
+    fn every_panel_stays_visible_on_a_smaller_or_scaled_monitor() {
+        for available in [(1280.0, 720.0), (1024.0, 768.0), (800.0, 600.0)] {
+            for label in OVERLAY_LABELS {
+                let (x, y, width, height) =
+                    fit_seed_geometry(default_overlay_geometry(label), available);
+                assert!(x >= 0.0 && y >= 0.0, "{label} seeded before the origin");
+                assert!(
+                    x + width <= available.0 - SEED_MARGIN
+                        && y + height <= available.1 - SEED_MARGIN,
+                    "{label} seeded outside {available:?}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn a_panel_wider_than_the_monitor_is_reduced_instead_of_pushed_out() {
+        let (x, y, width, height) = fit_seed_geometry((20.0, 70.0, 970.0, 500.0), (640.0, 480.0));
+        assert_eq!((x, y), (20.0, 20.0));
+        assert_eq!((width, height), (600.0, 440.0));
+    }
 }
 
 #[tauri::command]
@@ -1453,7 +1541,10 @@ mod shortcut_validation_tests {
             "Ctrl+Alt+Shift+Super+Meta+O",
             "Ctrl+Shift+ThisAcceleratorIsFarTooLongToEverBeRegisteredByTheUser",
         ] {
-            assert!(!is_valid_shortcut(shortcut), "{shortcut} should be rejected");
+            assert!(
+                !is_valid_shortcut(shortcut),
+                "{shortcut} should be rejected"
+            );
         }
     }
 }

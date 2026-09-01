@@ -40,7 +40,9 @@ telemetry semantics and file ownership live under `docs/overlays/`; use
   visible panel rectangles; transparent gaps pass input to the application
   underneath, including applications owned by another process. Native window
   style updates must run without holding the shared hit-test state lock because
-  Windows may synchronously wait for the host UI thread while applying them.
+  Windows may synchronously wait for the host UI thread while applying them. The
+  hit test resolves the regions in place and copies only one decision per window
+  into a reused buffer, because it repeats every few milliseconds while editing.
 - Panel hit-test regions are reported by the composite host in physical pixels
   using the WebView's own `devicePixelRatio`, so they match the rendered surface
   on any display scale factor; the native side only adds the window origin and

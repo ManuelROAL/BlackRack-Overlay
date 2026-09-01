@@ -3,7 +3,7 @@ use std::fs;
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicBool, AtomicU32, AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, AtomicUsize, Ordering};
 use std::sync::{mpsc, Mutex, OnceLock, RwLock};
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
@@ -58,6 +58,7 @@ pub(crate) struct BrowserSourceStatus {
     running: bool,
     url: &'static str,
     clients: usize,
+    dropped_frames: u64,
     error_kind: Option<BrowserSourceErrorKind>,
     error_detail: Option<String>,
 }
@@ -95,6 +96,9 @@ struct BrowserSourceService {
     enabled: AtomicBool,
     clients: AtomicUsize,
     overlay_demands: AtomicU32,
+    // Frames published while the server thread is behind are dropped on purpose;
+    // the counter keeps that visible in the browser source status.
+    dropped_frames: AtomicU64,
     state: Mutex<ServiceState>,
     preferences: RwLock<serde_json::Value>,
 }
@@ -118,6 +122,7 @@ pub(crate) fn configure(app: &AppHandle) {
         enabled: AtomicBool::new(false),
         clients: AtomicUsize::new(0),
         overlay_demands: AtomicU32::new(0),
+        dropped_frames: AtomicU64::new(0),
         state: Mutex::new(ServiceState {
             settings_path,
             app: app.clone(),
@@ -147,6 +152,7 @@ pub(crate) fn status() -> BrowserSourceStatus {
             running: false,
             url: BASE_URL,
             clients: 0,
+            dropped_frames: 0,
             error_kind: Some(BrowserSourceErrorKind::NotInitialized),
             error_detail: None,
         };
@@ -160,6 +166,7 @@ pub(crate) fn status() -> BrowserSourceStatus {
         running: state.runtime.is_some(),
         url: BASE_URL,
         clients: service.clients.load(Ordering::Relaxed),
+        dropped_frames: service.dropped_frames.load(Ordering::Relaxed),
         error_kind: state.error.as_ref().map(|error| error.kind),
         error_detail: state.error.as_ref().map(|error| error.detail.clone()),
     }
@@ -177,6 +184,7 @@ pub(crate) fn set_enabled(enabled: bool) -> BrowserSourceStatus {
     if enabled && state.runtime.is_none() {
         match start_server(state.app.clone()) {
             Ok(runtime) => {
+                service.dropped_frames.store(0, Ordering::Relaxed);
                 state.runtime = Some(runtime);
                 state.error = None;
                 service.enabled.store(true, Ordering::Relaxed);
@@ -196,7 +204,10 @@ pub(crate) fn set_enabled(enabled: bool) -> BrowserSourceStatus {
             let _ = runtime.thread.join();
         }
         state.error = None;
-        crate::startup_log::record("local browser source disabled");
+        crate::startup_log::record(format!(
+            "local browser source disabled after dropping {} frames",
+            service.dropped_frames.load(Ordering::Relaxed)
+        ));
     }
 
     let actual_enabled = service.enabled.load(Ordering::Relaxed);
@@ -245,7 +256,9 @@ pub(crate) fn publish_frame(frame: &TelemetryFrame) {
         return;
     };
     if let Ok(json) = serde_json::to_string(frame) {
-        let _ = sender.try_send(json);
+        if sender.try_send(json).is_err() {
+            service.dropped_frames.fetch_add(1, Ordering::Relaxed);
+        }
     }
 }
 
@@ -309,12 +322,32 @@ fn server_loop(
         overlay_demand: u32,
     }
 
+    // The loop parks on the frame channel, so a published frame wakes it at once
+    // and an idle server only wakes to poll the non-blocking listener. A served
+    // request usually has more queued behind it, so the burst keeps a tight poll.
+    const IDLE_POLL_INTERVAL: Duration = Duration::from_millis(50);
+    const BUSY_POLL_INTERVAL: Duration = Duration::from_millis(2);
+
+    let publish_subscriber_demand = |subscribers: &[Subscriber]| {
+        if let Some(service) = service() {
+            service.clients.store(subscribers.len(), Ordering::Relaxed);
+            service.overlay_demands.store(
+                subscribers
+                    .iter()
+                    .fold(0, |demands, subscriber| demands | subscriber.overlay_demand),
+                Ordering::Relaxed,
+            );
+        }
+    };
+
     let mut subscribers = Vec::<Subscriber>::new();
     loop {
         if shutdown.try_recv().is_ok() {
             break;
         }
+        let mut served_request = false;
         while let Ok((mut stream, _)) = listener.accept() {
+            served_request = true;
             let Some(head) = read_request_head(&mut stream) else {
                 continue;
             };
@@ -339,22 +372,30 @@ fn server_loop(
                 serve_request(&mut stream, path, &app);
             }
         }
+        if served_request {
+            publish_subscriber_demand(&subscribers);
+        }
+        let poll_interval = if served_request {
+            BUSY_POLL_INTERVAL
+        } else {
+            IDLE_POLL_INTERVAL
+        };
 
-        while let Ok(frame) = frames.try_recv() {
+        let mut pending = match frames.recv_timeout(poll_interval) {
+            Ok(frame) => Some(frame),
+            Err(mpsc::RecvTimeoutError::Timeout) => None,
+            Err(mpsc::RecvTimeoutError::Disconnected) => break,
+        };
+        let mut broadcast = false;
+        while let Some(frame) = pending.take().or_else(|| frames.try_recv().ok()) {
             let message = format!("data: {frame}\n\n");
             subscribers
                 .retain_mut(|subscriber| subscriber.stream.write_all(message.as_bytes()).is_ok());
+            broadcast = true;
         }
-        if let Some(service) = service() {
-            service.clients.store(subscribers.len(), Ordering::Relaxed);
-            service.overlay_demands.store(
-                subscribers
-                    .iter()
-                    .fold(0, |demands, subscriber| demands | subscriber.overlay_demand),
-                Ordering::Relaxed,
-            );
+        if broadcast {
+            publish_subscriber_demand(&subscribers);
         }
-        thread::sleep(Duration::from_millis(10));
     }
     if let Some(service) = service() {
         service.clients.store(0, Ordering::Relaxed);
