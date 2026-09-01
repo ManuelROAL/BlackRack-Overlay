@@ -4,6 +4,7 @@
 
 - Entry: `tires.html`
 - Renderer/style: `src/tires.ts`, `src/tires.css`
+- Engine asset: `src/assets/lmu-icons/damage/engine-motor.svg`
 - Shared-memory conversion: `src-tauri/src/telemetry/lmu_bridge.cpp`,
   `src-tauri/src/telemetry/lmu.rs`
 - REST supplement: `src-tauri/src/telemetry/lmu_rest.rs`

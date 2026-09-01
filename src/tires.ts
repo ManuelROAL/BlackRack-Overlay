@@ -15,7 +15,7 @@ const wearValues = wheels.map((wheel) => wheel.querySelector<HTMLElement>(".whee
 const flatSpotValues = wheels.map((wheel) => wheel.querySelector<HTMLElement>(".wheel-flatspot")!);
 const damageParts = Array.from(document.querySelectorAll<SVGElement>("[data-damage-part]"));
 const aeroWing = document.querySelector<SVGElement>("[data-aero-wing]")!;
-const engineStatus = document.querySelector<SVGElement>("[data-engine-status]")!;
+const engineStatus = document.querySelector<HTMLElement>("[data-engine-status]")!;
 const damageSummary = document.querySelector<HTMLElement>(".damage-summary")!;
 const damageValue = document.getElementById("damage-value")!;
 const renderPerformance = createOverlayPerformanceTracker("tires");

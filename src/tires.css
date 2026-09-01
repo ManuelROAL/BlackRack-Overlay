@@ -238,21 +238,16 @@ body.tires-body {
 
 .engine-status {
   position: absolute;
-  top: 36px;
-  left: 16px;
-  width: 26px;
-  height: 20px;
-  overflow: visible;
-  fill: #18212a;
-  stroke: #74808c;
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  transition: fill 90ms linear, stroke 90ms linear;
+  top: 35px;
+  left: 15px;
+  width: 28px;
+  height: 22px;
+  background-color: #74808c;
+  mask: url("./assets/lmu-icons/damage/engine-motor.svg") center / contain no-repeat;
+  transition: background-color 90ms linear;
 }
 .engine-status[data-state="failure"] {
-  fill: #7d1423;
-  stroke: #ff5367;
+  background-color: #ff5367;
   filter: drop-shadow(0 0 3px rgb(255 36 79 / 72%));
 }
 
