@@ -19,7 +19,7 @@ import { formatClock as formatRealClock, formatNumber, formatTimeOfDay, t, type 
 
 let relativeSettings = readRelativeSettings();
 const columnExpansionRatio = (id: RelativeColumnId): number => {
-  if (id === "driver") return 0;
+  if (id === "driver") return 0.5;
   if (id === "country" || id === "badge" || id === "tire") return 0.5;
   if (id === "position") return 0.75;
   if (id === "number") return 0.5;
@@ -359,7 +359,42 @@ interface CachedRow {
 
 const rowCache = new Map<string, CachedRow>();
 
-const pitTimeLabel = (seconds: number): string => Math.floor(Math.max(0, seconds)).toString();
+const pitTimeLabel = (seconds: number): string => {
+  const rounded = Math.round(Math.max(0, seconds));
+  const minutes = Math.floor(rounded / 60);
+  const remainder = rounded % 60;
+  return minutes > 0 ? `${minutes}m${remainder.toString().padStart(2, "0")}s` : `${remainder}s`;
+};
+
+const appendDriverPitStatus = (cell: HTMLElement, entry: StandingEntry): void => {
+  if (!relativeSettings.options.pitStops) return;
+  const summary = node("span", "driver-pit-summary");
+  if (entry.in_pits) {
+    if (entry.pit_stop_time_seconds !== null) {
+      const time = pitTimeLabel(entry.pit_stop_time_seconds);
+      summary.classList.add("timing");
+      summary.append(node("b", "driver-pit-time", time));
+      summary.title = t("standings.pitTimer", { time });
+    }
+  } else if (entry.pit_stop_requested) {
+    summary.classList.add("requested");
+    summary.append(node("b", "driver-pit-requested", "PIT"));
+    summary.title = t("standings.pitRequested", { count: entry.pit_stops });
+  } else if (entry.pit_stop_time_seconds !== null && entry.pit_stop_lap !== null && entry.pit_stops > 0) {
+    const time = pitTimeLabel(entry.pit_stop_time_seconds);
+    summary.append(
+      node("b", "driver-pit-lap", `L${entry.pit_stop_lap}`),
+      node("b", "driver-pit-time", time),
+      node("b", "driver-pit-count", entry.pit_stops.toString())
+    );
+    summary.title = t("standings.pitSummary", {
+      count: entry.pit_stops,
+      lap: entry.pit_stop_lap,
+      time
+    });
+  }
+  if (summary.childElementCount > 0) cell.append(summary);
+};
 
 const cellSignature = (entry: StandingEntry, column: RelativeColumnId, trackLimit: number, relativeGapSeconds = entry.relative_gap_seconds): string => {
   switch (column) {
@@ -367,7 +402,7 @@ const cellSignature = (entry: StandingEntry, column: RelativeColumnId, trackLimi
     case "number": return liveCarNumbers.get(entry.vehicle_id) || entry.car_number || "--";
     case "country": return entry.nationality;
     case "badge": return entry.driver_badge;
-    case "driver": return `${entry.driver_name}|${entry.nationality}|${relativeSettings.driverNameFormat}`;
+    case "driver": return `${entry.driver_name}|${entry.nationality}|${relativeSettings.driverNameFormat}|${relativeSettings.options.pitStops}|${entry.in_pits}|${entry.pit_stop_requested}|${entry.pit_stops}|${entry.pit_stop_lap ?? ""}|${entry.pit_stop_time_seconds === null ? "" : pitTimeLabel(entry.pit_stop_time_seconds)}`;
     case "ranks": return `${entry.driver_rank}|${Math.round(entry.driver_rank_progress)}|${Math.round(entry.estimated_driver_rank_gain)}|${entry.estimated_driver_rank_gain_available}|${entry.safety_rank}`;
     case "relative": return relativeGapSeconds.toFixed(2);
     case "lap": return entry.total_laps.toString();
@@ -413,6 +448,7 @@ const createCell = (entry: StandingEntry, column: RelativeColumnId, trackLimit: 
       const name = node("b", "driver-name", formatDriverName(fullName, relativeSettings.driverNameFormat));
       name.title = fullName;
       cell.append(name);
+      appendDriverPitStatus(cell, entry);
       return cell;
     }
     case "ranks": {
@@ -726,6 +762,12 @@ if (import.meta.hot) {
 bindOverlayInteractionMode();
 
 if (import.meta.env.DEV && new URLSearchParams(window.location.search).has("preview")) {
+  relativeSettings = {
+    ...relativeSettings,
+    options: { ...relativeSettings.options, pitStops: true }
+  };
+  updateOverlayFit({ width: relativeBaseWidth(), height: relativeBaseHeight() });
+  applyColumnLayout();
   const previewClasses: Array<[string, number]> = [
     ["LMP2_ELMS", 3],
     ["LMGT3", 10],

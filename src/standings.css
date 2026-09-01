@@ -657,6 +657,12 @@ body[data-overlay-fit="true"].standings-body .standings-shell {
   box-shadow: 0 0 7px rgb(255 173 67 / 30%);
 }
 
+.driver-pit-summary.requested .driver-pit-requested {
+  color: #eaffef;
+  background: rgb(35 155 72 / 78%);
+  box-shadow: 0 0 7px rgb(49 208 91 / 38%);
+}
+
 .country-flag {
   display: block;
   width: calc(8.5px + 8.5px * var(--overlay-font-track-expansion, 1));

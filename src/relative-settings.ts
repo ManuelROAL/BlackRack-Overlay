@@ -118,7 +118,7 @@ export const RELATIVE_COLUMNS: RelativeColumnDefinition[] = [
   relativeColumn("number", "#", 26, true, "number"),
   relativeColumn("country", "", 23, true, "country"),
   relativeColumn("badge", "LIC", 29, false, "license"),
-  relativeColumn("driver", "PILOTO", 95, true),
+  relativeColumn("driver", "PILOTO", 145, true),
   relativeColumn("ranks", "ELO", 98, false, "rating"),
   relativeColumn("relative", "REL", 52, false),
   relativeColumn("lap", "V", 28, false, "lap"),
@@ -190,7 +190,7 @@ export const readRelativeSettings = (): RelativeSettings => {
 };
 
 export const visibleRelativeColumns = (settings: RelativeSettings): RelativeColumnDefinition[] =>
-  [...settings.columnOrder.filter((id) => id !== "signals"), "signals" as const]
+  [...settings.columnOrder.filter((id) => id !== "pitStops" && id !== "signals"), "signals" as const]
     .map((id) => RELATIVE_COLUMNS.find((column) => column.id === id))
     .filter((column): column is RelativeColumnDefinition =>
       column !== undefined && (column.option === undefined || settings.options[column.option])

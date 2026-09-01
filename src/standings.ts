@@ -413,18 +413,25 @@ const pitTimeLabel = (seconds: number): string => {
 };
 
 const appendDriverPitStatus = (cell: HTMLElement, entry: StandingEntry): void => {
-  if (!settings.columns.pitStops || entry.pit_stop_time_seconds === null) return;
+  if (!settings.columns.pitStops) return;
   const summary = node("span", "driver-pit-summary");
-  const time = pitTimeLabel(entry.pit_stop_time_seconds);
   if (entry.in_pits) {
-    summary.classList.add("timing");
-    summary.append(node("b", "driver-pit-time", time));
-    summary.title = t("standings.pitTimer", { time });
-  } else if (entry.pit_stop_lap !== null && entry.pit_stops > 0) {
+    if (entry.pit_stop_time_seconds !== null) {
+      const time = pitTimeLabel(entry.pit_stop_time_seconds);
+      summary.classList.add("timing");
+      summary.append(node("b", "driver-pit-time", time));
+      summary.title = t("standings.pitTimer", { time });
+    }
+  } else if (entry.pit_stop_requested) {
+    summary.classList.add("requested");
+    summary.append(node("b", "driver-pit-requested", "PIT"));
+    summary.title = t("standings.pitRequested", { count: entry.pit_stops });
+  } else if (entry.pit_stop_time_seconds !== null && entry.pit_stop_lap !== null && entry.pit_stops > 0) {
+    const time = pitTimeLabel(entry.pit_stop_time_seconds);
     summary.append(
       node("b", "driver-pit-lap", `L${entry.pit_stop_lap}`),
       node("b", "driver-pit-time", time),
-      node("b", "driver-pit-count", `P${entry.pit_stops}`)
+      node("b", "driver-pit-count", entry.pit_stops.toString())
     );
     summary.title = t("standings.pitSummary", {
       count: entry.pit_stops,
@@ -440,7 +447,7 @@ const cellSignature = (entry: StandingEntry, column: StandingsColumnId, trackLim
     case "position": return `${entry.position}|${entry.position_change}`;
     case "number": return liveCarNumbers.get(entry.vehicle_id) || entry.car_number || "--";
     case "badge": return entry.driver_badge;
-    case "driver": return `${entry.driver_name}|${entry.nationality}|${settings.driverNameFormat}|${settings.columns.pitStops}|${entry.in_pits}|${entry.pit_stops}|${entry.pit_stop_lap ?? ""}|${entry.pit_stop_time_seconds === null ? "" : pitTimeLabel(entry.pit_stop_time_seconds)}`;
+    case "driver": return `${entry.driver_name}|${entry.nationality}|${settings.driverNameFormat}|${settings.columns.pitStops}|${entry.in_pits}|${entry.pit_stop_requested}|${entry.pit_stops}|${entry.pit_stop_lap ?? ""}|${entry.pit_stop_time_seconds === null ? "" : pitTimeLabel(entry.pit_stop_time_seconds)}`;
     case "manufacturer": return `${entry.team_name}|${entry.vehicle_name}`;
     case "ranks": return `${entry.driver_rank}|${Math.round(entry.driver_rank_progress)}|${Math.round(entry.estimated_driver_rank_gain)}|${entry.estimated_driver_rank_gain_available}|${entry.safety_rank}`;
     case "gap": return entry.position === 1 ? `V ${entry.total_laps}` : formatDifference(entry.laps_behind_leader, entry.time_behind_leader);

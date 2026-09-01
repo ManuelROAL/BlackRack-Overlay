@@ -51,7 +51,10 @@ the prepared vehicle IDs and formats them; it must not repeat domain selection.
 
 - Position, driver and physical time are mandatory. Configurable columns include
   number, country, license, DR/SR and estimate, position change, lap, AVG 5,
-  last/best, NRG, damage, per-driver track limits, pit, tyre and flags.
+  last/best, NRG, damage, per-driver track limits, pit status, tyre and flags.
+  Pit status is independently visible but integrated into the driver cell rather
+  than exposed as a separate reorderable column. It uses the same green request,
+  active timer and `L<lap> · duration · count` states as Standings.
 - Column visibility and order are independent from Standings. Signals remains
   fixed at the transparent far right. Relative has no column-label row or footer.
 - Driver-name format is independent from Standings and supports full name,
@@ -83,14 +86,16 @@ the prepared vehicle IDs and formats them; it must not repeat domain selection.
   player and pit layers, including LMGT3 contrast.
 - Derive design width from active columns with a compact 344 px minimum. New and
   reset configurations default to number, driver, physical time and Signals;
-  their base surface is 344 × 255 px. Advanced identity, timing and strategy
+  their base surface is 393 × 255 px. Advanced identity, timing and strategy
   columns remain configurable. Reserve
   23 px for every selected row so the last card is not clipped.
 - Expand text-bearing column tracks together with the text-size design surface so
   enlarged labels and values cannot overlap neighboring columns. Country flags,
   driver badges, tyres and header SVG icons grow at half the rate of text (150%
   at the 200% text setting), together with their tracks where applicable. Keep
-  the 95 px driver-name track fixed and truncate driver names with an ellipsis.
+  the 145 px driver-name track at 100% and expand it at half the text-growth rate
+  so the integrated pit summary remains anchored at its right edge; truncate
+  driver names with an ellipsis.
   Position/change and assigned
   number use limited expansion, including the nested position/change tracks, so
   large values remain separated without the full text-column margin. Text-bearing

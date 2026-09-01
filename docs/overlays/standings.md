@@ -147,9 +147,10 @@ duplicate selection or timing semantics.
   from elapsed plus remaining clocks.
 - Category headers show current/initial counts and DNF/DQ difference outside
   practice. Recover initial counts from history when opened late.
-- Pit status shares the driver cell and stays empty until a stop is observed.
-  While the car is in pit lane, show only its elapsed pit-cycle timer. Once the
-  stop is confirmed, retain `L<lap>`, the final compact duration and `P<count>`
+- Pit status shares the driver cell and stays empty until a request or stop is observed.
+  Show an active request as a green `PIT` badge. While the car is in pit lane,
+  show only its elapsed pit-cycle timer. Once the stop is confirmed, retain
+  `L<lap>`, the final compact duration and the unprefixed completed-stop count
   for the latest stop. The completed-stop count comes from shared-memory
   `mNumPitstops`; REST `pitstops` must not override it because it can overcount in
   team races. Accept a delayed counter increase before the next finish-line
@@ -181,8 +182,8 @@ duplicate selection or timing semantics.
 - Player tint is translucent lime with lime edge markers over the category layer;
   pit state remains distinguishable. Stop the player background before signals.
 - Compact NRG, damage and track-limit cells are neutral until a meaningful
-  warning applies. The integrated pit lap uses lime, while its active timer uses
-  the same amber/orange semantic family as PIT and OUT.
+  warning applies. The integrated pit request uses green, its lap uses lime and
+  its active timer uses the same amber/orange semantic family as PIT and OUT.
 - Cache row/header nodes and replace only changed cells/signatures. The general
   performance profile changes roster request and renderer cadence together.
 - Derive the design height from the rendered header, class sections, rows,

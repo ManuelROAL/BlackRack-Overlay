@@ -40,6 +40,7 @@ import {
   RELATIVE_COLUMN_OPTIONS,
   RELATIVE_HEADER_OPTIONS,
   RELATIVE_SETTINGS_KEY,
+  type RelativeColumnId,
   type RelativeSettings
 } from "./relative-settings";
 import {
@@ -1932,15 +1933,18 @@ for (const option of RELATIVE_COLUMN_OPTIONS) {
   appendRelativeOption(relativeColumns, option.id, t(option.labelKey));
 }
 
-bindColumnOrder(
+bindColumnOrder<RelativeColumnId>(
   document.getElementById("relative-column-order"),
-  RELATIVE_COLUMNS,
-  () => relativeSettings.columnOrder,
+  RELATIVE_COLUMNS.filter(({ id }) => id !== "pitStops"),
+  () => relativeSettings.columnOrder.filter((id) => id !== "pitStops"),
   (columnOrder) => {
-    relativeSettings = { ...relativeSettings, columnOrder };
+    relativeSettings = {
+      ...relativeSettings,
+      columnOrder: [...columnOrder.filter((id) => id !== "signals"), "pitStops", "signals"]
+    };
     persistRelativeSettings();
   },
-  new Set(["signals"])
+  new Set<RelativeColumnId>(["signals"])
 );
 
 const bindRelativeRowCount = (
