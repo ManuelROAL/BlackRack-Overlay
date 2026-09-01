@@ -52,13 +52,6 @@ export const OVERLAY_GUIDE: Record<OverlayId, OverlayGuideEntry> = {
     reading: "guide.tires.reading",
     tip: "guide.tires.tip"
   },
-  tiretemps: {
-    icon: "T°",
-    title: "card.tiretemps",
-    purpose: "guide.tiretemps.purpose",
-    reading: "guide.tiretemps.reading",
-    tip: "guide.tiretemps.tip"
-  },
   damage: {
     icon: "D",
     title: "card.damage",
@@ -138,7 +131,6 @@ export const OVERLAY_GUIDE_ORDER = [
   "driving",
   "liftcoast",
   "tires",
-  "tiretemps",
   "damage",
   "pitstop",
   "flags",

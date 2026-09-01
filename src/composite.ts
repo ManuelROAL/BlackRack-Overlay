@@ -53,7 +53,7 @@ interface TelemetryBatch {
 }
 
 const overlayIds: OverlayId[] = [
-  "delta", "timing", "stinthistory", "driving", "liftcoast", "tires", "tiretemps", "damage", "standings",
+  "delta", "timing", "stinthistory", "driving", "liftcoast", "tires", "damage", "standings",
   "relative", "fuel", "pitstop", "flags", "rejoin", "trackmap",
   "forecast", "conditions"
 ];
@@ -73,12 +73,6 @@ const telemetryFields: Record<OverlayId, readonly (keyof TelemetryFrame)[]> = {
     "tire_life_model",
     "player_tire_flat_spot_percent", "player_tire_compounds", "player_tire_flat",
     "player_tire_detached", "player_suspension_damage_by_wheel_percent"
-  ],
-  tiretemps: [
-    "player_tire_zone_temperature_c", "player_tire_inner_layer_temperature_c",
-    "player_tire_carcass_temperature_c", "player_brake_temperature_c",
-    "player_tire_compounds", "player_tire_flat",
-    "player_tire_detached"
   ],
   damage: [
     "player_aero_damage_percent", "player_body_damage_percent",
@@ -122,7 +116,7 @@ const telemetryFields: Record<OverlayId, readonly (keyof TelemetryFrame)[]> = {
   ]
 };
 const overlayTitleKeys: Record<OverlayId, import("./i18n").TranslationKey> = {
-  delta: "card.delta", timing: "card.timing", stinthistory: "card.stintHistory", driving: "card.driving", liftcoast: "card.liftcoast", tires: "card.tires", tiretemps: "card.tiretemps",
+  delta: "card.delta", timing: "card.timing", stinthistory: "card.stintHistory", driving: "card.driving", liftcoast: "card.liftcoast", tires: "card.tires",
   damage: "card.damage", standings: "card.standings", relative: "card.relative", fuel: "card.fuel",
   pitstop: "card.pitstop", flags: "card.flags", rejoin: "card.rejoin", trackmap: "card.trackmap",
   forecast: "card.forecast", conditions: "card.conditions"

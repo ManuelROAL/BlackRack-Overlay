@@ -14,7 +14,7 @@ use crate::telemetry::TelemetryFrame;
 const ADDRESS: &str = "127.0.0.1:47636";
 const BASE_URL: &str = "http://127.0.0.1:47636";
 const BROWSER_INDEX_ENTRY: &str = "browser.html";
-const BROWSER_OVERLAYS: [(&str, &str); 17] = [
+const BROWSER_OVERLAYS: [(&str, &str); 16] = [
     ("standings", "standings.html"),
     ("relative", "relative.html"),
     ("fuel", "fuel.html"),
@@ -27,7 +27,6 @@ const BROWSER_OVERLAYS: [(&str, &str); 17] = [
     ("driving", "driving.html"),
     ("liftcoast", "liftcoast.html"),
     ("tires", "tires.html"),
-    ("tiretemps", "tiretemps.html"),
     ("damage", "damage.html"),
     ("trackmap", "trackmap.html"),
     ("forecast", "forecast.html"),
@@ -402,7 +401,7 @@ fn serve_request(stream: &mut TcpStream, request_path: &str, app: &AppHandle) {
             .unwrap_or_else(|| serde_json::json!({}));
         let json = serde_json::to_string(&settings).unwrap_or_else(|_| "{}".into());
         let script = format!(
-            "(()=>{{const p={json},q=new URLSearchParams(location.search).get('lang'),valid=l=>typeof l==='string'&&Array.isArray(p.supportedLocales)&&p.supportedLocales.includes(l);if(valid(q))document.documentElement.dataset.localeOverride=q;else if(valid(p.locale))localStorage.setItem('blackrack-overlay.locale.v1',p.locale);if(p.standings)localStorage.setItem('blackrack-overlay.standings.v1',JSON.stringify(p.standings));if(p.relative)localStorage.setItem('blackrack-overlay.relative.v1',JSON.stringify(p.relative));if(p.driving)localStorage.setItem('blackrack-overlay.driving.v1',JSON.stringify(p.driving));if(p.delta)localStorage.setItem('blackrack-overlay.delta.v1',JSON.stringify(p.delta));if(p.timing)localStorage.setItem('blackrack-overlay.timing.v1',JSON.stringify(p.timing));if(p.trackMap)localStorage.setItem('blackrack-overlay.track-map-settings.v1',JSON.stringify(p.trackMap));if(p.transparency)localStorage.setItem('blackrack-overlay.background-transparency.v1',JSON.stringify(p.transparency));if(p.fontSize)localStorage.setItem('blackrack-overlay.font-size.v1',JSON.stringify(p.fontSize));if(p.fuel)localStorage.setItem('blackrack-overlay.fuel-strategy.v1',JSON.stringify(p.fuel));if(p.tireTemps)localStorage.setItem('blackrack-overlay.tire-temperatures.v1',JSON.stringify(p.tireTemps));document.documentElement.dataset.browserSource='true';}})();"
+            "(()=>{{const p={json},q=new URLSearchParams(location.search).get('lang'),valid=l=>typeof l==='string'&&Array.isArray(p.supportedLocales)&&p.supportedLocales.includes(l);if(valid(q))document.documentElement.dataset.localeOverride=q;else if(valid(p.locale))localStorage.setItem('blackrack-overlay.locale.v1',p.locale);if(p.standings)localStorage.setItem('blackrack-overlay.standings.v1',JSON.stringify(p.standings));if(p.relative)localStorage.setItem('blackrack-overlay.relative.v1',JSON.stringify(p.relative));if(p.driving)localStorage.setItem('blackrack-overlay.driving.v1',JSON.stringify(p.driving));if(p.delta)localStorage.setItem('blackrack-overlay.delta.v1',JSON.stringify(p.delta));if(p.timing)localStorage.setItem('blackrack-overlay.timing.v1',JSON.stringify(p.timing));if(p.trackMap)localStorage.setItem('blackrack-overlay.track-map-settings.v1',JSON.stringify(p.trackMap));if(p.transparency)localStorage.setItem('blackrack-overlay.background-transparency.v1',JSON.stringify(p.transparency));if(p.fontSize)localStorage.setItem('blackrack-overlay.font-size.v1',JSON.stringify(p.fontSize));if(p.fuel)localStorage.setItem('blackrack-overlay.fuel-strategy.v1',JSON.stringify(p.fuel));document.documentElement.dataset.browserSource='true';}})();"
         );
         write_response(
             stream,

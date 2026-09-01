@@ -15,7 +15,6 @@ UI behavior, telemetry semantics, cadence and special invariants.
 | Trailing + Pedal | [driving.md](driving.md) | `driving.html` | `/driving` | 50 Hz input, 25 Hz canvas |
 | Lift & Coast | [liftcoast.md](liftcoast.md) | `liftcoast.html` | `/liftcoast` | 50 Hz |
 | Damage + Tyres | [tires.md](tires.md) | `tires.html` | `/tires` | 50 Hz |
-| Detailed tyre temperatures | [tiretemps.md](tiretemps.md) | `tiretemps.html` | `/tiretemps` | 50 Hz |
 | Detailed Damage | [damage.md](damage.md) | `damage.html` | `/damage` | 20 Hz |
 | Pit-stop estimate | [pitstop.md](pitstop.md) | `pitstop.html` | `/pitstop` | 20 Hz |
 | Track Map | [trackmap.md](trackmap.md) | `trackmap.html` | `/trackmap` | approximately 30 Hz |
