@@ -75,9 +75,9 @@ Detailed Damage (`damage.md`).
   zero RPM, ignition state and body damage must not infer an engine failure.
 - Oil and water temperature are independent, optional readings sourced directly
   from `mEngineOilTemp` and `mEngineWaterTemp` in Celsius. Place their supplied
-  SVG icons and compact values stacked directly below the engine icon inside
-  the chassis. Both are hidden by default, persist independently and mirror to
-  the OBS route.
+  SVG icons and compact values around the engine icon inside the chassis: oil
+  above and water below. Both are hidden by default, persist independently and
+  mirror to the OBS route. Keep aggregate damage below the lower active reading.
 
 ## Presentation and hot path
 

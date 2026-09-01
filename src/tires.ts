@@ -185,7 +185,7 @@ const applySettings = (next: TiresSettings): void => {
   settings = next;
   oilTemperature.hidden = !settings.showOilTemperature;
   waterTemperature.hidden = !settings.showWaterTemperature;
-  chassis.dataset.engineTemperatureCount = String(Number(settings.showOilTemperature) + Number(settings.showWaterTemperature));
+  chassis.dataset.engineTemperatureLayout = settings.showWaterTemperature ? "lower" : "upper";
 };
 
 fitOverlay(
