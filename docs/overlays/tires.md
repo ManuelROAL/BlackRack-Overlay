@@ -84,8 +84,9 @@ Detailed Damage (`damage.md`).
 - Use the same restrained 2 px lime left-edge accent as Trailing + Pedal. Keep it
   visible in click-through mode as the product mark without changing panel width.
 - Each label-free corner stack has fixed order: tyre temperature, remaining tread,
-  flat spot and disc temperature. Give all four readings the same large, heavy
-  numeric treatment.
+  flat spot and disc temperature. Each reading is independently optional, persists
+  and mirrors to OBS; all four remain enabled by default. Give visible readings
+  the same large, heavy numeric treatment.
 - At larger text sizes, widen and separate the four corner stacks, scale the
   chassis schematic and its engine/oil/water SVGs with the panel's vertical text
   expansion, and keep the tyre graphics at their established visual size. Keep
@@ -112,8 +113,8 @@ Detailed Damage (`damage.md`).
 Test all four corners and three tyre bands independently, temperature conversion,
 remaining tread, flat-spot reset, suspension source mapping,
 puncture/detachment priority, wing false positives, engine-warning state and
-REST-unavailable fallback. Verify oil/water values, both independent visibility
-toggles, reset/import/export persistence and OBS preference mirroring.
+REST-unavailable fallback. Verify the four independent wheel-reading toggles and
+oil/water visibility, reset/import/export persistence and OBS preference mirroring.
 
 ## Localization
 

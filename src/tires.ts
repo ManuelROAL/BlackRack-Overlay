@@ -183,6 +183,10 @@ const previewFrame = {
 
 const applySettings = (next: TiresSettings): void => {
   settings = next;
+  for (const element of temperatures) element.hidden = !settings.showTireTemperature;
+  for (const element of brakeTemperatures) element.hidden = !settings.showBrakeTemperature;
+  for (const element of flatSpotValues) element.hidden = !settings.showFlatSpot;
+  for (const element of wearValues) element.hidden = !settings.showTireWear;
   oilTemperature.hidden = !settings.showOilTemperature;
   waterTemperature.hidden = !settings.showWaterTemperature;
   chassis.dataset.engineTemperatureLayout = settings.showWaterTemperature ? "lower" : "upper";

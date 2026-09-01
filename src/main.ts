@@ -83,6 +83,7 @@ import {
 } from "./fuel-settings";
 import {
   defaultTiresSettings,
+  normalizeTiresSettings,
   readTiresSettings,
   TIRES_SETTINGS_KEY,
   type TiresSettings
@@ -778,21 +779,23 @@ if (fuelScenarioMode) {
   });
 }
 
-const oilTemperatureToggle = document.getElementById("tires-oil-temperature") as HTMLInputElement | null;
-const waterTemperatureToggle = document.getElementById("tires-water-temperature") as HTMLInputElement | null;
-if (oilTemperatureToggle) {
-  oilTemperatureToggle.checked = tiresSettings.showOilTemperature;
-  oilTemperatureToggle.addEventListener("change", () => {
-    tiresSettings = { ...tiresSettings, showOilTemperature: oilTemperatureToggle.checked };
-    persistTiresSettings();
-  });
-}
-if (waterTemperatureToggle) {
-  waterTemperatureToggle.checked = tiresSettings.showWaterTemperature;
-  waterTemperatureToggle.addEventListener("change", () => {
-    tiresSettings = { ...tiresSettings, showWaterTemperature: waterTemperatureToggle.checked };
-    persistTiresSettings();
-  });
+const tiresToggles: Array<[string, keyof TiresSettings]> = [
+  ["tires-tire-temperature", "showTireTemperature"],
+  ["tires-brake-temperature", "showBrakeTemperature"],
+  ["tires-flat-spot", "showFlatSpot"],
+  ["tires-tire-wear", "showTireWear"],
+  ["tires-oil-temperature", "showOilTemperature"],
+  ["tires-water-temperature", "showWaterTemperature"]
+];
+for (const [id, setting] of tiresToggles) {
+  const toggle = document.getElementById(id) as HTMLInputElement | null;
+  if (toggle) {
+    toggle.checked = tiresSettings[setting];
+    toggle.addEventListener("change", () => {
+      tiresSettings = { ...tiresSettings, [setting]: toggle.checked };
+      persistTiresSettings();
+    });
+  }
 }
 
 const inputFor = (id: OverlayId): HTMLInputElement | null =>
@@ -1436,9 +1439,8 @@ const parseOverlayConfiguration = (
   if (!isFuelScenarioMode(normalizedFuel.scenarioMode)) {
     throw new Error(t("config.invalidFuel"));
   }
-  const normalizedTires = tires ?? defaultTiresSettings();
-  if (typeof normalizedTires.showOilTemperature !== "boolean"
-    || typeof normalizedTires.showWaterTemperature !== "boolean") {
+  const normalizedTires = normalizeTiresSettings(tires);
+  if (!normalizedTires) {
     throw new Error(t("config.invalidTires"));
   }
   const fallbackVisibility = defaultVisibility();
