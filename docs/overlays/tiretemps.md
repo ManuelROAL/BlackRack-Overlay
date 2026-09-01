@@ -37,7 +37,9 @@ own overlays.
 - Round values before selecting a heatmap band, as TinyPedal does. Cold blue bands
   use light text; the remaining brighter bands use dark text for legibility.
 - The panel uses the compact dark surface, neutral outline and 2 px lime accent.
-  Puncture and detachment affect the tyre outline without hiding live readings.
+  It omits wheel-corner and zone labels; position and fixed left/centre/right
+  order provide the context. Its default footprint is 258 x 136 px. Puncture and
+  detachment affect the tyre outline without hiding live readings.
 - Cache DOM nodes through the static document and skip unchanged text, title and
   CSS-property writes in the 50 Hz renderer.
 - Native composite mode has no animation, transition or backdrop filter.

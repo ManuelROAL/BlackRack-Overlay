@@ -9,7 +9,7 @@ body.tiretemps-body { padding: 4px; font-family: "Roboto Condensed", sans-serif;
   box-sizing: border-box;
   width: 100%;
   height: 100%;
-  padding: 8px 9px 8px 11px;
+  padding: 6px 7px 6px 9px;
   background: rgb(8 12 17 / calc(100% - var(--overlay-transparency, 5%)));
   border: 1px solid rgb(139 153 166 / 38%);
   border-radius: 5px;
@@ -27,9 +27,9 @@ body.tiretemps-body { padding: 4px; font-family: "Roboto Condensed", sans-serif;
 
 .tiretemps-layout {
   display: grid;
-  grid-template-columns: 84px 49px 49px 84px;
-  grid-template-rows: repeat(2, 74px);
-  gap: 10px 4px;
+  grid-template-columns: 72px 40px 40px 72px;
+  grid-template-rows: repeat(2, 54px);
+  gap: 6px 3px;
   align-items: center;
   justify-content: center;
   height: 100%;
@@ -45,22 +45,9 @@ body.tiretemps-body { padding: 4px; font-family: "Roboto Condensed", sans-serif;
 .brake-fl, .brake-rl { transform: translateX(-3px); }
 .brake-fr, .brake-rr { transform: translateX(3px); }
 
-.corner-label {
-  position: absolute;
-  top: 0;
-  z-index: 2;
-  color: #aeb8c2;
-  font-size: 9px;
-  font-weight: 800;
-  line-height: 11px;
-  letter-spacing: .08em;
-}
-.wheel-fl .corner-label, .wheel-rl .corner-label { left: 1px; }
-.wheel-fr .corner-label, .wheel-rr .corner-label { right: 1px; }
-
 .tread-zones {
   position: absolute;
-  inset: 10px 0 0;
+  inset: 0;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 1px;
@@ -78,13 +65,11 @@ body.tiretemps-body { padding: 4px; font-family: "Roboto Condensed", sans-serif;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
   color: var(--zone-text-color);
   background: var(--zone-color);
   border-inline-start: 0;
 }
 .tread-zone:first-child { border-inline-start: 0; }
-.tread-zone small { font-size: 8px; font-weight: 900; line-height: 8px; opacity: .68; }
 .tread-zone strong { font-size: calc(10px * var(--overlay-font-scale, 1)); font-weight: 900; line-height: 12px; }
 
 .contact-patch {
@@ -93,7 +78,7 @@ body.tiretemps-body { padding: 4px; font-family: "Roboto Condensed", sans-serif;
   z-index: 3;
   top: 50%;
   width: calc(var(--contact-fraction) * 100%);
-  height: 9px;
+  height: 8px;
   transform: translateY(-50%);
   background: rgb(255 255 255 / 92%);
   box-shadow: 0 0 0 1px rgb(3 6 9 / 34%);
@@ -107,21 +92,21 @@ body.tiretemps-body { padding: 4px; font-family: "Roboto Condensed", sans-serif;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 3px;
+  gap: 2px;
   min-width: 0;
 }
 .brake span {
   box-sizing: border-box;
-  width: 27px;
-  height: 27px;
-  border: 6px solid var(--brake-color);
+  width: 24px;
+  height: 24px;
+  border: 5px solid var(--brake-color);
   border-radius: 50%;
   background: #111820;
   box-shadow: inset 0 0 0 2px #3f4851, 0 0 7px color-mix(in srgb, var(--brake-color), transparent 58%);
 }
 .brake strong {
   color: var(--brake-color);
-  font-size: calc(11px * var(--overlay-font-scale, 1));
+  font-size: calc(10px * var(--overlay-font-scale, 1));
   font-weight: 900;
   line-height: 12px;
 }
