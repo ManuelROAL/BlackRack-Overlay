@@ -398,9 +398,6 @@ extern "C" int lmu_read_snapshot(LmuSnapshot* output, int32_t spectator_vehicle_
                     // con neumático nuevo y 0.0 al agotarse.
                     const double tire_remaining = std::clamp(wheel.mWear * 100.0, 0.0, 100.0);
                     remaining = std::min(remaining, tire_remaining);
-                    // Match the temperature displayed by Dox's LMU overlay: 34%
-                    // carcass and 22% from each inner-layer sample. All four
-                    // inputs are reported in Kelvin.
                     output->player_tire_temperature_c[wheel_index] =
                         wheel.mTireCarcassTemperature * 0.34
                         + wheel.mTireInnerLayerTemperature[0] * 0.22
