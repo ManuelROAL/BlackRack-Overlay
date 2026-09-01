@@ -285,7 +285,7 @@ pub(super) struct LocalRestResolver {
     history_by_name: HashMap<String, Vec<RestStandingHistory>>,
     standings_received_at: Option<Instant>,
     pit_stop: RestPitStopEstimate,
-    vehicle_damage: RestVehicleDamage,
+    vehicle_damage: Option<RestVehicleDamage>,
     session_max_time_seconds: f64,
     steering_range_degrees: Option<f64>,
     fuel_ratio_assigned: f64,
@@ -293,7 +293,6 @@ pub(super) struct LocalRestResolver {
     team_name: String,
     team_vehicle_name: String,
     supplement_received_at: Option<Instant>,
-    vehicle_damage_received_at: Option<Instant>,
     weather_nodes: RestWeatherSession,
     weather_received_at: Option<Instant>,
     demand: Arc<AtomicU8>,
@@ -449,7 +448,7 @@ impl LocalRestResolver {
             history_by_name: HashMap::new(),
             standings_received_at: None,
             pit_stop: RestPitStopEstimate::default(),
-            vehicle_damage: RestVehicleDamage::default(),
+            vehicle_damage: None,
             session_max_time_seconds: 0.0,
             steering_range_degrees: None,
             fuel_ratio_assigned: 0.0,
@@ -457,7 +456,6 @@ impl LocalRestResolver {
             team_name: String::new(),
             team_vehicle_name: String::new(),
             supplement_received_at: None,
-            vehicle_damage_received_at: None,
             weather_nodes: RestWeatherSession::default(),
             weather_received_at: None,
             demand,
@@ -477,7 +475,7 @@ impl LocalRestResolver {
             history_by_name: HashMap::new(),
             standings_received_at: None,
             pit_stop: RestPitStopEstimate::default(),
-            vehicle_damage: RestVehicleDamage::default(),
+            vehicle_damage: None,
             session_max_time_seconds: 0.0,
             steering_range_degrees: None,
             fuel_ratio_assigned: 0.0,
@@ -485,7 +483,6 @@ impl LocalRestResolver {
             team_name: String::new(),
             team_vehicle_name: String::new(),
             supplement_received_at: None,
-            vehicle_damage_received_at: None,
             weather_nodes: RestWeatherSession::default(),
             weather_received_at: None,
             demand: Arc::new(AtomicU8::new(0)),
@@ -563,8 +560,7 @@ impl LocalRestResolver {
                 received = true;
             }
             if let Some(vehicle_damage) = update.vehicle_damage {
-                self.vehicle_damage = vehicle_damage;
-                self.vehicle_damage_received_at = Some(Instant::now());
+                self.vehicle_damage = Some(vehicle_damage);
             }
             if let Some(session_info) = update.session_info {
                 self.latch_session_max_time(session_info.max_time);
@@ -584,6 +580,9 @@ impl LocalRestResolver {
             if received {
                 self.supplement_received_at = Some(Instant::now());
             }
+        }
+        if !connected {
+            self.vehicle_damage = None;
         }
     }
 
@@ -652,6 +651,7 @@ impl LocalRestResolver {
         self.team_driver_names.clear();
         self.team_name.clear();
         self.team_vehicle_name.clear();
+        self.vehicle_damage = None;
         self.weather_nodes = RestWeatherSession::default();
         self.weather_received_at = None;
     }
@@ -757,7 +757,7 @@ impl LocalRestResolver {
     }
 
     pub(super) fn vehicle_damage(&self) -> Option<RestVehicleDamage> {
-        is_fresh(self.vehicle_damage_received_at, SUPPLEMENT_MAX_AGE).then_some(self.vehicle_damage)
+        self.vehicle_damage
     }
 
     pub(super) fn session_max_time_seconds(&self) -> f64 {
@@ -892,7 +892,7 @@ mod tests {
         fuel_ratio_assigned, normalized_driver_identity, normalized_name, rest_demand,
         steering_range, team_info_for_player, LocalRestResolver, RestGarageData,
         RestPitStopEstimate, RestRepairAndRefuel, RestSessionInfo, RestStanding,
-        RestStandingHistory, RestTeamInfo, RestWeatherSession,
+        RestStandingHistory, RestTeamInfo, RestVehicleDamage, RestWeatherSession,
     };
     use std::collections::HashMap;
 
@@ -984,6 +984,25 @@ mod tests {
         .unwrap();
         assert!((response.wearables.body.aero - 0.12).abs() < f64::EPSILON);
         assert_eq!(response.wearables.suspension, [0.01, 0.2, 0.03, 0.04]);
+    }
+
+    #[test]
+    fn vehicle_damage_is_latched_until_disconnect_or_session_reset() {
+        let mut resolver = LocalRestResolver::empty();
+        resolver.vehicle_damage = Some(RestVehicleDamage {
+            aero: 0.28,
+            suspension: [0.2, 0.79, 0.4, 0.6],
+        });
+
+        resolver.refresh(true, false, true, false, "RACE");
+        assert_eq!(resolver.vehicle_damage().unwrap().aero, 0.28);
+
+        resolver.refresh(false, false, false, false, "");
+        assert!(resolver.vehicle_damage().is_none());
+
+        resolver.vehicle_damage = Some(RestVehicleDamage::default());
+        resolver.reset_session_history();
+        assert!(resolver.vehicle_damage().is_none());
     }
 
     #[test]

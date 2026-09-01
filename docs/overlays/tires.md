@@ -39,7 +39,8 @@ Detailed Damage (`damage.md`).
 - Each suspension shape uses its matching per-wheel REST wearable value. Missing
   REST data remains unavailable and must not fall back to body damage.
 - Suspension coloring begins at 2% and uses `2/15/40/80` thresholds. A detached
-  wheel overrides only its matching suspension to 100%.
+  wheel has its independent detached state; use 100% as the numeric suspension
+  fallback only when REST wearables are unavailable.
 - Keep rear wheel modules aligned with the raised rear axle and aggregate damage
   inside the central body; do not restore a footer.
 

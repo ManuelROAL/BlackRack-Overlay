@@ -28,14 +28,17 @@ fn suspension_damage_by_wheel_percent(
     detached: [u8; 4],
 ) -> [f64; 4] {
     std::array::from_fn(|index| {
-        if detached[index] != 0 {
-            100.0
-        } else {
-            damage
-                .map(|value| (value.suspension[index] * 100.0).clamp(0.0, 100.0))
-                .unwrap_or(-1.0)
-        }
+        damage
+            .map(|value| (value.suspension[index] * 100.0).clamp(0.0, 100.0))
+            .unwrap_or_else(|| if detached[index] != 0 { 100.0 } else { -1.0 })
     })
+}
+
+fn suspension_damage_percent(damage: Option<RestVehicleDamage>, detached: [u8; 4]) -> f64 {
+    damage
+        .map(|value| value.suspension.into_iter().fold(0.0_f64, f64::max) * 100.0)
+        .unwrap_or_else(|| if detached.contains(&1) { 100.0 } else { -1.0 })
+        .clamp(-1.0, 100.0)
 }
 
 fn rear_wing_detached(
@@ -3992,14 +3995,10 @@ impl TelemetrySource for LmuTelemetrySource {
                 .map(|damage| damage.aero * 100.0)
                 .unwrap_or(-1.0)
                 .clamp(-1.0, 100.0),
-            player_suspension_damage_percent: if snapshot.player_tire_detached.contains(&1) {
-                100.0
-            } else {
-                rest_vehicle_damage
-                    .map(|damage| damage.suspension.into_iter().fold(0.0_f64, f64::max) * 100.0)
-                    .unwrap_or(-1.0)
-                    .clamp(-1.0, 100.0)
-            },
+            player_suspension_damage_percent: suspension_damage_percent(
+                rest_vehicle_damage,
+                snapshot.player_tire_detached,
+            ),
             player_suspension_damage_by_wheel_percent: suspension_damage_by_wheel_percent(
                 rest_vehicle_damage,
                 snapshot.player_tire_detached,
@@ -4111,9 +4110,9 @@ fn synchronized_lap_progress(raw: f64, current_lap_seconds: f64, lap_changed: bo
 mod tests {
     use super::{
         fuel_energy_ratio, lmu_snapshot_size, rear_wing_detached,
-        suspension_damage_by_wheel_percent, synchronized_lap_progress, CarHistory, LmuSnapshot,
-        LmuStandingEntry, LmuTelemetrySource, PlayerLapDistanceEstimator, PlayerLapDistanceSample,
-        PlayerLapTimeHistory, TireWearTracker,
+        suspension_damage_by_wheel_percent, suspension_damage_percent, synchronized_lap_progress,
+        CarHistory, LmuSnapshot, LmuStandingEntry, LmuTelemetrySource, PlayerLapDistanceEstimator,
+        PlayerLapDistanceSample, PlayerLapTimeHistory, TireWearTracker,
     };
     use crate::telemetry::event_split::DriverRankSettings;
     use crate::telemetry::lmu_rest::{RestStanding, RestVehicleDamage};
@@ -4363,12 +4362,15 @@ mod tests {
 
         assert_eq!(
             suspension_damage_by_wheel_percent(Some(damage), [0, 1, 0, 0]),
-            [2.0, 100.0, 51.0, 100.0]
+            [2.0, 18.0, 51.0, 100.0]
         );
         assert_eq!(
             suspension_damage_by_wheel_percent(None, [0, 0, 1, 0]),
             [-1.0, -1.0, 100.0, -1.0]
         );
+        assert_eq!(suspension_damage_percent(Some(damage), [0, 1, 0, 0]), 100.0);
+        assert_eq!(suspension_damage_percent(None, [0, 1, 0, 0]), 100.0);
+        assert_eq!(suspension_damage_percent(None, [0; 4]), -1.0);
     }
 
     #[test]

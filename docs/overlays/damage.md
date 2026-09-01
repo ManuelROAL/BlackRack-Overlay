@@ -15,12 +15,15 @@ brake and tyre SVGs belong only to Damage + Tyres (`tires.md`).
 ## Data semantics
 
 - `Aero`: REST `wearables.body.aero` from RepairAndRefuel.
-- `Susp`: maximum of the four REST suspension wearables, with 100% for a detached
-  wheel.
+- `Susp`: maximum of the four REST suspension wearables. A detached wheel is 100%
+  only while REST suspension data is unavailable.
 - `Body`: shared-memory `sum(mDentSeverity) / 16`.
 - `Neum.`: wear of the least healthy tyre, `100 - minimum remaining tread`.
 - Keep categories authoritative and independent. Missing REST or tyre data is
   unavailable; never infer one category from another.
+- Match TinyPedal's session cache for REST wearables: retain the latest successful
+  aero/suspension response across transient request failures, then clear it on
+  disconnect or session change.
 - Tyre wear uses its own scale: normal below 30%, warning from 30%, heavy from 50%
   and critical from 75%.
 
