@@ -87,24 +87,30 @@ pub(crate) fn spawn(app: AppHandle, hwnd: isize) {
         .spawn(move || unsafe {
             if !wheel_input_initialize(hwnd) {
                 let control = app.state::<WheelInputControl>();
-                let mut status = control
-                    .0
-                    .lock()
-                    .unwrap_or_else(|poisoned| poisoned.into_inner());
-                status.error = Some("initialization_failed".into());
-                let _ = app.emit("wheel-input://status", status.clone());
+                let snapshot = {
+                    let mut status = control
+                        .0
+                        .lock()
+                        .unwrap_or_else(|poisoned| poisoned.into_inner());
+                    status.error = Some("initialization_failed".into());
+                    status.clone()
+                };
+                let _ = app.emit("wheel-input://status", snapshot);
                 startup_log::record("warning: DirectInput wheel initialization failed");
                 return;
             }
 
             {
                 let control = app.state::<WheelInputControl>();
-                let mut status = control
-                    .0
-                    .lock()
-                    .unwrap_or_else(|poisoned| poisoned.into_inner());
-                status.available = true;
-                let _ = app.emit("wheel-input://status", status.clone());
+                let snapshot = {
+                    let mut status = control
+                        .0
+                        .lock()
+                        .unwrap_or_else(|poisoned| poisoned.into_inner());
+                    status.available = true;
+                    status.clone()
+                };
+                let _ = app.emit("wheel-input://status", snapshot);
             }
 
             loop {
@@ -136,7 +142,9 @@ pub(crate) fn spawn(app: AppHandle, hwnd: isize) {
                                 ));
                             }
                         }
-                        let _ = app.emit("wheel-input://status", status.clone());
+                        let snapshot = status.clone();
+                        drop(status);
+                        let _ = app.emit("wheel-input://status", snapshot);
                     } else if status.binding.as_ref().is_some_and(|binding| {
                         binding.device_id == pressed.device_id && binding.button == pressed.button
                     }) {
@@ -167,7 +175,6 @@ pub(crate) fn get_wheel_input_status(
 
 #[tauri::command]
 pub(crate) fn capture_delta_wheel_button(
-    app: AppHandle,
     control: tauri::State<'_, WheelInputControl>,
 ) -> Result<WheelInputStatus, String> {
     let mut status = control
@@ -179,14 +186,11 @@ pub(crate) fn capture_delta_wheel_button(
     }
     status.capturing = true;
     status.error = None;
-    let snapshot = status.clone();
-    let _ = app.emit("wheel-input://status", snapshot.clone());
-    Ok(snapshot)
+    Ok(status.clone())
 }
 
 #[tauri::command]
 pub(crate) fn clear_delta_wheel_button(
-    app: AppHandle,
     control: tauri::State<'_, WheelInputControl>,
 ) -> Result<WheelInputStatus, String> {
     save_binding(None).map_err(|_| "persistence_failed".to_string())?;
@@ -197,7 +201,5 @@ pub(crate) fn clear_delta_wheel_button(
     status.binding = None;
     status.capturing = false;
     status.error = None;
-    let snapshot = status.clone();
-    let _ = app.emit("wheel-input://status", snapshot.clone());
-    Ok(snapshot)
+    Ok(status.clone())
 }

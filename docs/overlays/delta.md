@@ -33,7 +33,8 @@ import/export because it identifies local hardware.
 - `src-tauri/src/telemetry/delta_records.rs`: lap reconstruction, reference
   selection, delta calculation, stint aggregation and storage.
 - `src-tauri/src/wheel_input.rs`, `src-tauri/src/wheel_input.cpp`: persisted
-  wheel-button binding and background DirectInput polling.
+  wheel-button binding and background DirectInput polling, with WinMM fallback
+  for controllers whose buttons are unavailable through DirectInput while LMU runs.
 - `src/composite.ts`, `src/composite-layout.ts`: shared-host projection and layout.
 - `src-tauri/src/browser_source.rs`: `/delta` OBS route and mirrored preferences.
 
