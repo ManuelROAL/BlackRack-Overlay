@@ -16,7 +16,6 @@ const wearValues = wheels.map((wheel) => wheel.querySelector<HTMLElement>(".whee
 const flatSpotValues = wheels.map((wheel) => wheel.querySelector<HTMLElement>(".wheel-flatspot")!);
 const damageParts = Array.from(document.querySelectorAll<SVGElement>("[data-damage-part]"));
 const aeroWing = document.querySelector<SVGElement>("[data-aero-wing]")!;
-const chassis = document.querySelector<HTMLElement>(".chassis")!;
 const engineStatus = document.querySelector<HTMLElement>("[data-engine-status]")!;
 const damageSummary = document.querySelector<HTMLElement>(".damage-summary")!;
 const damageValue = document.getElementById("damage-value")!;
@@ -189,7 +188,6 @@ const applySettings = (next: TiresSettings): void => {
   for (const element of wearValues) element.hidden = !settings.showTireWear;
   oilTemperature.hidden = !settings.showOilTemperature;
   waterTemperature.hidden = !settings.showWaterTemperature;
-  chassis.dataset.engineTemperatureLayout = settings.showWaterTemperature ? "lower" : "upper";
 };
 
 fitOverlay(

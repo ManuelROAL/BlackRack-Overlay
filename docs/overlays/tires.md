@@ -78,6 +78,8 @@ Detailed Damage (`damage.md`).
   SVG icons and compact values around the engine icon inside the chassis: oil
   above and water below. Both are hidden by default, persist independently and
   mirror to the OBS route. Keep aggregate damage below the lower active reading.
+  Space every visible item in this central stack evenly, including when either
+  optional temperature is hidden.
 
 ## Presentation and hot path
 

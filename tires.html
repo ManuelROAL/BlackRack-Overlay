@@ -59,16 +59,16 @@
             <path class="chassis-part part-rear-right" data-damage-part="5" d="M52 151q14-3 18-16l5-17" />
             <path class="aero-wing" data-aero-wing d="M13 157h56" />
           </svg>
-          <span class="engine-status" data-engine-status role="img" aria-label="Motor"></span>
-          <div class="engine-temperatures" data-tauri-drag-region>
+          <div class="engine-stack" data-tauri-drag-region>
             <span class="engine-temperature engine-oil-temperature" data-engine-temperature="oil" hidden>
               <i aria-hidden="true"></i><strong>--°</strong>
             </span>
+            <span class="engine-status" data-engine-status role="img" aria-label="Motor"></span>
             <span class="engine-temperature engine-water-temperature" data-engine-temperature="water" hidden>
               <i aria-hidden="true"></i><strong>--°</strong>
             </span>
+            <div class="damage-summary" data-tauri-drag-region><span>DMG</span><strong id="damage-value">0%</strong></div>
           </div>
-          <div class="damage-summary" data-tauri-drag-region><span>DMG</span><strong id="damage-value">0%</strong></div>
         </div>
       </section>
     </main>

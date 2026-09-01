@@ -257,10 +257,18 @@ body.tires-body {
   filter: drop-shadow(0 0 3px rgb(255 36 79 / 72%));
 }
 
-.engine-status {
+.engine-stack {
   position: absolute;
-  top: calc(46px - 11px * var(--overlay-font-height-expansion, 1));
-  left: calc(50% - 14px * var(--overlay-font-height-expansion, 1));
+  top: 50%;
+  left: 50%;
+  display: grid;
+  justify-items: center;
+  gap: calc(8px * var(--overlay-font-height-expansion, 1));
+  transform: translate(-50%, -50%);
+}
+
+.engine-status {
+  display: block;
   width: calc(28px * var(--overlay-font-height-expansion, 1));
   height: calc(22px * var(--overlay-font-height-expansion, 1));
   background-color: #74808c;
@@ -272,14 +280,7 @@ body.tires-body {
   filter: drop-shadow(0 0 3px rgb(255 36 79 / 72%));
 }
 
-.engine-temperatures {
-  position: absolute;
-  inset: 0;
-}
-
 .engine-temperature {
-  position: absolute;
-  left: 50%;
   display: flex;
   align-items: center;
   min-width: 0;
@@ -288,19 +289,10 @@ body.tires-body {
   font-weight: 900;
   line-height: 1;
   text-shadow: 0 1px 2px #000;
-  transform: translateX(-50%);
   white-space: nowrap;
 }
 
 .engine-temperature[hidden] { display: none; }
-
-.engine-oil-temperature {
-  top: calc(42px - 22px * var(--overlay-font-height-expansion, 1));
-}
-
-.engine-water-temperature {
-  top: calc(42px + 17px * var(--overlay-font-height-expansion, 1));
-}
 
 .engine-temperature i {
   flex: 0 0 auto;
@@ -319,9 +311,6 @@ body.tires-body {
 }
 
 .damage-summary {
-  position: absolute;
-  top: calc(58px + 8px * var(--overlay-font-height-expansion, 1));
-  left: 12px;
   display: flex;
   align-items: baseline;
   justify-content: center;
@@ -330,10 +319,6 @@ body.tires-body {
   font-size: calc(6px * var(--overlay-font-scale, 1));
   font-weight: 800;
   letter-spacing: .1em;
-}
-
-.chassis[data-engine-temperature-layout="lower"] .damage-summary {
-  top: calc(67px + 12px * var(--overlay-font-height-expansion, 1));
 }
 
 .damage-summary span { display: none; }
