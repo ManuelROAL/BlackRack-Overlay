@@ -47,12 +47,16 @@ body.tires-body {
   --tire-color: #55d89a;
   --brake-color: #69737d;
   --suspension-color: #8995a2;
+  --reading-line-height: max(
+    calc(13px * var(--overlay-font-height-expansion, 1)),
+    calc(12px * var(--overlay-font-scale, 1))
+  );
   position: absolute;
   z-index: 2;
   display: grid;
   align-items: center;
-  width: calc(37px * var(--overlay-font-width-expansion, 1) + 22px);
-  height: calc(52px * var(--overlay-font-height-expansion, 1));
+  width: calc(40px * max(var(--overlay-font-width-expansion, 1), var(--overlay-font-scale, 1)) + 22px);
+  height: calc(4 * var(--reading-line-height));
 }
 
 .wheel-fl,
@@ -67,7 +71,7 @@ body.tires-body {
 .wheel-data {
   position: relative;
   display: grid;
-  grid-template-rows: repeat(4, calc(13px * var(--overlay-font-height-expansion, 1)));
+  grid-template-rows: repeat(4, var(--reading-line-height));
   align-content: center;
   min-width: 0;
   line-height: 1;
@@ -81,7 +85,7 @@ body.tires-body {
   display: block;
   font-size: calc(11px * var(--overlay-font-scale, 1));
   font-weight: 900;
-  line-height: calc(13px * var(--overlay-font-height-expansion, 1));
+  line-height: var(--reading-line-height);
   white-space: nowrap;
 }
 

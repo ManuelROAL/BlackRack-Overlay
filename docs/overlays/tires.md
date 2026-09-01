@@ -89,7 +89,9 @@ Detailed Damage (`damage.md`).
 - At larger text sizes, widen and separate the four corner stacks while keeping
   the chassis and tyre graphics at their established visual size. Keep the
   chassis centered on both axes of the adaptive panel instead of anchoring it to
-  fixed top or left offsets.
+  fixed top or left offsets. Each reading track must grow with the full font
+  scale, even when the panel itself uses a more compact expansion ratio, and its
+  line height must remain at least large enough for the scaled glyphs.
 - Reserve a visible gap between each suspension and the chassis at the minimum
   layout width. Migrate the former 174 px default to 194 px so the wider
   three-band tyres cannot push the suspension into the car outline.
