@@ -330,8 +330,6 @@ const signals = (entry: StandingEntry): HTMLElement => {
   if (entry.finish_status === 3) container.append(node("span", "race-flag dq-flag", "DQ"));
   else if (entry.finish_status === 2) container.append(node("span", "race-flag dnf-flag", "DNF"));
   if (entry.in_garage) container.append(node("span", "race-flag garage-flag", "GAR"));
-  else if (entry.in_pits) container.append(node("span", "race-flag pit-flag", "PIT"));
-  else if (entry.pit_stop_requested) container.append(node("span", "race-flag pit-requested-flag", "PIT"));
   else if (entry.is_out_lap) container.append(node("span", "race-flag out-lap-flag", "OUT"));
   if (entry.causing_yellow) container.append(node("span", "race-flag yellow-flag", "Y"));
   const penalties = livePenalties.get(entry.vehicle_id);
@@ -418,7 +416,7 @@ const cellSignature = (entry: StandingEntry, column: RelativeColumnId, trackLimi
     case "tire": return entry.tire_compounds.join("/");
     case "signals": {
       const penalties = livePenalties.get(entry.vehicle_id);
-      return `${entry.finish_status}|${entry.in_garage}|${entry.in_pits}|${entry.pit_stop_requested}|${entry.is_out_lap}|${entry.causing_yellow}|${entry.penalty_count}|${entry.flag}|${penalties?.DT ?? 0}|${penalties?.SG ?? 0}`;
+      return `${entry.finish_status}|${entry.in_garage}|${entry.is_out_lap}|${entry.causing_yellow}|${entry.penalty_count}|${entry.flag}|${penalties?.DT ?? 0}|${penalties?.SG ?? 0}`;
     }
   }
 };
