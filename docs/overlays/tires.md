@@ -82,7 +82,8 @@ Detailed Damage (`damage.md`).
   fixed top or left offsets.
 - Suspension damage is color-only on its SVG. Keep compound in the wheel tooltip.
   Keep each suspension glyph subordinate to its tyre and brake graphic.
-  Keep tyre, brake and suspension shapes in separate non-overlapping tracks.
+  Keep tyre, brake and suspension shapes in separate tracks with a small visible
+  gap between each shape.
   Do not restore corner cards, suspension percentages, compound icons or repeated
   corner/value abbreviations.
 - Cache nodes and skip unchanged text, attributes, datasets and CSS variables in

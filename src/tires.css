@@ -51,14 +51,14 @@ body.tires-body {
   z-index: 2;
   display: grid;
   align-items: center;
-  width: calc(37px * var(--overlay-font-width-expansion, 1) + 16px);
+  width: calc(37px * var(--overlay-font-width-expansion, 1) + 18px);
   height: calc(52px * var(--overlay-font-height-expansion, 1));
 }
 
 .wheel-fl,
-.wheel-rl { left: 0; grid-template-columns: minmax(0, 1fr) 16px; }
+.wheel-rl { left: 0; grid-template-columns: minmax(0, 1fr) 18px; }
 .wheel-fr,
-.wheel-rr { right: 0; grid-template-columns: 16px minmax(0, 1fr); }
+.wheel-rr { right: 0; grid-template-columns: 18px minmax(0, 1fr); }
 .wheel-fl,
 .wheel-fr { top: 1px; }
 .wheel-rl,
@@ -104,7 +104,7 @@ body.tires-body {
 
 .wheel-visual {
   position: relative;
-  width: 16px;
+  width: 18px;
   height: 42px;
 }
 
@@ -155,9 +155,9 @@ body.tires-body {
   background: var(--brake-color);
 }
 .wheel-fl .brake-disc,
-.wheel-rl .brake-disc { left: 9px; }
+.wheel-rl .brake-disc { left: 10px; }
 .wheel-fr .brake-disc,
-.wheel-rr .brake-disc { right: 9px; }
+.wheel-rr .brake-disc { right: 10px; }
 
 .suspension-arm {
   z-index: 1;
@@ -169,11 +169,11 @@ body.tires-body {
 }
 .wheel-fl .suspension-arm,
 .wheel-rl .suspension-arm {
-  left: 11px;
+  left: 13px;
 }
 .wheel-fr .suspension-arm,
 .wheel-rr .suspension-arm {
-  right: 11px;
+  right: 13px;
   transform: scaleX(-1);
 }
 
