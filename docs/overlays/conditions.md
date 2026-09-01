@@ -51,6 +51,11 @@
   (rain is omitted at zero).
   The data row shows air temperature, track temperature, wind (speed, absolute
   compass bearing and vehicle-relative arrow), humidity and numeric wetness.
+- Every header value and data column is independently optional: condition/icon,
+  surface state, official grip, rain, air temperature, track temperature, wind,
+  humidity and wetness. The remaining data columns expand to use the available
+  width; an empty header or data row is removed. These preferences also apply to
+  the OBS route and configuration import/export.
 - Cells share the restrained visual language and a thin divider between them;
   the state is color-coded by surface condition.
 - Keep equal compact tracks except for Wind, which receives the minimum extra

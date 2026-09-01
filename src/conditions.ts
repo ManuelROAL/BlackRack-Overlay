@@ -4,9 +4,15 @@ import { fitOverlay } from "./overlay-fit";
 import { bindOverlayInteractionMode } from "./overlay-interaction";
 import { bindOverlayTransparency } from "./overlay-appearance";
 import { createOverlayPerformanceTracker } from "./overlay-performance";
-import { isTauriRuntime, listenTelemetry } from "./runtime-events";
+import { isTauriRuntime, listenRuntimeEvent, listenTelemetry } from "./runtime-events";
 import { t } from "./i18n";
 import { weatherIconUrl } from "./weather-icons";
+import {
+  CONDITIONS_OPTIONS,
+  readConditionsSettings,
+  type ConditionsOptionId,
+  type ConditionsSettings
+} from "./conditions-settings";
 
 type ConditionValue = "air" | "track" | "wind" | "humidity" | "rain" | "grip" | "wetness";
 
@@ -29,6 +35,42 @@ const surfacePercent = document.getElementById("conditions-surface-percent")!;
 const weatherLabel = document.getElementById("conditions-weather-label")!;
 const rainSummary = document.getElementById("conditions-rain-summary")!;
 const windArrow = document.getElementById("conditions-wind-arrow")!;
+const shell = document.querySelector<HTMLElement>(".conditions-shell")!;
+const header = document.querySelector<HTMLElement>(".conditions-header")!;
+const grid = document.querySelector<HTMLElement>(".conditions-grid")!;
+let settings = readConditionsSettings();
+let rainAvailable = false;
+let layoutSignature = "";
+
+const updateLayout = (): void => {
+  const headerVisible = (["weather", "surface", "grip"] as ConditionsOptionId[])
+    .some((id) => settings.visible[id]) || (settings.visible.rain && rainAvailable);
+  const gridColumns = (["air", "track", "wind", "humidity", "wetness"] as ConditionsOptionId[])
+    .filter((id) => settings.visible[id]);
+  const nextSignature = `${headerVisible}|${gridColumns.join("|")}`;
+  if (layoutSignature === nextSignature) return;
+  layoutSignature = nextSignature;
+  header.hidden = !headerVisible;
+  grid.hidden = gridColumns.length === 0;
+  shell.dataset.headerVisible = String(headerVisible);
+  shell.dataset.gridVisible = String(gridColumns.length > 0);
+  grid.style.setProperty(
+    "--conditions-grid-columns",
+    gridColumns.map((id) => id === "wind" ? "minmax(105px, 1.55fr)" : "minmax(48px, 1fr)").join(" ")
+  );
+};
+
+const applySettings = (next: ConditionsSettings): void => {
+  settings = next;
+  for (const { id } of CONDITIONS_OPTIONS) {
+    document.querySelector<HTMLElement>(`[data-conditions-part="${id}"]`)
+      ?.toggleAttribute("hidden", !settings.visible[id]);
+  }
+  rainSummary.hidden = !settings.visible.rain || !rainAvailable;
+  updateLayout();
+};
+
+applySettings(settings);
 
 const setText = (element: HTMLElement, text: string): void => {
   if (element.textContent !== text) element.textContent = text;
@@ -90,7 +132,9 @@ const render = (frame: TelemetryFrame): void => {
   setText(values.rain, formatPercent(frame.rest_weather_available ? frame.rain_percent : NaN));
   setText(values.grip, formatPercent(frame.player_grip_percent > 0 ? frame.player_grip_percent : NaN));
   setText(values.wetness, formatPercent(frame.rest_weather_available ? frame.track_wetness_percent : NaN));
-  rainSummary.hidden = !frame.rest_weather_available || frame.rain_percent <= 0;
+  rainAvailable = frame.rest_weather_available && frame.rain_percent > 0;
+  rainSummary.hidden = !settings.visible.rain || !rainAvailable;
+  updateLayout();
 };
 
 const previewFrame = {
@@ -120,3 +164,6 @@ const previewFrame = {
 bindOverlayInteractionMode();
 if (!isTauriRuntime()) render(previewFrame);
 void listenTelemetry((frame) => renderPerformance.measure(() => render(frame)));
+if (isTauriRuntime()) {
+  void listenRuntimeEvent<ConditionsSettings>("conditions://settings", applySettings);
+}

@@ -8,22 +8,22 @@
   <body class="conditions-body">
     <main class="conditions-shell" data-tauri-drag-region>
       <header class="conditions-header" data-tauri-drag-region>
-        <div class="conditions-weather" data-tauri-drag-region>
+        <div class="conditions-weather" data-conditions-part="weather" data-tauri-drag-region>
           <img id="conditions-icon" alt="" aria-hidden="true" />
           <span id="conditions-weather-label" data-i18n="conditions.clear">Despejado</span>
         </div>
         <div class="conditions-summary" data-tauri-drag-region>
-          <span class="conditions-surface"><span id="conditions-state" class="conditions-state" data-state="dry" data-i18n="conditions.dry">SECO</span> <span id="conditions-surface-percent">--%</span></span>
-          <span class="conditions-summary-part"><span data-conditions-value="grip">--%</span> <span data-i18n="conditions.grip">GRIP</span></span>
-          <span id="conditions-rain-summary" class="conditions-summary-part"><span data-conditions-value="rain">--%</span> <span data-i18n="conditions.rain">LLUVIA</span></span>
+          <span class="conditions-surface" data-conditions-part="surface"><span id="conditions-state" class="conditions-state" data-state="dry" data-i18n="conditions.dry">SECO</span> <span id="conditions-surface-percent">--%</span></span>
+          <span class="conditions-summary-part" data-conditions-part="grip"><span data-conditions-value="grip">--%</span> <span data-i18n="conditions.grip">GRIP</span></span>
+          <span id="conditions-rain-summary" class="conditions-summary-part" data-conditions-part="rain"><span data-conditions-value="rain">--%</span> <span data-i18n="conditions.rain">LLUVIA</span></span>
         </div>
       </header>
       <dl class="conditions-grid" data-tauri-drag-region>
-        <div class="conditions-cell"><dt data-i18n="conditions.air">AIRE</dt><dd data-conditions-value="air">--°</dd></div>
-        <div class="conditions-cell"><dt data-i18n="conditions.track">PISTA</dt><dd data-conditions-value="track">--°</dd></div>
-        <div class="conditions-cell"><dt data-i18n="conditions.wind">VIENTO</dt><dd class="conditions-wind"><span id="conditions-wind-arrow" aria-hidden="true"></span><span data-conditions-value="wind">--</span></dd></div>
-        <div class="conditions-cell"><dt data-i18n="conditions.humidity">HUM.</dt><dd data-conditions-value="humidity">--%</dd></div>
-        <div class="conditions-cell"><dt data-i18n="conditions.wetness">MOJADO</dt><dd data-conditions-value="wetness">--%</dd></div>
+        <div class="conditions-cell" data-conditions-part="air"><dt data-i18n="conditions.air">AIRE</dt><dd data-conditions-value="air">--°</dd></div>
+        <div class="conditions-cell" data-conditions-part="track"><dt data-i18n="conditions.track">PISTA</dt><dd data-conditions-value="track">--°</dd></div>
+        <div class="conditions-cell" data-conditions-part="wind"><dt data-i18n="conditions.wind">VIENTO</dt><dd class="conditions-wind"><span id="conditions-wind-arrow" aria-hidden="true"></span><span data-conditions-value="wind">--</span></dd></div>
+        <div class="conditions-cell" data-conditions-part="humidity"><dt data-i18n="conditions.humidity">HUM.</dt><dd data-conditions-value="humidity">--%</dd></div>
+        <div class="conditions-cell" data-conditions-part="wetness"><dt data-i18n="conditions.wetness">MOJADO</dt><dd data-conditions-value="wetness">--%</dd></div>
       </dl>
     </main>
     <script type="module" src="/src/conditions.ts"></script>
