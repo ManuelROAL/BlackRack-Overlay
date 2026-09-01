@@ -178,6 +178,7 @@ export interface TelemetryFrame {
   current_humidity_percent: number;
   wind_speed_ms: number;
   wind_direction_degrees: number;
+  wind_relative_direction_degrees: number;
   player_grip_percent: number;
   track_rubber_percent: number;
   track_grip_state: "dry" | "damp" | "wet" | "heavy" | "saturated";

@@ -615,6 +615,7 @@ pub struct TelemetryFrame {
     current_humidity_percent: f64,
     wind_speed_ms: f64,
     wind_direction_degrees: f64,
+    wind_relative_direction_degrees: f64,
     player_grip_percent: f64,
     track_rubber_percent: f64,
     track_grip_state: &'static str,
@@ -875,6 +876,7 @@ impl TelemetryFrame {
             current_humidity_percent: 0.0,
             wind_speed_ms: 0.0,
             wind_direction_degrees: 0.0,
+            wind_relative_direction_degrees: 0.0,
             player_grip_percent: 0.0,
             track_rubber_percent: 0.0,
             track_grip_state: "dry",
@@ -1023,6 +1025,7 @@ pub fn spawn_source(app: AppHandle) {
         let mut last_track_map = now.checked_sub(SOURCE_INTERVAL).unwrap_or(now);
         let mut last_damage = now.checked_sub(SOURCE_INTERVAL).unwrap_or(now);
         let mut last_pitstop = now.checked_sub(SOURCE_INTERVAL).unwrap_or(now);
+        let mut last_conditions = now.checked_sub(SOURCE_INTERVAL).unwrap_or(now);
         let mut last_weather = now.checked_sub(WEATHER_INTERVAL).unwrap_or(now);
         let mut last_flags = now.checked_sub(IDLE_WARNING_INTERVAL).unwrap_or(now);
         let mut last_rejoin = now.checked_sub(IDLE_WARNING_INTERVAL).unwrap_or(now);
@@ -1190,7 +1193,9 @@ pub fn spawn_source(app: AppHandle) {
                     && super::overlay_is_active(&app, "pitstop");
             let weather_due = interval_due(&mut last_weather, now, WEATHER_INTERVAL);
             let emit_forecast = weather_due && super::overlay_is_active(&app, "forecast");
-            let emit_conditions = weather_due && super::overlay_is_active(&app, "conditions");
+            let emit_conditions =
+                interval_due(&mut last_conditions, now, tuning.secondary_overlay_interval)
+                    && super::overlay_is_active(&app, "conditions");
             let emit_fuel = interval_due(&mut last_fuel, now, tuning.fast_overlay_interval)
                 && super::overlay_is_active(&app, "fuel");
             let flag_interval = if frame.flag_warning.active {

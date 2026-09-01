@@ -21,7 +21,7 @@ UI behavior, telemetry semantics, cadence and special invariants.
 | Flags | [flags.md](flags.md) | `flags.html` | `/flags` | 50 Hz active, 4 Hz inactive |
 | Rejoin | [rejoin.md](rejoin.md) | `rejoin.html` | `/rejoin` | 20 Hz active, 4 Hz inactive |
 | Weather Forecast | [forecast.md](forecast.md) | `forecast.html` | `/forecast` | 2 Hz |
-| Current conditions | [conditions.md](conditions.md) | `conditions.html` | `/conditions` | 2 Hz |
+| Current conditions | [conditions.md](conditions.md) | `conditions.html` | `/conditions` | 20/12.5/~8 Hz by profile |
 
 Cross-cutting ownership remains in:
 

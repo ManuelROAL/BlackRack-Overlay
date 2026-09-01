@@ -113,6 +113,7 @@ const telemetryFields: Record<OverlayId, readonly (keyof TelemetryFrame)[]> = {
   conditions: [
     "rest_weather_available", "ambient_temperature_c", "track_temperature_c",
     "rain_percent", "track_wetness_percent", "wind_speed_ms", "wind_direction_degrees",
+    "wind_relative_direction_degrees",
     "player_grip_percent", "track_rubber_percent", "track_grip_state", "cloud_coverage", "current_humidity_percent",
     "weather_forecast"
   ]

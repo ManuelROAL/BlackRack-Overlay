@@ -8,7 +8,9 @@
 - REST source: `src-tauri/src/telemetry/lmu_rest.rs` (forecast humidity fallback
   from `/rest/sessions/weather`)
 - OBS route: `/conditions`
-- Cadence: 2 Hz (500 ms)
+- Cadence: 20 Hz Smooth, 12.5 Hz Balanced, about 8 Hz Efficiency; the faster
+  delivery keeps the relative wind arrow responsive while weather values remain
+  backed by their low-frequency sources.
 
 ## Data semantics
 
@@ -18,6 +20,9 @@
   `WNV_WINDDIRECTION` is the eight-point meteorological compass index. Do not
   convert shared-memory `mWind` into a compass bearing: its components use
   track/world axes rather than a documented north reference.
+- The cardinal label remains the absolute meteorological direction. The arrow is
+  rotated relative to the selected vehicle from telemetry `mOri`, matching doX:
+  it therefore moves as the car turns even while the forecast direction is fixed.
 - The condition icon combines live shared-memory `mCloudCoverage` and `mRaining`
   into the game's 0..10 weather scale. The current forecast node's `sky` is used
   only as fallback when live weather values are unavailable.
@@ -42,8 +47,8 @@
 - Keep the panel as two compact rows. The header shows the localized live weather
   condition, surface state with rubber/wetness percentage, official grip and rain
   (rain is omitted at zero).
-  The data row shows air temperature, track temperature, wind (speed, compass
-  bearing and arrow), humidity and numeric wetness.
+  The data row shows air temperature, track temperature, wind (speed, absolute
+  compass bearing and vehicle-relative arrow), humidity and numeric wetness.
 - Cells share the restrained visual language and a thin divider between them;
   the state is color-coded by surface condition.
 - Keep equal compact tracks except for Wind, which receives the minimum extra
@@ -54,8 +59,9 @@
 
 ## Verification focus
 
-Test REST wind units/direction, shared-memory grip availability, state thresholds,
-humidity fallback and missing/stale forecast with the frontend build.
+Test REST wind units/direction, vehicle-relative arrow rotation, shared-memory
+grip availability, state thresholds, humidity fallback and missing/stale forecast
+with the frontend build.
 
 ## Localization
 

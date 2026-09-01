@@ -125,6 +125,8 @@ struct LmuSnapshot {
     double wind_x;
     double wind_y;
     double wind_z;
+    double player_orientation_right_z;
+    double player_orientation_forward_z;
     double player_tire_remaining_percent;
     double player_damage_percent;
     double player_engine_oil_temperature_c;
@@ -513,6 +515,8 @@ extern "C" int lmu_read_snapshot(LmuSnapshot* output, int32_t spectator_vehicle_
     output->fuel_capacity_liters = vehicle.mFuelCapacity;
     output->virtual_energy = static_cast<double>(vehicle.mVirtualEnergy);
     output->vehicle_class_id = static_cast<uint32_t>(vehicle.mVehicleClass);
+    output->player_orientation_right_z = vehicle.mOri[0].z;
+    output->player_orientation_forward_z = vehicle.mOri[2].z;
     for (const TelemWheelV01& wheel : vehicle.mWheel) {
         if (wheel.mSurfaceType >= 2 && wheel.mSurfaceType <= 4) {
             ++output->player_offroad_wheels;

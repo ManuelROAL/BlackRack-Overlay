@@ -28,6 +28,7 @@ const state = document.getElementById("conditions-state")!;
 const surfacePercent = document.getElementById("conditions-surface-percent")!;
 const weatherLabel = document.getElementById("conditions-weather-label")!;
 const rainSummary = document.getElementById("conditions-rain-summary")!;
+const windArrow = document.getElementById("conditions-wind-arrow")!;
 
 const setText = (element: HTMLElement, text: string): void => {
   if (element.textContent !== text) element.textContent = text;
@@ -39,7 +40,6 @@ const formatTemp = (celsius: number): string =>
 const formatPercent = (value: number): string =>
   Number.isFinite(value) ? `${Math.round(value)}%` : "--%";
 
-const WIND_ARROWS = ["↑", "↗", "→", "↘", "↓", "↙", "←", "↖"] as const;
 const WIND_DIRECTIONS = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"] as const;
 const WEATHER_LABEL_KEYS = [
   "conditions.clear", "conditions.lightClouds", "conditions.partlyCloudy",
@@ -51,10 +51,9 @@ const WEATHER_LABEL_KEYS = [
 const windValue = (speedMs: number, bearing: number): string => {
   if (!Number.isFinite(speedMs) || speedMs <= 0) return "--";
   const directionIndex = Math.round(((bearing + 360) % 360) / 45) % 8;
-  const arrow = WIND_ARROWS[directionIndex];
   const direction = WIND_DIRECTIONS[directionIndex];
   const kmh = Math.round(speedMs * 3.6);
-  return `${arrow} ${kmh} km/h ${direction}`;
+  return `${kmh} km/h ${direction}`;
 };
 
 const render = (frame: TelemetryFrame): void => {
@@ -81,6 +80,12 @@ const render = (frame: TelemetryFrame): void => {
   setText(values.air, formatTemp(frame.rest_weather_available ? frame.ambient_temperature_c : NaN));
   setText(values.track, formatTemp(frame.rest_weather_available ? frame.track_temperature_c : NaN));
   setText(values.wind, windValue(frame.wind_speed_ms, frame.wind_direction_degrees));
+  const windAvailable = Number.isFinite(frame.wind_speed_ms) && frame.wind_speed_ms > 0;
+  windArrow.hidden = !windAvailable;
+  if (windAvailable && Number.isFinite(frame.wind_relative_direction_degrees)) {
+    const rotation = `rotate(${frame.wind_relative_direction_degrees.toFixed(1)}deg)`;
+    if (windArrow.style.transform !== rotation) windArrow.style.transform = rotation;
+  }
   setText(values.humidity, formatPercent(frame.current_humidity_percent > 0 ? frame.current_humidity_percent : NaN));
   setText(values.rain, formatPercent(frame.rest_weather_available ? frame.rain_percent : NaN));
   setText(values.grip, formatPercent(frame.player_grip_percent > 0 ? frame.player_grip_percent : NaN));
@@ -96,6 +101,7 @@ const previewFrame = {
   track_wetness_percent: 0,
   wind_speed_ms: 3.5,
   wind_direction_degrees: 290,
+  wind_relative_direction_degrees: 35,
   player_grip_percent: 75,
   track_rubber_percent: 26,
   track_grip_state: "dry",

@@ -266,6 +266,8 @@ struct LmuSnapshot {
     wind_x: f64,
     wind_y: f64,
     wind_z: f64,
+    player_orientation_right_z: f64,
+    player_orientation_forward_z: f64,
     player_tire_remaining_percent: f64,
     player_damage_percent: f64,
     player_engine_oil_temperature_c: f64,
@@ -356,6 +358,8 @@ impl Default for LmuSnapshot {
             wind_x: 0.0,
             wind_y: 0.0,
             wind_z: 0.0,
+            player_orientation_right_z: 0.0,
+            player_orientation_forward_z: 1.0,
             player_tire_remaining_percent: -1.0,
             player_damage_percent: 0.0,
             player_engine_oil_temperature_c: -1.0,
@@ -1309,9 +1313,21 @@ impl LmuTelemetrySource {
         // LMU's forecast direction is an explicit meteorological compass index.
         // The shared-memory mWind vector is expressed in track/world axes, so it
         // cannot be presented as a north-referenced bearing without extra track
-        // orientation data. doX likewise drives its wind readout from the current
-        // official forecast node rather than converting mWind into a compass.
+        // orientation data.
         rest_wind.unwrap_or((0.0, 0.0))
+    }
+
+    fn relative_wind_direction_degrees(
+        wind_bearing_degrees: f64,
+        orientation_right_z: f64,
+        orientation_forward_z: f64,
+    ) -> f64 {
+        // Match SimHub's LMU OrientationYaw, which doX subtracts from the
+        // meteorological direction in its wind dashboard.
+        let vehicle_yaw_degrees = orientation_right_z
+            .atan2(orientation_forward_z)
+            .to_degrees();
+        (-wind_bearing_degrees - vehicle_yaw_degrees).rem_euclid(360.0)
     }
 
     #[cfg(test)]
@@ -4012,6 +4028,11 @@ impl TelemetrySource for LmuTelemetrySource {
             })
         });
         let (wind_speed_ms, wind_direction_degrees) = Self::resolve_wind(rest_wind);
+        let wind_relative_direction_degrees = Self::relative_wind_direction_degrees(
+            wind_direction_degrees,
+            snapshot.player_orientation_right_z,
+            snapshot.player_orientation_forward_z,
+        );
         let player_grip_percent = Self::track_grip_percent(snapshot.track_grip_level);
         let track_rubber_percent = Self::track_rubber_percent(&snapshot);
         let track_grip_state = Self::track_surface_state(snapshot.track_wetness_percent);
@@ -4053,6 +4074,7 @@ impl TelemetrySource for LmuTelemetrySource {
             current_humidity_percent,
             wind_speed_ms,
             wind_direction_degrees,
+            wind_relative_direction_degrees,
             player_grip_percent,
             track_rubber_percent,
             track_grip_state,
@@ -4441,6 +4463,18 @@ mod tests {
             (7.0, 90.0)
         );
         assert_eq!(LmuTelemetrySource::resolve_wind(None), (0.0, 0.0));
+    }
+
+    #[test]
+    fn wind_arrow_is_relative_to_vehicle_orientation() {
+        assert_eq!(
+            LmuTelemetrySource::relative_wind_direction_degrees(90.0, 0.0, 1.0),
+            270.0
+        );
+        assert_eq!(
+            LmuTelemetrySource::relative_wind_direction_degrees(0.0, 1.0, 0.0),
+            270.0
+        );
     }
 
     #[test]

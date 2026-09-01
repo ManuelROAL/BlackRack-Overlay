@@ -133,6 +133,18 @@ body.conditions-body {
   white-space: nowrap;
 }
 
+.conditions-wind {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+#conditions-wind-arrow {
+  display: inline-block;
+  color: #a8c24a;
+  transform-origin: center;
+}
+
 body[data-available="false"] .conditions-cell dd {
   color: #687481;
 }

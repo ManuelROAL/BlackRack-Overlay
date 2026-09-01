@@ -206,6 +206,7 @@ impl TelemetrySource for MockTelemetrySource {
             current_humidity_percent: 80.0,
             wind_speed_ms: 3.5,
             wind_direction_degrees: 290.0,
+            wind_relative_direction_degrees: (elapsed * 18.0).rem_euclid(360.0),
             player_grip_percent: 75.0,
             track_rubber_percent: 56.0,
             track_grip_state: "heavy",
