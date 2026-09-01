@@ -1629,15 +1629,17 @@ pub fn run() {
                 && matches!(event, tauri::WindowEvent::CloseRequested { .. })
             {
                 save_control_window_position(window);
-                startup_log::record("control window close requested; exiting normally");
+                startup_log::record(
+                    "session end status=normal reason=control_window_close_requested",
+                );
                 window.app_handle().exit(0);
             }
         })
         .run(tauri::generate_context!())
         .unwrap_or_else(|error| {
-            startup_log::record(format!("fatal Tauri error: {error}"));
+            startup_log::record(format!("fatal Tauri error cause={error} details={error:?}"));
             panic!("error al ejecutar BlackRack Overlay: {error}");
         });
 
-    startup_log::record("Tauri event loop finished");
+    startup_log::record("session end status=normal reason=event_loop_finished");
 }

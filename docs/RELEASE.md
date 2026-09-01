@@ -41,7 +41,7 @@ seguir siendo opcional y nunca un requisito de instalación o funcionamiento.
 
 ## Privacidad y seguridad
 
-- No publicar logs de telemetría, `startup.log`, configuraciones exportadas ni bases
+- No publicar logs de telemetría o diagnóstico, configuraciones exportadas ni bases
   de datos aprendidas.
 - No incluir tickets, tokens, claves o datos de sesión.
 - El botón de apoyo abre una URL constante en el navegador del sistema; no aceptar

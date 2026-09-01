@@ -87,11 +87,12 @@ in `docs/overlays/` and should not be duplicated here.
   deliberately page-local so scenes in different languages can coexist without
   mutating the shared browser-source preference.
 - Shortcut conflicts are non-fatal and visible/configurable.
-- `startup.log` is replaced each run and is the first diagnostic for startup or
-  frontend failures on another computer. Uncaught errors, unhandled promise
-  rejections and explicit frontend `console.error` calls are persisted there
-  with duplicate/rate limiting. The replaced run remains available as
-  `startup.previous.log`, and known credential fields are redacted.
+- Each run creates a unique log under `%APPDATA%\BlackRack Overlay\diagnostics`;
+  the latest 20 sessions are retained without one launch overwriting another.
+  Uncaught errors, unhandled promise rejections and explicit frontend
+  `console.error` calls are persisted there with duplicate/rate limiting. Rust
+  panics record their cause, source location and backtrace, normal exits carry an
+  explicit end marker, and known credential fields are redacted.
 - Release checksums accompany artifacts but are not required to run the installer.
 
 ## Documentation ownership

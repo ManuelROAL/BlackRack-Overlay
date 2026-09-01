@@ -99,8 +99,10 @@ Tauri events    analysis JSONL/strategy CSV    browser-source SSE
 - `src/runtime-events.ts`: Tauri, composite-frame messaging or browser-source SSE
   abstraction.
 - `src/frontend-diagnostics.ts`: persists uncaught errors, unhandled promise
-  rejections and explicit `console.error` calls through the startup log, while
-  retaining the original browser-console output and bounding duplicate reports.
+  rejections and explicit `console.error` calls in the per-session diagnostic log,
+  while retaining the original browser-console output and bounding duplicate
+  reports. Rust panics add their cause, location and backtrace to that same log;
+  the backend retains the latest 20 session files.
 - `src/overlay-fit.ts`: scales the complete design when a window is resized.
 - `src/overlay-interaction.ts`: drag/click-through behavior.
 - `src/overlay-appearance.ts`: transparency and text-size persistence and application.
