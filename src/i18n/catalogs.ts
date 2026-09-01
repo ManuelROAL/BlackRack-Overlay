@@ -37,7 +37,7 @@ export const es = {
   "config.invalidMonitorMode": "El modo de monitor del archivo no es válido.", "config.invalidGeneral": "La configuración general del archivo no es válida.",
   "config.invalidStandings": "La configuración de Standings está incompleta o dañada.", "config.invalidRelative": "La configuración de Relative está incompleta o dañada.",
   "config.invalidDriving": "La configuración de Trailing + Pedal está incompleta o dañada.", "config.invalidDelta": "La configuración de Delta está incompleta o dañada.",
-  "config.invalidTiming": "La configuración de Timing está incompleta o dañada.", "config.invalidMap": "La configuración del mapa está incompleta o dañada.", "config.invalidFuel": "La configuración de combustible está incompleta o dañada.",
+  "config.invalidTiming": "La configuración de Timing está incompleta o dañada.", "config.invalidMap": "La configuración del mapa está incompleta o dañada.", "config.invalidFuel": "La configuración de combustible está incompleta o dañada.", "config.invalidTires": "La configuración de daños y neumáticos está incompleta o dañada.",
   "config.invalidOverlay": "La configuración de {overlay} está incompleta o dañada.",
   "config.confirmImport": "Se reemplazarán el idioma, la configuración, la posición y el tamaño de todos los overlays.",
   "shortcuts.heading": "ATAJOS GLOBALES", "shortcuts.sub": "Configurar combinaciones de teclado", "shortcuts.interaction": "Modo juego / edición",
@@ -78,6 +78,7 @@ export const es = {
   "settings.map": "MAPA DEL CIRCUITO", "settings.mapSub": "Predicción de parada", "settings.mapPrediction": "Mostrar posición P tras la parada",
   "settings.mapNote": "El mapa continúa aprendiendo el tránsito por boxes aunque se oculte la predicción.",
   "settings.fuel": "CONFIGURACIÓN DE COMBUSTIBLE", "settings.fuelSub": "Valores de los escenarios", "settings.fuelScenarioValue": "VALOR DE ESCENARIO", "settings.fuelNote": "Refuel muestra la carga de cada parada y usa la vuelta actual cuando hay una petición de parada activa.",
+  "settings.tires": "CONFIGURACIÓN DE DAÑOS Y NEUMÁTICOS", "settings.engineTemperatures": "Temperaturas del motor", "settings.showOilTemperature": "Mostrar temperatura de aceite", "settings.showWaterTemperature": "Mostrar temperatura de agua",
   "delta.off": "Desactivado", "delta.overallBest": "Mejor global", "delta.overallLap": "Óptima global", "delta.overallSectors": "Sectores globales",
   "delta.sessionBest": "Mejor de sesión", "delta.sessionLap": "Óptima de sesión", "delta.sessionSectors": "Sectores de sesión", "delta.stintBest": "Mejor de stint", "delta.lastLap": "Última vuelta",
   "pedal.throttle": "Acelerador", "pedal.brake": "Freno", "pedal.clutch": "Embrague",
@@ -220,7 +221,7 @@ export const es = {
   "tires.tooltip": "Neumático {tire} · Disco {brake} · {remaining} restante · Plano {flat} · Suspensión {suspension} · Compuesto {compound}",
   "tires.chassisPart": "Chasis {part}: nivel {level}", "tires.part.frontCenter": "frontal central", "tires.part.frontLeft": "frontal izquierda", "tires.part.left": "lateral izquierda",
   "tires.part.rearLeft": "trasera izquierda", "tires.part.rearCenter": "trasera central", "tires.part.rearRight": "trasera derecha", "tires.part.right": "lateral derecha", "tires.part.frontRight": "frontal derecha",
-  "tires.wingDetached": "Alerón desprendido", "tires.aeroDamage": "Daño aerodinámico global {value}%", "tires.aeroUnavailable": "Daño aerodinámico global no disponible", "tires.engineNormal": "Motor sin alertas", "tires.engineFailure": "Alerta de sobrecalentamiento del motor",
+  "tires.wingDetached": "Alerón desprendido", "tires.aeroDamage": "Daño aerodinámico global {value}%", "tires.aeroUnavailable": "Daño aerodinámico global no disponible", "tires.engineNormal": "Motor sin alertas", "tires.engineFailure": "Alerta de sobrecalentamiento del motor", "tires.oilTemperature": "Temperatura de aceite {value}", "tires.waterTemperature": "Temperatura de agua {value}",
   "common.lapsBehind": "+{count} V", "fuel.lapsValue": "{value}V", "fuel.lapRange": "V{first}–V{last}", "fuel.litersPerLap": "{value}L/V"
 } as const satisfies Record<string, Message>;
 
@@ -257,7 +258,7 @@ export const en = {
   "config.invalidJson": "The file does not contain valid JSON.", "config.incompatible": "The file is not a compatible BlackRack Overlay configuration.", "config.invalidTransparency": "The file contains an invalid transparency mode.", "config.invalidFontSize": "The file contains an invalid text size mode.",
   "config.invalidMonitor": "The file contains an invalid monitor.", "config.invalidMonitorMode": "The file contains an invalid monitor mode.", "config.invalidGeneral": "The file contains invalid general settings.",
   "config.invalidStandings": "The Standings configuration is incomplete or corrupt.", "config.invalidRelative": "The Relative configuration is incomplete or corrupt.", "config.invalidDriving": "The Trailing + Pedal configuration is incomplete or corrupt.",
-  "config.invalidDelta": "The Delta configuration is incomplete or corrupt.", "config.invalidTiming": "The Compact Timing configuration is incomplete or corrupt.", "config.invalidMap": "The track map configuration is incomplete or corrupt.", "config.invalidFuel": "The fuel configuration is incomplete or corrupt.",
+  "config.invalidDelta": "The Delta configuration is incomplete or corrupt.", "config.invalidTiming": "The Compact Timing configuration is incomplete or corrupt.", "config.invalidMap": "The track map configuration is incomplete or corrupt.", "config.invalidFuel": "The fuel configuration is incomplete or corrupt.", "config.invalidTires": "The damage and tyres configuration is incomplete or corrupt.",
   "config.invalidOverlay": "The {overlay} configuration is incomplete or corrupt.", "config.confirmImport": "The language, configuration, position and size of every overlay will be replaced.",
   "shortcuts.heading": "GLOBAL SHORTCUTS", "shortcuts.sub": "Configure key combinations", "shortcuts.interaction": "Game / edit mode", "shortcuts.interactionSub": "Enable or disable interaction with overlays.",
   "shortcuts.interactionAria": "Shortcut for changing interaction mode", "shortcuts.showPanel": "Show panel", "shortcuts.showPanelSub": "Bring this window back when it is hidden.", "shortcuts.showPanelAria": "Shortcut for showing the panel",
@@ -284,6 +285,7 @@ export const en = {
   "timing.lmu": "LMU delta", "timing.session": "Session best", "timing.overall": "Overall best",
   "settings.map": "TRACK MAP", "settings.mapSub": "Pit-stop prediction", "settings.mapPrediction": "Show predicted position P after the stop", "settings.mapNote": "The map keeps learning pit-lane transit even when the prediction is hidden.",
   "settings.fuel": "FUEL CONFIGURATION", "settings.fuelSub": "Scenario values", "settings.fuelScenarioValue": "SCENARIO VALUE", "settings.fuelNote": "Refuel shows the load for each stop and uses the current lap while a pit request is active.",
+  "settings.tires": "DAMAGE AND TYRES CONFIGURATION", "settings.engineTemperatures": "Engine temperatures", "settings.showOilTemperature": "Show oil temperature", "settings.showWaterTemperature": "Show water temperature",
   "delta.off": "Disabled", "delta.overallBest": "Overall best", "delta.overallLap": "Overall optimal", "delta.overallSectors": "Overall sectors", "delta.sessionBest": "Session best",
   "delta.sessionLap": "Session optimal", "delta.sessionSectors": "Session sectors", "delta.stintBest": "Stint best", "delta.lastLap": "Last lap",
   "pedal.throttle": "Throttle", "pedal.brake": "Brake", "pedal.clutch": "Clutch", "readout.steering": "Steering", "readout.speed": "Speed (km/h)", "readout.gear": "Gear", "readout.rpmLeds": "RPM LEDs",
@@ -408,7 +410,7 @@ export const en = {
   "tires.unknown": "unknown", "tires.detached": "Wheel detached", "tires.flat": "Punctured tyre", "tires.tooltip": "Tyre {tire} · Disc {brake} · {remaining} remaining · Flat spot {flat} · Suspension {suspension} · Compound {compound}",
   "tires.chassisPart": "Chassis {part}: level {level}", "tires.part.frontCenter": "front centre", "tires.part.frontLeft": "front left", "tires.part.left": "left side",
   "tires.part.rearLeft": "rear left", "tires.part.rearCenter": "rear centre", "tires.part.rearRight": "rear right", "tires.part.right": "right side", "tires.part.frontRight": "front right",
-  "tires.wingDetached": "Rear wing detached", "tires.aeroDamage": "Overall aerodynamic damage {value}%", "tires.aeroUnavailable": "Overall aerodynamic damage unavailable", "tires.engineNormal": "Engine normal", "tires.engineFailure": "Engine overheating warning",
+  "tires.wingDetached": "Rear wing detached", "tires.aeroDamage": "Overall aerodynamic damage {value}%", "tires.aeroUnavailable": "Overall aerodynamic damage unavailable", "tires.engineNormal": "Engine normal", "tires.engineFailure": "Engine overheating warning", "tires.oilTemperature": "Oil temperature {value}", "tires.waterTemperature": "Water temperature {value}",
   "common.lapsBehind": "+{count} L", "fuel.lapsValue": "{value}L", "fuel.lapRange": "L{first}–L{last}", "fuel.litersPerLap": "{value}L/LAP"
 } as const satisfies Catalog;
 

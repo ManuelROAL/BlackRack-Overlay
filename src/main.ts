@@ -82,6 +82,12 @@ import {
   type FuelSettings
 } from "./fuel-settings";
 import {
+  defaultTiresSettings,
+  readTiresSettings,
+  TIRES_SETTINGS_KEY,
+  type TiresSettings
+} from "./tires-settings";
+import {
   DEFAULT_OVERLAY_FONT_SIZE,
   DEFAULT_OVERLAY_TRANSPARENCY,
   effectiveOverlayFontSize,
@@ -183,7 +189,7 @@ interface BrowserSourceStatus {
 
 interface OverlayConfigurationExport {
   format: "blackrack-overlay-configuration";
-  schemaVersion: 14;
+  schemaVersion: 15;
   exportedAt: string;
   ui: { locale: Locale };
   overlays: {
@@ -205,6 +211,7 @@ interface OverlayConfigurationExport {
     timing: TimingSettings;
     trackMap: TrackMapSettings;
     fuel: FuelSettings;
+    tires: TiresSettings;
     performanceProfile: PerformanceProfile;
     spectatorMode: boolean;
     teamMode: boolean;
@@ -331,7 +338,7 @@ if (localeSelect) {
   });
 }
 
-const CURRENT_CONFIGURATION_SCHEMA = 14;
+const CURRENT_CONFIGURATION_SCHEMA = 15;
 const CURRENT_CONFIGURATION_FORMAT = "blackrack-overlay-configuration";
 const LEGACY_CONFIGURATION_FORMAT = "lmu-overlay-configuration";
 const overlayIds: OverlayId[] = ["delta", "timing", "stinthistory", "driving", "liftcoast", "tires", "damage", "standings", "relative", "fuel", "pitstop", "flags", "rejoin", "trackmap", "forecast", "conditions"];
@@ -451,6 +458,7 @@ let deltaSettings: DeltaSettings = readDeltaSettings();
 let timingSettings: TimingSettings = readTimingSettings();
 let trackMapSettings: TrackMapSettings = readTrackMapSettings();
 let fuelSettings: FuelSettings = readFuelSettings();
+let tiresSettings: TiresSettings = readTiresSettings();
 const overlayTransparency = readOverlayTransparency();
 let overlayTransparencyScope: OverlayTransparencyScope = readOverlayTransparencyScope();
 const overlayFontSize = readOverlayFontSize();
@@ -479,6 +487,7 @@ const syncBrowserSourcePreferences = (): void => {
       timing: timingSettings,
       trackMap: trackMapSettings,
       fuel: fuelSettings,
+      tires: tiresSettings,
       transparency: effectiveOverlayTransparency(overlayTransparency, overlayTransparencyScope),
       fontSize: effectiveOverlayFontSize(overlayFontSize, overlayFontSizeScope),
       locale: getLocale(),
@@ -682,6 +691,12 @@ const persistFuelSettings = (): void => {
   syncBrowserSourcePreferences();
 };
 
+const persistTiresSettings = (): void => {
+  localStorage.setItem(TIRES_SETTINGS_KEY, JSON.stringify(tiresSettings));
+  void emit("tires://settings", tiresSettings);
+  syncBrowserSourcePreferences();
+};
+
 wheelCaptureButton?.addEventListener("click", () => {
   void invoke<WheelInputStatus>("capture_delta_wheel_button")
     .then(renderWheelInputStatus)
@@ -760,6 +775,23 @@ if (fuelScenarioMode) {
     if (!isFuelScenarioMode(fuelScenarioMode.value)) return;
     fuelSettings = { scenarioMode: fuelScenarioMode.value };
     persistFuelSettings();
+  });
+}
+
+const oilTemperatureToggle = document.getElementById("tires-oil-temperature") as HTMLInputElement | null;
+const waterTemperatureToggle = document.getElementById("tires-water-temperature") as HTMLInputElement | null;
+if (oilTemperatureToggle) {
+  oilTemperatureToggle.checked = tiresSettings.showOilTemperature;
+  oilTemperatureToggle.addEventListener("change", () => {
+    tiresSettings = { ...tiresSettings, showOilTemperature: oilTemperatureToggle.checked };
+    persistTiresSettings();
+  });
+}
+if (waterTemperatureToggle) {
+  waterTemperatureToggle.checked = tiresSettings.showWaterTemperature;
+  waterTemperatureToggle.addEventListener("change", () => {
+    tiresSettings = { ...tiresSettings, showWaterTemperature: waterTemperatureToggle.checked };
+    persistTiresSettings();
   });
 }
 
@@ -973,6 +1005,10 @@ const resetOverlayConfiguration = async (id: OverlayId): Promise<void> => {
     trackMapSettings = defaultTrackMapSettings();
     localStorage.setItem(TRACK_MAP_SETTINGS_KEY, JSON.stringify(trackMapSettings));
     events.push(emit("trackmap://settings", trackMapSettings));
+  } else if (id === "tires") {
+    tiresSettings = defaultTiresSettings();
+    localStorage.setItem(TIRES_SETTINGS_KEY, JSON.stringify(tiresSettings));
+    events.push(emit("tires://settings", tiresSettings));
   }
 
   const effective = effectiveOverlayTransparency(overlayTransparency, overlayTransparencyScope);
@@ -1235,6 +1271,7 @@ const parseOverlayConfiguration = (
   const timing = configurationObject(overlays?.timing);
   const trackMap = configurationObject(overlays?.trackMap);
   const fuel = configurationObject(overlays?.fuel);
+  const tires = configurationObject(overlays?.tires);
   const importedPerformanceProfile = overlays?.performanceProfile;
   const importedSpectatorMode = overlays?.spectatorMode;
   const importedTeamMode = overlays?.teamMode;
@@ -1264,7 +1301,8 @@ const parseOverlayConfiguration = (
     || (Number(schemaVersion) >= 2 && !driving)
     || (Number(schemaVersion) >= 3 && !delta) || (Number(schemaVersion) >= 4 && !timing)
     || (numericSchemaVersion >= 6 && !trackMap)
-    || (numericSchemaVersion >= 12 && !fuel)) {
+    || (numericSchemaVersion >= 12 && !fuel)
+    || (numericSchemaVersion >= 15 && !tires)) {
     throw new Error(t("config.incompatible"));
   }
   if (transparencyScope.mode !== "global" && transparencyScope.mode !== "individual") {
@@ -1398,6 +1436,11 @@ const parseOverlayConfiguration = (
   if (!isFuelScenarioMode(normalizedFuel.scenarioMode)) {
     throw new Error(t("config.invalidFuel"));
   }
+  const normalizedTires = tires ?? defaultTiresSettings();
+  if (typeof normalizedTires.showOilTemperature !== "boolean"
+    || typeof normalizedTires.showWaterTemperature !== "boolean") {
+    throw new Error(t("config.invalidTires"));
+  }
   const fallbackVisibility = defaultVisibility();
   for (const id of overlayIds) {
     if (visibility[id] === undefined) visibility[id] = fallbackVisibility[id];
@@ -1481,6 +1524,7 @@ const parseOverlayConfiguration = (
       timing: normalizedTimingWithTimes as unknown as TimingSettings,
       trackMap: normalizedTrackMap as unknown as TrackMapSettings,
       fuel: normalizedFuel as unknown as FuelSettings,
+      tires: normalizedTires as unknown as TiresSettings,
       performanceProfile: isPerformanceProfile(importedPerformanceProfile)
         ? importedPerformanceProfile
         : DEFAULT_PERFORMANCE_PROFILE,
@@ -1517,6 +1561,7 @@ const applyImportedConfiguration = (configuration: OverlayConfigurationExport): 
     [TIMING_SETTINGS_KEY, configuration.overlays.timing],
     [TRACK_MAP_SETTINGS_KEY, configuration.overlays.trackMap],
     [FUEL_SETTINGS_KEY, configuration.overlays.fuel],
+    [TIRES_SETTINGS_KEY, configuration.overlays.tires],
     [PERFORMANCE_PROFILE_KEY, configuration.overlays.performanceProfile],
     [SPECTATOR_MODE_KEY, configuration.overlays.spectatorMode && !configuration.overlays.teamMode],
     [TEAM_MODE_KEY, configuration.overlays.teamMode]
@@ -1573,6 +1618,7 @@ exportConfigurationButton?.addEventListener("click", () => {
         timing: timingSettings,
         trackMap: trackMapSettings,
         fuel: fuelSettings,
+        tires: tiresSettings,
         performanceProfile,
         spectatorMode,
         teamMode

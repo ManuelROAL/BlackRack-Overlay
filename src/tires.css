@@ -261,6 +261,48 @@ body.tires-body {
   filter: drop-shadow(0 0 3px rgb(255 36 79 / 72%));
 }
 
+.engine-temperatures {
+  position: absolute;
+  top: 58px;
+  left: 1px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  gap: 1px;
+}
+
+.engine-temperature {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  color: #8d98a4;
+  font-size: calc(7px * var(--overlay-font-scale, 1));
+  font-weight: 900;
+  line-height: 1;
+  text-shadow: 0 1px 2px #000;
+  white-space: nowrap;
+}
+
+.engine-temperature[hidden] { display: none; }
+
+.engine-temperature i {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  margin-right: 1px;
+  background: currentColor;
+}
+
+.engine-oil-temperature i {
+  mask: url("./assets/lmu-icons/damage/oil.svg") center / contain no-repeat;
+}
+
+.engine-water-temperature i {
+  mask: url("./assets/lmu-icons/damage/temperature-water.svg") center / contain no-repeat;
+}
+
 .damage-summary {
   position: absolute;
   top: 66px;
@@ -274,6 +316,9 @@ body.tires-body {
   font-weight: 800;
   letter-spacing: .1em;
 }
+
+.chassis[data-engine-temperature-count="1"] .damage-summary { top: 76px; }
+.chassis[data-engine-temperature-count="2"] .damage-summary { top: 89px; }
 
 .damage-summary span { display: none; }
 .damage-summary strong {

@@ -248,6 +248,8 @@ export interface TelemetryFrame {
   player_body_damage_percent: number;
   player_damage_severity: [number, number, number, number, number, number, number, number];
   player_engine_overheating: boolean;
+  player_engine_oil_temperature_c: number;
+  player_engine_water_temperature_c: number;
   player_part_detached: boolean;
   player_rear_wing_detached: boolean;
   player_tire_temperature_c: [number, number, number, number];

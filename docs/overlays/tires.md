@@ -4,7 +4,9 @@
 
 - Entry: `tires.html`
 - Renderer/style: `src/tires.ts`, `src/tires.css`
-- Engine asset: `src/assets/lmu-icons/damage/engine-motor.svg`
+- Settings: `src/tires-settings.ts`
+- Engine assets: `src/assets/lmu-icons/damage/engine-motor.svg`,
+  `oil.svg`, `temperature-water.svg`
 - Shared-memory conversion: `src-tauri/src/telemetry/lmu_bridge.cpp`,
   `src-tauri/src/telemetry/lmu.rs`
 - REST supplement: `src-tauri/src/telemetry/lmu_rest.rs`
@@ -71,6 +73,11 @@ Detailed Damage (`damage.md`).
 - Show a compact engine SVG inside the chassis. Keep it neutral normally and turn
   it red only from shared memory's official `mOverheating` engine-warning signal;
   zero RPM, ignition state and body damage must not infer an engine failure.
+- Oil and water temperature are independent, optional readings sourced directly
+  from `mEngineOilTemp` and `mEngineWaterTemp` in Celsius. Place their supplied
+  SVG icons and compact values stacked directly below the engine icon inside
+  the chassis. Both are hidden by default, persist independently and mirror to
+  the OBS route.
 
 ## Presentation and hot path
 
@@ -102,7 +109,8 @@ Detailed Damage (`damage.md`).
 Test all four corners and three tyre bands independently, temperature conversion,
 remaining tread, flat-spot reset, suspension source mapping,
 puncture/detachment priority, wing false positives, engine-warning state and
-REST-unavailable fallback.
+REST-unavailable fallback. Verify oil/water values, both independent visibility
+toggles, reset/import/export persistence and OBS preference mirroring.
 
 ## Localization
 

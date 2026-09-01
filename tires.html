@@ -60,6 +60,14 @@
             <path class="aero-wing" data-aero-wing d="M13 157h56" />
           </svg>
           <span class="engine-status" data-engine-status role="img" aria-label="Motor"></span>
+          <div class="engine-temperatures" data-tauri-drag-region>
+            <span class="engine-temperature engine-oil-temperature" data-engine-temperature="oil" hidden>
+              <i aria-hidden="true"></i><strong>--°</strong>
+            </span>
+            <span class="engine-temperature engine-water-temperature" data-engine-temperature="water" hidden>
+              <i aria-hidden="true"></i><strong>--°</strong>
+            </span>
+          </div>
           <div class="damage-summary" data-tauri-drag-region><span>DMG</span><strong id="damage-value">0%</strong></div>
         </div>
       </section>

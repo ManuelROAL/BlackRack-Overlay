@@ -127,6 +127,8 @@ struct LmuSnapshot {
     double wind_z;
     double player_tire_remaining_percent;
     double player_damage_percent;
+    double player_engine_oil_temperature_c;
+    double player_engine_water_temperature_c;
     double player_tire_temperature_c[4];
     double player_tire_temperature_by_zone_c[4][3];
     double player_brake_temperature_c[4];
@@ -260,6 +262,8 @@ extern "C" int lmu_read_snapshot(LmuSnapshot* output, int32_t spectator_vehicle_
     output->wind_y = scoring.scoringInfo.mWind.y;
     output->wind_z = scoring.scoringInfo.mWind.z;
     output->player_tire_remaining_percent = -1.0;
+    output->player_engine_oil_temperature_c = -1.0;
+    output->player_engine_water_temperature_c = -1.0;
     std::fill_n(output->player_tire_temperature_c, 4, -1.0);
     std::fill_n(&output->player_tire_temperature_by_zone_c[0][0], 12, -1.0);
     std::fill_n(output->player_brake_temperature_c, 4, -1.0);
@@ -383,6 +387,8 @@ extern "C" int lmu_read_snapshot(LmuSnapshot* output, int32_t spectator_vehicle_
                 destination.wheel_compounds[i] = vehicle_telemetry->mWheel[i].mCompoundType;
             }
             if (destination.is_player) {
+                output->player_engine_oil_temperature_c = vehicle_telemetry->mEngineOilTemp;
+                output->player_engine_water_temperature_c = vehicle_telemetry->mEngineWaterTemp;
                 double remaining = 100.0;
                 for (size_t wheel_index = 0; wheel_index < 4; ++wheel_index) {
                     const TelemWheelV01& wheel = vehicle_telemetry->mWheel[wheel_index];

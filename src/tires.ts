@@ -4,9 +4,10 @@ import { fitOverlay } from "./overlay-fit";
 import { bindOverlayInteractionMode } from "./overlay-interaction";
 import { bindOverlayTransparency } from "./overlay-appearance";
 import { createOverlayPerformanceTracker } from "./overlay-performance";
-import { isTauriRuntime, listenTelemetry } from "./runtime-events";
+import { isTauriRuntime, listenRuntimeEvent, listenTelemetry } from "./runtime-events";
 import { formatNumber, t, type TranslationKey } from "./i18n";
 import { brakeTemperatureColor, tireTemperatureColor } from "./temperature-colors";
+import { readTiresSettings, type TiresSettings } from "./tires-settings";
 
 const wheels = Array.from(document.querySelectorAll<HTMLElement>("[data-wheel]"));
 const temperatures = wheels.map((wheel) => wheel.querySelector<HTMLElement>(".wheel-temperature")!);
@@ -15,10 +16,16 @@ const wearValues = wheels.map((wheel) => wheel.querySelector<HTMLElement>(".whee
 const flatSpotValues = wheels.map((wheel) => wheel.querySelector<HTMLElement>(".wheel-flatspot")!);
 const damageParts = Array.from(document.querySelectorAll<SVGElement>("[data-damage-part]"));
 const aeroWing = document.querySelector<SVGElement>("[data-aero-wing]")!;
+const chassis = document.querySelector<HTMLElement>(".chassis")!;
 const engineStatus = document.querySelector<HTMLElement>("[data-engine-status]")!;
 const damageSummary = document.querySelector<HTMLElement>(".damage-summary")!;
 const damageValue = document.getElementById("damage-value")!;
+const oilTemperature = document.querySelector<HTMLElement>('[data-engine-temperature="oil"]')!;
+const waterTemperature = document.querySelector<HTMLElement>('[data-engine-temperature="water"]')!;
+const oilTemperatureValue = oilTemperature.querySelector<HTMLElement>("strong")!;
+const waterTemperatureValue = waterTemperature.querySelector<HTMLElement>("strong")!;
 const renderPerformance = createOverlayPerformanceTracker("tires");
+let settings = readTiresSettings();
 
 const setText = (element: HTMLElement, value: string): void => {
   if (element.textContent !== value) element.textContent = value;
@@ -135,6 +142,15 @@ const render = (frame: TelemetryFrame): void => {
   setAttribute(engineStatus, "aria-label", engineLabel);
   setAttribute(engineStatus, "title", engineLabel);
 
+  setText(oilTemperatureValue, readable(frame.player_engine_oil_temperature_c, 0, "°"));
+  setText(waterTemperatureValue, readable(frame.player_engine_water_temperature_c, 0, "°"));
+  setAttribute(oilTemperature, "title", t("tires.oilTemperature", {
+    value: readable(frame.player_engine_oil_temperature_c, 0, " °C")
+  }));
+  setAttribute(waterTemperature, "title", t("tires.waterTemperature", {
+    value: readable(frame.player_engine_water_temperature_c, 0, " °C")
+  }));
+
   const aggregateDamage = Math.round(frame.player_damage_percent);
   setText(damageValue, `${aggregateDamage}%`);
   setData(damageSummary, "state", frame.player_part_detached || aggregateDamage >= 50
@@ -159,9 +175,18 @@ const previewFrame = {
   player_damage_percent: 19,
   player_damage_severity: [0, 2, 1, 0, 0, 0, 0, 0],
   player_engine_overheating: false,
+  player_engine_oil_temperature_c: 101,
+  player_engine_water_temperature_c: 86,
   player_part_detached: false,
   player_rear_wing_detached: false
 } as TelemetryFrame;
+
+const applySettings = (next: TiresSettings): void => {
+  settings = next;
+  oilTemperature.hidden = !settings.showOilTemperature;
+  waterTemperature.hidden = !settings.showWaterTemperature;
+  chassis.dataset.engineTemperatureCount = String(Number(settings.showOilTemperature) + Number(settings.showWaterTemperature));
+};
 
 fitOverlay(
   { width: 194, height: 130 },
@@ -169,5 +194,7 @@ fitOverlay(
 );
 bindOverlayTransparency("tires");
 bindOverlayInteractionMode();
+applySettings(settings);
 if (!isTauriRuntime()) render(previewFrame);
 void listenTelemetry((frame) => renderPerformance.measure(() => render(frame)));
+void listenRuntimeEvent<TiresSettings>("tires://settings", applySettings);
