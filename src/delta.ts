@@ -4,9 +4,10 @@ import { fitOverlay } from "./overlay-fit";
 import { bindOverlayInteractionMode } from "./overlay-interaction";
 import { createOverlayPerformanceTracker } from "./overlay-performance";
 import { bindOverlayTransparency } from "./overlay-appearance";
-import { readDeltaSettings, type DeltaSettings } from "./delta-settings";
+import { DELTA_MODES, readDeltaSettings, type DeltaMode, type DeltaSettings } from "./delta-settings";
 import type { DeltaViewModel } from "./telemetry-types";
 import { isTauriRuntime, listenRuntimeEvent, listenTelemetry } from "./runtime-events";
+import { t } from "./i18n";
 
 fitOverlay({ width: 420, height: 72 });
 bindOverlayTransparency("delta");
@@ -17,6 +18,9 @@ let settings = readDeltaSettings();
 const card = document.getElementById("delta-card");
 const fill = document.getElementById("delta-fill") as HTMLElement | null;
 const value = document.getElementById("delta-value");
+const modeNotice = document.getElementById("delta-mode-notice");
+let previousMode: DeltaMode | null = null;
+let modeNoticeTimeout: number | null = null;
 
 const VALUE_NEUTRAL_SECONDS = 0.001;
 const VALUE_COLOR_RANGE_SECONDS = 0.04;
@@ -52,8 +56,22 @@ const setText = (element: HTMLElement | null, text: string): void => {
   if (element && element.textContent !== text) element.textContent = text;
 };
 
+const showModeNotice = (mode: DeltaMode): void => {
+  const option = DELTA_MODES.find(({ value }) => value === mode);
+  if (!modeNotice || !option) return;
+  setText(modeNotice, t(option.labelKey));
+  modeNotice.hidden = false;
+  if (modeNoticeTimeout !== null) window.clearTimeout(modeNoticeTimeout);
+  modeNoticeTimeout = window.setTimeout(() => {
+    modeNotice.hidden = true;
+    modeNoticeTimeout = null;
+  }, 1_800);
+};
+
 const render = (delta: DeltaViewModel): void => {
   const activeMode = delta.mode;
+  if (previousMode !== null && activeMode !== previousMode) showModeNotice(activeMode);
+  previousMode = activeMode;
   const available = delta.available && activeMode !== "off";
   const state = activeMode === "off"
     ? "off"

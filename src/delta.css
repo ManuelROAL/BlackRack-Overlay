@@ -111,3 +111,29 @@
 .delta-card[data-state="invalid"] {
   opacity: 0.9;
 }
+
+.delta-mode-notice {
+  position: absolute;
+  z-index: 4;
+  top: 38px;
+  left: 50%;
+  max-width: 280px;
+  padding: 2px 7px;
+  overflow: hidden;
+  border: 1px solid rgb(216 255 62 / 30%);
+  border-radius: 3px;
+  background: rgb(7 10 13 / 88%);
+  color: #d8ff3e;
+  font-size: min(calc(9px * var(--overlay-font-scale, 1)), 12px);
+  font-weight: 800;
+  letter-spacing: 0.035em;
+  line-height: min(calc(12px * var(--overlay-font-scale, 1)), 16px);
+  text-overflow: ellipsis;
+  text-shadow: 0 1px 3px #000;
+  white-space: nowrap;
+  transform: translateX(-50%);
+}
+
+.delta-mode-notice[hidden] {
+  display: none;
+}
