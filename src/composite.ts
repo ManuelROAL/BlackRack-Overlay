@@ -409,6 +409,7 @@ for (const event of [
   "timing://settings",
   "fuel://settings",
   "trackmap://settings",
+  "tires://settings",
   "overlay://background-transparency",
   "overlay://font-size",
   "performance://logging"
