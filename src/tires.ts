@@ -17,8 +17,6 @@ const damageParts = Array.from(document.querySelectorAll<SVGElement>("[data-dama
 const aeroWing = document.querySelector<SVGElement>("[data-aero-wing]")!;
 const damageSummary = document.querySelector<HTMLElement>(".damage-summary")!;
 const damageValue = document.getElementById("damage-value")!;
-const tireLife = document.getElementById("tire-life")!;
-const tireLifeValue = document.getElementById("tire-life-value")!;
 const renderPerformance = createOverlayPerformanceTracker("tires");
 
 const setText = (element: HTMLElement, value: string): void => {
@@ -127,24 +125,12 @@ const render = (frame: TelemetryFrame): void => {
     ? "critical"
     : aggregateDamage > 0 ? "warning" : "normal");
 
-  const life = frame.tire_life_model;
-  setText(tireLifeValue, life ? `${formatNumber(life.remaining_stints, 1)}×` : "--×");
-  setData(tireLife, "state", !life ? "unknown" : life.remaining_stints >= 3 ? "good" : life.remaining_stints >= 2 ? "warn" : "bad");
-  const lifeTitle = life
-    ? t("tires.lifeTitle", { stints: formatNumber(life.remaining_stints, 1), laps: formatNumber(life.remaining_laps, 0) })
-    : t("tires.unknown");
-  setAttribute(tireLife, "title", lifeTitle);
-  setAttribute(tireLife, "aria-label", lifeTitle);
 };
 
 const previewFrame = {
   player_tire_temperature_c: [76.2, 83.3, 76.7, 81.1],
   player_brake_temperature_c: [540, 575, 420, 445],
   player_tire_remaining_by_wheel_percent: [94, 94, 95, 95],
-  tire_life_model: {
-    wear_per_lap_percent: [1.2, 1.2, 1.1, 1.1], full_stint_laps: 32,
-    remaining_laps: 78.3, remaining_stints: 2.4, projected_remaining_percent: [55.6, 17.2, 0]
-  },
   player_tire_flat_spot_percent: [0.08, 0, 0.15, 0.03],
   player_suspension_damage_by_wheel_percent: [2, 18, 4, 0],
   player_tire_compounds: ["M", "M", "M", "M"],

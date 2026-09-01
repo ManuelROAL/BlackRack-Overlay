@@ -250,23 +250,6 @@ body.tires-body {
   letter-spacing: .1em;
 }
 
-.tire-life {
-  position: absolute;
-  top: 39px;
-  left: 8px;
-  display: grid;
-  width: 42px;
-  place-items: center;
-  color: #697482;
-  font-size: calc(5px * var(--overlay-font-scale, 1));
-  font-weight: 900;
-  line-height: 1;
-  text-shadow: 0 1px 2px #000;
-}
-.tire-life strong { color: #8995a2; font-size: calc(8px * var(--overlay-font-scale, 1)); }
-.tire-life[data-state="good"] strong { color: #6ee787; }
-.tire-life[data-state="warn"] strong { color: #f5df63; }
-.tire-life[data-state="bad"] strong { color: #ff697b; }
 .damage-summary span { display: none; }
 .damage-summary strong {
   color: #dce2e8;
