@@ -128,9 +128,9 @@ body.tires-body {
   border-radius: 2px;
   background: linear-gradient(
     to right,
-    var(--tire-zone-0, var(--tire-color)) 0 26%,
-    var(--tire-zone-1, var(--tire-color)) 41% 59%,
-    var(--tire-zone-2, var(--tire-color)) 74% 100%
+    var(--tire-zone-0, var(--tire-color)) 0%,
+    var(--tire-zone-1, var(--tire-color)) 50%,
+    var(--tire-zone-2, var(--tire-color)) 100%
   );
 }
 
