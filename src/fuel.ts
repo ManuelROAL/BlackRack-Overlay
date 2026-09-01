@@ -48,23 +48,14 @@ const format = (value: number, decimals = 2): string =>
 const consumptionReference = (...values: number[]): number | undefined =>
   values.find((value) => Number.isFinite(value) && value > 0);
 
-const formatConsumptionDelta = (value: number | null): string => {
-  if (value == null || !Number.isFinite(value)) return "";
-  const sign = value > 0.005 ? "+" : value < -0.005 ? "−" : "±";
-  return `Δ${sign}${formatNumber(Math.abs(value), 2)}`;
-};
-
 const renderStintTargets = (frame: TelemetryFrame, unit: string): void => {
   for (let index = 0; index < 3; index += 1) {
     const target = frame.fuel_strategies.stint_targets[index];
     const number = index + 1;
-    const consumptionDelta = target ? formatConsumptionDelta(target.consumption_delta) : "";
     text(`stint-target-${number}`, target ? `${format(target.target_consumption)}${unit}` : "--");
     text(
       `stint-target-${number}-meta`,
-      target
-        ? `+${target.extra_laps}${consumptionDelta ? ` · ${consumptionDelta}` : ""}`
-        : `+${number}`
+      target ? `+${target.extra_laps}` : `+${number}`
     );
     tone(
       `stint-target-${number}`,

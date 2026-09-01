@@ -324,7 +324,6 @@ export interface FuelStrategies {
 export interface StintTarget {
   extra_laps: number;
   target_consumption: number;
-  consumption_delta: number | null;
   saving_percent: number;
   stops_saved: number;
   net_time_seconds: number | null;

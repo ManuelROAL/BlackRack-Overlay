@@ -3849,11 +3849,6 @@ impl TelemetrySource for LmuTelemetrySource {
                 resource_service_seconds,
                 other_service_seconds,
                 pit_traversal_seconds,
-                if virtual_energy_active {
-                    planned_energy_per_lap
-                } else {
-                    planned_fuel_per_lap
-                },
             );
             let (next_stint_load, next_stint_laps, next_stint_minutes) = next_stint_autonomy(
                 self.local_rest.pit_refill_target(virtual_energy_active),
