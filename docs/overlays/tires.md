@@ -21,9 +21,10 @@ Detailed Damage (`damage.md`).
   three inner-layer samples, then convert Kelvin to Celsius.
 - Replicate LMU's HUD by rendering the wider tyre as three contiguous bands from
   the surface `mTemperature[3]` samples in physical left/center/right order. Keep
-  the bands seamless, with no gaps or borders, and color each one independently
-  through the compound-aware tyre heatmap. The numeric reading remains the
-  Dox/MFD-style internal composite above rather than any surface sample.
+  the bands seamless, with no gaps or borders, and blend their boundaries over a
+  short transition so temperature steps do not create a hard edge. Color each
+  zone independently through the compound-aware tyre heatmap. The numeric reading
+  remains the Dox/MFD-style internal composite above rather than any surface sample.
 - Convert live `mBrakeTemp` from Kelvin to Celsius despite the inherited SDK
   comment.
 - `mWear` is remaining tread (`1.0` new), so show `mWear * 100`.

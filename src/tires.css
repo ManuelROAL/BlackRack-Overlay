@@ -126,12 +126,15 @@ body.tires-body {
   width: 13px;
   overflow: hidden;
   border-radius: 2px;
-  background: var(--tire-color);
+  background: linear-gradient(
+    to right,
+    var(--tire-zone-0, var(--tire-color)) 0 26%,
+    var(--tire-zone-1, var(--tire-color)) 41% 59%,
+    var(--tire-zone-2, var(--tire-color)) 74% 100%
+  );
 }
 
-.tread-zone:nth-child(1) { background: var(--tire-zone-0, var(--tire-color)); }
-.tread-zone:nth-child(2) { background: var(--tire-zone-1, var(--tire-color)); }
-.tread-zone:nth-child(3) { background: var(--tire-zone-2, var(--tire-color)); }
+.tread-zone { background: transparent; }
 
 .wheel.flat .wheel-tread,
 .wheel.detached .wheel-tread {
