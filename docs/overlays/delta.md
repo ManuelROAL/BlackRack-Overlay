@@ -61,12 +61,12 @@ Delta view model is built only for a visible native panel or connected `/delta` 
 - Stint best lap.
 - Last eligible completed lap.
 
-Session best uses LMU telemetry's native `mDeltaBest` while an official session
-best exists. This matches the in-game delta's reference, sign and high-frequency
-update directly, avoiding the sawtooth produced by interpolating against the
-lower-cadence scoring distance. The other modes continue to use BlackRack's
-reconstructed and persisted traces because LMU does not expose equivalent native
-deltas for those references.
+Session best is labelled `(LMU)` and uses LMU telemetry's native `mDeltaBest`
+while an official session best exists. This matches the in-game delta's reference,
+sign and high-frequency update directly, avoiding the sawtooth produced by
+interpolating against the lower-cadence scoring distance. The other modes continue
+to use BlackRack's reconstructed and persisted traces because LMU does not expose
+equivalent native deltas for those references.
 
 No live delta is exposed during an outlap that BlackRack did not observe from
 the timing line. This also prevents LMU's stale pre-line lap-start timestamp from
