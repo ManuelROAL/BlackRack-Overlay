@@ -75,7 +75,8 @@ const telemetryFields: Record<OverlayId, readonly (keyof TelemetryFrame)[]> = {
     "player_tire_detached", "player_suspension_damage_by_wheel_percent"
   ],
   tiretemps: [
-    "player_tire_zone_temperature_c", "player_brake_temperature_c",
+    "player_tire_zone_temperature_c", "player_tire_inner_layer_temperature_c",
+    "player_tire_carcass_temperature_c", "player_brake_temperature_c",
     "player_tire_sliding_fraction", "player_tire_compounds", "player_tire_flat",
     "player_tire_detached"
   ],

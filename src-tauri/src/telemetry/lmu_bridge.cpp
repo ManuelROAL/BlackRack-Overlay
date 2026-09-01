@@ -129,6 +129,8 @@ struct LmuSnapshot {
     double player_damage_percent;
     double player_tire_temperature_c[4];
     double player_tire_zone_temperature_c[4][3];
+    double player_tire_inner_layer_temperature_c[4][3];
+    double player_tire_carcass_temperature_c[4];
     double player_brake_temperature_c[4];
     double player_tire_remaining_by_wheel_percent[4];
     double player_tire_slip_ratio[4];
@@ -261,6 +263,8 @@ extern "C" int lmu_read_snapshot(LmuSnapshot* output, int32_t spectator_vehicle_
     output->player_tire_remaining_percent = -1.0;
     std::fill_n(output->player_tire_temperature_c, 4, -1.0);
     std::fill_n(&output->player_tire_zone_temperature_c[0][0], 12, -1.0);
+    std::fill_n(&output->player_tire_inner_layer_temperature_c[0][0], 12, -1.0);
+    std::fill_n(output->player_tire_carcass_temperature_c, 4, -1.0);
     std::fill_n(output->player_brake_temperature_c, 4, -1.0);
     std::fill_n(output->player_tire_remaining_by_wheel_percent, 4, -1.0);
     std::fill_n(output->player_tire_slip_ratio, 4, 0.0);
@@ -404,6 +408,12 @@ extern "C" int lmu_read_snapshot(LmuSnapshot* output, int32_t spectator_vehicle_
                         wheel.mTemperature[1] - 273.15;
                     output->player_tire_zone_temperature_c[wheel_index][2] =
                         wheel.mTemperature[2] - 273.15;
+                    for (std::size_t zone_index = 0; zone_index < 3; ++zone_index) {
+                        output->player_tire_inner_layer_temperature_c[wheel_index][zone_index] =
+                            wheel.mTireInnerLayerTemperature[zone_index] - 273.15;
+                    }
+                    output->player_tire_carcass_temperature_c[wheel_index] =
+                        wheel.mTireCarcassTemperature - 273.15;
                     // LMU entrega mBrakeTemp en Kelvin pese al comentario heredado del SDK.
                     output->player_brake_temperature_c[wheel_index] = wheel.mBrakeTemp - 273.15;
                     output->player_tire_remaining_by_wheel_percent[wheel_index] = tire_remaining;

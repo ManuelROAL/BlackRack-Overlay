@@ -27,8 +27,10 @@ body.tiretemps-body { padding: 4px; font-family: "Roboto Condensed", sans-serif;
 
 .tiretemps-layout {
   display: grid;
-  grid-template-columns: 72px 40px 40px 72px;
-  grid-template-rows: repeat(2, 54px);
+  grid-template-columns:
+    calc(84px * var(--overlay-font-width-expansion, 1)) 40px 40px
+    calc(84px * var(--overlay-font-width-expansion, 1));
+  grid-template-rows: repeat(2, minmax(54px, 1fr));
   gap: 6px 3px;
   align-items: center;
   justify-content: center;
@@ -48,14 +50,36 @@ body.tiretemps-body { padding: 4px; font-family: "Roboto Condensed", sans-serif;
 .tread-zones {
   position: absolute;
   inset: 0;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  display: flex;
+  flex-direction: column;
   gap: 1px;
   overflow: hidden;
   border: 1px solid #6d7883;
   border-radius: 7px;
   background: #111820;
 }
+
+.temperature-layer {
+  position: relative;
+  display: grid;
+  flex: 1 1 0;
+  grid-template-columns: 14px repeat(3, 1fr);
+  gap: 1px;
+  min-height: 0;
+}
+.temperature-layer[hidden] { display: none; }
+.temperature-layer > b {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #b8f227;
+  background: #151d25;
+  font-size: calc(7px * var(--overlay-font-scale, 1));
+  font-weight: 800;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+}
+.temperature-layer[data-temperature="carcass"] .carcass-zone { grid-column: 2 / 5; }
 
 .tread-zone {
   --zone-color: #687481;
@@ -70,20 +94,20 @@ body.tiretemps-body { padding: 4px; font-family: "Roboto Condensed", sans-serif;
   border-inline-start: 0;
 }
 .tread-zone:first-child { border-inline-start: 0; }
-.tread-zone strong { font-size: calc(10px * var(--overlay-font-scale, 1)); font-weight: 900; line-height: 12px; }
+.tread-zone strong { font-size: calc(8.5px * var(--overlay-font-scale, 1)); font-weight: 900; line-height: 10px; }
 
 .contact-patch {
   --contact-fraction: 0;
   position: absolute;
   z-index: 3;
   top: 50%;
-  width: calc(var(--contact-fraction) * 100%);
+  width: calc(var(--contact-fraction) * (100% - 15px));
   height: 8px;
   transform: translateY(-50%);
   background: rgb(255 255 255 / 92%);
   box-shadow: 0 0 0 1px rgb(3 6 9 / 34%);
 }
-.wheel-fl .contact-patch, .wheel-rl .contact-patch { left: 0; }
+.wheel-fl .contact-patch, .wheel-rl .contact-patch { left: 15px; }
 .wheel-fr .contact-patch, .wheel-rr .contact-patch { right: 0; }
 
 .brake {
