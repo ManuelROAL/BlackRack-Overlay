@@ -12,12 +12,12 @@ import {
   tireTemperatureTextColor
 } from "./temperature-colors";
 
-type Zone = "inside" | "center" | "outside";
-const zoneIndexes: Record<Zone, number> = { inside: 0, center: 1, outside: 2 };
+type Zone = "left" | "center" | "right";
+const zoneIndexes: Record<Zone, number> = { left: 0, center: 1, right: 2 };
 const zoneTitleKeys: Record<Zone, TranslationKey> = {
-  inside: "tiretemps.inside",
+  left: "tiretemps.left",
   center: "tiretemps.center",
-  outside: "tiretemps.outside"
+  right: "tiretemps.right"
 };
 const wheels = Array.from(document.querySelectorAll<HTMLElement>("[data-wheel]"));
 const brakes = Array.from(document.querySelectorAll<HTMLElement>("[data-brake]"));

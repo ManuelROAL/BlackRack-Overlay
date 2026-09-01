@@ -16,8 +16,9 @@ own overlays.
 ## Sources and semantics
 
 - Wheel order is front-left, front-right, rear-left, rear-right.
-- Match TinyPedal's LMU behavior and expose `mTemperature[0/1/2]` directly as
-  inside/centre/outside for every wheel. Do not reverse the left-side samples.
+- Match TinyPedal's direct `mTemperature[0/1/2]` reading. The LMU SDK defines
+  those samples as physical left/centre/right, not inside/centre/outside; display
+  all four wheels in that order and never mirror the left-side samples.
 - All tyre samples and `mBrakeTemp` are converted from Kelvin to Celsius.
 - The white strip uses LMU's `mGripFract`: its width is the live fraction of the
   contact patch that is sliding, anchored to the outside edge of each tyre. It is
@@ -25,8 +26,8 @@ own overlays.
 
 ## Presentation and invariants
 
-- Each tyre keeps its inside band nearest the car centre and its outside band
-  nearest the panel edge. Every band shows its own rounded Celsius value. The
+- Each tyre keeps the SDK's left/centre/right order on screen. Every band shows
+  its own rounded Celsius value. The
   heatmap follows TinyPedal's compound targets: wet/intermediate 50 C, soft 80 C,
   medium 90 C and hard 100 C. Its nine bands change at `-30/-20/-10/0` and
   `+10/+20/+30/+40 C` around that target, expressed with BlackRack's own palette.
