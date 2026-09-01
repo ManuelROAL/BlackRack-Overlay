@@ -23,10 +23,11 @@ Mini-sector and reference details remain configuration/backend concerns.
 The control panel can bind one DirectInput wheel/controller button. Each press
 advances to the next reference mode, wraps from Last lap to Overall best and
 skips Off while cycling; pressing it when Delta is Off starts at Overall best.
-The binding is detected on the press edge and remains active while LMU has focus.
-It is stored in `wheel-input.json` and is intentionally outside configuration
-import/export because it identifies local hardware. Pressing Escape while the
-control panel is waiting cancels capture without removing the existing binding.
+The binding is detected on the press edge and changes modes only while the Delta
+overlay is enabled. It is stored in `wheel-input.json` and is intentionally
+outside configuration import/export because it identifies local hardware.
+Pressing Escape while the control panel is waiting cancels capture without
+removing the existing binding.
 Unavailable binding actions use the normal disabled cursor, not a busy indicator.
 
 ## Files and ownership

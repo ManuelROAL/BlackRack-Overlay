@@ -149,8 +149,10 @@ pub(crate) fn spawn(app: AppHandle, hwnd: isize) {
                         binding.device_id == pressed.device_id && binding.button == pressed.button
                     }) {
                         drop(status);
-                        let mode = telemetry::cycle_delta_mode();
-                        let _ = app.emit("delta://mode-changed", mode);
+                        if crate::overlay_is_enabled(&app, "delta") {
+                            let mode = telemetry::cycle_delta_mode();
+                            let _ = app.emit("delta://mode-changed", mode);
+                        }
                     }
                 }
                 if app.webview_windows().is_empty() {

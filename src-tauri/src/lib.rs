@@ -772,12 +772,15 @@ fn for_each_overlay_host(app: &AppHandle, mut action: impl FnMut(&WebviewWindow)
 
 pub(crate) fn overlay_is_active(app: &AppHandle, label: &str) -> bool {
     let control = app.state::<OverlayControl>();
-    !control.auto_hidden.load(Ordering::Relaxed)
-        && control
-            .desired_visible
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .contains(label)
+    !control.auto_hidden.load(Ordering::Relaxed) && overlay_is_enabled(app, label)
+}
+
+pub(crate) fn overlay_is_enabled(app: &AppHandle, label: &str) -> bool {
+    app.state::<OverlayControl>()
+        .desired_visible
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .contains(label)
 }
 
 #[derive(Serialize)]
