@@ -101,6 +101,9 @@ body.tires-body {
 .wheel-brake-temperature {
   color: var(--brake-color);
 }
+.wheel-data > [hidden] {
+  display: none;
+}
 .wheel-fl .wheel-data,
 .wheel-rl .wheel-data { padding-right: 3px; text-align: right; }
 .wheel-fr .wheel-data,
