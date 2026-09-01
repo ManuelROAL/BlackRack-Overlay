@@ -136,13 +136,41 @@ body.conditions-body {
 .conditions-wind {
   display: inline-flex;
   align-items: center;
-  gap: 3px;
+  gap: 4px;
 }
 
 #conditions-wind-arrow {
-  display: inline-block;
-  color: #a8c24a;
+  position: relative;
+  display: block;
+  flex: 0 0 30px;
+  box-sizing: border-box;
+  width: 30px;
+  height: 30px;
+  border: 1px solid rgb(216 255 62 / 42%);
+  border-radius: 50%;
+  color: #d8ff3e;
   transform-origin: center;
+}
+
+#conditions-wind-arrow::before {
+  position: absolute;
+  top: 11px;
+  left: 12px;
+  width: 4px;
+  height: 13px;
+  border-radius: 2px;
+  background: currentcolor;
+  content: "";
+}
+
+#conditions-wind-arrow::after {
+  position: absolute;
+  top: 4px;
+  left: 7px;
+  border-right: 7px solid transparent;
+  border-bottom: 9px solid currentcolor;
+  border-left: 7px solid transparent;
+  content: "";
 }
 
 body[data-available="false"] .conditions-cell dd {

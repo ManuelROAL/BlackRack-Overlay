@@ -23,6 +23,8 @@
 - The cardinal label remains the absolute meteorological direction. The arrow is
   rotated relative to the selected vehicle from telemetry `mOri`, matching doX:
   it therefore moves as the car turns even while the forecast direction is fixed.
+  Keep it as a prominent solid pointer rather than a small text glyph so its
+  orientation remains readable at driving distance.
 - The condition icon combines live shared-memory `mCloudCoverage` and `mRaining`
   into the game's 0..10 weather scale. The current forecast node's `sky` is used
   only as fallback when live weather values are unavailable.
