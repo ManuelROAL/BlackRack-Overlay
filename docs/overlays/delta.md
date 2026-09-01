@@ -26,6 +26,7 @@ The binding is detected on the press edge and remains active while LMU has focus
 It is stored in `wheel-input.json` and is intentionally outside configuration
 import/export because it identifies local hardware. Pressing Escape while the
 control panel is waiting cancels capture without removing the existing binding.
+Unavailable binding actions use the normal disabled cursor, not a busy indicator.
 
 ## Files and ownership
 
