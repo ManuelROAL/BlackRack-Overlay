@@ -5,6 +5,16 @@ interface OverlaySize {
   height: number;
 }
 
+/**
+ * Un factor de escala estable evita rerasterizar texto e iconos con cada ajuste
+ * mínimo. 1/64 es lo bastante fino para que el recorte no se aprecie y lo
+ * bastante grueso para reutilizar la misma escala de rasterizado.
+ */
+const SCALE_STEP = 1 / 64;
+
+const quantizeScale = (scale: number): number =>
+  Math.max(Math.floor(scale / SCALE_STEP) * SCALE_STEP, 0.1);
+
 interface OverlayFitOptions {
   widthTextRatio?: number | (() => number);
   heightTextRatio?: number;
@@ -45,7 +55,7 @@ export const fitOverlay = (
       window.innerWidth / effectiveWidth,
       window.innerHeight / effectiveHeight
     );
-    root.style.setProperty("--overlay-scale", Math.max(scale, 0.1).toString());
+    root.style.setProperty("--overlay-scale", quantizeScale(scale).toString());
   };
 
   const setSize = (size: OverlaySize): void => {

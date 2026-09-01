@@ -27,6 +27,10 @@ body,
   min-height: 72px;
   overflow: hidden;
   border-radius: 5px;
+  /* Each panel is an independent, already clipped box. Containment bounds the
+     damage rectangle WebView2 rasterises when one overlay updates instead of
+     letting it reach the rest of the full-screen host. */
+  contain: layout paint style;
 }
 
 .composite-panel iframe {

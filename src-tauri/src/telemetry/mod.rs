@@ -392,12 +392,14 @@ impl PerformanceMonitor {
     }
 }
 
-fn interval_due(last: &mut Instant, now: Instant, interval: Duration) -> bool {
-    if now.duration_since(*last) < interval {
-        return false;
-    }
-    *last = now;
-    true
+/// Every emission decision is evaluated once per source cycle, so a cadence is
+/// a whole number of cycles. Deriving the cadences from the cycle counter, with
+/// every period an exact multiple of the fastest one, keeps overlay updates on
+/// the same compositor frame. Free-running timers drift into neighbouring cycles
+/// instead, which makes WebView2 present the transparent host at close to the
+/// monitor refresh rate even when each overlay changes far less often.
+const fn cycle_due(cycle: u64, period: u64) -> bool {
+    period == 0 || cycle % period == 0
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -407,14 +409,17 @@ enum PerformanceProfile {
     Efficiency = 2,
 }
 
+/// Cadences are counted in source cycles of `SOURCE_INTERVAL` (20 ms). Every
+/// period must be an exact multiple of `fast_overlay_cycles` so a cycle that
+/// repaints a slow overlay always repaints the fast ones too.
 #[derive(Clone, Copy)]
 struct PerformanceTuning {
     profile: PerformanceProfile,
-    fast_overlay_interval: Duration,
-    standings_interval: Duration,
-    relative_interval: Duration,
-    track_map_interval: Duration,
-    secondary_overlay_interval: Duration,
+    fast_overlay_cycles: u64,
+    standings_cycles: u64,
+    relative_cycles: u64,
+    track_map_cycles: u64,
+    secondary_overlay_cycles: u64,
 }
 
 static PERFORMANCE_PROFILE: AtomicU8 = AtomicU8::new(PerformanceProfile::Smooth as u8);
@@ -466,29 +471,32 @@ impl PerformanceProfile {
 
     fn tuning(self) -> PerformanceTuning {
         match self {
+            // 20 / 100 / 40 / 40 / 40 ms.
             Self::Smooth => PerformanceTuning {
                 profile: self,
-                fast_overlay_interval: Duration::from_millis(20),
-                standings_interval: Duration::from_millis(100),
-                relative_interval: Duration::from_millis(50),
-                track_map_interval: Duration::from_millis(33),
-                secondary_overlay_interval: Duration::from_millis(50),
+                fast_overlay_cycles: 1,
+                standings_cycles: 5,
+                relative_cycles: 2,
+                track_map_cycles: 2,
+                secondary_overlay_cycles: 2,
             },
+            // 40 / 160 / 80 / 80 / 80 ms.
             Self::Balanced => PerformanceTuning {
                 profile: self,
-                fast_overlay_interval: Duration::from_millis(40),
-                standings_interval: Duration::from_millis(160),
-                relative_interval: Duration::from_millis(80),
-                track_map_interval: Duration::from_millis(60),
-                secondary_overlay_interval: Duration::from_millis(80),
+                fast_overlay_cycles: 2,
+                standings_cycles: 8,
+                relative_cycles: 4,
+                track_map_cycles: 4,
+                secondary_overlay_cycles: 4,
             },
+            // 60 / 240 / 120 / 120 / 120 ms.
             Self::Efficiency => PerformanceTuning {
                 profile: self,
-                fast_overlay_interval: Duration::from_millis(60),
-                standings_interval: Duration::from_millis(240),
-                relative_interval: Duration::from_millis(120),
-                track_map_interval: Duration::from_millis(120),
-                secondary_overlay_interval: Duration::from_millis(120),
+                fast_overlay_cycles: 3,
+                standings_cycles: 12,
+                relative_cycles: 6,
+                track_map_cycles: 6,
+                secondary_overlay_cycles: 6,
             },
         }
     }
@@ -1004,11 +1012,13 @@ pub fn spawn_source(app: AppHandle) {
     track_map_model::configure_track_map_storage(&app_data_directory);
     thread::spawn(move || {
         const SOURCE_INTERVAL: Duration = Duration::from_millis(20);
-        const WEATHER_INTERVAL: Duration = Duration::from_millis(500);
-        const ACTIVE_REJOIN_INTERVAL: Duration = Duration::from_millis(50);
-        const IDLE_WARNING_INTERVAL: Duration = Duration::from_millis(250);
-        const VISIBILITY_INTERVAL: Duration = Duration::from_millis(250);
-        const CONTROL_INTERVAL: Duration = Duration::from_millis(500);
+        // Fixed cadences in source cycles. Each one is a multiple of every
+        // profile's `fast_overlay_cycles` (1, 2 and 3) so they land on cycles
+        // that already repaint the fast overlays.
+        const WEATHER_CYCLES: u64 = 24;
+        const IDLE_WARNING_CYCLES: u64 = 12;
+        const VISIBILITY_CYCLES: u64 = 12;
+        const CONTROL_CYCLES: u64 = 24;
 
         let mut analysis_logger = AnalysisLogger::new();
         let mut driver_rank_estimate_logger = dr_estimate_log::DriverRankEstimateLogger::new();
@@ -1016,21 +1026,7 @@ pub fn spawn_source(app: AppHandle) {
         let mut performance = PerformanceMonitor::new();
         let mut track_map_model = track_map_model::TrackMapModelState::default();
         let mut delta_engine = delta_records::DeltaEngine::new(app_data_directory.clone());
-        let now = Instant::now();
-        let mut last_driving = now.checked_sub(SOURCE_INTERVAL).unwrap_or(now);
-        let mut last_fuel = now.checked_sub(SOURCE_INTERVAL).unwrap_or(now);
-        let mut last_stint_history = now.checked_sub(IDLE_WARNING_INTERVAL).unwrap_or(now);
-        let mut last_standings = now.checked_sub(SOURCE_INTERVAL).unwrap_or(now);
-        let mut last_relative = now.checked_sub(SOURCE_INTERVAL).unwrap_or(now);
-        let mut last_track_map = now.checked_sub(SOURCE_INTERVAL).unwrap_or(now);
-        let mut last_damage = now.checked_sub(SOURCE_INTERVAL).unwrap_or(now);
-        let mut last_pitstop = now.checked_sub(SOURCE_INTERVAL).unwrap_or(now);
-        let mut last_conditions = now.checked_sub(SOURCE_INTERVAL).unwrap_or(now);
-        let mut last_weather = now.checked_sub(WEATHER_INTERVAL).unwrap_or(now);
-        let mut last_flags = now.checked_sub(IDLE_WARNING_INTERVAL).unwrap_or(now);
-        let mut last_rejoin = now.checked_sub(IDLE_WARNING_INTERVAL).unwrap_or(now);
-        let mut last_visibility = now.checked_sub(VISIBILITY_INTERVAL).unwrap_or(now);
-        let mut last_control = now.checked_sub(CONTROL_INTERVAL).unwrap_or(now);
+        let mut cycle: u64 = 0;
         #[cfg(all(target_os = "windows", lmu_sdk))]
         let mut source = LmuTelemetrySource::with_profile_directory(Some(
             app_data_directory.join("consumption-profiles"),
@@ -1043,14 +1039,10 @@ pub fn spawn_source(app: AppHandle) {
                 break;
             }
             let cycle_started = Instant::now();
-            let schedule_now = Instant::now();
             let tuning = PerformanceProfile::current().tuning();
-            let standings_due =
-                interval_due(&mut last_standings, schedule_now, tuning.standings_interval);
-            let relative_due =
-                interval_due(&mut last_relative, schedule_now, tuning.relative_interval);
-            let track_map_due =
-                interval_due(&mut last_track_map, schedule_now, tuning.track_map_interval);
+            let standings_due = cycle_due(cycle, tuning.standings_cycles);
+            let relative_due = cycle_due(cycle, tuning.relative_cycles);
+            let track_map_due = cycle_due(cycle, tuning.track_map_cycles);
             let standings_visible = super::overlay_is_active(&app, "standings");
             let relative_visible = super::overlay_is_active(&app, "relative");
             let track_map_visible = super::overlay_is_active(&app, "trackmap");
@@ -1133,11 +1125,10 @@ pub fn spawn_source(app: AppHandle) {
                 track_map_model.update(&mut frame);
             }
             let source_elapsed = source_started.elapsed();
-            let now = Instant::now();
             let standings_rows = frame.standings.len();
 
             let visibility_started = Instant::now();
-            if interval_due(&mut last_visibility, now, VISIBILITY_INTERVAL) {
+            if cycle_due(cycle, VISIBILITY_CYCLES) {
                 super::update_overlay_auto_visibility(&app, &frame);
             }
             let visibility_elapsed = visibility_started.elapsed();
@@ -1176,42 +1167,37 @@ pub fn spawn_source(app: AppHandle) {
             }
             frame.track_map_vehicles.clear();
 
-            let driving_due = interval_due(&mut last_driving, now, tuning.fast_overlay_interval);
+            let driving_due = cycle_due(cycle, tuning.fast_overlay_cycles);
             let emit_delta = driving_due && super::overlay_is_active(&app, "delta");
             let emit_timing = driving_due && super::overlay_is_active(&app, "timing");
-            let emit_stint_history =
-                interval_due(&mut last_stint_history, now, IDLE_WARNING_INTERVAL)
-                    && super::overlay_is_active(&app, "stinthistory");
+            let emit_stint_history = cycle_due(cycle, IDLE_WARNING_CYCLES)
+                && super::overlay_is_active(&app, "stinthistory");
             let emit_driving = driving_due && super::overlay_is_active(&app, "driving");
             let emit_liftcoast = driving_due && super::overlay_is_active(&app, "liftcoast");
             let emit_tires = driving_due && super::overlay_is_active(&app, "tires");
-            let emit_damage =
-                interval_due(&mut last_damage, now, tuning.secondary_overlay_interval)
-                    && super::overlay_is_active(&app, "damage");
-            let emit_pitstop =
-                interval_due(&mut last_pitstop, now, tuning.secondary_overlay_interval)
-                    && super::overlay_is_active(&app, "pitstop");
-            let weather_due = interval_due(&mut last_weather, now, WEATHER_INTERVAL);
+            let secondary_due = cycle_due(cycle, tuning.secondary_overlay_cycles);
+            let emit_damage = secondary_due && super::overlay_is_active(&app, "damage");
+            let emit_pitstop = secondary_due && super::overlay_is_active(&app, "pitstop");
+            let weather_due = cycle_due(cycle, WEATHER_CYCLES);
             let emit_forecast = weather_due && super::overlay_is_active(&app, "forecast");
-            let emit_conditions =
-                interval_due(&mut last_conditions, now, tuning.secondary_overlay_interval)
-                    && super::overlay_is_active(&app, "conditions");
-            let emit_fuel = interval_due(&mut last_fuel, now, tuning.fast_overlay_interval)
-                && super::overlay_is_active(&app, "fuel");
-            let flag_interval = if frame.flag_warning.active {
-                SOURCE_INTERVAL
+            let emit_conditions = secondary_due && super::overlay_is_active(&app, "conditions");
+            let emit_fuel = driving_due && super::overlay_is_active(&app, "fuel");
+            // An active warning follows the fast cadence so its response never
+            // depends on a separate timer landing between repaint cycles.
+            let flag_cycles = if frame.flag_warning.active {
+                tuning.fast_overlay_cycles
             } else {
-                IDLE_WARNING_INTERVAL
+                IDLE_WARNING_CYCLES
             };
-            let emit_flags = interval_due(&mut last_flags, now, flag_interval)
-                && super::overlay_is_active(&app, "flags");
-            let rejoin_interval = if frame.rejoin_warning.active {
-                ACTIVE_REJOIN_INTERVAL
+            let emit_flags =
+                cycle_due(cycle, flag_cycles) && super::overlay_is_active(&app, "flags");
+            let rejoin_cycles = if frame.rejoin_warning.active {
+                tuning.fast_overlay_cycles
             } else {
-                IDLE_WARNING_INTERVAL
+                IDLE_WARNING_CYCLES
             };
-            let emit_rejoin = interval_due(&mut last_rejoin, now, rejoin_interval)
-                && super::overlay_is_active(&app, "rejoin");
+            let emit_rejoin =
+                cycle_due(cycle, rejoin_cycles) && super::overlay_is_active(&app, "rejoin");
 
             let base_emissions = [
                 ("delta", emit_delta),
@@ -1251,7 +1237,7 @@ pub fn spawn_source(app: AppHandle) {
                 performance.emitted_forecast += u64::from(emit_forecast);
                 performance.emitted_conditions += u64::from(emit_conditions);
             }
-            if interval_due(&mut last_control, now, CONTROL_INTERVAL) {
+            if cycle_due(cycle, CONTROL_CYCLES) {
                 let _ = app.emit_to("control", "telemetry://frame", &frame);
             }
             let emission_elapsed = emission_started.elapsed();
@@ -1285,6 +1271,7 @@ pub fn spawn_source(app: AppHandle) {
             performance.work_micros += work_elapsed.as_micros();
             performance.max_work_micros = performance.max_work_micros.max(work_elapsed.as_micros());
             performance.max_standings_rows = performance.max_standings_rows.max(standings_rows);
+            cycle = cycle.wrapping_add(1);
             if work_elapsed < SOURCE_INTERVAL {
                 thread::sleep(SOURCE_INTERVAL - work_elapsed);
             } else {
@@ -1339,10 +1326,33 @@ mod tests {
         let balanced = PerformanceProfile::Balanced.tuning();
         let efficiency = PerformanceProfile::Efficiency.tuning();
 
-        assert!(smooth.fast_overlay_interval < balanced.fast_overlay_interval);
-        assert!(balanced.fast_overlay_interval < efficiency.fast_overlay_interval);
-        assert!(smooth.standings_interval < balanced.standings_interval);
-        assert!(balanced.standings_interval < efficiency.standings_interval);
+        assert!(smooth.fast_overlay_cycles < balanced.fast_overlay_cycles);
+        assert!(balanced.fast_overlay_cycles < efficiency.fast_overlay_cycles);
+        assert!(smooth.standings_cycles < balanced.standings_cycles);
+        assert!(balanced.standings_cycles < efficiency.standings_cycles);
+    }
+
+    /// A cadence that is not a multiple of the fast one repaints the composite
+    /// host on a cycle where nothing else changes, which is what pushes WebView2
+    /// towards presenting at the monitor refresh rate.
+    #[test]
+    fn every_profile_cadence_is_a_multiple_of_the_fast_one() {
+        for profile in [
+            PerformanceProfile::Smooth,
+            PerformanceProfile::Balanced,
+            PerformanceProfile::Efficiency,
+        ] {
+            let tuning = profile.tuning();
+            assert!(tuning.fast_overlay_cycles > 0, "{}", profile.name());
+            for cycles in [
+                tuning.standings_cycles,
+                tuning.relative_cycles,
+                tuning.track_map_cycles,
+                tuning.secondary_overlay_cycles,
+            ] {
+                assert_eq!(cycles % tuning.fast_overlay_cycles, 0, "{}", profile.name());
+            }
+        }
     }
 
     #[test]

@@ -5,7 +5,6 @@
   color: #f5f7fa;
   font-family: "Roboto Condensed", sans-serif;
   font-synthesis: weight;
-  text-rendering: geometricPrecision;
 }
 
 * {
@@ -81,6 +80,40 @@ html.composite-embed body *::after {
 
 html.composite-embed .overlay-shell {
   backdrop-filter: none !important;
+}
+
+/* The embedded document already clips to the viewport and already scales as a
+   single transformed unit, so containment states what is true and keeps a panel
+   repaint from invalidating anything outside its own box. */
+html.composite-embed body {
+  contain: layout paint style;
+}
+
+/* Wide blurred shadows are re-rasterised on every repaint of the panel that
+   carries them. The native composite repaints at telemetry cadence, so it keeps
+   a short shadow; standalone/OBS pages keep the full one. */
+html.composite-embed :is(
+  .overlay-shell,
+  .conditions-shell,
+  .damage-shell,
+  .driving-shell,
+  .forecast-shell,
+  .fuel-shell,
+  .liftcoast-card,
+  .pitstop-shell,
+  .rejoin-card,
+  .stint-history-card,
+  .timing-card,
+  .tires-shell,
+  .standings-session-header,
+  .relative-table-header
+),
+html.composite-embed .standings-class::before {
+  box-shadow: 0 2px 6px rgb(0 0 0 / 45%);
+}
+
+html.composite-embed .flag-card {
+  box-shadow: 0 2px 6px rgb(0 0 0 / 45%), inset 0 0 24px rgb(0 0 0 / 12%);
 }
 
 .topbar,

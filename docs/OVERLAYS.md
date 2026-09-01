@@ -24,6 +24,12 @@ telemetry semantics and file ownership live under `docs/overlays/`; use
   of continuously at the monitor refresh rate. Express native warning motion as
   cadence-driven state changes when it is essential; standalone and OBS pages may
   retain decorative motion. New overlays must preserve this shared safeguard.
+- Embedded native documents also replace wide blurred panel shadows with a short
+  one and declare `contain: layout paint style` on the document body, which the
+  scaled, clipped overlay already satisfies. Both bound the rectangle WebView2
+  rasterises for a panel repaint. Standalone and OBS pages keep the full shadow.
+- Panel scale is quantised to 1/64 so a resize reuses one raster scale instead of
+  producing a new one for every pointer movement.
 
 ## Host and interaction
 
@@ -79,6 +85,11 @@ telemetry semantics and file ownership live under `docs/overlays/`; use
   delta engine and strategy calculations remain sampled at 50 Hz. Smooth preserves
   full-cadence behavior; Balanced is recommended; Efficiency also removes the
   Track Map pulse. Every profile retains the complete Track Map roster.
+  Every cadence is a whole number of 20 ms source cycles and an exact multiple of
+  the profile's fast cadence, so a cycle that repaints a slow overlay repaints the
+  fast ones too. Smooth delivers at 20/40/40/40/100 ms, Balanced at
+  40/80/80/80/160 ms and Efficiency at 60/120/120/120/240 ms
+  (fast / relative / Track Map / secondary / standings).
 - Keep the overlay catalog scannable in two columns at the normal control-panel
   width: descriptions may use two lines, configuration must read as an action,
   and enabled state should remain clear without turning every card into a bright

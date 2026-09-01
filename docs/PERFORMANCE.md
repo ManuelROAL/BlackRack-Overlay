@@ -32,6 +32,14 @@ the visible per-lap strategy CSV.
   standings-state update, full roster build, warnings and frame/strategy work.
 - Frontend samples: average/max render duration and item count.
 
+## Pending measurement
+
+Cycle-aligned cadences, panel/body containment, short native shadows, the removal
+of root `text-rendering: geometricPrecision` and the quantised panel scale are
+implemented but not yet measured. The moving capture below must report GPU
+average/P95 before and after, and the release language pass must confirm the text
+metric change at 100%, 125% and 150%.
+
 ## Current validation target
 
 The stationary all-overlay pass validated grouped native batches and per-overlay
@@ -72,6 +80,11 @@ These are hypotheses, not approved changes.
 - Keep the native composite free of CSS animation, transition and backdrop-filter
   work that causes WebView2 to present at monitor refresh. Native motion must be
   driven by bounded overlay cadence; standalone/OBS decoration is independent.
+- Keep every delivery cadence an exact multiple of the profile's fast cadence, in
+  whole source cycles. Overlapping updates share one presented frame; drifting
+  ones multiply the presents the transparent host costs the game.
+- Bound the rasterised area per repaint: containment on the panel and the embedded
+  body, short shadows instead of wide blurs, and a quantised panel scale.
 - Cache static data and derive slow values outside 50 Hz.
 - Avoid serialization when no consumer exists.
 - Prefer bounded channels and stale-data fallbacks over blocking the hot loop.

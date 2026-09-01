@@ -53,6 +53,12 @@ in `docs/overlays/` and should not be duplicated here.
   asynchronously at semantic boundaries.
 - Telemetry cadence follows information needs rather than host grouping. Heavy
   work does not enter the 50 Hz loop without comparable measurement.
+- Overlay cadences are counted in source cycles and every period is an exact
+  multiple of the profile's fast period, so updates land on shared cycles. Free
+  timers drifted into neighbouring cycles and made the transparent host present
+  close to the monitor refresh rate even when each overlay changed far less often.
+  An active flag or rejoin warning follows the fast cadence so alignment never
+  delays a safety warning.
 - User-facing strategy capture is a separate opt-in per-lap CSV. It keeps invalid,
   non-green and pit laps marked, skips partial laps and never exposes internal
   performance diagnostics as strategy data.
