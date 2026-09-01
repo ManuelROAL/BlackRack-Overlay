@@ -229,17 +229,11 @@ let performanceProfile = readPerformanceProfile();
 const performanceProfileButtons = [
   ...document.querySelectorAll<HTMLButtonElement>("[data-performance-profile]")
 ];
-const performanceProfileSummary = document.getElementById("performance-profile-summary");
-const performanceSummaryKey = (profile: PerformanceProfile): TranslationKey =>
-  `performance.${profile}Summary` as TranslationKey;
 const renderPerformanceProfile = (): void => {
   for (const button of performanceProfileButtons) {
     const selected = button.dataset.performanceProfile === performanceProfile;
     button.classList.toggle("active", selected);
     button.setAttribute("aria-pressed", String(selected));
-  }
-  if (performanceProfileSummary) {
-    performanceProfileSummary.textContent = t(performanceSummaryKey(performanceProfile));
   }
 };
 
