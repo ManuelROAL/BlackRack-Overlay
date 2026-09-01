@@ -656,11 +656,12 @@ body[data-overlay-fit="true"].relative-body .standings-shell {
 }
 
 .standing-row.damaged .driver-name {
-  box-shadow: inset 0 -1px rgb(255 184 77 / 65%);
+  text-decoration: underline rgb(255 184 77 / 65%) 1px;
+  text-underline-offset: 2px;
 }
 
 .standing-row.heavily-damaged .driver-name {
-  box-shadow: inset 0 -1px #ff5968;
+  text-decoration-color: #ff5968;
 }
 
 .standing-gap,
