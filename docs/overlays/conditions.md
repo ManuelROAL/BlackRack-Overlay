@@ -12,11 +12,12 @@
 
 ## Data semantics
 
-- Live values come from shared memory and are authoritative: ambient and track
-  temperature, rain percentage, track wetness, `mTrackGripLevel` (official track
-  grip) and `mWind` (speed and bearing computed in Rust). Because LMU can publish
-  a zero `mWind`, the current official REST forecast node supplies
-  `WNV_WINDSPEED` and `WNV_WINDDIRECTION` as fallback.
+- Live temperatures, rain, track wetness and `mTrackGripLevel` (official track
+  grip) come from shared memory. Wind follows doX's LMU behavior and uses the
+  current official REST forecast node: `WNV_WINDSPEED` is metres per second and
+  `WNV_WINDDIRECTION` is the eight-point meteorological compass index. Do not
+  convert shared-memory `mWind` into a compass bearing: its components use
+  track/world axes rather than a documented north reference.
 - The condition icon combines live shared-memory `mCloudCoverage` and `mRaining`
   into the game's 0..10 weather scale. The current forecast node's `sky` is used
   only as fallback when live weather values are unavailable.
@@ -53,8 +54,8 @@
 
 ## Verification focus
 
-Test shared-memory wind/grip availability, state thresholds, humidity fallback
-and missing/stale forecast with the frontend build.
+Test REST wind units/direction, shared-memory grip availability, state thresholds,
+humidity fallback and missing/stale forecast with the frontend build.
 
 ## Localization
 

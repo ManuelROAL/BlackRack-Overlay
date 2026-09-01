@@ -1305,14 +1305,13 @@ impl LmuTelemetrySource {
         }
     }
 
-    fn resolve_wind(wind_x: f64, wind_z: f64, rest_wind: Option<(f64, f64)>) -> (f64, f64) {
-        let shared_speed_ms = f64::hypot(wind_x, wind_z);
-        if shared_speed_ms.is_finite() && shared_speed_ms > 0.0 {
-            let direction_degrees = (wind_z.atan2(wind_x).to_degrees() + 360.0) % 360.0;
-            (shared_speed_ms, direction_degrees)
-        } else {
-            rest_wind.unwrap_or((0.0, 0.0))
-        }
+    fn resolve_wind(rest_wind: Option<(f64, f64)>) -> (f64, f64) {
+        // LMU's forecast direction is an explicit meteorological compass index.
+        // The shared-memory mWind vector is expressed in track/world axes, so it
+        // cannot be presented as a north-referenced bearing without extra track
+        // orientation data. doX likewise drives its wind readout from the current
+        // official forecast node rather than converting mWind into a compass.
+        rest_wind.unwrap_or((0.0, 0.0))
     }
 
     #[cfg(test)]
@@ -4012,8 +4011,7 @@ impl TelemetrySource for LmuTelemetrySource {
                     .and_then(|session| session.wind_at(index))
             })
         });
-        let (wind_speed_ms, wind_direction_degrees) =
-            Self::resolve_wind(snapshot.wind_x, snapshot.wind_z, rest_wind);
+        let (wind_speed_ms, wind_direction_degrees) = Self::resolve_wind(rest_wind);
         let player_grip_percent = Self::track_grip_percent(snapshot.track_grip_level);
         let track_rubber_percent = Self::track_rubber_percent(&snapshot);
         let track_grip_state = Self::track_surface_state(snapshot.track_wetness_percent);
@@ -4437,16 +4435,12 @@ mod tests {
     }
 
     #[test]
-    fn wind_uses_official_rest_node_when_shared_memory_is_zero() {
+    fn wind_uses_official_rest_node_compass_values() {
         assert_eq!(
-            LmuTelemetrySource::resolve_wind(0.0, 0.0, Some((7.0, 90.0))),
+            LmuTelemetrySource::resolve_wind(Some((7.0, 90.0))),
             (7.0, 90.0)
         );
-        assert_eq!(
-            LmuTelemetrySource::resolve_wind(3.0, 4.0, Some((7.0, 90.0))).0,
-            5.0
-        );
-        assert_eq!(LmuTelemetrySource::resolve_wind(0.0, 0.0, None), (0.0, 0.0));
+        assert_eq!(LmuTelemetrySource::resolve_wind(None), (0.0, 0.0));
     }
 
     #[test]
