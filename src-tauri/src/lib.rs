@@ -1205,14 +1205,16 @@ fn load_shortcut_settings(app: &AppHandle) -> ShortcutSettings {
         return ShortcutSettings::default();
     };
     match serde_json::from_str::<ShortcutSettings>(&contents) {
+        // A hand-edited settings file goes through the same validation as the
+        // panel, so nothing unexpected reaches the accelerator parser.
         Ok(settings)
-            if !settings.interaction_mode.trim().is_empty()
-                && !settings.show_panel.trim().is_empty() =>
+            if is_valid_shortcut(&settings.interaction_mode)
+                && is_valid_shortcut(&settings.show_panel) =>
         {
             settings
         }
         Ok(_) => {
-            startup_log::record("warning: empty shortcut configuration; using defaults");
+            startup_log::record("warning: invalid shortcut configuration; using defaults");
             ShortcutSettings::default()
         }
         Err(error) => {
@@ -1399,6 +1401,63 @@ fn shortcut_status(runtime: &ShortcutRuntime) -> ShortcutSettingsStatus {
     }
 }
 
+/// Accelerators end up registered process-wide, so only the shape the plugin
+/// actually understands is accepted: `Modifier+Modifier+Key` written with ASCII
+/// letters and digits. Anything else is rejected before it reaches the parser
+/// instead of relying on the length cap alone.
+fn is_valid_shortcut(shortcut: &str) -> bool {
+    const MAX_SEGMENTS: usize = 5;
+    if shortcut.is_empty() || shortcut.len() > 64 {
+        return false;
+    }
+    let mut segments = 0;
+    for segment in shortcut.split('+') {
+        segments += 1;
+        if segments > MAX_SEGMENTS
+            || segment.is_empty()
+            || !segment.chars().all(|value| value.is_ascii_alphanumeric())
+        {
+            return false;
+        }
+    }
+    segments > 1
+}
+
+#[cfg(test)]
+mod shortcut_validation_tests {
+    use super::is_valid_shortcut;
+
+    #[test]
+    fn accepts_the_accelerators_the_panel_can_produce() {
+        for shortcut in [
+            "Ctrl+Shift+O",
+            "Ctrl+Alt+M",
+            "Ctrl+Shift+F12",
+            "CommandOrControl+Shift+KeyK",
+            "Super+Numpad0",
+        ] {
+            assert!(is_valid_shortcut(shortcut), "{shortcut} should be valid");
+        }
+    }
+
+    #[test]
+    fn rejects_malformed_or_oversized_accelerators() {
+        for shortcut in [
+            "",
+            "O",
+            "Ctrl+",
+            "+O",
+            "Ctrl++O",
+            "Ctrl+Shift+O;rm",
+            "Ctrl+Shift+\u{202e}O",
+            "Ctrl+Alt+Shift+Super+Meta+O",
+            "Ctrl+Shift+ThisAcceleratorIsFarTooLongToEverBeRegisteredByTheUser",
+        ] {
+            assert!(!is_valid_shortcut(shortcut), "{shortcut} should be rejected");
+        }
+    }
+}
+
 #[tauri::command]
 fn get_shortcut_settings(control: State<'_, ShortcutControl>) -> ShortcutSettingsStatus {
     let runtime = control
@@ -1418,7 +1477,7 @@ fn set_shortcut(
 ) -> Result<ShortcutSettingsStatus, String> {
     require_control_window(&window)?;
     let shortcut = shortcut.trim().replace(' ', "");
-    if shortcut.is_empty() || shortcut.len() > 64 {
+    if !is_valid_shortcut(&shortcut) {
         return Err("invalid".into());
     }
 

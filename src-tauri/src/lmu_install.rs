@@ -4,7 +4,12 @@ use std::path::{Path, PathBuf};
 
 const GAME_RELATIVE_PATH: &str = "steamapps/common/Le Mans Ultimate";
 const TELEMETRY_PLUGIN: &str = "Plugins/LMU_SharedMemoryMapPlugin64.dll";
+const MAX_STEAM_LIBRARIES: usize = 32;
 
+/// Discovery is a read-only probe: the paths below are only stat-ed to report
+/// whether the telemetry plugin is installed. Nothing here is opened, written or
+/// executed, so `LMU_INSTALL_DIR` and `libraryfolders.vdf` — both of which the
+/// user controls — cannot do more than point the check at a different directory.
 pub(crate) fn installations() -> Vec<PathBuf> {
     let mut candidates = Vec::new();
     if let Some(path) = std::env::var_os("LMU_INSTALL_DIR") {
@@ -57,8 +62,14 @@ fn libraries_from_vdf(path: &Path) -> Vec<PathBuf> {
                 .iter()
                 .position(|value| value.trim().eq_ignore_ascii_case("path"))?;
             let value = quoted.get(index + 1)?.trim();
-            Some(PathBuf::from(value.replace("\\\\", "\\")))
+            let library = PathBuf::from(value.replace("\\\\", "\\"));
+            // A relative entry would resolve against the working directory
+            // instead of a real Steam library, so only absolute roots are kept.
+            library.is_absolute().then_some(library)
         })
+        // A malformed or hostile file cannot make discovery walk an unbounded
+        // number of directories.
+        .take(MAX_STEAM_LIBRARIES)
         .collect()
 }
 
@@ -81,6 +92,25 @@ mod tests {
         let libraries = libraries_from_vdf(&path);
         assert_eq!(libraries.len(), 2);
         assert_eq!(libraries[1].to_string_lossy(), "D:\\SteamLibrary");
+        let _ = fs::remove_file(path);
+    }
+
+    #[test]
+    fn ignores_relative_library_entries() {
+        let path = std::env::temp_dir().join(format!(
+            "blackrack-overlay-relative-vdf-{}.vdf",
+            std::process::id()
+        ));
+        fs::write(
+            &path,
+            "\"libraryfolders\"\n{\n\"0\" { \"path\" \"..\\\\..\\\\elsewhere\" }\n\"1\" { \"path\" \"D:\\\\SteamLibrary\" }\n}",
+        )
+        .unwrap();
+
+        let libraries = libraries_from_vdf(&path);
+
+        assert_eq!(libraries.len(), 1);
+        assert_eq!(libraries[0].to_string_lossy(), "D:\\SteamLibrary");
         let _ = fs::remove_file(path);
     }
 }

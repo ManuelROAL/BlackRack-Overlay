@@ -158,23 +158,64 @@ fn redact_marker(mut value: String, marker: &str) -> String {
     }
 }
 
+/// JSON Web Tokens are the one secret shape that carries no useful marker of its
+/// own, and their `eyJ` prefix (a base64url `{"`) never appears in the symbol
+/// names or paths that make up the rest of a backtrace.
+fn redact_json_web_tokens(mut value: String) -> String {
+    let is_token_char =
+        |character: char| character.is_ascii_alphanumeric() || matches!(character, '-' | '_' | '.');
+    let mut search_from = 0;
+    loop {
+        let Some(relative_start) = value[search_from..].find("eyJ") else {
+            return value;
+        };
+        let start = search_from + relative_start;
+        let end = value[start..]
+            .char_indices()
+            .find_map(|(offset, character)| (!is_token_char(character)).then_some(start + offset))
+            .unwrap_or(value.len());
+        // A bare `eyJ` inside ordinary text is not a token; require the dotted
+        // header.payload shape before redacting.
+        if end - start >= 16 && value[start..end].contains('.') {
+            value.replace_range(start..end, REDACTED);
+            search_from = start + REDACTED.len();
+        } else {
+            search_from = end.max(start + 3);
+        }
+        if search_from >= value.len() {
+            return value;
+        }
+    }
+}
+
 fn sanitize(value: &str, maximum: usize) -> String {
     let mut sanitized = truncate_chars(value, maximum)
         .replace('\r', "\\r")
         .replace('\n', "\\n");
     for marker in [
         "authorization: bearer ",
+        "authorization: basic ",
         "access_token=",
         "access_token\":\"",
+        "refresh_token=",
+        "refresh_token\":\"",
         "ticket=",
         "ticket\":\"",
         "token=",
         "token\":\"",
+        "password=",
+        "password\":\"",
+        "api_key=",
+        "api_key\":\"",
+        "apikey=",
+        "apikey\":\"",
+        "secret=",
+        "secret\":\"",
         "bearer ",
     ] {
         sanitized = redact_marker(sanitized, marker);
     }
-    sanitized
+    redact_json_web_tokens(sanitized)
 }
 
 pub(crate) fn record_frontend_error(source: &str, kind: &str, message: &str, stack: Option<&str>) {
@@ -246,6 +287,35 @@ mod tests {
         assert_eq!(
             value,
             "request ticket=[redacted]&token=[redacted]\\nAuthorization: Bearer [redacted]"
+        );
+    }
+
+    #[test]
+    fn credentials_without_a_known_marker_are_redacted_by_shape() {
+        let value = sanitize(
+            "POST failed with eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1 attached",
+            1_000,
+        );
+
+        assert_eq!(value, "POST failed with [redacted] attached");
+    }
+
+    #[test]
+    fn ordinary_diagnostics_survive_the_shape_based_redaction() {
+        for message in [
+            "at blackrack_overlay_lib::telemetry::lmu::read (src/telemetry/lmu.rs:3447)",
+            "eyJ",
+            "keyJoin failed",
+        ] {
+            assert_eq!(sanitize(message, 1_000), message);
+        }
+    }
+
+    #[test]
+    fn new_credential_markers_are_covered() {
+        assert_eq!(
+            sanitize("login password=hunter2 api_key=abc123", 1_000),
+            "login password=[redacted] api_key=[redacted]"
         );
     }
 }
