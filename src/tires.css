@@ -149,31 +149,31 @@ body.tires-body {
 .brake-disc {
   z-index: 2;
   top: 9px;
-  width: 3px;
+  width: 2px;
   height: 24px;
   border-radius: 2px;
   background: var(--brake-color);
 }
 .wheel-fl .brake-disc,
-.wheel-rl .brake-disc { left: 10px; }
+.wheel-rl .brake-disc { left: 9px; }
 .wheel-fr .brake-disc,
-.wheel-rr .brake-disc { right: 10px; }
+.wheel-rr .brake-disc { right: 9px; }
 
 .suspension-arm {
   z-index: 1;
   top: 11px;
-  width: 7px;
+  width: 5px;
   height: 20px;
   background: var(--suspension-color);
   clip-path: polygon(0 0, 100% 39%, 100% 55%, 0 100%, 0 76%, 65% 47%, 0 22%);
 }
 .wheel-fl .suspension-arm,
 .wheel-rl .suspension-arm {
-  left: 9px;
+  left: 11px;
 }
 .wheel-fr .suspension-arm,
 .wheel-rr .suspension-arm {
-  right: 9px;
+  right: 11px;
   transform: scaleX(-1);
 }
 
