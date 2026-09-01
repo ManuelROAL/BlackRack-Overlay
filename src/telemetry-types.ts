@@ -251,6 +251,10 @@ export interface TelemetryFrame {
   player_part_detached: boolean;
   player_rear_wing_detached: boolean;
   player_tire_temperature_c: [number, number, number, number];
+  player_tire_temperature_by_zone_c: [
+    [number, number, number], [number, number, number],
+    [number, number, number], [number, number, number]
+  ];
   player_brake_temperature_c: [number, number, number, number];
   player_tire_sliding_fraction: [number, number, number, number];
   player_tire_remaining_by_wheel_percent: [number, number, number, number];

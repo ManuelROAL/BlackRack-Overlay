@@ -19,6 +19,9 @@ Detailed Damage (`damage.md`).
 - Wheel order is front-left, front-right, rear-left, rear-right.
 - Match Dox's LMU tyre reading: 34% carcass temperature plus 22% from each of the
   three inner-layer samples, then convert Kelvin to Celsius.
+- Render the wider tyre as three contiguous bands from the three inner-layer
+  samples. Keep the bands seamless, with no gaps or borders, and color each one
+  independently through the compound-aware tyre heatmap.
 - Convert live `mBrakeTemp` from Kelvin to Celsius despite the inherited SDK
   comment.
 - `mWear` is remaining tread (`1.0` new), so show `mWear * 100`.
@@ -90,9 +93,10 @@ Detailed Damage (`damage.md`).
 
 ## Verification focus
 
-Test all four corners independently, temperature conversion, remaining tread,
-flat-spot reset, suspension source mapping, puncture/detachment priority, wing
-false positives, engine-warning state and REST-unavailable fallback.
+Test all four corners and three tyre bands independently, temperature conversion,
+remaining tread, flat-spot reset, suspension source mapping,
+puncture/detachment priority, wing false positives, engine-warning state and
+REST-unavailable fallback.
 
 ## Localization
 
