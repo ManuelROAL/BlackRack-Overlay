@@ -399,9 +399,11 @@ extern "C" int lmu_read_snapshot(LmuSnapshot* output, int32_t spectator_vehicle_
                         + wheel.mTireInnerLayerTemperature[1] * 0.22
                         + wheel.mTireInnerLayerTemperature[2] * 0.22
                         - 273.15;
+                    // LMU's HUD colors the three contact-patch bands from the
+                    // surface samples reported as physical left/center/right.
                     for (size_t zone_index = 0; zone_index < 3; ++zone_index) {
                         output->player_tire_temperature_by_zone_c[wheel_index][zone_index] =
-                            wheel.mTireInnerLayerTemperature[zone_index] - 273.15;
+                            wheel.mTemperature[zone_index] - 273.15;
                     }
                     // LMU entrega mBrakeTemp en Kelvin pese al comentario heredado del SDK.
                     output->player_brake_temperature_c[wheel_index] = wheel.mBrakeTemp - 273.15;
