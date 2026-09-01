@@ -15,6 +15,7 @@ const wearValues = wheels.map((wheel) => wheel.querySelector<HTMLElement>(".whee
 const flatSpotValues = wheels.map((wheel) => wheel.querySelector<HTMLElement>(".wheel-flatspot")!);
 const damageParts = Array.from(document.querySelectorAll<SVGElement>("[data-damage-part]"));
 const aeroWing = document.querySelector<SVGElement>("[data-aero-wing]")!;
+const engineStatus = document.querySelector<SVGElement>("[data-engine-status]")!;
 const damageSummary = document.querySelector<HTMLElement>(".damage-summary")!;
 const damageValue = document.getElementById("damage-value")!;
 const renderPerformance = createOverlayPerformanceTracker("tires");
@@ -119,6 +120,11 @@ const render = (frame: TelemetryFrame): void => {
   setAttribute(aeroWing, "aria-label", aeroLabel);
   setAttribute(aeroWing, "title", aeroLabel);
 
+  const engineLabel = t(frame.player_engine_overheating ? "tires.engineFailure" : "tires.engineNormal");
+  setData(engineStatus, "state", frame.player_engine_overheating ? "failure" : "normal");
+  setAttribute(engineStatus, "aria-label", engineLabel);
+  setAttribute(engineStatus, "title", engineLabel);
+
   const aggregateDamage = Math.round(frame.player_damage_percent);
   setText(damageValue, `${aggregateDamage}%`);
   setData(damageSummary, "state", frame.player_part_detached || aggregateDamage >= 50
@@ -139,6 +145,7 @@ const previewFrame = {
   player_aero_damage_percent: 18,
   player_damage_percent: 19,
   player_damage_severity: [0, 2, 1, 0, 0, 0, 0, 0],
+  player_engine_overheating: false,
   player_part_detached: false,
   player_rear_wing_detached: false
 } as TelemetryFrame;

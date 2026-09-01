@@ -132,6 +132,7 @@ struct LmuSnapshot {
     double player_tire_remaining_by_wheel_percent[4];
     double player_tire_slip_ratio[4];
     double player_tire_sliding_fraction[4];
+    uint8_t player_engine_overheating;
     uint32_t player_part_detached;
     uint8_t player_tire_compounds[4];
     uint8_t player_tire_flat[4];
@@ -415,6 +416,7 @@ extern "C" int lmu_read_snapshot(LmuSnapshot* output, int32_t spectator_vehicle_
                 output->player_tire_remaining_percent = std::clamp(remaining, 0.0, 100.0);
                 std::memcpy(output->player_damage_severity, vehicle_telemetry->mDentSeverity,
                             sizeof(output->player_damage_severity));
+                output->player_engine_overheating = vehicle_telemetry->mOverheating ? 1u : 0u;
                 output->player_part_detached = vehicle_telemetry->mDetached ? 1u : 0u;
             }
 

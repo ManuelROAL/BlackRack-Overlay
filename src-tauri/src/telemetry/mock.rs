@@ -296,6 +296,7 @@ impl TelemetrySource for MockTelemetrySource {
             player_suspension_damage_by_wheel_percent: [2.0, 8.0, 4.0, 1.0],
             player_body_damage_percent: 6.0,
             player_damage_severity: [0; 8],
+            player_engine_overheating: false,
             player_part_detached: false,
             player_rear_wing_detached: false,
             player_tire_temperature_c: [76.2, 83.3, 76.7, 81.1],

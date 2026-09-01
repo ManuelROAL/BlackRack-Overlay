@@ -61,6 +61,9 @@ Detailed Damage (`damage.md`).
   puncture, red for detachment, with detachment taking priority. The native
   composite holds the same alert color statically so an alert cannot force
   WebView2 to present at monitor refresh. Numeric readings stay visible.
+- Show a compact engine SVG inside the chassis. Keep it neutral normally and turn
+  it red only from shared memory's official `mOverheating` engine-warning signal;
+  zero RPM, ignition state and body damage must not infer an engine failure.
 
 ## Presentation and hot path
 
@@ -81,14 +84,14 @@ Detailed Damage (`damage.md`).
   corner/value abbreviations.
 - Cache nodes and skip unchanged text, attributes, datasets and CSS variables in
   the 50 Hz renderer.
-- Keep the chassis interior limited to aggregate damage; do not show the tyre-life
-  estimate there.
+- Keep the chassis interior limited to the engine status and aggregate damage; do
+  not show the tyre-life estimate there.
 
 ## Verification focus
 
 Test all four corners independently, temperature conversion, remaining tread,
 flat-spot reset, suspension source mapping, puncture/detachment priority, wing
-false positives and REST-unavailable fallback.
+false positives, engine-warning state and REST-unavailable fallback.
 
 ## Localization
 

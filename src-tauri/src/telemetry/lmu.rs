@@ -273,6 +273,7 @@ struct LmuSnapshot {
     player_tire_remaining_by_wheel_percent: [f64; 4],
     player_tire_slip_ratio: [f64; 4],
     player_tire_sliding_fraction: [f64; 4],
+    player_engine_overheating: u8,
     player_part_detached: u32,
     player_tire_compounds: [u8; 4],
     player_tire_flat: [u8; 4],
@@ -359,6 +360,7 @@ impl Default for LmuSnapshot {
             player_tire_remaining_by_wheel_percent: [-1.0; 4],
             player_tire_slip_ratio: [0.0; 4],
             player_tire_sliding_fraction: [0.0; 4],
+            player_engine_overheating: 0,
             player_part_detached: 0,
             player_tire_compounds: [0; 4],
             player_tire_flat: [0; 4],
@@ -4147,6 +4149,7 @@ impl TelemetrySource for LmuTelemetrySource {
                 / 16.0
                 * 100.0,
             player_damage_severity: snapshot.player_damage_severity,
+            player_engine_overheating: snapshot.player_engine_overheating != 0,
             player_part_detached: snapshot.player_part_detached != 0,
             player_rear_wing_detached: rear_wing_detached(
                 rest_vehicle_damage,

@@ -236,9 +236,29 @@ body.tires-body {
   filter: drop-shadow(0 0 3px rgb(255 36 79 / 72%));
 }
 
+.engine-status {
+  position: absolute;
+  top: 36px;
+  left: 16px;
+  width: 26px;
+  height: 20px;
+  overflow: visible;
+  fill: #18212a;
+  stroke: #74808c;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: fill 90ms linear, stroke 90ms linear;
+}
+.engine-status[data-state="failure"] {
+  fill: #7d1423;
+  stroke: #ff5367;
+  filter: drop-shadow(0 0 3px rgb(255 36 79 / 72%));
+}
+
 .damage-summary {
   position: absolute;
-  top: 60px;
+  top: 66px;
   left: 12px;
   display: flex;
   align-items: baseline;

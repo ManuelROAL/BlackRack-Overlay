@@ -220,7 +220,7 @@ export const es = {
   "tires.tooltip": "Neumático {tire} · Disco {brake} · {remaining} restante · Plano {flat} · Suspensión {suspension} · Compuesto {compound}",
   "tires.chassisPart": "Chasis {part}: nivel {level}", "tires.part.frontCenter": "frontal central", "tires.part.frontLeft": "frontal izquierda", "tires.part.left": "lateral izquierda",
   "tires.part.rearLeft": "trasera izquierda", "tires.part.rearCenter": "trasera central", "tires.part.rearRight": "trasera derecha", "tires.part.right": "lateral derecha", "tires.part.frontRight": "frontal derecha",
-  "tires.wingDetached": "Alerón desprendido", "tires.aeroDamage": "Daño aerodinámico global {value}%", "tires.aeroUnavailable": "Daño aerodinámico global no disponible",
+  "tires.wingDetached": "Alerón desprendido", "tires.aeroDamage": "Daño aerodinámico global {value}%", "tires.aeroUnavailable": "Daño aerodinámico global no disponible", "tires.engineNormal": "Motor sin alertas", "tires.engineFailure": "Alerta de sobrecalentamiento del motor",
   "common.lapsBehind": "+{count} V", "fuel.lapsValue": "{value}V", "fuel.lapRange": "V{first}–V{last}", "fuel.litersPerLap": "{value}L/V"
 } as const satisfies Record<string, Message>;
 
@@ -408,7 +408,7 @@ export const en = {
   "tires.unknown": "unknown", "tires.detached": "Wheel detached", "tires.flat": "Punctured tyre", "tires.tooltip": "Tyre {tire} · Disc {brake} · {remaining} remaining · Flat spot {flat} · Suspension {suspension} · Compound {compound}",
   "tires.chassisPart": "Chassis {part}: level {level}", "tires.part.frontCenter": "front centre", "tires.part.frontLeft": "front left", "tires.part.left": "left side",
   "tires.part.rearLeft": "rear left", "tires.part.rearCenter": "rear centre", "tires.part.rearRight": "rear right", "tires.part.right": "right side", "tires.part.frontRight": "front right",
-  "tires.wingDetached": "Rear wing detached", "tires.aeroDamage": "Overall aerodynamic damage {value}%", "tires.aeroUnavailable": "Overall aerodynamic damage unavailable",
+  "tires.wingDetached": "Rear wing detached", "tires.aeroDamage": "Overall aerodynamic damage {value}%", "tires.aeroUnavailable": "Overall aerodynamic damage unavailable", "tires.engineNormal": "Engine normal", "tires.engineFailure": "Engine overheating warning",
   "common.lapsBehind": "+{count} L", "fuel.lapsValue": "{value}L", "fuel.lapRange": "L{first}–L{last}", "fuel.litersPerLap": "{value}L/LAP"
 } as const satisfies Catalog;
 
