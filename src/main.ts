@@ -1394,6 +1394,7 @@ const parseOverlayConfiguration = (
   const drivingPedalIds = Object.keys(defaultDriving.graphPedals);
   if (driving && (!completeBooleanRecord(driving.graphPedals, drivingPedalIds)
     || !completeBooleanRecord(driving.inputPedals, drivingPedalIds)
+    || (driving.showGraph !== undefined && typeof driving.showGraph !== "boolean")
     || typeof driving.showSteering !== "boolean"
     || typeof driving.showForceFeedback !== "boolean"
     || typeof driving.showSpeed !== "boolean"
@@ -1512,6 +1513,9 @@ const parseOverlayConfiguration = (
       },
       driving: driving ? {
         ...(driving as unknown as DrivingSettings),
+        showGraph: typeof driving.showGraph === "boolean"
+          ? driving.showGraph
+          : defaultDriving.showGraph,
         showRpmLeds: typeof driving.showRpmLeds === "boolean"
           ? driving.showRpmLeds
           : defaultDriving.showRpmLeds
@@ -2034,6 +2038,7 @@ for (const pedal of DRIVING_PEDALS) {
 
 const drivingReadoutOptions = document.getElementById("driving-readout-options");
 for (const [key, label] of [
+  ["showGraph", t("readout.graph")],
   ["showSteering", t("readout.steering")],
   ["showForceFeedback", t("readout.ffb")],
   ["showSpeed", t("readout.speed")],

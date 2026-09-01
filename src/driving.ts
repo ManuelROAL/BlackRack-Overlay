@@ -51,7 +51,7 @@ const visiblePedalCount = (values: Record<DrivingPedalId, boolean>): number =>
   DRIVING_PEDALS.filter(({ id }) => values[id]).length;
 
 const drivingWidth = (): number => {
-  const graphWidth = visiblePedalCount(settings.graphPedals) > 0 ? 278 : 0;
+  const graphWidth = settings.showGraph && visiblePedalCount(settings.graphPedals) > 0 ? 278 : 0;
   const inputCount = visiblePedalCount(settings.inputPedals);
   const inputWidth = inputCount > 0 ? 13 + inputCount * 25 : 0;
   const dialWidth = settings.showSteering || settings.showGear
@@ -162,7 +162,7 @@ const drawActivations = (values: number[], active: boolean[], color: string): vo
 const drawTrailing = (): void => {
   if (!context) return;
   context.clearRect(0, 0, canvas.width, canvas.height);
-  if (visiblePedalCount(settings.graphPedals) === 0) return;
+  if (!settings.showGraph || visiblePedalCount(settings.graphPedals) === 0) return;
   context.strokeStyle = "rgba(255,255,255,.08)";
   context.lineWidth = 1;
   for (const y of [0.25, 0.5, 0.75]) {
@@ -183,7 +183,7 @@ const applySettings = (next: DrivingSettings): void => {
   settings = next;
   const graphCount = visiblePedalCount(settings.graphPedals);
   const inputCount = visiblePedalCount(settings.inputPedals);
-  if (trailingPanel) trailingPanel.hidden = graphCount === 0;
+  if (trailingPanel) trailingPanel.hidden = !settings.showGraph || graphCount === 0;
   for (const { id } of DRIVING_PEDALS) {
     const input = document.querySelector<HTMLElement>(`[data-input-pedal="${id}"]`);
     if (input) input.hidden = !settings.inputPedals[id];

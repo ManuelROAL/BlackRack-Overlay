@@ -43,8 +43,9 @@
   TC/ABS marker colors identify its contents while preserving graph space.
 - Render TC intervention markers in electric blue and ABS intervention markers in
   vivid yellow so both alerts remain distinct from the pedal traces.
-- Graph pedals and current-input pedals are independently selectable. Steering,
-  FFB, speed, gear and the RPM strip are independently selectable too.
+- The complete graph is optional without losing its selected pedal traces. Graph
+  pedals and current-input pedals are independently selectable. Steering, FFB,
+  speed, gear and the RPM strip are independently selectable too.
 - Compact panel width when a complete block is hidden while preserving current
   visual scale. Mirror every option in OBS browser-source preferences.
 - Keep gear, speed and the FFB readout vertically separated throughout the
