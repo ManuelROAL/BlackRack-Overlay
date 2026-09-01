@@ -386,8 +386,29 @@ impl Default for LmuSnapshot {
 
 extern "C" {
     fn lmu_read_snapshot(snapshot: *mut LmuSnapshot, spectator_vehicle_id: i32) -> c_int;
-    #[cfg(test)]
     fn lmu_snapshot_size() -> usize;
+}
+
+/// `lmu_read_snapshot` memsets and fills `sizeof(LmuSnapshot)` **native** bytes
+/// into the caller-provided buffer. If the Rust and C++ struct definitions ever
+/// drift, that write would run past the Rust allocation and corrupt memory, so
+/// the FFI is refused entirely until the layouts match again.
+fn ffi_snapshot_layout_ok() -> bool {
+    use std::sync::OnceLock;
+    static LAYOUT_OK: OnceLock<bool> = OnceLock::new();
+    *LAYOUT_OK.get_or_init(|| {
+        let rust_size = std::mem::size_of::<LmuSnapshot>();
+        let native_size = unsafe { lmu_snapshot_size() };
+        if rust_size == native_size {
+            true
+        } else {
+            crate::startup_log::record(format!(
+                "fatal: LmuSnapshot ABI mismatch rust={rust_size} native={native_size}; \
+                 native telemetry disabled to avoid memory corruption"
+            ));
+            false
+        }
+    })
 }
 
 #[derive(Default)]
@@ -3426,7 +3447,11 @@ impl TelemetrySource for LmuTelemetrySource {
         } else {
             -2
         };
-        let result = unsafe { lmu_read_snapshot(&mut snapshot, spectator_vehicle_id) };
+        let result = if ffi_snapshot_layout_ok() {
+            unsafe { lmu_read_snapshot(&mut snapshot, spectator_vehicle_id) }
+        } else {
+            0
+        };
         let live_snapshot = result > 0 && snapshot.connected != 0;
         if live_snapshot {
             self.last_valid_snapshot = Some(snapshot);

@@ -177,8 +177,10 @@ pub(crate) fn get_wheel_input_status(
 
 #[tauri::command]
 pub(crate) fn capture_delta_wheel_button(
+    window: tauri::WebviewWindow,
     control: tauri::State<'_, WheelInputControl>,
 ) -> Result<WheelInputStatus, String> {
+    crate::require_control_window(&window)?;
     let mut status = control
         .0
         .lock()
@@ -193,20 +195,25 @@ pub(crate) fn capture_delta_wheel_button(
 
 #[tauri::command]
 pub(crate) fn cancel_delta_wheel_button_capture(
+    window: tauri::WebviewWindow,
     control: tauri::State<'_, WheelInputControl>,
 ) -> WheelInputStatus {
     let mut status = control
         .0
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner());
-    status.capturing = false;
+    if crate::require_control_window(&window).is_ok() {
+        status.capturing = false;
+    }
     status.clone()
 }
 
 #[tauri::command]
 pub(crate) fn clear_delta_wheel_button(
+    window: tauri::WebviewWindow,
     control: tauri::State<'_, WheelInputControl>,
 ) -> Result<WheelInputStatus, String> {
+    crate::require_control_window(&window)?;
     save_binding(None).map_err(|_| "persistence_failed".to_string())?;
     let mut status = control
         .0

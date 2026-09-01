@@ -14,6 +14,19 @@ use crate::telemetry::TelemetryFrame;
 const ADDRESS: &str = "127.0.0.1:47636";
 const BASE_URL: &str = "http://127.0.0.1:47636";
 const BROWSER_INDEX_ENTRY: &str = "browser.html";
+// Only loopback names are legitimate for a local browser source. Rejecting every
+// other `Host` blocks DNS-rebinding pages that resolve an attacker domain to
+// 127.0.0.1 and then read the telemetry stream as if they were same-origin.
+const ALLOWED_HOSTS: [&str; 4] = [
+    "127.0.0.1:47636",
+    "localhost:47636",
+    "127.0.0.1",
+    "localhost",
+];
+const ALLOWED_ORIGINS: [&str; 2] = ["http://127.0.0.1:47636", "http://localhost:47636"];
+const MAX_SUBSCRIBERS: usize = 32;
+const MAX_REQUEST_HEAD_BYTES: usize = 16 * 1024;
+const HTML_SECURITY_POLICY: &str = "default-src 'self'; connect-src 'self' ws://localhost:6398 ws://127.0.0.1:6398; img-src 'self' data:; style-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'self'; object-src 'none'";
 const BROWSER_OVERLAYS: [(&str, &str); 16] = [
     ("standings", "standings.html"),
     ("relative", "relative.html"),
@@ -302,20 +315,28 @@ fn server_loop(
             break;
         }
         while let Ok((mut stream, _)) = listener.accept() {
-            if let Some(target) = request_path(&mut stream) {
-                let path = target.split('?').next().unwrap_or(&target);
-                if path == "/api/events" {
-                    if write_sse_headers(&mut stream).is_ok() {
-                        subscribers.push(Subscriber {
-                            stream,
-                            overlay_demand: event_overlay_demand(&target),
-                        });
-                    }
-                } else if path == "/api/trackmap" {
-                    serve_track_map(&mut stream, &target);
-                } else {
-                    serve_request(&mut stream, path, &app);
+            let Some(head) = read_request_head(&mut stream) else {
+                continue;
+            };
+            if !head.host_allowed || !head.origin_allowed {
+                write_error(&mut stream, 403, "Forbidden");
+                continue;
+            }
+            let target = head.target;
+            let path = target.split('?').next().unwrap_or(&target);
+            if path == "/api/events" {
+                if subscribers.len() >= MAX_SUBSCRIBERS {
+                    write_error(&mut stream, 503, "Too many browser source clients");
+                } else if write_sse_headers(&mut stream).is_ok() {
+                    subscribers.push(Subscriber {
+                        stream,
+                        overlay_demand: event_overlay_demand(&target),
+                    });
                 }
+            } else if path == "/api/trackmap" {
+                serve_track_map(&mut stream, &target);
+            } else {
+                serve_request(&mut stream, path, &app);
             }
         }
 
@@ -356,15 +377,89 @@ fn event_overlay_demand(target: &str) -> u32 {
         .map_or(ALL_OVERLAY_DEMANDS, |index| 1 << index)
 }
 
-fn request_path(stream: &mut TcpStream) -> Option<String> {
+struct RequestHead {
+    target: String,
+    host_allowed: bool,
+    origin_allowed: bool,
+}
+
+fn host_allowed(value: &str) -> bool {
+    ALLOWED_HOSTS
+        .iter()
+        .any(|allowed| value.eq_ignore_ascii_case(allowed))
+}
+
+fn origin_allowed(value: &str) -> bool {
+    ALLOWED_ORIGINS
+        .iter()
+        .any(|allowed| value.eq_ignore_ascii_case(allowed))
+}
+
+/// Embedded asset keys are plain relative paths. Anything that could encode a
+/// traversal — percent escapes, backslashes, `..`, an absolute path — is
+/// rejected before it reaches the resolver rather than relying on a raw `..`
+/// comparison against a target the client controls.
+fn is_safe_asset_path(relative: &str) -> bool {
+    !relative.is_empty()
+        && !relative.contains("..")
+        && !relative.contains('%')
+        && !relative.contains('\\')
+        && !relative.starts_with('/')
+}
+
+fn read_request_head(stream: &mut TcpStream) -> Option<RequestHead> {
     let _ = stream.set_read_timeout(Some(Duration::from_millis(500)));
     let _ = stream.set_write_timeout(Some(Duration::from_millis(100)));
-    let mut buffer = [0_u8; 8192];
-    let length = stream.read(&mut buffer).ok()?;
-    let request = std::str::from_utf8(&buffer[..length]).ok()?;
-    let line = request.lines().next()?;
-    let mut parts = line.split_whitespace();
-    (parts.next()? == "GET").then(|| parts.next().unwrap_or("/").to_string())
+    // Header bytes can be split across TCP segments, so keep reading until the
+    // blank line that ends the head. The attempt and size caps stop a slow or
+    // oversized client from holding up the single-threaded accept loop.
+    let mut buffer = Vec::with_capacity(2_048);
+    let mut chunk = [0_u8; 2_048];
+    for _ in 0..8 {
+        let length = stream.read(&mut chunk).ok()?;
+        if length == 0 {
+            break;
+        }
+        buffer.extend_from_slice(&chunk[..length]);
+        if buffer.len() >= MAX_REQUEST_HEAD_BYTES
+            || buffer.windows(4).any(|window| window == b"\r\n\r\n")
+        {
+            break;
+        }
+    }
+
+    let request = std::str::from_utf8(&buffer).ok()?;
+    let mut lines = request.split("\r\n");
+    let mut parts = lines.next()?.split_whitespace();
+    if parts.next()? != "GET" {
+        return None;
+    }
+    let target = parts.next().unwrap_or("/").to_string();
+
+    let mut host_allowed = false;
+    // A browser source navigates to the page directly and sends no `Origin`;
+    // any cross-site request that does carry one is refused.
+    let mut origin_allowed = true;
+    for line in lines {
+        if line.is_empty() {
+            break;
+        }
+        let Some((name, value)) = line.split_once(':') else {
+            continue;
+        };
+        let value = value.trim();
+        if name.eq_ignore_ascii_case("host") {
+            host_allowed = self::host_allowed(value);
+        } else if name.eq_ignore_ascii_case("origin") {
+            origin_allowed = self::origin_allowed(value);
+        }
+    }
+
+    Some(RequestHead {
+        target,
+        host_allowed,
+        origin_allowed,
+    })
 }
 
 fn serve_track_map(stream: &mut TcpStream, target: &str) {
@@ -417,7 +512,7 @@ fn serve_request(stream: &mut TcpStream, request_path: &str, app: &AppHandle) {
     } else {
         browser_overlay_entry(request_path).unwrap_or_else(|| request_path.trim_start_matches('/'))
     };
-    if relative.contains("..") || relative.is_empty() {
+    if !is_safe_asset_path(relative) {
         write_response(stream, 404, "text/plain; charset=utf-8", b"Not found");
         return;
     }
@@ -441,14 +536,23 @@ fn serve_request(stream: &mut TcpStream, request_path: &str, app: &AppHandle) {
 fn write_response(stream: &mut TcpStream, status: u16, mime: &str, body: &[u8]) {
     let reason = match status {
         200 => "OK",
+        403 => "Forbidden",
         404 => "Not Found",
         503 => "Service Unavailable",
         _ => "Internal Server Error",
     };
-    let headers = format!(
-        "HTTP/1.1 {status} {reason}\r\nContent-Type: {mime}\r\nContent-Length: {}\r\nCache-Control: no-cache\r\nX-Content-Type-Options: nosniff\r\nConnection: close\r\n\r\n",
+    let mut headers = format!(
+        "HTTP/1.1 {status} {reason}\r\nContent-Type: {mime}\r\nContent-Length: {}\r\nCache-Control: no-cache\r\nX-Content-Type-Options: nosniff\r\nReferrer-Policy: no-referrer\r\nConnection: close\r\n",
         body.len()
     );
+    // Pages served here run outside the WebView, so they do not inherit the
+    // application CSP from tauri.conf.json and need their own.
+    if mime.starts_with("text/html") {
+        headers.push_str("Content-Security-Policy: ");
+        headers.push_str(HTML_SECURITY_POLICY);
+        headers.push_str("\r\n");
+    }
+    headers.push_str("\r\n");
     let _ = stream.write_all(headers.as_bytes());
     let _ = stream.write_all(body);
 }
@@ -474,7 +578,40 @@ fn browser_overlay_entry(request_path: &str) -> Option<&'static str> {
 
 #[cfg(test)]
 mod tests {
-    use super::{browser_overlay_entry, event_overlay_demand, BROWSER_OVERLAYS};
+    use super::{
+        browser_overlay_entry, event_overlay_demand, host_allowed, is_safe_asset_path,
+        origin_allowed, BROWSER_OVERLAYS,
+    };
+
+    #[test]
+    fn only_loopback_hosts_are_served() {
+        assert!(host_allowed("127.0.0.1:47636"));
+        assert!(host_allowed("localhost:47636"));
+        assert!(host_allowed("LocalHost"));
+        // A DNS-rebinding page reaches the socket but still sends its own name.
+        assert!(!host_allowed("attacker.example:47636"));
+        assert!(!host_allowed("127.0.0.1.nip.io:47636"));
+        assert!(!host_allowed(""));
+    }
+
+    #[test]
+    fn cross_site_origins_are_refused() {
+        assert!(origin_allowed("http://127.0.0.1:47636"));
+        assert!(origin_allowed("http://localhost:47636"));
+        assert!(!origin_allowed("https://attacker.example"));
+        assert!(!origin_allowed("null"));
+    }
+
+    #[test]
+    fn asset_paths_reject_encoded_and_absolute_traversals() {
+        assert!(is_safe_asset_path("standings.html"));
+        assert!(is_safe_asset_path("assets/index-a1b2c3.js"));
+        assert!(!is_safe_asset_path("../secrets.json"));
+        assert!(!is_safe_asset_path("%2e%2e/secrets.json"));
+        assert!(!is_safe_asset_path("..\\secrets.json"));
+        assert!(!is_safe_asset_path("/etc/passwd"));
+        assert!(!is_safe_asset_path(""));
+    }
 
     #[test]
     fn every_browser_overlay_has_a_route() {

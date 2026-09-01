@@ -43,8 +43,25 @@ const OVERLAY_LABELS: [&str; 16] = [
 
 const TRANSPARENT_BACKGROUND: Color = Color(0, 0, 0, 0);
 const OVERLAY_HOST_PREFIX: &str = "overlay-monitor-";
+const CONTROL_WINDOW_LABEL: &str = "control";
 const DEFAULT_CLICK_THROUGH: bool = true;
 const KOFI_SUPPORT_URL: &str = "https://ko-fi.com/blackrack";
+
+/// Guard for privileged commands that must only ever run on behalf of the
+/// control panel. Overlay webviews render live session data (driver names, chat,
+/// race control) and are also served over the local network by the browser
+/// source, so they must not be able to reach filesystem, shell or configuration
+/// commands even if their content were ever compromised.
+pub(crate) fn require_control_window(window: &WebviewWindow) -> Result<(), String> {
+    if window.label() == CONTROL_WINDOW_LABEL {
+        return Ok(());
+    }
+    startup_log::record(format!(
+        "denied privileged command from window '{}'",
+        window.label()
+    ));
+    Err("Esta acción solo está disponible desde el panel de control".into())
+}
 
 struct OverlayControl {
     click_through: AtomicBool,
@@ -983,22 +1000,33 @@ fn get_telemetry_logging() -> telemetry::TelemetryLoggingStatus {
 }
 
 #[tauri::command]
-fn set_telemetry_logging(enabled: bool) -> Result<telemetry::TelemetryLoggingStatus, String> {
+fn set_telemetry_logging(
+    window: WebviewWindow,
+    enabled: bool,
+) -> Result<telemetry::TelemetryLoggingStatus, String> {
+    require_control_window(&window)?;
     telemetry::set_telemetry_logging(enabled)
 }
 
 #[tauri::command]
-fn set_performance_profile(profile: String) -> Result<(), String> {
+fn set_performance_profile(window: WebviewWindow, profile: String) -> Result<(), String> {
+    require_control_window(&window)?;
     telemetry::set_performance_profile(&profile)
 }
 
 #[tauri::command]
-fn set_spectator_mode(enabled: bool) {
+fn set_spectator_mode(window: WebviewWindow, enabled: bool) {
+    if require_control_window(&window).is_err() {
+        return;
+    }
     telemetry::set_spectator_mode(enabled);
 }
 
 #[tauri::command]
-fn set_team_mode(enabled: bool) {
+fn set_team_mode(window: WebviewWindow, enabled: bool) {
+    if require_control_window(&window).is_err() {
+        return;
+    }
     telemetry::set_team_mode(enabled);
 }
 
@@ -1009,8 +1037,10 @@ fn get_driver_rank_estimate_logging() -> telemetry::DriverRankEstimateLoggingSta
 
 #[tauri::command]
 fn set_driver_rank_estimate_logging(
+    window: WebviewWindow,
     enabled: bool,
 ) -> Result<telemetry::DriverRankEstimateLoggingStatus, String> {
+    require_control_window(&window)?;
     telemetry::set_driver_rank_estimate_logging(enabled)
 }
 
@@ -1020,7 +1050,11 @@ fn get_strategy_logging() -> telemetry::StrategyLoggingStatus {
 }
 
 #[tauri::command]
-fn set_strategy_logging(enabled: bool) -> Result<telemetry::StrategyLoggingStatus, String> {
+fn set_strategy_logging(
+    window: WebviewWindow,
+    enabled: bool,
+) -> Result<telemetry::StrategyLoggingStatus, String> {
+    require_control_window(&window)?;
     telemetry::set_strategy_logging(enabled)
 }
 
@@ -1062,41 +1096,61 @@ fn get_browser_source_status() -> browser_source::BrowserSourceStatus {
 }
 
 #[tauri::command]
-fn set_browser_source_enabled(enabled: bool) -> browser_source::BrowserSourceStatus {
+fn set_browser_source_enabled(
+    window: WebviewWindow,
+    enabled: bool,
+) -> browser_source::BrowserSourceStatus {
+    if require_control_window(&window).is_err() {
+        return browser_source::status();
+    }
     browser_source::set_enabled(enabled)
 }
 
 #[tauri::command]
-fn set_browser_source_preferences(preferences: serde_json::Value) {
+fn set_browser_source_preferences(window: WebviewWindow, preferences: serde_json::Value) {
+    if require_control_window(&window).is_err() {
+        return;
+    }
     browser_source::set_preferences(preferences);
 }
 
 #[tauri::command]
-fn set_overlay_view_settings(settings: telemetry::OverlayViewSettings) {
+fn set_overlay_view_settings(window: WebviewWindow, settings: telemetry::OverlayViewSettings) {
+    if require_control_window(&window).is_err() {
+        return;
+    }
     telemetry::set_overlay_view_settings(settings);
 }
 
 #[tauri::command]
-fn set_delta_settings(settings: telemetry::DeltaSettings) {
+fn set_delta_settings(window: WebviewWindow, settings: telemetry::DeltaSettings) {
+    if require_control_window(&window).is_err() {
+        return;
+    }
     telemetry::set_delta_settings(settings);
 }
 
 #[tauri::command]
-fn set_timing_settings(settings: telemetry::TimingSettings) {
+fn set_timing_settings(window: WebviewWindow, settings: telemetry::TimingSettings) {
+    if require_control_window(&window).is_err() {
+        return;
+    }
     telemetry::set_timing_settings(settings);
 }
 
 #[tauri::command]
-fn get_lmu_dependency_status() -> LmuDependencyStatus {
+fn get_lmu_dependency_status(window: WebviewWindow) -> Result<LmuDependencyStatus, String> {
+    require_control_window(&window)?;
     let plugin = lmu_install::telemetry_plugin();
-    LmuDependencyStatus {
+    Ok(LmuDependencyStatus {
         telemetry_plugin_available: plugin.is_some(),
         telemetry_plugin_path: plugin.map(|path| path.display().to_string()),
-    }
+    })
 }
 
 #[tauri::command]
-fn open_support_page() -> Result<(), String> {
+fn open_support_page(window: WebviewWindow) -> Result<(), String> {
+    require_control_window(&window)?;
     #[cfg(windows)]
     {
         use std::iter::once;
@@ -1233,7 +1287,12 @@ mod configuration_tests {
 }
 
 #[tauri::command]
-fn export_overlay_configuration(path: PathBuf, contents: String) -> Result<String, String> {
+fn export_overlay_configuration(
+    window: WebviewWindow,
+    path: PathBuf,
+    contents: String,
+) -> Result<String, String> {
+    require_control_window(&window)?;
     validate_overlay_configuration(&contents)?;
     if !path
         .extension()
@@ -1252,7 +1311,8 @@ fn export_overlay_configuration(path: PathBuf, contents: String) -> Result<Strin
 }
 
 #[tauri::command]
-fn import_overlay_configuration(path: PathBuf) -> Result<String, String> {
+fn import_overlay_configuration(window: WebviewWindow, path: PathBuf) -> Result<String, String> {
+    require_control_window(&window)?;
     if !path
         .extension()
         .and_then(|extension| extension.to_str())
@@ -1351,10 +1411,12 @@ fn get_shortcut_settings(control: State<'_, ShortcutControl>) -> ShortcutSetting
 #[tauri::command]
 fn set_shortcut(
     app: AppHandle,
+    window: WebviewWindow,
     control: State<'_, ShortcutControl>,
     action: String,
     shortcut: String,
 ) -> Result<ShortcutSettingsStatus, String> {
+    require_control_window(&window)?;
     let shortcut = shortcut.trim().replace(' ', "");
     if shortcut.is_empty() || shortcut.len() > 64 {
         return Err("invalid".into());

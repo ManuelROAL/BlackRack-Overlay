@@ -126,6 +126,18 @@ const overlayTitleKeys: Record<OverlayId, import("./i18n").TranslationKey> = {
 };
 const overlayTitle = (overlay: OverlayId): string => t(overlayTitleKeys[overlay]).toLocaleUpperCase(getLocale());
 
+// Overlay iframes reach the Tauri backend only through this host. Restrict the
+// bridge to the read-only/diagnostic commands the overlays actually use so a
+// single compromised overlay document cannot drive the whole command surface.
+const BRIDGE_COMMANDS: ReadonlySet<string> = new Set([
+  "record_frontend_error",
+  "record_frontend_performance",
+  "get_interaction_mode",
+  "get_telemetry_logging",
+  "get_track_map_geometry",
+  "migrate_legacy_track_map_learning"
+]);
+
 const stage = document.getElementById("overlay-stage") as HTMLElement;
 const panels = new Map<OverlayId, HTMLElement>();
 const frames = new Map<OverlayId, HTMLIFrameElement>();
@@ -480,6 +492,15 @@ window.addEventListener("message", (event: MessageEvent<RuntimeMessage>) => {
   }
   if (event.data.kind !== "invoke" || !event.data.command || !event.data.requestId) return;
   const source = event.source as WindowProxy | null;
+  if (!BRIDGE_COMMANDS.has(event.data.command)) {
+    source?.postMessage({
+      source: "blackrack-overlay-composite",
+      kind: "event",
+      event: `invoke:${event.data.requestId}:error`,
+      payload: `Comando no permitido: ${event.data.command}`
+    } satisfies RuntimeMessage, event.origin);
+    return;
+  }
   void invoke(event.data.command, event.data.args)
     .then((payload) => source?.postMessage({
       source: "blackrack-overlay-composite",

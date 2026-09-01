@@ -69,10 +69,18 @@ pub(crate) fn set_enabled(enabled: bool) -> Result<StrategyLoggingStatus, String
 const HEADER: &str = "timestamp_ms;track;vehicle;session_type;lap;stint;lap_time_s;valid;green;pit_lap;fuel_start_l;fuel_end_l;fuel_used_l;fuel_added_l;energy_start_pct;energy_end_pct;energy_used_pct;energy_added_pct;tire_change;compound_fl;compound_fr;compound_rl;compound_rr;tire_start_fl_pct;tire_start_fr_pct;tire_start_rl_pct;tire_start_rr_pct;tire_end_fl_pct;tire_end_fr_pct;tire_end_rl_pct;tire_end_rr_pct;tire_wear_fl_pct;tire_wear_fr_pct;tire_wear_rl_pct;tire_wear_rr_pct;tire_temp_avg_fl_c;tire_temp_avg_fr_c;tire_temp_avg_rl_c;tire_temp_avg_rr_c;tire_temp_max_fl_c;tire_temp_max_fr_c;tire_temp_max_rl_c;tire_temp_max_rr_c;ambient_avg_c;track_avg_c;rain_avg_pct;wetness_avg_pct;grip_avg_pct;damage_start_pct;damage_end_pct\n";
 
 fn csv_text(value: &str) -> String {
-    if value.contains([';', '"', '\n', '\r']) {
-        format!("\"{}\"", value.replace('"', "\"\""))
+    // Track, vehicle and compound names come from installed content, so a modded
+    // name could start with a spreadsheet formula. Prefixing an apostrophe keeps
+    // the text readable while stopping Excel and LibreOffice from evaluating it.
+    let escaped = if value.starts_with(['=', '+', '-', '@', '\t', '\r']) {
+        format!("'{value}")
     } else {
         value.to_owned()
+    };
+    if escaped.contains([';', '"', '\n', '\r']) {
+        format!("\"{}\"", escaped.replace('"', "\"\""))
+    } else {
+        escaped
     }
 }
 
@@ -402,6 +410,15 @@ impl StrategyLogger {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn csv_text_neutralizes_spreadsheet_formulas_and_separators() {
+        assert_eq!(csv_text("Spa"), "Spa");
+        assert_eq!(csv_text("=cmd|'/c calc'!A1"), "'=cmd|'/c calc'!A1");
+        assert_eq!(csv_text("@SUM(A1)"), "'@SUM(A1)");
+        assert_eq!(csv_text("Le Mans; 24h"), "\"Le Mans; 24h\"");
+        assert_eq!(csv_text("+1;2"), "\"'+1;2\"");
+    }
 
     #[test]
     fn completed_lap_row_contains_consumption_and_wear() {
