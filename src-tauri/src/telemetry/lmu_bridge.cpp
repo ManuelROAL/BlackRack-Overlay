@@ -398,16 +398,12 @@ extern "C" int lmu_read_snapshot(LmuSnapshot* output, int32_t spectator_vehicle_
                         + wheel.mTireInnerLayerTemperature[1] * 0.22
                         + wheel.mTireInnerLayerTemperature[2] * 0.22
                         - 273.15;
-                    // The SDK reports left/centre/right across the tread. Expose
-                    // a stable inside/centre/outside order to every renderer.
-                    const size_t inside_index = wheel_index % 2 == 0 ? 2 : 0;
-                    const size_t outside_index = wheel_index % 2 == 0 ? 0 : 2;
                     output->player_tire_zone_temperature_c[wheel_index][0] =
-                        wheel.mTemperature[inside_index] - 273.15;
+                        wheel.mTemperature[0] - 273.15;
                     output->player_tire_zone_temperature_c[wheel_index][1] =
                         wheel.mTemperature[1] - 273.15;
                     output->player_tire_zone_temperature_c[wheel_index][2] =
-                        wheel.mTemperature[outside_index] - 273.15;
+                        wheel.mTemperature[2] - 273.15;
                     // LMU entrega mBrakeTemp en Kelvin pese al comentario heredado del SDK.
                     output->player_brake_temperature_c[wheel_index] = wheel.mBrakeTemp - 273.15;
                     output->player_tire_remaining_by_wheel_percent[wheel_index] = tire_remaining;
