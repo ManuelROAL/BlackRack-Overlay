@@ -80,6 +80,9 @@ Detailed Damage (`damage.md`).
   the chassis and tyre graphics at their established visual size. Keep the
   chassis centered on both axes of the adaptive panel instead of anchoring it to
   fixed top or left offsets.
+- Reserve a visible gap between each suspension and the chassis at the minimum
+  layout width. Migrate the former 174 px default to 194 px so the wider
+  three-band tyres cannot push the suspension into the car outline.
 - Suspension damage is color-only on its SVG. Keep compound in the wheel tooltip.
   Keep each suspension glyph subordinate to its tyre and brake graphic.
   Keep tyre, brake and suspension shapes in separate tracks with a small visible

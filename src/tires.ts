@@ -164,7 +164,7 @@ const previewFrame = {
 } as TelemetryFrame;
 
 fitOverlay(
-  { width: 174, height: 130 },
+  { width: 194, height: 130 },
   { widthTextRatio: 0.5, heightTextRatio: 0.6 }
 );
 bindOverlayTransparency("tires");
