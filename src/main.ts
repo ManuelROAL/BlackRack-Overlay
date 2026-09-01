@@ -3,6 +3,7 @@ import { getVersion } from "@tauri-apps/api/app";
 import { emit, listen } from "@tauri-apps/api/event";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import "./control-panel.css";
+import { backendErrorMessage } from "./backend-errors";
 import { installFrontendDiagnostics } from "./frontend-diagnostics";
 import {
   applyTranslations,
@@ -1690,8 +1691,8 @@ exportConfigurationButton?.addEventListener("click", () => {
     }
   })().catch((error) => {
     if (exportConfigurationStatus) {
-      exportConfigurationStatus.textContent = t("config.error", { detail: String(error) });
-      exportConfigurationStatus.title = String(error);
+      exportConfigurationStatus.textContent = t("config.error", { detail: backendErrorMessage(error) });
+      exportConfigurationStatus.title = backendErrorMessage(error);
     }
   }).finally(() => {
     setConfigurationTransferBusy(false);
@@ -1732,8 +1733,8 @@ importConfigurationButton?.addEventListener("click", () => {
     window.setTimeout(() => window.location.reload(), 250);
   })().catch((error) => {
     if (exportConfigurationStatus) {
-      exportConfigurationStatus.textContent = t("config.error", { detail: String(error) });
-      exportConfigurationStatus.title = String(error);
+      exportConfigurationStatus.textContent = t("config.error", { detail: backendErrorMessage(error) });
+      exportConfigurationStatus.title = backendErrorMessage(error);
     }
   }).finally(() => {
     setConfigurationTransferBusy(false);
@@ -2349,7 +2350,7 @@ void invoke<BrowserSourceStatus>("get_browser_source_status")
   .catch(reportInitializationError("browser source status"));
 void invoke<ShortcutSettingsStatus>("get_shortcut_settings")
   .then(renderShortcutSettings)
-  .catch((error) => setShortcutMessage(t("shortcuts.loadError", { detail: String(error) }), "error"));
+  .catch((error) => setShortcutMessage(t("shortcuts.loadError", { detail: backendErrorMessage(error) }), "error"));
 void invoke<InteractionMode>("get_interaction_mode")
   .then(renderInteractionMode)
   .catch(reportInitializationError("interaction mode"));

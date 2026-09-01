@@ -122,6 +122,15 @@ pub(crate) fn record(message: impl AsRef<str>) {
     let _ = file.flush();
 }
 
+/// Records the English detail behind a failure and returns the stable code that
+/// travels to the webview. Command errors reach the user through the frontend
+/// i18n catalogs, so backend `Result::Err` payloads carry a machine-readable
+/// code and the diagnostics stay in this log rather than in the UI copy.
+pub(crate) fn command_error(code: &'static str, detail: impl std::fmt::Display) -> String {
+    record(format!("{code}: {detail}"));
+    code.to_owned()
+}
+
 fn truncate_chars(value: &str, maximum: usize) -> String {
     value.chars().take(maximum).collect()
 }

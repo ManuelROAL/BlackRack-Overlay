@@ -275,6 +275,7 @@ struct StandingsUpdate {
     history: Option<HashMap<String, Vec<RestStandingHistory>>>,
 }
 
+#[derive(Default)]
 pub(super) struct LocalRestResolver {
     standings_receiver: Option<Receiver<StandingsUpdate>>,
     supplement_receiver: Option<Receiver<SupplementUpdate>>,
@@ -441,60 +442,21 @@ impl LocalRestResolver {
             }
         });
 
+        // Everything except the worker handles starts empty, so only the fields
+        // wired to the threads spawned above are named here.
         Self {
             standings_receiver: Some(standings_receiver),
             supplement_receiver: Some(supplement_receiver),
             weather_receiver: Some(weather_receiver),
             weather_session,
-            standings_by_slot: HashMap::new(),
-            standings_by_name: HashMap::new(),
-            history_by_slot: HashMap::new(),
-            history_by_name: HashMap::new(),
-            standings_received_at: None,
-            pit_stop: RestPitStopEstimate::default(),
-            vehicle_damage: None,
-            session_max_time_seconds: 0.0,
-            steering_range_degrees: None,
-            fuel_ratio_assigned: 0.0,
-            pit_refill_targets: RestPitRefillTargets::default(),
-            pit_menu_received_at: None,
-            team_driver_names: Vec::new(),
-            team_name: String::new(),
-            team_vehicle_name: String::new(),
-            supplement_received_at: None,
-            weather_nodes: RestWeatherSession::default(),
-            weather_received_at: None,
             demand,
+            ..Default::default()
         }
     }
 
     #[cfg(test)]
     pub(super) fn empty() -> Self {
-        Self {
-            standings_receiver: None,
-            supplement_receiver: None,
-            weather_receiver: None,
-            weather_session: Arc::new(Mutex::new(String::new())),
-            standings_by_slot: HashMap::new(),
-            standings_by_name: HashMap::new(),
-            history_by_slot: HashMap::new(),
-            history_by_name: HashMap::new(),
-            standings_received_at: None,
-            pit_stop: RestPitStopEstimate::default(),
-            vehicle_damage: None,
-            session_max_time_seconds: 0.0,
-            steering_range_degrees: None,
-            fuel_ratio_assigned: 0.0,
-            pit_refill_targets: RestPitRefillTargets::default(),
-            pit_menu_received_at: None,
-            team_driver_names: Vec::new(),
-            team_name: String::new(),
-            team_vehicle_name: String::new(),
-            supplement_received_at: None,
-            weather_nodes: RestWeatherSession::default(),
-            weather_received_at: None,
-            demand: Arc::new(AtomicU8::new(0)),
-        }
+        Self::default()
     }
 
     pub(super) fn refresh(

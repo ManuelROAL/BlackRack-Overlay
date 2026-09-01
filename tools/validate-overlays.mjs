@@ -33,6 +33,7 @@ const sources = {
   browser: read("browser.html"),
   vite: read("vite.config.ts"),
   rust: read("src-tauri/src/browser_source.rs"),
+  lib: read("src-tauri/src/lib.rs"),
   docs: read("docs/overlays/README.md")
 };
 const patterns = {
@@ -56,6 +57,70 @@ for (const overlay of overlays) {
   if (!fs.existsSync(path.join(root, `docs/overlays/${overlay}.md`))) fail(`${overlay}: missing owning document`);
 }
 
+// Every surface that has to enumerate the overlays repeats the roster. Probing
+// for a substring only proves an overlay was added; reading each list back also
+// catches the entries that outlive a rename or a removal.
+const rustArrayEntries = (source, name, tuple) => {
+  const declaration = new RegExp(
+    `const ${name}: \\[(?:\\(&str, &str\\)|&str); (\\d+)\\] = \\[([\\s\\S]*?)\\];`
+  ).exec(source);
+  if (!declaration) {
+    fail(`${name}: declaration was not found`);
+    return [];
+  }
+  const entries = tuple
+    ? [...declaration[2].matchAll(/\("([^"]+)", "([^"]+)"\)/g)].map((match) => match[1])
+    : [...declaration[2].matchAll(/"([^"]+)"/g)].map((match) => match[1]);
+  if (Number(declaration[1]) !== entries.length) {
+    fail(`${name}: declared length ${declaration[1]} does not match ${entries.length} entries`);
+  }
+  return entries;
+};
+
+const viteInputKeys = () => {
+  const source = ts.createSourceFile(
+    "vite.config.ts",
+    sources.vite,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS
+  );
+  let keys = null;
+  const visit = (node) => {
+    if (ts.isPropertyAssignment(node)
+      && ts.isIdentifier(node.name)
+      && node.name.text === "input"
+      && ts.isObjectLiteralExpression(node.initializer)) {
+      keys = node.initializer.properties
+        .filter((property) => ts.isPropertyAssignment(property) && ts.isIdentifier(property.name))
+        .map((property) => property.name.text);
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  if (!keys) fail("vite: rollup input map was not found");
+  return keys ?? [];
+};
+
+// The control panel, the composite host and the browser source index are shells,
+// not overlays, so they are the only bundle entries allowed outside the roster.
+const VITE_NON_OVERLAY_INPUTS = ["control", "browser", "composite"];
+
+const compareRoster = (surface, actual, { ordered = false } = {}) => {
+  const known = new Set(overlays);
+  const seen = new Set(actual);
+  const missing = overlays.filter((overlay) => !seen.has(overlay));
+  const unknown = actual.filter((entry) => !known.has(entry));
+  const duplicated = actual.filter((entry, index) => actual.indexOf(entry) !== index);
+  if (missing.length > 0) fail(`${surface}: missing overlays: ${missing.join(", ")}`);
+  if (unknown.length > 0) fail(`${surface}: unknown overlays: ${unknown.join(", ")}`);
+  if (duplicated.length > 0) fail(`${surface}: duplicated overlays: ${duplicated.join(", ")}`);
+  if (ordered && missing.length === 0 && unknown.length === 0 && duplicated.length === 0
+    && actual.join(",") !== overlays.join(",")) {
+    fail(`${surface}: order diverges from OverlayId: ${actual.join(", ")}`);
+  }
+};
+
 const compositeFile = "src/composite.ts";
 const compositeSource = ts.createSourceFile(
   compositeFile,
@@ -65,7 +130,17 @@ const compositeSource = ts.createSourceFile(
   ts.ScriptKind.TS
 );
 const projections = new Map();
+let compositeOverlayIds = null;
 const visitComposite = (node) => {
+  if (ts.isVariableDeclaration(node)
+    && ts.isIdentifier(node.name)
+    && node.name.text === "overlayIds"
+    && node.initializer
+    && ts.isArrayLiteralExpression(node.initializer)) {
+    compositeOverlayIds = node.initializer.elements
+      .filter(ts.isStringLiteral)
+      .map((element) => element.text);
+  }
   if (ts.isVariableDeclaration(node)
     && ts.isIdentifier(node.name)
     && node.name.text === "telemetryFields"
@@ -82,6 +157,26 @@ const visitComposite = (node) => {
   ts.forEachChild(node, visitComposite);
 };
 visitComposite(compositeSource);
+
+if (compositeOverlayIds === null) {
+  fail("composite: overlayIds was not found");
+} else {
+  // The composite host stacks the overlays in this order and the Rust layout seed
+  // walks OVERLAY_LABELS in the same one, so both have to track OverlayId exactly.
+  compareRoster("composite overlayIds", compositeOverlayIds, { ordered: true });
+}
+compareRoster("composite telemetryFields", [...projections.keys()]);
+compareRoster("lib.rs OVERLAY_LABELS", rustArrayEntries(sources.lib, "OVERLAY_LABELS", false), {
+  ordered: true
+});
+compareRoster(
+  "browser_source.rs BROWSER_OVERLAYS",
+  rustArrayEntries(sources.rust, "BROWSER_OVERLAYS", true)
+);
+compareRoster(
+  "vite rollup input",
+  viteInputKeys().filter((key) => !VITE_NON_OVERLAY_INPUTS.includes(key))
+);
 
 const telemetryTypesFile = "src/telemetry-types.ts";
 const telemetryTypesSource = ts.createSourceFile(
@@ -193,6 +288,6 @@ for (const overlay of overlays) {
 
 if (!process.exitCode) {
   console.log(
-    `Validated ${overlays.length} overlay registrations, ${backendFrameFields.size} frame fields and telemetry projections.`
+    `Validated ${overlays.length} overlay registrations across 8 surfaces, ${backendFrameFields.size} frame fields and telemetry projections.`
   );
 }

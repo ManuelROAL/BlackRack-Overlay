@@ -60,7 +60,7 @@ pub(crate) fn require_control_window(window: &WebviewWindow) -> Result<(), Strin
         "denied privileged command from window '{}'",
         window.label()
     ));
-    Err("Esta acción solo está disponible desde el panel de control".into())
+    Err("control_window_required".into())
 }
 
 struct OverlayControl {
@@ -282,7 +282,9 @@ fn refresh_native_overlay_input() {
 
 #[cfg(windows)]
 fn register_native_overlay_host(window: &WebviewWindow) -> Result<(), String> {
-    let hwnd = window.hwnd().map_err(|error| error.to_string())?;
+    let hwnd = window
+        .hwnd()
+        .map_err(|error| startup_log::command_error("overlay_host_handle_failed", error))?;
     native_overlay_input()
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
@@ -308,10 +310,10 @@ fn start_native_overlay_input_tracker() -> Result<(), String> {
                 std::thread::park_timeout(Duration::from_millis(4));
             }
         })
-        .map_err(|error| format!("No se pudo iniciar el hit-test de overlays: {error}"))?;
+        .map_err(|error| startup_log::command_error("overlay_input_tracker_failed", error))?;
     NATIVE_OVERLAY_INPUT_THREAD
         .set(tracker.thread().clone())
-        .map_err(|_| "El hit-test nativo ya estaba iniciado".to_string())?;
+        .map_err(|_| "overlay_input_tracker_already_started".to_string())?;
     Ok(())
 }
 
@@ -424,14 +426,20 @@ fn set_overlay_interaction_regions(
     regions: Vec<OverlayInteractionRegion>,
 ) -> Result<(), String> {
     if !window.label().starts_with(OVERLAY_HOST_PREFIX) {
-        return Err("La región de interacción solo puede aplicarse a un host de overlays".into());
+        return Err("overlay_host_required".into());
     }
 
     #[cfg(windows)]
     {
-        let size = window.inner_size().map_err(|error| error.to_string())?;
-        let hwnd = window.hwnd().map_err(|error| error.to_string())?;
-        let client_origin = window.inner_position().map_err(|error| error.to_string())?;
+        let size = window
+            .inner_size()
+            .map_err(|error| startup_log::command_error("overlay_host_geometry_failed", error))?;
+        let hwnd = window
+            .hwnd()
+            .map_err(|error| startup_log::command_error("overlay_host_geometry_failed", error))?;
+        let client_origin = window
+            .inner_position()
+            .map_err(|error| startup_log::command_error("overlay_host_geometry_failed", error))?;
         let physical_regions = regions
             .iter()
             .filter_map(|region| {
@@ -512,7 +520,7 @@ struct LmuDependencyStatus {
 fn sorted_monitors(app: &AppHandle) -> Result<Vec<tauri::Monitor>, String> {
     let mut monitors = app
         .available_monitors()
-        .map_err(|error| error.to_string())?;
+        .map_err(|error| startup_log::command_error("monitors_unavailable", error))?;
     monitors.sort_by(|left, right| {
         left.position()
             .y
@@ -681,12 +689,12 @@ fn save_overlay_monitor_index(app: &AppHandle, index: usize) -> Result<(), Strin
     let path = overlay_monitor_settings_path(app)?;
     if let Some(directory) = path.parent() {
         fs::create_dir_all(directory)
-            .map_err(|error| format!("No se pudo crear la carpeta de configuracion: {error}"))?;
+            .map_err(|error| startup_log::command_error("settings_directory_failed", error))?;
     }
     let contents = serde_json::to_string_pretty(&OverlayMonitorSettings { index })
-        .map_err(|error| error.to_string())?;
+        .map_err(|error| startup_log::command_error("settings_encode_failed", error))?;
     fs::write(&path, contents)
-        .map_err(|error| format!("No se pudo guardar la configuracion: {error}"))
+        .map_err(|error| startup_log::command_error("settings_write_failed", error))
 }
 
 fn create_control_window(app: &AppHandle) -> Result<(), String> {
@@ -704,14 +712,14 @@ fn create_control_window(app: &AppHandle) -> Result<(), String> {
         .devtools(false)
         .center()
         .build()
-        .map_err(|error| format!("No se pudo crear el panel de control: {error}"))?;
+        .map_err(|error| startup_log::command_error("control_window_failed", error))?;
     Ok(())
 }
 
 fn create_overlay_host(app: &AppHandle) -> Result<(), String> {
     let monitors = sorted_monitors(app)?;
     if monitors.is_empty() {
-        return Err("No se detectaron monitores para alojar los overlays".into());
+        return Err("monitors_unavailable".into());
     }
     let saved_index = load_overlay_monitor_index(app);
     let (host_index, monitor) = match monitors.get(saved_index) {
@@ -734,23 +742,28 @@ fn create_overlay_host(app: &AppHandle) -> Result<(), String> {
         .devtools(false)
         .visible(false)
         .build()
-        .map_err(|error| format!("No se pudo crear el host del monitor {saved_index}: {error}"))?;
+        .map_err(|error| {
+            startup_log::command_error(
+                "overlay_host_failed",
+                format!("monitor {saved_index}: {error}"),
+            )
+        })?;
 
     window
         .set_position(Position::Physical(PhysicalPosition::new(
             monitor.position().x,
             monitor.position().y,
         )))
-        .map_err(|error| error.to_string())?;
+        .map_err(|error| startup_log::command_error("overlay_host_geometry_failed", error))?;
     window
         .set_size(Size::Physical(PhysicalSize::new(
             monitor.size().width,
             monitor.size().height,
         )))
-        .map_err(|error| error.to_string())?;
+        .map_err(|error| startup_log::command_error("overlay_host_geometry_failed", error))?;
     window
         .set_ignore_cursor_events(DEFAULT_CLICK_THROUGH)
-        .map_err(|error| error.to_string())?;
+        .map_err(|error| startup_log::command_error("overlay_host_geometry_failed", error))?;
     #[cfg(windows)]
     register_native_overlay_host(&window)?;
     #[cfg(windows)]
@@ -762,7 +775,7 @@ fn create_overlay_host(app: &AppHandle) -> Result<(), String> {
 fn get_overlay_monitor(app: AppHandle) -> Result<usize, String> {
     let monitors = sorted_monitors(&app)?;
     if monitors.is_empty() {
-        return Err("No se detectaron monitores para alojar los overlays".into());
+        return Err("monitors_unavailable".into());
     }
     let saved = load_overlay_monitor_index(&app);
     Ok(if saved < monitors.len() { saved } else { 0 })
@@ -772,7 +785,7 @@ fn get_overlay_monitor(app: AppHandle) -> Result<usize, String> {
 fn set_overlay_monitor(app: AppHandle, index: usize) -> Result<usize, String> {
     let monitors = sorted_monitors(&app)?;
     let Some(monitor) = monitors.get(index) else {
-        return Err("El monitor seleccionado no está disponible".into());
+        return Err("monitor_unavailable".into());
     };
     save_overlay_monitor_index(&app, index)?;
     if let Some(window) = app.get_webview_window(&format!("{OVERLAY_HOST_PREFIX}0")) {
@@ -781,13 +794,13 @@ fn set_overlay_monitor(app: AppHandle, index: usize) -> Result<usize, String> {
                 monitor.position().x,
                 monitor.position().y,
             )))
-            .map_err(|error| error.to_string())?;
+            .map_err(|error| startup_log::command_error("overlay_host_geometry_failed", error))?;
         window
             .set_size(Size::Physical(PhysicalSize::new(
                 monitor.size().width,
                 monitor.size().height,
             )))
-            .map_err(|error| error.to_string())?;
+            .map_err(|error| startup_log::command_error("overlay_host_geometry_failed", error))?;
     }
     startup_log::record(format!("overlay monitor changed to {index}"));
     Ok(index)
@@ -887,7 +900,7 @@ async fn set_overlay_visible(
         .iter()
         .copied()
         .find(|known| *known == label)
-        .ok_or_else(|| format!("Overlay desconocido: {label}"))?;
+        .ok_or_else(|| startup_log::command_error("unknown_overlay", &label))?;
 
     {
         let mut desired = control
@@ -903,7 +916,7 @@ async fn set_overlay_visible(
 
     let state = OverlayWindowState { label, visible };
     app.emit("overlay://visibility", &state)
-        .map_err(|error| error.to_string())?;
+        .map_err(|error| startup_log::command_error("overlay_visibility_failed", error))?;
 
     if !control.auto_hidden.load(Ordering::Relaxed) {
         let has_desired_overlays = !control
@@ -991,7 +1004,7 @@ fn overlay_monitor_logical_size(app: &AppHandle, index: usize) -> Result<(f64, f
     let monitor = monitors
         .get(index)
         .or_else(|| monitors.first())
-        .ok_or_else(|| "No se detectaron monitores para alojar los overlays".to_string())?;
+        .ok_or_else(|| "monitors_unavailable".to_string())?;
     let logical = monitor.size().to_logical::<f64>(monitor.scale_factor());
     Ok((logical.width, logical.height))
 }
@@ -1005,7 +1018,7 @@ fn get_default_overlay_placement(
         .iter()
         .copied()
         .find(|candidate| *candidate == label)
-        .ok_or_else(|| format!("Overlay desconocido: {label}"))?;
+        .ok_or_else(|| startup_log::command_error("unknown_overlay", &label))?;
     let available = overlay_monitor_logical_size(&app, load_overlay_monitor_index(&app))?;
     let (x, y, width, height) = fit_seed_geometry(default_overlay_geometry(overlay), available);
     Ok(OverlayPlacementSeed {
@@ -1260,7 +1273,7 @@ fn open_support_page(window: WebviewWindow) -> Result<(), String> {
             )
         };
         if result as isize <= 32 {
-            return Err("No se pudo abrir Ko-fi en el navegador predeterminado".into());
+            return Err("support_page_failed".into());
         }
         Ok(())
     }
@@ -1276,7 +1289,7 @@ fn open_support_page(window: WebviewWindow) -> Result<(), String> {
             .arg(KOFI_SUPPORT_URL)
             .spawn()
             .map(|_| ())
-            .map_err(|error| format!("No se pudo abrir Ko-fi: {error}"))
+            .map_err(|error| startup_log::command_error("support_page_failed", error))
     }
 }
 
@@ -1319,17 +1332,21 @@ fn save_shortcut_settings(app: &AppHandle, settings: &ShortcutSettings) -> Resul
     let path = shortcut_settings_path(app)?;
     if let Some(directory) = path.parent() {
         fs::create_dir_all(directory)
-            .map_err(|error| format!("No se pudo crear la carpeta de configuracion: {error}"))?;
+            .map_err(|error| startup_log::command_error("settings_directory_failed", error))?;
     }
     let contents = serde_json::to_string_pretty(settings)
-        .map_err(|error| format!("No se pudo serializar la configuracion: {error}"))?;
-    fs::write(&path, contents)
-        .map_err(|error| format!("No se pudo guardar {}: {error}", path.display()))
+        .map_err(|error| startup_log::command_error("settings_encode_failed", error))?;
+    fs::write(&path, contents).map_err(|error| {
+        startup_log::command_error(
+            "settings_write_failed",
+            format!("{}: {error}", path.display()),
+        )
+    })
 }
 
 fn validate_overlay_configuration(contents: &str) -> Result<(), String> {
     let parsed: serde_json::Value = serde_json::from_str(contents)
-        .map_err(|error| format!("La configuración no es JSON válido: {error}"))?;
+        .map_err(|error| startup_log::command_error("configuration_invalid_json", error))?;
     let schema_version = parsed
         .get("schemaVersion")
         .and_then(serde_json::Value::as_u64);
@@ -1339,7 +1356,7 @@ fn validate_overlay_configuration(contents: &str) -> Result<(), String> {
         Some("blackrack-overlay-configuration" | "lmu-overlay-configuration")
     ) || !matches!(schema_version, Some(1..))
     {
-        return Err("Formato de configuración no reconocido".into());
+        return Err("configuration_unrecognized".into());
     }
     Ok(())
 }
@@ -1389,14 +1406,18 @@ fn export_overlay_configuration(
         .and_then(|extension| extension.to_str())
         .is_some_and(|extension| extension.eq_ignore_ascii_case("json"))
     {
-        return Err("El archivo de configuración debe tener extensión .json".into());
+        return Err("configuration_extension_required".into());
     }
     if let Some(directory) = path.parent() {
         fs::create_dir_all(directory)
-            .map_err(|error| format!("No se pudo preparar la carpeta elegida: {error}"))?;
+            .map_err(|error| startup_log::command_error("configuration_directory_failed", error))?;
     }
-    fs::write(&path, contents)
-        .map_err(|error| format!("No se pudo guardar {}: {error}", path.display()))?;
+    fs::write(&path, contents).map_err(|error| {
+        startup_log::command_error(
+            "configuration_write_failed",
+            format!("{}: {error}", path.display()),
+        )
+    })?;
     Ok(path.display().to_string())
 }
 
@@ -1408,10 +1429,14 @@ fn import_overlay_configuration(window: WebviewWindow, path: PathBuf) -> Result<
         .and_then(|extension| extension.to_str())
         .is_some_and(|extension| extension.eq_ignore_ascii_case("json"))
     {
-        return Err("El archivo de configuración debe tener extensión .json".into());
+        return Err("configuration_extension_required".into());
     }
-    let contents = fs::read_to_string(&path)
-        .map_err(|error| format!("No se pudo leer {}: {error}", path.display()))?;
+    let contents = fs::read_to_string(&path).map_err(|error| {
+        startup_log::command_error(
+            "configuration_read_failed",
+            format!("{}: {error}", path.display()),
+        )
+    })?;
     validate_overlay_configuration(&contents)?;
     Ok(contents)
 }

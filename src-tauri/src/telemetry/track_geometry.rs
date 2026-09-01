@@ -73,10 +73,10 @@ fn decode_geometry(points: Vec<RawTrackMapPoint>) -> Result<OfficialTrackMapGeom
     let main_path = collect(0);
     let pit_path = select_primary_pit_path(collect(1));
     if main_path.len() < 40 {
-        return Err("La geometria oficial no contiene un trazado principal valido".into());
+        return Err("track_geometry_main_path_invalid".into());
     }
     if pit_path.len() < 2 {
-        return Err("La geometria oficial no contiene un pitlane valido".into());
+        return Err("track_geometry_pit_path_invalid".into());
     }
     Ok(OfficialTrackMapGeometry {
         main_path,
@@ -120,7 +120,7 @@ pub(crate) fn official_track_map_geometry(
 ) -> Result<Arc<OfficialTrackMapGeometry>, String> {
     let key = cache_key.trim();
     if key.is_empty() {
-        return Err("Falta la clave del circuito".into());
+        return Err("track_geometry_key_missing".into());
     }
     let cache = GEOMETRY_CACHE.get_or_init(|| Mutex::new(HashMap::new()));
     if let Some(geometry) = cache
@@ -200,21 +200,23 @@ fn fetch_geometry() -> Result<OfficialTrackMapGeometry, String> {
         .connect_timeout(Duration::from_millis(400))
         .timeout(Duration::from_millis(800))
         .build()
-        .map_err(|error| format!("No se pudo preparar la consulta del mapa: {error}"))?;
+        .map_err(|error| {
+            crate::startup_log::command_error("track_geometry_client_failed", error)
+        })?;
     let points = client
         .get("http://127.0.0.1:6397/rest/watch/trackmap")
         .send()
         .and_then(reqwest::blocking::Response::error_for_status)
-        .map_err(|error| format!("LMU no ha devuelto la geometria del circuito: {error}"))?
+        .map_err(|error| crate::startup_log::command_error("track_geometry_request_failed", error))?
         .json::<Vec<RawTrackMapPoint>>()
-        .map_err(|error| format!("La geometria de LMU no tiene el formato esperado: {error}"))?;
+        .map_err(|error| crate::startup_log::command_error("track_geometry_malformed", error))?;
     decode_geometry(points)
 }
 
 #[cfg(not(all(target_os = "windows", lmu_sdk)))]
 fn fetch_geometry() -> Result<OfficialTrackMapGeometry, String> {
     let _ = Duration::ZERO;
-    Err("La geometria oficial solo esta disponible con la telemetria de LMU".into())
+    Err("track_geometry_unsupported".into())
 }
 
 #[cfg(test)]

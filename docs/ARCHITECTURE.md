@@ -65,6 +65,11 @@ Tauri events    analysis JSONL/strategy CSV    browser-source SSE
   - Converts the snapshot to stable application semantics.
   - Maintains session, vehicle identity, lap, pit, standings and warning state.
   - Calculates resource usage, total-lap estimates and DR gain estimates.
+  - Owns the shared-memory layout, the per-car trackers and the source struct;
+    the models are split into `lmu/` child modules that read those private
+    types directly: `frame.rs` assembles a frame and the rest hold one family
+    each (`standings.rs`, `warnings.rs`, `session.rs`, `fuel.rs`,
+    `driver_rank.rs`, `vehicle.rs`, `weather.rs`, `tests.rs`).
 - `lmu_rest.rs`
   - Polls local REST on background threads and exposes only fresh cached values.
 - `driver_ranks.rs`, `event_split.rs`, `racecontrol.rs`
@@ -109,6 +114,12 @@ Tauri events    analysis JSONL/strategy CSV    browser-source SSE
   while retaining the original browser-console output and bounding duplicate
   reports. Rust panics add their cause, location and backtrace to that same log;
   the backend retains the latest 20 session files.
+- `src/backend-errors.ts`: translates the stable snake_case codes commands reject
+  with. Backend `Result::Err` payloads returned to a webview are codes, never
+  prose; `startup_log::command_error` records the English detail in the session
+  diagnostic log and hands the code back, so user-facing wording lives only in
+  the i18n catalogs. Keep this table in step with the `Err` payloads in
+  `src-tauri/src`.
 - `src/overlay-fit.ts`: scales the complete design when a window is resized.
 - `src/overlay-interaction.ts`: drag/click-through behavior.
 - `src/overlay-appearance.ts`: transparency and text-size persistence and application.

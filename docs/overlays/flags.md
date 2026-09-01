@@ -4,7 +4,7 @@
 
 - Entry: `flags.html`
 - Renderer/style: `src/flags.ts`, `src/flags.css`
-- Backend inference: `src-tauri/src/telemetry/lmu.rs`
+- Backend inference: `src-tauri/src/telemetry/lmu/warnings.rs`
 - OBS route: `/flags`
 - Cadence: 50 Hz while active; 250 ms while inactive
 

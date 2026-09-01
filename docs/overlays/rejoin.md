@@ -4,7 +4,7 @@
 
 - Entry: `rejoin.html`
 - Renderer/style: `src/rejoin.ts`, `src/rejoin.css`
-- Backend model: `src-tauri/src/telemetry/lmu.rs`
+- Backend model: `src-tauri/src/telemetry/lmu/warnings.rs`
 - OBS route: `/rejoin`
 - Cadence: 20 Hz while active; 250 ms while inactive
 

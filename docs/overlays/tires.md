@@ -8,7 +8,7 @@
 - Engine assets: `src/assets/lmu-icons/damage/engine-motor.svg`,
   `oil.svg`, `temperature-water.svg`
 - Shared-memory conversion: `src-tauri/src/telemetry/lmu_bridge.cpp`,
-  `src-tauri/src/telemetry/lmu.rs`
+  `src-tauri/src/telemetry/lmu.rs`, `src-tauri/src/telemetry/lmu/frame.rs`
 - REST supplement: `src-tauri/src/telemetry/lmu_rest.rs`
 - OBS route: `/tires`
 - Cadence: 50 Hz base telemetry

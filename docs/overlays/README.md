@@ -23,6 +23,13 @@ UI behavior, telemetry semantics, cadence and special invariants.
 | Weather Forecast | [forecast.md](forecast.md) | `forecast.html` | `/forecast` | 2 Hz |
 | Current conditions | [conditions.md](conditions.md) | `conditions.html` | `/conditions` | 20/12.5/~8 Hz by profile |
 
+`src/overlay-appearance.ts`'s `OverlayId` is the roster every other surface has to
+match. `npm run check:overlays` reads each of them back and reports drift: this
+index and the per-overlay documents, the HTML entries and renderers, the control
+panel and OBS route lists, the Vite `input` map, `OVERLAY_LABELS` in `lib.rs`,
+`BROWSER_OVERLAYS` in `browser_source.rs` and `overlayIds` plus `telemetryFields`
+in `src/composite.ts`. Adding or renaming an overlay means updating all of them.
+
 Cross-cutting ownership remains in:
 
 - [Architecture](../ARCHITECTURE.md): runtime, hosts, persistence and build behavior.

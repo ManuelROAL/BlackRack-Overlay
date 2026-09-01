@@ -4,7 +4,7 @@
 
 - Entry: `damage.html`
 - Renderer/style: `src/damage.ts`, `src/damage.css`
-- REST/shared-memory aggregation: `src-tauri/src/telemetry/lmu.rs`,
+- REST/shared-memory aggregation: `src-tauri/src/telemetry/lmu/frame.rs`,
   `src-tauri/src/telemetry/lmu_rest.rs`
 - OBS route: `/damage`
 - Cadence: 20 Hz
