@@ -17,10 +17,10 @@ seguir siendo opcional y nunca un requisito de instalación o funcionamiento.
 ## Novedades para el usuario
 
 En cada versión, revisar los cambios desde el commit que fijó la versión anterior y
-guardar un resumen en `docs/releases/<version>.md`. Debe ser breve, estar escrito
-para jugadores y explicar beneficios visibles, sin nombres de commits, archivos,
-fuentes de datos ni detalles de implementación. Agrupar los ajustes menores y no
-mencionar cambios que se hayan revertido antes de publicar.
+guardar una lista en `docs/releases/<version>.md`. Debe estar escrita para jugadores
+e incluir cada cambio visible, sin nombres de commits, archivos, fuentes de datos ni
+detalles de implementación. No mencionar cambios que se hayan revertido antes de
+publicar.
 
 Ese texto es la fuente para el apartado de cambios de `README.txt` y para el anuncio
 de la versión. Antes de cerrar la entrega, contrastarlo con el estado final de la
