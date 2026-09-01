@@ -72,13 +72,14 @@ body.tiretemps-body { padding: 4px; font-family: "Roboto Condensed", sans-serif;
 
 .tread-zone {
   --zone-color: #687481;
+  --zone-text-color: #f4f7fa;
   display: flex;
   min-width: 0;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 2px;
-  color: #07100f;
+  color: var(--zone-text-color);
   background: var(--zone-color);
   border-inline-start: 0;
 }

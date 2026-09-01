@@ -28,27 +28,31 @@ const optimalTireTemperature = (compound: string): number => {
 
 const temperatureColor = (temperature: number, optimal: number): string => {
   if (!Number.isFinite(temperature) || temperature < 0) return "#687481";
-  if (temperature < optimal - 30) return "#4b91ff";
-  if (temperature < optimal - 20) return "#4dcff5";
-  if (temperature < optimal - 10) return "#55c8be";
-  if (temperature <= optimal) return "#55d89a";
-  if (temperature <= optimal + 10) return "#8fe04f";
-  if (temperature <= optimal + 20) return "#efdb3d";
-  if (temperature <= optimal + 30) return "#f58a35";
+  if (temperature < optimal - 30) return "#5268e9";
+  if (temperature < optimal - 20) return "#4b91ff";
+  if (temperature < optimal - 10) return "#4dcff5";
+  if (temperature < optimal) return "#55c8be";
+  if (temperature < optimal + 10) return "#55d89a";
+  if (temperature < optimal + 20) return "#8fe04f";
+  if (temperature < optimal + 30) return "#efdb3d";
+  if (temperature < optimal + 40) return "#f58a35";
   return "#f05252";
 };
 
+const temperatureTextColor = (temperature: number, optimal: number): string =>
+  !Number.isFinite(temperature) || temperature < optimal - 20 ? "#f4f7fa" : "#07100f";
+
 const brakeColor = (temperature: number): string => {
   if (!Number.isFinite(temperature) || temperature < 0) return "#69737d";
-  if (temperature < 100) return "#4b91ff";
-  if (temperature < 200) return "#4dcff5";
-  if (temperature < 300) return "#55c8be";
-  if (temperature < 400) return "#55d89a";
-  if (temperature < 500) return "#8fe04f";
-  if (temperature < 600) return "#efdb3d";
-  if (temperature < 700) return "#f58a35";
-  if (temperature < 800) return "#f0643e";
-  return "#f0443e";
+  if (temperature < 100) return "#5268e9";
+  if (temperature < 200) return "#4b91ff";
+  if (temperature < 300) return "#4dcff5";
+  if (temperature < 400) return "#55c8be";
+  if (temperature < 500) return "#55d89a";
+  if (temperature < 600) return "#8fe04f";
+  if (temperature < 700) return "#efdb3d";
+  if (temperature < 800) return "#f58a35";
+  return "#f05252";
 };
 
 const readable = (value: number, digits = 0): string =>
@@ -70,8 +74,10 @@ const render = (frame: TelemetryFrame): void => {
     for (const zoneElement of wheel.querySelectorAll<HTMLElement>("[data-zone]")) {
       const zone = zoneElement.dataset.zone as Zone;
       const temperature = temperatures[zoneIndexes[zone]];
+      const colorTemperature = Math.round(temperature);
       setText(zoneElement.querySelector("strong")!, readable(temperature));
-      setStyle(zoneElement, "--zone-color", temperatureColor(temperature, optimal));
+      setStyle(zoneElement, "--zone-color", temperatureColor(colorTemperature, optimal));
+      setStyle(zoneElement, "--zone-text-color", temperatureTextColor(colorTemperature, optimal));
       const title = t(zoneTitleKeys[zone], { value: readable(temperature, 1) });
       if (zoneElement.title !== title) zoneElement.title = title;
     }
@@ -81,9 +87,10 @@ const render = (frame: TelemetryFrame): void => {
     if (wheel.dataset.state !== state) wheel.dataset.state = state;
 
     const brakeTemperature = frame.player_brake_temperature_c[wheelIndex];
+    const colorBrakeTemperature = Math.round(brakeTemperature);
     const brake = brakes[wheelIndex];
     setText(brake.querySelector("strong")!, readable(brakeTemperature));
-    setStyle(brake, "--brake-color", brakeColor(brakeTemperature));
+    setStyle(brake, "--brake-color", brakeColor(colorBrakeTemperature));
     const brakeTitle = t("tiretemps.brake", { value: readable(brakeTemperature, 1) });
     if (brake.title !== brakeTitle) brake.title = brakeTitle;
   }

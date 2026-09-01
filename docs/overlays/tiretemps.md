@@ -26,9 +26,12 @@ own overlays.
 - Each tyre keeps its inside band nearest the car centre and its outside band
   nearest the panel edge. Every band shows its own rounded Celsius value. The
   heatmap follows TinyPedal's compound targets: wet/intermediate 50 C, soft 80 C,
-  medium 90 C and hard 100 C, expressed with BlackRack's own palette.
+  medium 90 C and hard 100 C. Its nine bands change at `-30/-20/-10/0` and
+  `+10/+20/+30/+40 C` around that target, expressed with BlackRack's own palette.
 - Brake discs sit between the tyres, aligned by axle, with their numeric Celsius
   value and a 100 C stepped cold-to-hot scale matching TinyPedal's behavior.
+- Round values before selecting a heatmap band, as TinyPedal does. Cold blue bands
+  use light text; the remaining brighter bands use dark text for legibility.
 - The panel uses the compact dark surface, neutral outline and 2 px lime accent.
   Puncture and detachment affect the tyre outline without hiding live readings.
 - Cache DOM nodes through the static document and skip unchanged text, title and
