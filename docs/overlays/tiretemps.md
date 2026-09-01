@@ -18,17 +18,13 @@ temperatures. Damage and wear remain in their own overlays.
 - Wheel order is front-left, front-right, rear-left, rear-right.
 - Names match TinyPedal's widgets: Tyre surface temperature, Tyre inner layer
   temperature, Tyre carcass temperature and Brake temperature.
-- Surface matches TinyPedal's direct `mTemperature[0/1/2]` reading. The LMU SDK defines
-  those samples as physical left/centre/right, not inside/centre/outside; display
-  all four wheels in that order and never mirror the left-side samples.
-- All tyre samples and `mBrakeTemp` are converted from Kelvin to Celsius.
-- Inner layer uses `mTireInnerLayerTemperature[0/1/2]`; carcass uses the single
-  `mTireCarcassTemperature` value for each wheel.
+- The three existing `mTemperature[0/1/2]` samples correspond respectively to
+  surface, inner layer and carcass temperature for each wheel.
+- All three tyre samples and `mBrakeTemp` are converted from Kelvin to Celsius.
 
 ## Presentation and invariants
 
-- Surface and inner-layer rows keep the SDK's left/centre/right order on screen.
-  Carcass shows one value per wheel. Every band shows
+- Surface, inner-layer and carcass rows show one value per wheel. Every band shows
   its own rounded Celsius value. The
   heatmap follows TinyPedal's compound targets: wet/intermediate 50 C, soft 80 C,
   medium 90 C and hard 100 C. Its nine bands change at `-30/-20/-10/0` and
@@ -54,7 +50,7 @@ temperatures. Damage and wear remain in their own overlays.
 
 ## Verification focus
 
-Test all surface and inner-layer samples independently, direct `0/1/2` zone
-mapping, carcass and Kelvin conversion, every visibility combination, brake
+Test all surface, inner-layer and carcass samples independently, direct `0/1/2`
+depth mapping and Kelvin conversion, every visibility combination, brake
 values and colors, puncture/detachment outlines, locale labels, native composite
 projection and the `/tiretemps` OBS route.

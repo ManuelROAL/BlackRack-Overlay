@@ -256,13 +256,6 @@ export interface TelemetryFrame {
     [number, number, number],
     [number, number, number]
   ];
-  player_tire_inner_layer_temperature_c: [
-    [number, number, number],
-    [number, number, number],
-    [number, number, number],
-    [number, number, number]
-  ];
-  player_tire_carcass_temperature_c: [number, number, number, number];
   player_brake_temperature_c: [number, number, number, number];
   player_tire_sliding_fraction: [number, number, number, number];
   player_tire_remaining_by_wheel_percent: [number, number, number, number];

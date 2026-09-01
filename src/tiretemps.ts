@@ -16,13 +16,6 @@ import {
   tireTemperatureTextColor
 } from "./temperature-colors";
 
-type Zone = "left" | "center" | "right";
-const zoneIndexes: Record<Zone, number> = { left: 0, center: 1, right: 2 };
-const zoneTitleKeys: Record<Zone, TranslationKey> = {
-  left: "tiretemps.left",
-  center: "tiretemps.center",
-  right: "tiretemps.right"
-};
 const wheels = Array.from(document.querySelectorAll<HTMLElement>("[data-wheel]"));
 const brakes = Array.from(document.querySelectorAll<HTMLElement>("[data-brake]"));
 const renderPerformance = createOverlayPerformanceTracker("tiretemps");
@@ -42,23 +35,17 @@ const setStyle = (element: HTMLElement, property: string, value: string): void =
 
 const renderTemperatureLayer = (
   layer: HTMLElement,
-  temperatures: readonly number[],
+  temperature: number,
   compound: string,
   titleKey: TranslationKey
 ): void => {
-  for (const zoneElement of layer.querySelectorAll<HTMLElement>("[data-zone]")) {
-    const zone = zoneElement.dataset.zone as Zone;
-    const temperature = temperatures[zoneIndexes[zone]];
-    const colorTemperature = Math.round(temperature);
-    setText(zoneElement.querySelector("strong")!, readable(temperature));
-    setStyle(zoneElement, "--zone-color", tireTemperatureColor(colorTemperature, compound));
-    setStyle(zoneElement, "--zone-text-color", tireTemperatureTextColor(colorTemperature, compound));
-    const title = t(titleKey, {
-      zone: t(zoneTitleKeys[zone], { value: "" }).replace(": ", "").trim(),
-      value: readable(temperature, 1)
-    });
-    if (zoneElement.title !== title) zoneElement.title = title;
-  }
+  const value = layer.querySelector<HTMLElement>(".tread-zone")!;
+  const colorTemperature = Math.round(temperature);
+  setText(value.querySelector("strong")!, readable(temperature));
+  setStyle(value, "--zone-color", tireTemperatureColor(colorTemperature, compound));
+  setStyle(value, "--zone-text-color", tireTemperatureTextColor(colorTemperature, compound));
+  const title = t(titleKey, { value: readable(temperature, 1) });
+  if (value.title !== title) value.title = title;
 };
 
 const applySettings = (next: TireTempsSettings): void => {
@@ -86,21 +73,19 @@ const render = (frame: TelemetryFrame): void => {
   for (let wheelIndex = 0; wheelIndex < 4; wheelIndex += 1) {
     const wheel = wheels[wheelIndex];
     const compound = frame.player_tire_compounds[wheelIndex] ?? "";
+    const temperatures = frame.player_tire_zone_temperature_c[wheelIndex];
     renderTemperatureLayer(
       wheel.querySelector<HTMLElement>('[data-temperature="surface"]')!,
-      frame.player_tire_zone_temperature_c[wheelIndex], compound, "tiretemps.surfaceZone"
+      temperatures[0], compound, "tiretemps.surface"
     );
     renderTemperatureLayer(
       wheel.querySelector<HTMLElement>('[data-temperature="innerLayer"]')!,
-      frame.player_tire_inner_layer_temperature_c[wheelIndex], compound, "tiretemps.innerLayerZone"
+      temperatures[1], compound, "tiretemps.innerLayer"
     );
-    const carcassTemperature = frame.player_tire_carcass_temperature_c[wheelIndex];
-    const carcass = wheel.querySelector<HTMLElement>('[data-temperature="carcass"] .carcass-zone')!;
-    setText(carcass.querySelector("strong")!, readable(carcassTemperature));
-    setStyle(carcass, "--zone-color", tireTemperatureColor(Math.round(carcassTemperature), compound));
-    setStyle(carcass, "--zone-text-color", tireTemperatureTextColor(Math.round(carcassTemperature), compound));
-    const carcassTitle = t("tiretemps.carcass", { value: readable(carcassTemperature, 1) });
-    if (carcass.title !== carcassTitle) carcass.title = carcassTitle;
+    renderTemperatureLayer(
+      wheel.querySelector<HTMLElement>('[data-temperature="carcass"]')!,
+      temperatures[2], compound, "tiretemps.carcass"
+    );
     const state = frame.player_tire_detached[wheelIndex]
       ? "detached"
       : frame.player_tire_flat[wheelIndex] ? "flat" : "normal";
@@ -120,10 +105,6 @@ const previewFrame = {
   player_tire_zone_temperature_c: [
     [82, 78, 73], [84, 80, 75], [76, 73, 69], [78, 74, 70]
   ],
-  player_tire_inner_layer_temperature_c: [
-    [76, 78, 80], [82, 80, 77], [74, 76, 78], [80, 78, 75]
-  ],
-  player_tire_carcass_temperature_c: [78, 80, 76, 78],
   player_brake_temperature_c: [575, 605, 438, 462],
   player_tire_compounds: ["M", "M", "M", "M"],
   player_tire_flat: [false, false, false, false],

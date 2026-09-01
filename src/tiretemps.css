@@ -63,7 +63,7 @@ body.tiretemps-body { padding: 4px; font-family: "Roboto Condensed", sans-serif;
   position: relative;
   display: grid;
   flex: 1 1 0;
-  grid-template-columns: 14px repeat(3, 1fr);
+  grid-template-columns: 14px 1fr;
   gap: 1px;
   min-height: 0;
 }
@@ -79,8 +79,6 @@ body.tiretemps-body { padding: 4px; font-family: "Roboto Condensed", sans-serif;
   writing-mode: vertical-rl;
   transform: rotate(180deg);
 }
-.temperature-layer[data-temperature="carcass"] .carcass-zone { grid-column: 2 / 5; }
-
 .tread-zone {
   --zone-color: #687481;
   --zone-text-color: #f4f7fa;
