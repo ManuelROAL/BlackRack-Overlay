@@ -47,19 +47,17 @@
         </article>
 
         <div class="chassis" data-tauri-drag-region>
-          <svg class="chassis-map" viewBox="0 0 82 154" role="img" aria-label="Ocho zonas de daño del chasis" data-i18n-aria-label="tires.chassisAria">
-            <path class="chassis-outline" d="M24 3Q41-1 58 3q13 4 17 20l4 24-2 59-5 28q-5 17-19 19H29q-14-2-19-19l-5-28-2-59 4-24Q11 7 24 3Z" />
-            <path class="chassis-part part-front-left" data-damage-part="1" d="m21 5-9 8-6 31 14-3 3-20Z" />
-            <path class="chassis-part part-front-center" data-damage-part="0" d="M23 4Q41-1 59 4l3 15-8 10q-13-6-26 0l-8-10Z" />
-            <path class="chassis-part part-front-right" data-damage-part="7" transform="translate(82 0) scale(-1 1)" d="m21 5-9 8-6 31 14-3 3-20Z" />
-            <path class="chassis-part part-center-left" data-damage-part="2" d="m19 44-14 3 2 57 13 3 2-43Z" />
-            <path class="chassis-part part-center-right" data-damage-part="6" transform="translate(82 0) scale(-1 1)" d="m19 44-14 3 2 57 13 3 2-43Z" />
-            <path class="chassis-part part-rear-left" data-damage-part="3" d="m20 109-13-3 4 27 9 15 8-13Z" />
-            <path class="chassis-part part-rear-center" data-damage-part="4" d="M27 120q14 11 28 0l7 22q-9 9-21 9t-21-9Z" />
-            <path class="chassis-part part-rear-right" data-damage-part="5" transform="translate(82 0) scale(-1 1)" d="m20 109-13-3 4 27 9 15 8-13Z" />
-            <path class="cockpit" d="M29 34q12-8 24 0l6 31-3 54q-15 12-30 0l-3-54Z" />
-            <path class="windscreen" d="M29 35q12-8 24 0l4 20H25Z" />
-            <path class="aero-wing" data-aero-wing d="M11 149h60v5H11Zm6-3h3v8h-3Zm45 0h3v8h-3Z" />
+          <svg class="chassis-map" viewBox="0 0 82 160" role="img" aria-label="Ocho zonas de daño del chasis" data-i18n-aria-label="tires.chassisAria">
+            <path class="chassis-outline" d="M20 7Q41-1 62 7q10 3 12 17l2 20-1 67-5 24q-4 13-18 16H30q-14-3-18-16l-5-24-1-67 2-20Q10 10 20 7Z" />
+            <path class="chassis-part part-front-left" data-damage-part="1" d="M20 7Q10 10 8 24L6 42" />
+            <path class="chassis-part part-front-center" data-damage-part="0" d="M20 7Q41-1 62 7" />
+            <path class="chassis-part part-front-right" data-damage-part="7" d="M62 7q10 3 12 17l2 18" />
+            <path class="chassis-part part-center-left" data-damage-part="2" d="M6 49l1 62" />
+            <path class="chassis-part part-center-right" data-damage-part="6" d="M76 49l-1 62" />
+            <path class="chassis-part part-rear-left" data-damage-part="3" d="M7 118l5 17q4 13 18 16" />
+            <path class="chassis-part part-rear-center" data-damage-part="4" d="M30 151h22" />
+            <path class="chassis-part part-rear-right" data-damage-part="5" d="M52 151q14-3 18-16l5-17" />
+            <path class="aero-wing" data-aero-wing d="M13 157h56" />
           </svg>
           <div id="tire-life" class="tire-life" data-state="unknown"><span data-i18n="tires.life">VIDA</span><strong id="tire-life-value">--×</strong></div>
           <div class="damage-summary" data-tauri-drag-region><span>DMG</span><strong id="damage-value">0%</strong></div>

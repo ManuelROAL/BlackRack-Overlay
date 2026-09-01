@@ -121,9 +121,9 @@ body.tires-body {
 
 .wheel-tread {
   z-index: 3;
-  width: 8px;
+  width: 9px;
+  border-radius: 2px;
   background: var(--tire-color);
-  filter: drop-shadow(0 0 2px color-mix(in srgb, var(--tire-color), transparent 48%));
 }
 
 .wheel.flat .wheel-tread,
@@ -142,38 +142,39 @@ body.tires-body {
   }
 }
 .wheel-fl .wheel-tread,
-.wheel-rl .wheel-tread { left: 0; mask-image: url("./assets/lmu-icons/damage/tire-left.svg"); }
+.wheel-rl .wheel-tread { left: 0; }
 .wheel-fr .wheel-tread,
-.wheel-rr .wheel-tread { right: 0; mask-image: url("./assets/lmu-icons/damage/tire-right.svg"); }
+.wheel-rr .wheel-tread { right: 0; }
 
 .brake-disc {
   z-index: 2;
-  width: 6px;
+  top: 9px;
+  width: 3px;
+  height: 24px;
+  border-radius: 2px;
   background: var(--brake-color);
-  filter: drop-shadow(0 0 2px color-mix(in srgb, var(--brake-color), transparent 48%));
-  mask-image: url("./assets/lmu-icons/damage/brake.svg");
 }
 .wheel-fl .brake-disc,
-.wheel-rl .brake-disc { left: 6px; }
+.wheel-rl .brake-disc { left: 10px; }
 .wheel-fr .brake-disc,
-.wheel-rr .brake-disc { right: 6px; }
+.wheel-rr .brake-disc { right: 10px; }
 
 .suspension-arm {
   z-index: 1;
-  top: 9px;
+  top: 11px;
   width: 7px;
-  height: 24px;
+  height: 20px;
   background: var(--suspension-color);
+  clip-path: polygon(0 0, 100% 39%, 100% 55%, 0 100%, 0 76%, 65% 47%, 0 22%);
 }
 .wheel-fl .suspension-arm,
 .wheel-rl .suspension-arm {
   left: 9px;
-  mask-image: url("./assets/lmu-icons/damage/suspension-svgrepo-com.svg");
 }
 .wheel-fr .suspension-arm,
 .wheel-rr .suspension-arm {
   right: 9px;
-  mask-image: url("./assets/lmu-icons/damage/suspension-svgrepo-com.svg");
+  transform: scaleX(-1);
 }
 
 .wheel.flat .wheel-wear,
@@ -196,50 +197,44 @@ body.tires-body {
   width: 58px;
   height: 118px;
   overflow: visible;
-  filter: drop-shadow(0 2px 4px rgb(0 0 0 / 45%));
+  filter: drop-shadow(0 2px 3px rgb(0 0 0 / 50%));
 }
 
 .chassis-outline {
-  fill: #090e14;
-  stroke: #65717e;
-  stroke-width: 2;
+  fill: none;
+  stroke: #1a222c;
+  stroke-width: 5;
+  stroke-linecap: round;
   stroke-linejoin: round;
 }
 
 .chassis-part {
-  fill: #707c89;
-  stroke: #111821;
-  stroke-width: 1.5;
+  fill: none;
+  stroke: #707c89;
+  stroke-width: 2.5;
+  stroke-linecap: round;
   stroke-linejoin: round;
-  transition: fill 90ms linear;
+  transition: stroke 90ms linear;
 }
-.chassis-part[data-severity="1"] { fill: #ebc13c; }
-.chassis-part[data-severity="2"] { fill: #f05a42; }
+.chassis-part[data-severity="1"] { stroke: #ebc13c; }
+.chassis-part[data-severity="2"] { stroke: #f05a42; }
 .chassis-part[data-severity="3"],
 .chassis-part[data-severity="critical"] {
-  fill: #ff244f;
+  stroke: #ff244f;
   filter: drop-shadow(0 0 3px rgb(255 36 79 / 72%));
 }
 
 .aero-wing {
-  fill: #8995a2;
-  stroke: #111821;
-  stroke-width: 1.4;
-  stroke-linejoin: round;
-  transition: fill 90ms linear;
+  fill: none;
+  stroke: #8995a2;
+  stroke-width: 5;
+  stroke-linecap: round;
+  transition: stroke 90ms linear;
 }
 .aero-wing[data-state="detached"] {
-  fill: #ff244f;
+  stroke: #ff244f;
   filter: drop-shadow(0 0 3px rgb(255 36 79 / 72%));
 }
-
-.cockpit,
-.windscreen {
-  fill: #0b1118;
-  stroke: #53606e;
-  stroke-width: 1.5;
-}
-.windscreen { fill: #14202b; stroke: #344353; }
 
 .damage-summary {
   position: absolute;

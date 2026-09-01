@@ -41,7 +41,9 @@ Detailed Damage (`damage.md`).
 
 ## Chassis and suspension mapping
 
-- Keep eight independent chassis zones and four independent wheel modules.
+- Keep eight independent chassis zones and four independent wheel modules. Render
+  the chassis as a thin game-style perimeter: three front segments, two side
+  segments and three rear segments, without filled bodywork or cockpit detail.
 - Map raw `mDentSeverity` to the top-down 3-2-3 layout: front `1/0/7`, centre
   sides `2/6`, rear `3/4/5`. Indices 0 and 4 are centre sections; never bind the
   array sequentially as four left/right pairs.
@@ -51,7 +53,7 @@ Detailed Damage (`damage.md`).
   wheel has its independent detached state; use 100% as the numeric suspension
   fallback only when REST wearables are unavailable.
 - Keep rear wheel modules aligned with the raised rear axle and aggregate damage
-  inside the central body; do not restore a footer.
+  inside the central outline; do not restore a footer.
 
 ## Rear wing and alerts
 
