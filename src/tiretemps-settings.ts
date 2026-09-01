@@ -9,8 +9,8 @@ export const TIRE_TEMPS_SETTINGS_KEY = "blackrack-overlay.tire-temperatures.v1";
 
 export const defaultTireTempsSettings = (): TireTempsSettings => ({
   showSurface: true,
-  showInnerLayer: false,
-  showCarcass: false,
+  showInnerLayer: true,
+  showCarcass: true,
   showBrakes: true
 });
 

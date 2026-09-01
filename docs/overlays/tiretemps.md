@@ -24,25 +24,24 @@ temperatures. Damage and wear remain in their own overlays.
 
 ## Presentation and invariants
 
-- Surface, inner-layer and carcass rows show one value per wheel. Every band shows
-  its own rounded Celsius value. The
+- Each wheel shows its enabled temperatures in one horizontal line, ordered like
+  TinyPedal: surface, inner layer and carcass. No visible text labels are used;
+  each band shows its own rounded Celsius value. The
   heatmap follows TinyPedal's compound targets: wet/intermediate 50 C, soft 80 C,
   medium 90 C and hard 100 C. Its nine bands change at `-30/-20/-10/0` and
   `+10/+20/+30/+40 C` around that target, expressed with BlackRack's own palette.
   Damage + Tyres reuses this same compound-aware scale.
 - Brake discs sit between the tyres, aligned by axle, with their numeric Celsius
   value and a 100 C stepped cold-to-hot scale matching TinyPedal's behavior.
-- Each of the four reading groups can be enabled independently. Surface and
-  brakes preserve the previous default; at least one group must remain visible.
-  The design height grows with additional tyre-temperature rows and reports the
-  new size to the composite host without changing the user's visual scale.
+- Each of the four reading groups can be enabled independently. All four are
+  visible by default; at least one group must remain visible.
+  Hiding a tyre reading removes its column without changing the panel height.
 - Round values before selecting a heatmap band, as TinyPedal does. Cold blue bands
   use light text; the remaining brighter bands use dark text for legibility.
 - The panel uses the compact dark surface, neutral outline and 2 px lime accent.
-  It omits wheel-corner and zone labels; position and fixed left/centre/right
-  order provide the context. Compact SUR/INR/CAR labels distinguish enabled
-  temperature groups. Its default footprint is 282 x 136 px and expands
-  vertically when more tyre-temperature groups are selected. Puncture and
+  It omits wheel-corner and temperature labels; position and the fixed
+  surface/inner-layer/carcass order provide the context. Its default footprint is
+  258 x 136 px. Puncture and
   detachment affect the tyre outline without hiding live readings.
 - Cache DOM nodes through the static document and skip unchanged text, title and
   CSS-property writes in the 50 Hz renderer.

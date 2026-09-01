@@ -28,8 +28,8 @@ body.tiretemps-body { padding: 4px; font-family: "Roboto Condensed", sans-serif;
 .tiretemps-layout {
   display: grid;
   grid-template-columns:
-    calc(84px * var(--overlay-font-width-expansion, 1)) 40px 40px
-    calc(84px * var(--overlay-font-width-expansion, 1));
+    calc(72px * var(--overlay-font-width-expansion, 1)) 40px 40px
+    calc(72px * var(--overlay-font-width-expansion, 1));
   grid-template-rows: repeat(2, minmax(54px, 1fr));
   gap: 6px 3px;
   align-items: center;
@@ -51,7 +51,6 @@ body.tiretemps-body { padding: 4px; font-family: "Roboto Condensed", sans-serif;
   position: absolute;
   inset: 0;
   display: flex;
-  flex-direction: column;
   gap: 1px;
   overflow: hidden;
   border: 1px solid #6d7883;
@@ -60,29 +59,17 @@ body.tiretemps-body { padding: 4px; font-family: "Roboto Condensed", sans-serif;
 }
 
 .temperature-layer {
-  position: relative;
-  display: grid;
+  display: flex;
   flex: 1 1 0;
-  grid-template-columns: 14px 1fr;
-  gap: 1px;
   min-height: 0;
+  min-width: 0;
 }
 .temperature-layer[hidden] { display: none; }
-.temperature-layer > b {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #b8f227;
-  background: #151d25;
-  font-size: calc(7px * var(--overlay-font-scale, 1));
-  font-weight: 800;
-  writing-mode: vertical-rl;
-  transform: rotate(180deg);
-}
 .tread-zone {
   --zone-color: #687481;
   --zone-text-color: #f4f7fa;
   display: flex;
+  flex: 1 1 0;
   min-width: 0;
   flex-direction: column;
   align-items: center;
@@ -92,7 +79,7 @@ body.tiretemps-body { padding: 4px; font-family: "Roboto Condensed", sans-serif;
   border-inline-start: 0;
 }
 .tread-zone:first-child { border-inline-start: 0; }
-.tread-zone strong { font-size: calc(8.5px * var(--overlay-font-scale, 1)); font-weight: 900; line-height: 10px; }
+.tread-zone strong { font-size: calc(10px * var(--overlay-font-scale, 1)); font-weight: 900; line-height: 12px; }
 
 .brake {
   --brake-color: #69737d;

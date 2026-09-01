@@ -19,7 +19,7 @@ import {
 const wheels = Array.from(document.querySelectorAll<HTMLElement>("[data-wheel]"));
 const brakes = Array.from(document.querySelectorAll<HTMLElement>("[data-brake]"));
 const renderPerformance = createOverlayPerformanceTracker("tiretemps");
-const resizeOverlay = fitOverlay({ width: 282, height: 136 }, { widthTextRatio: 0.5, heightTextRatio: 0.25 });
+const resizeOverlay = fitOverlay({ width: 258, height: 136 }, { widthTextRatio: 0.25, heightTextRatio: 0.25 });
 let settings = readTireTempsSettings();
 
 const readable = (value: number, digits = 0): string =>
@@ -64,8 +64,8 @@ const applySettings = (next: TireTempsSettings): void => {
   for (const wheel of wheels) wheel.hidden = activeTyreLayers === 0;
   for (const brake of brakes) brake.hidden = !settings.showBrakes;
   resizeOverlay({
-    width: 282,
-    height: activeTyreLayers === 0 ? 92 : 136 + Math.max(0, activeTyreLayers - 1) * 44
+    width: 258,
+    height: activeTyreLayers === 0 ? 92 : 136
   });
 };
 
