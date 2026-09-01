@@ -190,7 +190,7 @@ const applySettings = (next: TiresSettings): void => {
 
 fitOverlay(
   { width: 194, height: 130 },
-  { widthTextRatio: 0.5, heightTextRatio: 0.6 }
+  { widthTextRatio: 0.65, heightTextRatio: 0.6 }
 );
 bindOverlayTransparency("tires");
 bindOverlayInteractionMode();

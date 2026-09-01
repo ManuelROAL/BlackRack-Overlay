@@ -207,11 +207,15 @@ body.tires-body {
 }
 
 .chassis-map {
+  position: absolute;
+  top: 50%;
+  left: 50%;
   display: block;
-  width: 58px;
-  height: 118px;
+  width: calc(58px * var(--overlay-font-height-expansion, 1));
+  height: calc(118px * var(--overlay-font-height-expansion, 1));
   overflow: visible;
   filter: drop-shadow(0 2px 3px rgb(0 0 0 / 50%));
+  transform: translate(-50%, -50%);
 }
 
 .chassis-outline {
@@ -252,10 +256,10 @@ body.tires-body {
 
 .engine-status {
   position: absolute;
-  top: 35px;
-  left: 15px;
-  width: 28px;
-  height: 22px;
+  top: calc(46px - 11px * var(--overlay-font-height-expansion, 1));
+  left: calc(50% - 14px * var(--overlay-font-height-expansion, 1));
+  width: calc(28px * var(--overlay-font-height-expansion, 1));
+  height: calc(22px * var(--overlay-font-height-expansion, 1));
   background-color: #74808c;
   mask: url("./assets/lmu-icons/damage/engine-motor.svg") center / contain no-repeat;
   transition: background-color 90ms linear;
@@ -267,7 +271,7 @@ body.tires-body {
 
 .engine-temperatures {
   position: absolute;
-  top: 58px;
+  top: calc(46px + 12px * var(--overlay-font-height-expansion, 1));
   left: 1px;
   display: flex;
   flex-direction: column;
@@ -293,9 +297,9 @@ body.tires-body {
 
 .engine-temperature i {
   flex: 0 0 auto;
-  width: 8px;
-  height: 8px;
-  margin-right: 1px;
+  width: calc(8px * var(--overlay-font-height-expansion, 1));
+  height: calc(8px * var(--overlay-font-height-expansion, 1));
+  margin-right: calc(1px * var(--overlay-font-height-expansion, 1));
   background: currentColor;
 }
 
@@ -309,7 +313,7 @@ body.tires-body {
 
 .damage-summary {
   position: absolute;
-  top: 66px;
+  top: calc(58px + 8px * var(--overlay-font-height-expansion, 1));
   left: 12px;
   display: flex;
   align-items: baseline;
@@ -321,8 +325,12 @@ body.tires-body {
   letter-spacing: .1em;
 }
 
-.chassis[data-engine-temperature-count="1"] .damage-summary { top: 76px; }
-.chassis[data-engine-temperature-count="2"] .damage-summary { top: 89px; }
+.chassis[data-engine-temperature-count="1"] .damage-summary {
+  top: calc(68px + 8px * var(--overlay-font-height-expansion, 1));
+}
+.chassis[data-engine-temperature-count="2"] .damage-summary {
+  top: calc(77px + 12px * var(--overlay-font-height-expansion, 1));
+}
 
 .damage-summary span { display: none; }
 .damage-summary strong {
