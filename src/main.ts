@@ -655,8 +655,10 @@ const wheelBindingOutput = document.getElementById("delta-wheel-binding") as HTM
 const wheelCaptureButton = document.getElementById("capture-delta-wheel-button") as HTMLButtonElement | null;
 const wheelClearButton = document.getElementById("clear-delta-wheel-button") as HTMLButtonElement | null;
 const wheelMessage = document.getElementById("delta-wheel-message");
+let wheelInputStatus: WheelInputStatus | null = null;
 
 const renderWheelInputStatus = (status: WheelInputStatus): void => {
+  wheelInputStatus = status;
   if (wheelBindingOutput) {
     wheelBindingOutput.textContent = status.binding
       ? t("wheel.saved", { device: status.binding.deviceName, button: status.binding.button + 1 })
@@ -699,6 +701,14 @@ wheelCaptureButton?.addEventListener("click", () => {
 });
 wheelClearButton?.addEventListener("click", () => {
   void invoke<WheelInputStatus>("clear_delta_wheel_button")
+    .then(renderWheelInputStatus)
+    .catch(() => { if (wheelMessage) wheelMessage.textContent = t("wheel.error"); });
+});
+window.addEventListener("keydown", (event) => {
+  if (event.key !== "Escape" || !wheelInputStatus?.capturing) return;
+  event.preventDefault();
+  event.stopPropagation();
+  void invoke<WheelInputStatus>("cancel_delta_wheel_button_capture")
     .then(renderWheelInputStatus)
     .catch(() => { if (wheelMessage) wheelMessage.textContent = t("wheel.error"); });
 });

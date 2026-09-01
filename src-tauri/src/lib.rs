@@ -1513,6 +1513,8 @@ pub fn run() {
             #[cfg(windows)]
             wheel_input::capture_delta_wheel_button,
             #[cfg(windows)]
+            wheel_input::cancel_delta_wheel_button_capture,
+            #[cfg(windows)]
             wheel_input::clear_delta_wheel_button
         ])
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())

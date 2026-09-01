@@ -190,6 +190,18 @@ pub(crate) fn capture_delta_wheel_button(
 }
 
 #[tauri::command]
+pub(crate) fn cancel_delta_wheel_button_capture(
+    control: tauri::State<'_, WheelInputControl>,
+) -> WheelInputStatus {
+    let mut status = control
+        .0
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    status.capturing = false;
+    status.clone()
+}
+
+#[tauri::command]
 pub(crate) fn clear_delta_wheel_button(
     control: tauri::State<'_, WheelInputControl>,
 ) -> Result<WheelInputStatus, String> {

@@ -24,7 +24,8 @@ advances to the next reference mode, wraps from Last lap to Overall best and
 skips Off while cycling; pressing it when Delta is Off starts at Overall best.
 The binding is detected on the press edge and remains active while LMU has focus.
 It is stored in `wheel-input.json` and is intentionally outside configuration
-import/export because it identifies local hardware.
+import/export because it identifies local hardware. Pressing Escape while the
+control panel is waiting cancels capture without removing the existing binding.
 
 ## Files and ownership
 
