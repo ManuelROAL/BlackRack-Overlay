@@ -16,7 +16,21 @@ import {
   tireTemperatureTextColor
 } from "./temperature-colors";
 
-const wheels = Array.from(document.querySelectorAll<HTMLElement>("[data-wheel]"));
+interface WheelElements {
+  root: HTMLElement;
+  surface: HTMLElement[];
+  innerLayer: HTMLElement[];
+  carcass: HTMLElement;
+}
+
+const wheels: WheelElements[] = Array.from(
+  document.querySelectorAll<HTMLElement>("[data-wheel]")
+).map((root) => ({
+  root,
+  surface: Array.from(root.querySelectorAll<HTMLElement>('[data-temperature="surface"] .tread-zone')),
+  innerLayer: Array.from(root.querySelectorAll<HTMLElement>('[data-temperature="innerLayer"] .tread-zone')),
+  carcass: root.querySelector<HTMLElement>('[data-temperature="carcass"] .tread-zone')!
+}));
 const brakes = Array.from(document.querySelectorAll<HTMLElement>("[data-brake]"));
 const renderPerformance = createOverlayPerformanceTracker("tiretemps");
 const resizeOverlay = fitOverlay({ width: 258, height: 136 }, { widthTextRatio: 0.25, heightTextRatio: 0.25 });
@@ -33,13 +47,12 @@ const setStyle = (element: HTMLElement, property: string, value: string): void =
   if (element.style.getPropertyValue(property) !== value) element.style.setProperty(property, value);
 };
 
-const renderTemperatureLayer = (
-  layer: HTMLElement,
+const renderTemperatureValue = (
+  value: HTMLElement,
   temperature: number,
   compound: string,
   titleKey: TranslationKey
 ): void => {
-  const value = layer.querySelector<HTMLElement>(".tread-zone")!;
   const colorTemperature = Math.round(temperature);
   setText(value.querySelector("strong")!, readable(temperature));
   setStyle(value, "--zone-color", tireTemperatureColor(colorTemperature, compound));
@@ -61,7 +74,7 @@ const applySettings = (next: TireTempsSettings): void => {
     }
   }
   const activeTyreLayers = Object.values(visibility).filter(Boolean).length;
-  for (const wheel of wheels) wheel.hidden = activeTyreLayers === 0;
+  for (const wheel of wheels) wheel.root.hidden = activeTyreLayers === 0;
   for (const brake of brakes) brake.hidden = !settings.showBrakes;
   resizeOverlay({
     width: 258,
@@ -73,23 +86,25 @@ const render = (frame: TelemetryFrame): void => {
   for (let wheelIndex = 0; wheelIndex < 4; wheelIndex += 1) {
     const wheel = wheels[wheelIndex];
     const compound = frame.player_tire_compounds[wheelIndex] ?? "";
-    const temperatures = frame.player_tire_zone_temperature_c[wheelIndex];
-    renderTemperatureLayer(
-      wheel.querySelector<HTMLElement>('[data-temperature="surface"]')!,
-      temperatures[0], compound, "tiretemps.surface"
-    );
-    renderTemperatureLayer(
-      wheel.querySelector<HTMLElement>('[data-temperature="innerLayer"]')!,
-      temperatures[1], compound, "tiretemps.innerLayer"
-    );
-    renderTemperatureLayer(
-      wheel.querySelector<HTMLElement>('[data-temperature="carcass"]')!,
-      temperatures[2], compound, "tiretemps.carcass"
+    const surfaceTemperatures = frame.player_tire_zone_temperature_c[wheelIndex];
+    const innerLayerTemperatures = frame.player_tire_inner_layer_temperature_c[wheelIndex];
+    for (let zoneIndex = 0; zoneIndex < 3; zoneIndex += 1) {
+      renderTemperatureValue(
+        wheel.surface[zoneIndex], surfaceTemperatures[zoneIndex], compound, "tiretemps.surface"
+      );
+      renderTemperatureValue(
+        wheel.innerLayer[zoneIndex], innerLayerTemperatures[zoneIndex], compound,
+        "tiretemps.innerLayer"
+      );
+    }
+    renderTemperatureValue(
+      wheel.carcass, frame.player_tire_carcass_temperature_c[wheelIndex], compound,
+      "tiretemps.carcass"
     );
     const state = frame.player_tire_detached[wheelIndex]
       ? "detached"
       : frame.player_tire_flat[wheelIndex] ? "flat" : "normal";
-    if (wheel.dataset.state !== state) wheel.dataset.state = state;
+    if (wheel.root.dataset.state !== state) wheel.root.dataset.state = state;
 
     const brakeTemperature = frame.player_brake_temperature_c[wheelIndex];
     const colorBrakeTemperature = Math.round(brakeTemperature);
@@ -103,8 +118,12 @@ const render = (frame: TelemetryFrame): void => {
 
 const previewFrame = {
   player_tire_zone_temperature_c: [
-    [82, 78, 73], [84, 80, 75], [76, 73, 69], [78, 74, 70]
+    [72, 77, 81], [84, 82, 78], [73, 76, 79], [82, 80, 76]
   ],
+  player_tire_inner_layer_temperature_c: [
+    [78, 79, 80], [82, 81, 80], [75, 76, 77], [80, 79, 78]
+  ],
+  player_tire_carcass_temperature_c: [77, 80, 74, 78],
   player_brake_temperature_c: [575, 605, 438, 462],
   player_tire_compounds: ["M", "M", "M", "M"],
   player_tire_flat: [false, false, false, false],

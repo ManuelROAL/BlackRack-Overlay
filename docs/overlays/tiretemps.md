@@ -18,15 +18,19 @@ temperatures. Damage and wear remain in their own overlays.
 - Wheel order is front-left, front-right, rear-left, rear-right.
 - Names match TinyPedal's widgets: Tyre surface temperature, Tyre inner layer
   temperature, Tyre carcass temperature and Brake temperature.
-- The three existing `mTemperature[0/1/2]` samples correspond respectively to
-  surface, inner layer and carcass temperature for each wheel.
-- All three tyre samples and `mBrakeTemp` are converted from Kelvin to Celsius.
+- `mTemperature[0/1/2]` supplies the surface temperature at the physical
+  left/centre/right of each tyre. These are not inside/centre/outside indices.
+- `mTireInnerLayerTemperature[0/1/2]` supplies the corresponding
+  left/centre/right samples from the innermost rubber layer before the carcass.
+- `mTireCarcassTemperature` supplies one rough carcass average per tyre.
+- Every tyre field and `mBrakeTemp` is converted from Kelvin to Celsius.
 
 ## Presentation and invariants
 
-- Each wheel shows its enabled temperatures in one horizontal line, ordered like
-  TinyPedal: surface, inner layer and carcass. No visible text labels are used;
-  each band shows its own rounded Celsius value. The
+- Each wheel shows one row per enabled depth, ordered like TinyPedal: surface,
+  inner layer and carcass. Surface and inner-layer rows contain their three
+  physical left/centre/right values; carcass contains its single average. No
+  visible text labels are used; each band shows its own rounded Celsius value. The
   heatmap follows TinyPedal's compound targets: wet/intermediate 50 C, soft 80 C,
   medium 90 C and hard 100 C. Its nine bands change at `-30/-20/-10/0` and
   `+10/+20/+30/+40 C` around that target, expressed with BlackRack's own palette.
@@ -49,7 +53,7 @@ temperatures. Damage and wear remain in their own overlays.
 
 ## Verification focus
 
-Test all surface, inner-layer and carcass samples independently, direct `0/1/2`
-depth mapping and Kelvin conversion, every visibility combination, brake
-values and colors, puncture/detachment outlines, locale labels, native composite
-projection and the `/tiretemps` OBS route.
+Test all surface, inner-layer and carcass samples independently, the direct
+left/centre/right zone order and Kelvin conversion, every visibility combination,
+brake values and colors, puncture/detachment outlines, locale labels, native
+composite projection and the `/tiretemps` OBS route.

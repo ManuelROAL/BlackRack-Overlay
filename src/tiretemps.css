@@ -51,6 +51,7 @@ body.tiretemps-body { padding: 4px; font-family: "Roboto Condensed", sans-serif;
   position: absolute;
   inset: 0;
   display: flex;
+  flex-direction: column;
   gap: 1px;
   overflow: hidden;
   border: 1px solid #6d7883;
@@ -71,15 +72,14 @@ body.tiretemps-body { padding: 4px; font-family: "Roboto Condensed", sans-serif;
   display: flex;
   flex: 1 1 0;
   min-width: 0;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
   color: var(--zone-text-color);
   background: var(--zone-color);
-  border-inline-start: 0;
+  border-inline-start: 1px solid rgb(17 24 32 / 58%);
 }
 .tread-zone:first-child { border-inline-start: 0; }
-.tread-zone strong { font-size: calc(10px * var(--overlay-font-scale, 1)); font-weight: 900; line-height: 12px; }
+.tread-zone strong { font-size: calc(9px * var(--overlay-font-scale, 1)); font-weight: 900; line-height: 11px; }
 
 .brake {
   --brake-color: #69737d;
