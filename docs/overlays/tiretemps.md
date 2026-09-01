@@ -24,9 +24,6 @@ temperatures. Damage and wear remain in their own overlays.
 - All tyre samples and `mBrakeTemp` are converted from Kelvin to Celsius.
 - Inner layer uses `mTireInnerLayerTemperature[0/1/2]`; carcass uses the single
   `mTireCarcassTemperature` value for each wheel.
-- The white strip uses LMU's `mGripFract`: its width is the live fraction of the
-  contact patch that is sliding, anchored to the outside edge of each tyre. It is
-  not a fourth temperature sample and does not change color.
 
 ## Presentation and invariants
 
@@ -59,6 +56,5 @@ temperatures. Damage and wear remain in their own overlays.
 
 Test all surface and inner-layer samples independently, direct `0/1/2` zone
 mapping, carcass and Kelvin conversion, every visibility combination, brake
-values and colors, per-wheel sliding-fraction strips,
-puncture/detachment outlines, locale labels, native composite projection and the
-`/tiretemps` OBS route.
+values and colors, puncture/detachment outlines, locale labels, native composite
+projection and the `/tiretemps` OBS route.
