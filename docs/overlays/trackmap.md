@@ -46,8 +46,10 @@ TypeScript fetches static geometry, interpolates and renders it.
   through the pitlane, then convert it using the latest valid player lap with best
   lap as fallback. Rust serializes the prepared lap distance; the renderer only
   interpolates it.
-- Learn moving time per circuit from complete pit passages by any visible vehicle.
-  Exclude stationary service time and keep the last seven valid observations.
+- Learn moving time and pit-entry lap distance per circuit from complete pit
+  passages by any visible vehicle. Exclude stationary service time and keep the
+  last seven valid observations. Fuel's stint targets reuse the learned entry to
+  apply TinyPedal's finish-line-to-pit-entry bias while another stop remains.
 - With official type-1 geometry, accept only endpoint-to-endpoint progress. Do not
   seed from a partial passage or invent a circuit-wide fallback before a complete
   passage is observed. Latch the entry and exit endpoints throughout the observed

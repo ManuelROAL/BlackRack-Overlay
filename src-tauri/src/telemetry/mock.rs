@@ -101,6 +101,8 @@ impl TelemetrySource for MockTelemetrySource {
                 ),
                 215.0,
                 minimum_stops,
+                virtual_energy_per_lap * 0.35,
+                0.2,
                 8.8,
                 208.4,
                 31.7,

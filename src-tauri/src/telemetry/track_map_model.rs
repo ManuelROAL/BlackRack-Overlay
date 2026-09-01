@@ -33,6 +33,8 @@ struct LearnedTrack {
     track_length: f64,
     points: Vec<LearnedTrackPoint>,
     pit_traversal_samples: Vec<f64>,
+    #[serde(default)]
+    pit_entry_distance: Option<f64>,
     revision: u64,
 }
 
@@ -103,6 +105,26 @@ pub(crate) fn learned_pit_traversal_seconds(track_name: &str, track_length: f64)
             .map_or(0.0, |track| median(&track.pit_traversal_samples))
     })
     .unwrap_or(0.0)
+}
+
+pub(crate) fn learned_pit_entry_bias(track_name: &str, track_length: f64) -> f64 {
+    if !track_length.is_finite() || track_length <= 0.0 {
+        return 0.0;
+    }
+    let cache_key = track_map_cache_key(track_name, track_length);
+    with_store(|store| {
+        store
+            .data
+            .tracks
+            .get(&cache_key)
+            .and_then(|track| track.pit_entry_distance)
+            .filter(|distance| distance.is_finite() && *distance >= 0.0)
+            .map_or(0.0, |distance| {
+                1.0 - distance.rem_euclid(track_length) / track_length
+            })
+    })
+    .unwrap_or(0.0)
+    .clamp(0.0, 1.0)
 }
 
 pub(crate) fn migrate_legacy_track_map_learning(
@@ -194,6 +216,7 @@ struct PitVehicleState {
     pit_start_progress: Option<f64>,
     last_pit_progress: Option<f64>,
     max_pit_progress_delta: f64,
+    pit_entry_distance: Option<f64>,
 }
 
 pub(crate) struct TrackMapModelState {
@@ -383,6 +406,7 @@ impl TrackMapModelState {
                         pit_start_progress: None,
                         last_pit_progress: None,
                         max_pit_progress_delta: 0.0,
+                        pit_entry_distance: None,
                     },
                 );
                 continue;
@@ -404,6 +428,7 @@ impl TrackMapModelState {
                 previous.pit_start_progress = None;
                 previous.last_pit_progress = None;
                 previous.max_pit_progress_delta = 0.0;
+                previous.pit_entry_distance = Some(vehicle.lap_distance);
                 observe_pit_progress(previous, progress);
             } else if previous.in_pits
                 && vehicle.in_pits
@@ -429,8 +454,10 @@ impl TrackMapModelState {
                 if previous.eligible
                     && completed_official_pit_passage(*previous, exit_progress, official.is_some())
                 {
-                    completed_samples
-                        .push(previous.moving_seconds + previous.pending_seconds.min(0.5));
+                    completed_samples.push((
+                        previous.moving_seconds + previous.pending_seconds.min(0.5),
+                        previous.pit_entry_distance,
+                    ));
                 }
                 previous.eligible = true;
                 previous.moving_seconds = 0.0;
@@ -438,18 +465,24 @@ impl TrackMapModelState {
                 previous.pit_start_progress = None;
                 previous.last_pit_progress = None;
                 previous.max_pit_progress_delta = 0.0;
+                previous.pit_entry_distance = None;
             }
             previous.in_pits = vehicle.in_pits;
             previous.last_distance = vehicle.lap_distance;
         }
         self.pit_vehicles
             .retain(|vehicle_id, _| active.contains(vehicle_id));
-        for seconds in completed_samples {
-            self.save_pit_sample(frame, seconds);
+        for (seconds, pit_entry_distance) in completed_samples {
+            self.save_pit_sample(frame, seconds, pit_entry_distance);
         }
     }
 
-    fn save_pit_sample(&self, frame: &TelemetryFrame, seconds: f64) {
+    fn save_pit_sample(
+        &self,
+        frame: &TelemetryFrame,
+        seconds: f64,
+        pit_entry_distance: Option<f64>,
+    ) {
         if !seconds.is_finite() || !(5.0..=180.0).contains(&seconds) {
             return;
         }
@@ -463,6 +496,14 @@ impl TrackMapModelState {
                 .len()
                 .saturating_sub(MAX_PIT_SAMPLES);
             track.pit_traversal_samples.drain(..overflow);
+            if let Some(distance) = pit_entry_distance.filter(|distance| {
+                distance.is_finite()
+                    && *distance >= 0.0
+                    && frame.track_length_meters.is_finite()
+                    && frame.track_length_meters > 0.0
+            }) {
+                track.pit_entry_distance = Some(distance.rem_euclid(frame.track_length_meters));
+            }
             persist(store);
         });
     }
@@ -624,6 +665,17 @@ mod tests {
     }
 
     #[test]
+    fn previous_track_learning_remains_compatible_without_a_pit_entry() {
+        let track: LearnedTrack = serde_json::from_str(
+            r#"{"track_name":"Spa","track_length":7004.0,"points":[],"pit_traversal_samples":[31.0],"revision":1}"#,
+        )
+        .unwrap();
+
+        assert_eq!(track.pit_entry_distance, None);
+        assert_eq!(track.pit_traversal_samples, vec![31.0]);
+    }
+
+    #[test]
     fn official_pit_validation_requires_opposite_endpoints() {
         let state = PitVehicleState {
             in_pits: true,
@@ -634,6 +686,7 @@ mod tests {
             pit_start_progress: Some(0.1),
             last_pit_progress: Some(0.9),
             max_pit_progress_delta: 0.8,
+            pit_entry_distance: Some(4_000.0),
         };
         assert!(completed_official_pit_passage(state, Some(0.9), true));
         assert!(!completed_official_pit_passage(state, Some(0.3), true));
@@ -650,6 +703,7 @@ mod tests {
             pit_start_progress: None,
             last_pit_progress: None,
             max_pit_progress_delta: 0.0,
+            pit_entry_distance: Some(4_000.0),
         };
         observe_pit_progress(&mut state, Some(0.1));
         observe_pit_progress(&mut state, Some(0.6));

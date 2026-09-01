@@ -1,6 +1,7 @@
 use serde::Serialize;
 
 const MAX_GUIDANCE_SAVING_PERCENT: f64 = 15.0;
+const STINT_TARGET_RESERVE: f64 = 0.2;
 
 #[derive(Clone, Copy, Debug)]
 pub(super) struct ResourceStrategyInput {
@@ -88,6 +89,8 @@ pub(super) fn calculate_stint_targets(
     input: ResourceStrategyInput,
     lap_seconds: f64,
     minimum_stops: u32,
+    consumption_into_lap: f64,
+    pit_entry_bias: f64,
     qualifying_consumption: f64,
     qualifying_lap_seconds: f64,
     pit_stop_seconds: f64,
@@ -104,7 +107,19 @@ pub(super) fn calculate_stint_targets(
         return [None; 3];
     };
     let baseline_stops = baseline_strategy.stops;
-    let baseline_stint_laps = (input.capacity / input.consumption).floor().max(1.0) as u32;
+    // TinyPedal's saver works from the resource available at the start of the
+    // current lap, not from a hypothetical full tank. Round autonomy to one
+    // decimal before flooring to prevent a noisy boundary from flickering.
+    let available_at_lap_start = (input.current.max(0.0) + consumption_into_lap.max(0.0)
+        - STINT_TARGET_RESERVE
+        + if baseline_stops > 0 {
+            pit_entry_bias.clamp(0.0, 1.0) * input.consumption
+        } else {
+            0.0
+        })
+    .max(0.0);
+    let rounded_autonomy = (available_at_lap_start / input.consumption * 10.0).round() / 10.0;
+    let baseline_stint_laps = rounded_autonomy.floor().max(0.0) as u32;
     let pace_cost_per_resource = if valid_positive(qualifying_consumption)
         && qualifying_consumption > input.consumption + 1e-6
         && valid_positive(qualifying_lap_seconds)
@@ -117,7 +132,8 @@ pub(super) fn calculate_stint_targets(
 
     std::array::from_fn(|index| {
         let extra_laps = index as u32 + 1;
-        let target_consumption = input.capacity / f64::from(baseline_stint_laps + extra_laps);
+        let target_consumption =
+            available_at_lap_start / f64::from(baseline_stint_laps + extra_laps);
         let target_strategy = calculate_resource_strategy(
             ResourceStrategyInput {
                 consumption: target_consumption,
@@ -142,13 +158,15 @@ pub(super) fn calculate_stint_targets(
                     let baseline_fill =
                         baseline_strategy.total_additional / f64::from(baseline_stops);
                     let seconds_per_unit = resource_service_seconds / baseline_fill;
-                    let baseline_service = pit_stop_seconds
-                        .max(resource_service_seconds)
-                        .max(other_service_seconds.max(0.0));
+                    let parallel_service =
+                        resource_service_seconds.max(other_service_seconds.max(0.0));
+                    let fixed_service = (pit_stop_seconds - parallel_service).max(0.0);
+                    let baseline_service = pit_stop_seconds.max(parallel_service);
                     let target_service = if target_strategy.stops > 0 {
                         let target_fill =
                             target_strategy.total_additional / f64::from(target_strategy.stops);
-                        (target_fill * seconds_per_unit).max(other_service_seconds.max(0.0))
+                        fixed_service
+                            + (target_fill * seconds_per_unit).max(other_service_seconds.max(0.0))
                     } else {
                         0.0
                     };
@@ -524,13 +542,73 @@ mod tests {
     }
 
     #[test]
-    fn stint_targets_extend_the_integer_full_tank_range() {
-        let targets = calculate_stint_targets(input(), 120.0, 0, 11.0, 118.0, 30.0, 10.0, 0.0, 0.0);
+    fn stint_targets_extend_the_current_stint_range() {
+        let targets = calculate_stint_targets(
+            ResourceStrategyInput {
+                current: 90.0,
+                ..input()
+            },
+            120.0,
+            0,
+            10.2,
+            0.0,
+            11.0,
+            118.0,
+            30.0,
+            10.0,
+            0.0,
+            0.0,
+        );
 
         let plus_one = targets[0].unwrap();
         assert_eq!(plus_one.extra_laps, 1);
         assert!((plus_one.target_consumption - (100.0 / 11.0)).abs() < 1e-9);
         assert!(plus_one.saving_percent > 9.0);
+    }
+
+    #[test]
+    fn stint_targets_use_current_resource_reserve_and_pit_entry_bias() {
+        let target_input = ResourceStrategyInput {
+            current: 49.0,
+            capacity: 100.0,
+            consumption: 10.0,
+            laps_remaining: 20.0,
+            pit_cycle_consumption: 0.0,
+            pit_out_consumption: 0.0,
+            ..input()
+        };
+        let without_bias = calculate_stint_targets(
+            target_input,
+            120.0,
+            0,
+            1.2,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+        )[0]
+        .unwrap();
+        let with_bias = calculate_stint_targets(
+            target_input,
+            120.0,
+            0,
+            1.2,
+            0.2,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+        )[0]
+        .unwrap();
+
+        assert!((without_bias.target_consumption - 50.0 / 6.0).abs() < 1e-9);
+        assert!((with_bias.target_consumption - 52.0 / 6.0).abs() < 1e-9);
+        assert!(with_bias.target_consumption < input().consumption);
     }
 
     #[test]
@@ -547,6 +625,8 @@ mod tests {
             },
             101.0,
             0,
+            10.2,
+            0.0,
             11.0,
             100.0,
             30.0,
@@ -562,7 +642,8 @@ mod tests {
 
     #[test]
     fn stint_target_time_is_unknown_without_a_pace_or_pit_reference() {
-        let targets = calculate_stint_targets(input(), 120.0, 0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+        let targets =
+            calculate_stint_targets(input(), 120.0, 0, 0.2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
         assert!(targets
             .iter()
             .flatten()
@@ -583,6 +664,8 @@ mod tests {
             },
             101.0,
             0,
+            10.2,
+            0.0,
             11.0,
             100.0,
             30.0,
@@ -609,6 +692,8 @@ mod tests {
             },
             100.0,
             0,
+            0.2,
+            0.0,
             11.0,
             100.0,
             10.0,
@@ -633,14 +718,51 @@ mod tests {
             pit_out_consumption: 0.0,
             ..input()
         };
-        let refuelling_is_longer =
-            calculate_stint_targets(target_input, 100.0, 0, 11.0, 100.0, 30.0, 30.0, 26.0, 0.0)[0]
-                .unwrap();
-        let driver_swap_is_longer =
-            calculate_stint_targets(target_input, 100.0, 0, 11.0, 100.0, 26.0, 20.0, 26.0, 0.0)[0]
-                .unwrap();
+        let refuelling_is_longer = calculate_stint_targets(
+            target_input,
+            100.0,
+            0,
+            0.2,
+            0.0,
+            11.0,
+            100.0,
+            30.0,
+            30.0,
+            26.0,
+            0.0,
+        )[0]
+        .unwrap();
+        let driver_swap_is_longer = calculate_stint_targets(
+            target_input,
+            100.0,
+            0,
+            0.2,
+            0.0,
+            11.0,
+            100.0,
+            26.0,
+            20.0,
+            26.0,
+            0.0,
+        )[0]
+        .unwrap();
+        let fixed_overhead_is_preserved = calculate_stint_targets(
+            target_input,
+            100.0,
+            0,
+            0.2,
+            0.0,
+            11.0,
+            100.0,
+            34.0,
+            30.0,
+            26.0,
+            0.0,
+        )[0]
+        .unwrap();
 
         assert!((refuelling_is_longer.net_time_seconds.unwrap() - 4.0).abs() < 1e-9);
         assert!(driver_swap_is_longer.net_time_seconds.unwrap().abs() < 1e-9);
+        assert!((fixed_overhead_is_preserved.net_time_seconds.unwrap() - 4.0).abs() < 1e-9);
     }
 }

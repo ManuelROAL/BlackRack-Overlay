@@ -3129,16 +3129,6 @@ impl LmuTelemetrySource {
         Some(next_crossing + full_laps_after_next * leader_lap)
     }
 
-    fn player_reference_lap(snapshot: &LmuSnapshot) -> f64 {
-        if snapshot.estimated_lap_time > 0.0 {
-            snapshot.estimated_lap_time
-        } else if snapshot.last_lap_seconds > 0.0 {
-            snapshot.last_lap_seconds
-        } else {
-            snapshot.best_lap_seconds
-        }
-    }
-
     fn initial_player_lap_pace(snapshot: &LmuSnapshot) -> Option<f64> {
         [
             snapshot.best_lap_seconds,
@@ -3201,8 +3191,11 @@ impl LmuTelemetrySource {
             .any(|entry| entry.is_player != 0 && entry.finish_status != 0)
     }
 
-    fn player_crossings_until_finish(snapshot: &LmuSnapshot, finish_delay: f64) -> Option<f64> {
-        let player_lap = Self::player_reference_lap(snapshot);
+    fn player_crossings_until_finish(
+        snapshot: &LmuSnapshot,
+        finish_delay: f64,
+        player_lap: f64,
+    ) -> Option<f64> {
         let next_crossing = Self::time_to_next_crossing(player_lap, snapshot.player_time_into_lap)?;
 
         if finish_delay <= next_crossing {
@@ -3295,7 +3288,11 @@ impl LmuTelemetrySource {
         completed_laps.max(0) as f64 + crossings
     }
 
-    fn laps_remaining(snapshot: &LmuSnapshot) -> f64 {
+    fn laps_remaining_after_delay(
+        snapshot: &LmuSnapshot,
+        player_lap: f64,
+        delay_seconds: f64,
+    ) -> f64 {
         if snapshot.game_phase >= 8 {
             return if Self::player_finished(snapshot) {
                 0.0
@@ -3304,10 +3301,10 @@ impl LmuTelemetrySource {
             };
         }
         if let Some(finish_delay) = Self::leader_finish_delay(snapshot) {
-            if finish_delay <= 0.0 {
-                return 0.0;
-            }
-            if let Some(crossings) = Self::player_crossings_until_finish(snapshot, finish_delay) {
+            let available_time = (finish_delay - delay_seconds.max(0.0)).max(0.0);
+            if let Some(crossings) =
+                Self::player_crossings_until_finish(snapshot, available_time, player_lap)
+            {
                 return crossings;
             }
         }
@@ -3316,11 +3313,15 @@ impl LmuTelemetrySource {
         if snapshot.max_laps > 0 && snapshot.max_laps < 10_000 {
             return (snapshot.max_laps - snapshot.player_total_laps).max(0) as f64;
         }
-        let reference_lap = Self::player_reference_lap(snapshot);
-        if snapshot.session_time_remaining > 0.0 && reference_lap > 0.0 {
-            return (snapshot.session_time_remaining / reference_lap).ceil() + 1.0;
+        let available_time = (snapshot.session_time_remaining - delay_seconds.max(0.0)).max(0.0);
+        if snapshot.session_time_remaining > 0.0 && player_lap > 0.0 {
+            return (available_time / player_lap).ceil() + 1.0;
         }
         0.0
+    }
+
+    fn laps_remaining(snapshot: &LmuSnapshot, player_lap: f64) -> f64 {
+        Self::laps_remaining_after_delay(snapshot, player_lap, 0.0)
     }
 }
 
@@ -3568,13 +3569,21 @@ impl TelemetrySource for LmuTelemetrySource {
             self.lap_was_valid &= current_player_lap_valid;
             self.lap_was_green &= snapshot.game_phase == 5;
         }
-        let session_laps_remaining = Self::laps_remaining(&snapshot);
-        let session_laps_remaining_estimated = Self::estimated_laps_remaining(
-            &snapshot,
-            lap_progress,
+        let lap_seconds = [
             self.lap_time_pace.unwrap_or(0.0),
-        );
-        let session_lap_equivalents_remaining =
+            snapshot.last_lap_seconds,
+            snapshot.best_lap_seconds,
+            snapshot.current_lap_seconds,
+        ]
+        .into_iter()
+        .find(|value| value.is_finite() && *value > 0.0)
+        .unwrap_or(0.0);
+        // Match TinyPedal's fuel projection: use the smoothed clean player pace
+        // rather than the noisier instantaneous estimated-lap field.
+        let session_laps_remaining = Self::laps_remaining(&snapshot, lap_seconds);
+        let session_laps_remaining_estimated =
+            Self::estimated_laps_remaining(&snapshot, lap_progress, lap_seconds);
+        let mut session_lap_equivalents_remaining =
             (session_laps_remaining - profile_estimate.lap_progress).max(0.0);
         let session_total_laps_estimated = Self::total_laps_estimated(&snapshot);
         let planned_fuel_per_lap = [
@@ -3598,15 +3607,6 @@ impl TelemetrySource for LmuTelemetrySource {
         .into_iter()
         .find(|value| *value > 0.0)
         .unwrap_or(0.0);
-        let lap_seconds = [
-            self.lap_time_pace.unwrap_or(0.0),
-            snapshot.last_lap_seconds,
-            snapshot.best_lap_seconds,
-            snapshot.current_lap_seconds,
-        ]
-        .into_iter()
-        .find(|value| value.is_finite() && *value > 0.0)
-        .unwrap_or(0.0);
         let (
             fuel_strategies,
             fuel_needed_liters,
@@ -3616,56 +3616,98 @@ impl TelemetrySource for LmuTelemetrySource {
         ) = if include_fuel_strategy {
             let player_pit_stop_requested = Self::player_pit_stop_requested(&snapshot);
             let strategy_input =
-                |current, capacity, consumption, pit_cycle, pit_out| ResourceStrategyInput {
-                    current,
-                    capacity,
-                    consumption,
-                    laps_remaining: session_lap_equivalents_remaining,
-                    lap_progress,
-                    completed_laps: snapshot.player_total_laps,
-                    pit_cycle_consumption: pit_cycle,
-                    pit_out_consumption: pit_out,
-                    pit_out_lap: profile_estimate.current_lap_started_in_pits,
-                    pit_requested: player_pit_stop_requested,
+                |current, capacity, consumption, pit_cycle, pit_out, laps_remaining| {
+                    ResourceStrategyInput {
+                        current,
+                        capacity,
+                        consumption,
+                        laps_remaining,
+                        lap_progress,
+                        completed_laps: snapshot.player_total_laps,
+                        pit_cycle_consumption: pit_cycle,
+                        pit_out_consumption: pit_out,
+                        pit_out_lap: profile_estimate.current_lap_started_in_pits,
+                        pit_requested: player_pit_stop_requested,
+                    }
                 };
-            let fuel_input = |consumption| {
+            let fuel_input = |consumption, laps_remaining| {
                 strategy_input(
                     snapshot.fuel_liters,
                     snapshot.fuel_capacity_liters,
                     consumption,
                     profile_estimate.fuel_pit_cycle_consumption,
                     profile_estimate.fuel_pit_out_consumption,
+                    laps_remaining,
                 )
             };
-            let energy_input = |consumption| {
+            let energy_input = |consumption, laps_remaining| {
                 strategy_input(
                     virtual_energy_percent,
                     100.0,
                     consumption,
                     profile_estimate.energy_pit_cycle_consumption,
                     profile_estimate.energy_pit_out_consumption,
+                    laps_remaining,
                 )
             };
-            let fuel_strategy =
-                calculate_resource_strategy(fuel_input(planned_fuel_per_lap), lap_seconds, 0);
-            let active_input = if virtual_energy_active {
-                energy_input(planned_energy_per_lap)
-            } else {
-                fuel_input(planned_fuel_per_lap)
+            let calculate_primary = |laps_remaining| {
+                let fuel_strategy = calculate_resource_strategy(
+                    fuel_input(planned_fuel_per_lap, laps_remaining),
+                    lap_seconds,
+                    0,
+                );
+                let active_input = if virtual_energy_active {
+                    energy_input(planned_energy_per_lap, laps_remaining)
+                } else {
+                    fuel_input(planned_fuel_per_lap, laps_remaining)
+                };
+                let parallel_minimum_stops = if virtual_energy_active {
+                    fuel_strategy.map_or(0, |strategy| strategy.stops)
+                } else {
+                    0
+                };
+                let active_strategy =
+                    calculate_resource_strategy(active_input, lap_seconds, parallel_minimum_stops);
+                (fuel_strategy, active_strategy, parallel_minimum_stops)
             };
-            let parallel_minimum_stops = if virtual_energy_active {
-                fuel_strategy.map_or(0, |strategy| strategy.stops)
+            let (mut fuel_strategy, mut active_strategy, mut parallel_minimum_stops) =
+                calculate_primary(session_lap_equivalents_remaining);
+            let pit_traversal_seconds = super::track_map_model::learned_pit_traversal_seconds(
+                &track_name,
+                snapshot.track_length,
+            );
+            let stop_service_seconds = rest_pit_stop
+                .as_ref()
+                .map_or(0.0, |estimate| estimate.total.max(0.0));
+            let final_pit_seconds = if stop_service_seconds > 0.0 && pit_traversal_seconds > 0.0 {
+                stop_service_seconds + pit_traversal_seconds
             } else {
-                0
+                0.0
             };
-            let active_strategy =
-                calculate_resource_strategy(active_input, lap_seconds, parallel_minimum_stops);
+            let timer_controls_finish = snapshot.max_laps <= 0 || snapshot.max_laps >= 10_000;
+            if timer_controls_finish
+                && active_strategy.is_some_and(|strategy| strategy.stops == 1)
+                && final_pit_seconds > 0.0
+            {
+                let adjusted_laps =
+                    Self::laps_remaining_after_delay(&snapshot, lap_seconds, final_pit_seconds);
+                let adjusted_equivalents = (adjusted_laps - profile_estimate.lap_progress).max(0.0);
+                if adjusted_equivalents < session_lap_equivalents_remaining {
+                    let adjusted = calculate_primary(adjusted_equivalents);
+                    if adjusted.1.is_some_and(|strategy| strategy.stops == 1) {
+                        fuel_strategy = adjusted.0;
+                        active_strategy = adjusted.1;
+                        parallel_minimum_stops = adjusted.2;
+                        session_lap_equivalents_remaining = adjusted_equivalents;
+                    }
+                }
+            }
             let active_minimum_stops = active_strategy.map_or(0, |strategy| strategy.stops);
             let active_scenario = |consumption| {
                 let input = if virtual_energy_active {
-                    energy_input(consumption)
+                    energy_input(consumption, session_lap_equivalents_remaining)
                 } else {
-                    fuel_input(consumption)
+                    fuel_input(consumption, session_lap_equivalents_remaining)
                 };
                 calculate_resource_strategy(input, lap_seconds, active_minimum_stops)
             };
@@ -3675,9 +3717,9 @@ impl TelemetrySource for LmuTelemetrySource {
                 fuel_per_lap
             };
             let target_input = if virtual_energy_active {
-                energy_input(target_consumption)
+                energy_input(target_consumption, session_lap_equivalents_remaining)
             } else {
-                fuel_input(target_consumption)
+                fuel_input(target_consumption, session_lap_equivalents_remaining)
             };
             let qualifying_consumption = if virtual_energy_active {
                 self.energy_qualifying_lap.unwrap_or(0.0)
@@ -3707,14 +3749,19 @@ impl TelemetrySource for LmuTelemetrySource {
                         0.0
                     })
             });
-            let pit_traversal_seconds = super::track_map_model::learned_pit_traversal_seconds(
-                &track_name,
-                snapshot.track_length,
-            );
+            let pit_entry_bias =
+                super::track_map_model::learned_pit_entry_bias(&track_name, snapshot.track_length);
+            let consumption_into_lap = if virtual_energy_active {
+                energy_used_current_lap
+            } else {
+                fuel_used_current_lap
+            };
             let stint_targets = calculate_stint_targets(
                 target_input,
                 lap_seconds,
                 parallel_minimum_stops,
+                consumption_into_lap,
+                pit_entry_bias,
                 qualifying_consumption,
                 self.qualifying_reference_time.unwrap_or(0.0),
                 rest_pit_stop
@@ -5852,7 +5899,7 @@ mod tests {
         };
 
         // El líder termina en 20 s. El coche doblado recibe bandera en su próximo cruce.
-        assert_eq!(LmuTelemetrySource::laps_remaining(&snapshot), 1.0);
+        assert_eq!(LmuTelemetrySource::laps_remaining(&snapshot, 180.0), 1.0);
         assert_eq!(LmuTelemetrySource::total_laps_estimated(&snapshot), 100.0);
     }
 
@@ -5875,8 +5922,29 @@ mod tests {
             LmuTelemetrySource::leader_finish_delay(&snapshot),
             Some(250.0)
         );
-        assert_eq!(LmuTelemetrySource::laps_remaining(&snapshot), 3.0);
+        assert_eq!(LmuTelemetrySource::laps_remaining(&snapshot, 130.0), 3.0);
         assert_eq!(LmuTelemetrySource::total_laps_estimated(&snapshot), 44.0);
+    }
+
+    #[test]
+    fn race_projection_uses_the_smoothed_player_pace() {
+        let snapshot = LmuSnapshot {
+            max_laps: 10_000,
+            session_time_remaining: 100.0,
+            leader_total_laps: 42,
+            leader_lap_time: 240.0,
+            leader_time_into_lap: 230.0,
+            estimated_lap_time: 130.0,
+            player_time_into_lap: 30.0,
+            ..LmuSnapshot::default()
+        };
+
+        assert_eq!(LmuTelemetrySource::laps_remaining(&snapshot, 130.0), 3.0);
+        assert_eq!(LmuTelemetrySource::laps_remaining(&snapshot, 200.0), 2.0);
+        assert_eq!(
+            LmuTelemetrySource::laps_remaining_after_delay(&snapshot, 130.0, 80.0),
+            2.0
+        );
     }
 
     #[test]
@@ -5987,7 +6055,7 @@ mod tests {
             ..LmuSnapshot::default()
         };
 
-        assert_eq!(LmuTelemetrySource::laps_remaining(&snapshot), 2.0);
+        assert_eq!(LmuTelemetrySource::laps_remaining(&snapshot, 120.0), 2.0);
         assert_eq!(LmuTelemetrySource::total_laps_estimated(&snapshot), 100.0);
     }
 
@@ -6001,12 +6069,12 @@ mod tests {
         };
         snapshot.standings[0].is_player = 1;
 
-        assert_eq!(LmuTelemetrySource::laps_remaining(&snapshot), 1.0);
+        assert_eq!(LmuTelemetrySource::laps_remaining(&snapshot, 120.0), 1.0);
         assert_eq!(LmuTelemetrySource::total_laps_estimated(&snapshot), 37.0);
 
         snapshot.player_total_laps = 37;
         snapshot.standings[0].finish_status = 1;
-        assert_eq!(LmuTelemetrySource::laps_remaining(&snapshot), 0.0);
+        assert_eq!(LmuTelemetrySource::laps_remaining(&snapshot, 120.0), 0.0);
         assert_eq!(LmuTelemetrySource::total_laps_estimated(&snapshot), 37.0);
     }
 }

@@ -23,7 +23,9 @@ calculated only for a visible native panel or connected `/fuel` route.
 - Consumption belongs to the player. Only total race-lap projection follows the
   leader.
 - Use exact fractional-lap projections. Never add an arbitrary safety lap or
-  subtract a configurable reserve.
+  subtract a reserve from the race-wide requirement. The stint-target widget's
+  separate 0.2-unit end-of-stint reserve follows TinyPedal semantics and does not
+  change refills or total required fuel/energy.
 - Respect an initial resource below 100% and track pit refills so lap consumption
   remains correct.
 - Autonomy is remaining resource divided by the selected reference and may be
@@ -61,6 +63,11 @@ calculated only for a visible native panel or connected `/fuel` route.
 - For timed races, project leader crossings and then player crossings. For
   fixed-lap races use the official target. Preserve physical progress across the
   finish-line transition.
+- Use the player's six-sample clean-lap EMA for projected crossings, matching
+  TinyPedal rather than relying on LMU's noisier instantaneous estimated lap.
+  When exactly one stop remains in a timer-controlled race, subtract the official
+  concurrent service total plus learned moving pitlane time and accept the reduced
+  lap count only if that stop is still required after recalculation.
 - Keep the Standings visual remaining-lap estimate separate from this leader-aware
   strategy count.
 - The serialized frame contains the active plan, parallel fuel plan where needed,
@@ -98,15 +105,20 @@ calculated only for a visible native panel or connected `/fuel` route.
   the scenario header instead of spelling out `NRG` or `FUEL`.
   Use the lime energy bar for regulated cars and the orange fuel bar for cars
   without virtual energy.
-- Replace the former race-plan strip with three full-stint targets for reaching
-  the next integer tank range plus one, two or three laps. Rust calculates each
-  target consumption from usable capacity and the clean-average reference.
+- Replace the former race-plan strip with three current-stint targets for reaching
+  the next integer runnable range plus one, two or three laps. Following
+  TinyPedal, Rust starts from current resource plus the amount already consumed
+  this lap, subtracts a 0.2-unit reserve, rounds autonomy to one decimal before
+  flooring, and divides the remaining resource across each target lap count.
+  Once a complete pit passage has been learned and more stops remain, bias the
+  available resource from the finish line towards the learned pit-entry position.
 - When qualifying pace/consumption and LMU's current pit-time estimate are
   available, estimate the net remaining-race time for each stint target. Compare
   stops avoided and the shorter total resource service with the linearly
   estimated lap-time cost of the extra saving. Scale LMU's active fuel/energy
-  service time by the average load per remaining stop, and preserve the longest
-  parallel service as the minimum stop duration. A requested driver change sets
+  service time by the average load per remaining stop, preserve the official
+  total's fixed residual, and preserve the longest parallel service as the
+  minimum stop duration. A requested driver change sets
   a 26-second parallel-service floor; it is never added on top of a longer
   refuel. Add the median moving pitlane time learned by Track Map once for every
   stop the target actually removes. If a target removes a stop but no complete
