@@ -29,6 +29,8 @@ Detailed Damage (`damage.md`).
   the fallback qualifier for a wheel already below the same slip-ratio threshold.
   Reset after a pit tyre change or new session.
 - Compound, puncture and detached-wheel states come from each telemetry wheel.
+- Tyre and brake colors reuse the shared compound-aware heatmaps in
+  `src/temperature-colors.ts`, including rounded values before band selection.
 
 ## Chassis and suspension mapping
 

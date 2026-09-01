@@ -4,6 +4,7 @@
 
 - Entry: `tiretemps.html`
 - Renderer/style: `src/tiretemps.ts`, `src/tiretemps.css`
+- Shared heatmap: `src/temperature-colors.ts`
 - Shared-memory conversion: `src-tauri/src/telemetry/lmu_bridge.cpp`, `src-tauri/src/telemetry/lmu.rs`
 - OBS route: `/tiretemps`
 - Cadence: 50 Hz base telemetry
@@ -28,6 +29,7 @@ own overlays.
   heatmap follows TinyPedal's compound targets: wet/intermediate 50 C, soft 80 C,
   medium 90 C and hard 100 C. Its nine bands change at `-30/-20/-10/0` and
   `+10/+20/+30/+40 C` around that target, expressed with BlackRack's own palette.
+  Damage + Tyres reuses this same compound-aware scale.
 - Brake discs sit between the tyres, aligned by axle, with their numeric Celsius
   value and a 100 C stepped cold-to-hot scale matching TinyPedal's behavior.
 - Round values before selecting a heatmap band, as TinyPedal does. Cold blue bands

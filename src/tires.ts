@@ -6,6 +6,7 @@ import { bindOverlayTransparency } from "./overlay-appearance";
 import { createOverlayPerformanceTracker } from "./overlay-performance";
 import { isTauriRuntime, listenTelemetry } from "./runtime-events";
 import { formatNumber, t, type TranslationKey } from "./i18n";
+import { brakeTemperatureColor, tireTemperatureColor } from "./temperature-colors";
 
 const wheels = Array.from(document.querySelectorAll<HTMLElement>("[data-wheel]"));
 const temperatures = wheels.map((wheel) => wheel.querySelector<HTMLElement>(".wheel-temperature")!);
@@ -32,25 +33,6 @@ const setData = (element: HTMLElement | SVGElement, key: string, value: string):
 
 const setAttribute = (element: Element, name: string, value: string): void => {
   if (element.getAttribute(name) !== value) element.setAttribute(name, value);
-};
-
-const tireColor = (temperature: number): string => {
-  if (!Number.isFinite(temperature) || temperature < 0) return "#687481";
-  if (temperature < 60) return "#4b91ff";
-  if (temperature < 75) return "#55c8be";
-  if (temperature <= 105) return "#55d89a";
-  if (temperature <= 125) return "#efbd3d";
-  return "#f05252";
-};
-
-const brakeColor = (temperature: number): string => {
-  if (!Number.isFinite(temperature) || temperature < 0) return "#69737d";
-  if (temperature < 200) return "#78838e";
-  if (temperature < 350) return "#b58b4c";
-  if (temperature < 500) return "#efb83f";
-  if (temperature < 700) return "#f57835";
-  if (temperature < 900) return "#f0443e";
-  return "#fff0cf";
 };
 
 const suspensionColor = (damage: number, detached: boolean): string => {
@@ -85,6 +67,7 @@ const render = (frame: TelemetryFrame): void => {
     const suspension = frame.player_suspension_damage_by_wheel_percent[index];
     const detached = frame.player_tire_detached[index];
     const flat = frame.player_tire_flat[index] && !detached;
+    const rawCompound = frame.player_tire_compounds[index] ?? "";
 
     setText(temperatures[index], readable(temperature, 1, "°"));
     setText(brakeTemperatures[index], readable(brakeTemperature, 0, "°"));
@@ -97,13 +80,13 @@ const render = (frame: TelemetryFrame): void => {
     setStyleProperty(
       wheels[index],
       "--tire-color",
-      detached ? "#ff244f" : flat ? "#ff8a2b" : tireColor(temperature)
+      detached ? "#ff244f" : flat ? "#ff8a2b" : tireTemperatureColor(Math.round(temperature), rawCompound)
     );
-    setStyleProperty(wheels[index], "--brake-color", brakeColor(brakeTemperature));
+    setStyleProperty(wheels[index], "--brake-color", brakeTemperatureColor(Math.round(brakeTemperature)));
     setStyleProperty(wheels[index], "--suspension-color", suspensionColor(suspension, detached));
     wheels[index].classList.toggle("flat", flat);
     wheels[index].classList.toggle("detached", detached);
-    const compound = shortCompound(frame.player_tire_compounds[index] ?? "");
+    const compound = shortCompound(rawCompound);
     const compoundLabel = compound === "–" ? t("tires.unknown") : compound;
 
     const title = flat || detached
