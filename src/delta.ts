@@ -18,9 +18,9 @@ const card = document.getElementById("delta-card");
 const fill = document.getElementById("delta-fill") as HTMLElement | null;
 const value = document.getElementById("delta-value");
 
-const DOX_VALUE_NEUTRAL_SECONDS = 0.001;
-const DOX_VALUE_COLOR_RANGE_SECONDS = 0.04;
-const DOX_VALUE_COLORS = {
+const VALUE_NEUTRAL_SECONDS = 0.001;
+const VALUE_COLOR_RANGE_SECONDS = 0.04;
+const VALUE_COLORS = {
   gain: [0, 255, 0],
   neutral: [240, 248, 255],
   loss: [220, 50, 50],
@@ -33,18 +33,18 @@ const interpolateColor = (from: readonly number[], to: readonly number[], ratio:
 };
 
 const deltaValueColor = (seconds: number): string => {
-  const value = Math.abs(seconds) < DOX_VALUE_NEUTRAL_SECONDS ? 0 : seconds;
+  const value = Math.abs(seconds) < VALUE_NEUTRAL_SECONDS ? 0 : seconds;
   if (value <= 0) {
     return interpolateColor(
-      DOX_VALUE_COLORS.gain,
-      DOX_VALUE_COLORS.neutral,
-      (value + DOX_VALUE_COLOR_RANGE_SECONDS) / DOX_VALUE_COLOR_RANGE_SECONDS,
+      VALUE_COLORS.gain,
+      VALUE_COLORS.neutral,
+      (value + VALUE_COLOR_RANGE_SECONDS) / VALUE_COLOR_RANGE_SECONDS,
     );
   }
   return interpolateColor(
-    DOX_VALUE_COLORS.neutral,
-    DOX_VALUE_COLORS.loss,
-    value / DOX_VALUE_COLOR_RANGE_SECONDS,
+    VALUE_COLORS.neutral,
+    VALUE_COLORS.loss,
+    value / VALUE_COLOR_RANGE_SECONDS,
   );
 };
 
