@@ -98,7 +98,10 @@ document.
   server keys. Optional LMU REST and RaceOS failures must not stop shared-memory
   telemetry.
 - TinyPedal may be used as a behavioral reference but GPL source must not be
-  copied. Dox and Go Fast are visual or behavioral references only.
+  copied. Use `https://deepwiki.com/s-victor/TinyPedal` as an additional guide
+  to its architecture and data flow; because its index may lag behind, treat the
+  local TinyPedal source as authoritative. Dox and Go Fast are visual or
+  behavioral references only.
 - Keep bundled logos, flags, badges and Roboto Condensed available in production
   and OBS browser pages.
 
