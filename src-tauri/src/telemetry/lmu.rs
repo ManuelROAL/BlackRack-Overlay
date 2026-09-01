@@ -6,14 +6,15 @@ use super::consumption_profile::{ConsumptionProfiler, ProfileEstimate};
 use super::driver_ranks::DriverRankResolver;
 use super::event_split::{DriverRankSettings, SessionSplitResolver};
 use super::fuel_strategy::{
-    calculate_resource_strategy, calculate_stint_targets, FuelStrategies, ResourceStrategyInput,
+    calculate_resource_strategy, calculate_stint_targets, next_stint_autonomy, FuelStrategies,
+    ResourceStrategyInput,
 };
 use super::lmu_rest::{
     normalized_driver_identity, normalized_name, LocalRestResolver, RestVehicleDamage,
 };
 use super::{
     FlagWarning, RejoinWarning, StandingEntry, TelemetryDemand, TelemetryFrame, TelemetrySource,
-    TrackMapVehicle,
+    TireLifeModel, TrackMapVehicle,
 };
 
 const MAX_VEHICLES: usize = 104;
@@ -383,6 +384,8 @@ extern "C" {
 struct TireWearTracker {
     last_remaining: [Option<f64>; 4],
     flat_spot_wear: [f64; 4],
+    lap_start_remaining: Option<[f64; 4]>,
+    last_lap_wear: Option<[f64; 4]>,
 }
 
 impl TireWearTracker {
@@ -392,6 +395,8 @@ impl TireWearTracker {
     fn reset(&mut self) {
         self.last_remaining = [None; 4];
         self.flat_spot_wear = [0.0; 4];
+        self.lap_start_remaining = None;
+        self.last_lap_wear = None;
     }
 
     fn update(
@@ -422,12 +427,62 @@ impl TireWearTracker {
                 // Una caída imposible también descarta la muestra anterior.
                 if in_pits && !(0.0..=1.0).contains(&wear) {
                     self.flat_spot_wear[index] = 0.0;
+                    if wear < -1.0 {
+                        self.last_lap_wear = None;
+                        self.lap_start_remaining = None;
+                    }
                 }
             }
             self.last_remaining[index] = Some(current);
         }
 
         self.flat_spot_wear.map(|value| value.clamp(0.0, 100.0))
+    }
+
+    fn observe_lap(&mut self, remaining: [f64; 4], lap_changed: bool, completed_is_clean: bool) {
+        if !lap_changed {
+            return;
+        }
+        if completed_is_clean {
+            self.last_lap_wear = self.lap_start_remaining.and_then(|start| {
+                let wear = std::array::from_fn(|index| start[index] - remaining[index]);
+                wear.into_iter()
+                    .all(|value| value.is_finite() && (0.001..20.0).contains(&value))
+                    .then_some(wear)
+            });
+        }
+        self.lap_start_remaining = remaining
+            .into_iter()
+            .all(|value| value.is_finite() && (0.0..=100.0).contains(&value))
+            .then_some(remaining);
+    }
+
+    fn life_model(&self, remaining: [f64; 4], full_stint_laps: f64) -> Option<TireLifeModel> {
+        let wear = self.last_lap_wear?;
+        if !full_stint_laps.is_finite()
+            || full_stint_laps <= 0.0
+            || !remaining
+                .into_iter()
+                .all(|value| value.is_finite() && value >= 0.0)
+        {
+            return None;
+        }
+        let remaining_laps = (0..4)
+            .map(|index| remaining[index] / wear[index])
+            .fold(f64::INFINITY, f64::min);
+        let projected_remaining_percent = std::array::from_fn(|stint| {
+            (0..4)
+                .map(|index| remaining[index] - wear[index] * full_stint_laps * (stint + 1) as f64)
+                .fold(f64::INFINITY, f64::min)
+                .clamp(0.0, 100.0)
+        });
+        Some(TireLifeModel {
+            wear_per_lap_percent: wear,
+            full_stint_laps,
+            remaining_laps,
+            remaining_stints: remaining_laps / full_stint_laps,
+            projected_remaining_percent,
+        })
     }
 }
 
@@ -3331,6 +3386,7 @@ impl TelemetrySource for LmuTelemetrySource {
             include_standings,
             include_track_map,
             include_fuel_strategy,
+            include_tire_life,
             include_flag_warning,
             include_rejoin_warning,
             include_rest_standings,
@@ -3491,6 +3547,11 @@ impl TelemetrySource for LmuTelemetrySource {
             && !self.lap_visited_pits
             && !self.lap_was_formation
             && self.lap_was_green;
+        self.tire_wear_tracker.observe_lap(
+            snapshot.player_tire_remaining_by_wheel_percent,
+            lap_changed,
+            completed_is_clean,
+        );
         self.update_player_lap_pace(&snapshot, completed_is_clean);
         if lap_changed {
             self.fuel_last_lap = None;
@@ -3607,6 +3668,24 @@ impl TelemetrySource for LmuTelemetrySource {
         .into_iter()
         .find(|value| *value > 0.0)
         .unwrap_or(0.0);
+        let fuel_full_stint_laps = (planned_fuel_per_lap > 0.0)
+            .then_some(snapshot.fuel_capacity_liters / planned_fuel_per_lap);
+        let energy_full_stint_laps =
+            (planned_energy_per_lap > 0.0).then_some(100.0 / planned_energy_per_lap);
+        let full_stint_laps = if virtual_energy_active {
+            energy_full_stint_laps.map(|energy_laps| {
+                fuel_full_stint_laps.map_or(energy_laps, |fuel_laps| energy_laps.min(fuel_laps))
+            })
+        } else {
+            fuel_full_stint_laps
+        };
+        let tire_life_model = include_tire_life
+            .then(|| full_stint_laps)
+            .flatten()
+            .and_then(|stint_laps| {
+                self.tire_wear_tracker
+                    .life_model(snapshot.player_tire_remaining_by_wheel_percent, stint_laps)
+            });
         let (
             fuel_strategies,
             fuel_needed_liters,
@@ -3770,6 +3849,20 @@ impl TelemetrySource for LmuTelemetrySource {
                 resource_service_seconds,
                 other_service_seconds,
                 pit_traversal_seconds,
+                if virtual_energy_active {
+                    planned_energy_per_lap
+                } else {
+                    planned_fuel_per_lap
+                },
+            );
+            let (next_stint_load, next_stint_laps, next_stint_minutes) = next_stint_autonomy(
+                self.local_rest.pit_refill_target(virtual_energy_active),
+                if virtual_energy_active {
+                    planned_energy_per_lap
+                } else {
+                    planned_fuel_per_lap
+                },
+                lap_seconds,
             );
             let strategies = FuelStrategies {
                 active: active_strategy,
@@ -3795,6 +3888,9 @@ impl TelemetrySource for LmuTelemetrySource {
                     self.fuel_last_lap.unwrap_or(0.0)
                 }),
                 stint_targets,
+                next_stint_load,
+                next_stint_laps,
+                next_stint_minutes,
                 ..FuelStrategies::default()
             }
             .with_qualifying_guidance();
@@ -4068,6 +4164,7 @@ impl TelemetrySource for LmuTelemetrySource {
             player_tire_zone_temperature_c: snapshot.player_tire_zone_temperature_c,
             player_brake_temperature_c: snapshot.player_brake_temperature_c,
             player_tire_remaining_by_wheel_percent: snapshot.player_tire_remaining_by_wheel_percent,
+            tire_life_model,
             player_tire_flat_spot_percent,
             player_tire_compounds: Self::tire_compounds(&snapshot.player_tire_compounds),
             player_tire_flat: snapshot.player_tire_flat.map(|value| value != 0),
@@ -4398,6 +4495,22 @@ mod tests {
 
         let after_change = tracker.update([100.0; 4], [0.0; 4], [0.0; 4], 0.0, true);
         assert_eq!(after_change, [0.0; 4]);
+    }
+
+    #[test]
+    fn tire_life_uses_clean_lap_wear_and_the_limiting_wheel() {
+        let mut tracker = TireWearTracker::default();
+        tracker.observe_lap([100.0; 4], true, false);
+        tracker.observe_lap([98.0, 99.0, 99.0, 99.0], true, true);
+
+        let model = tracker.life_model([98.0, 99.0, 99.0, 99.0], 10.0).unwrap();
+        assert_eq!(model.remaining_laps, 49.0);
+        assert_eq!(model.remaining_stints, 4.9);
+        assert_eq!(model.projected_remaining_percent, [78.0, 58.0, 38.0]);
+
+        tracker.update([98.0, 99.0, 99.0, 99.0], [0.0; 4], [0.0; 4], 0.0, false);
+        tracker.update([100.0; 4], [0.0; 4], [0.0; 4], 0.0, true);
+        assert!(tracker.life_model([100.0; 4], 10.0).is_none());
     }
 
     #[test]

@@ -114,8 +114,10 @@ weather polls only for Forecast or Conditions. Disconnecting LMU disables all th
 - `/rest/garage/getPlayerGarageData`: 0.2 Hz for the active steering-wheel range
   in `VM_STEER_LOCK`; shared memory can report the nominal vehicle range instead.
 - `/rest/garage/UIScreen/RepairAndRefuel`: 1 Hz for aero and per-wheel suspension
-  wearables. The latest successful wearable response remains latched across
-  transient request failures until disconnect or session change.
+  wearables, assigned fuel ratio and the absolute fuel/virtual-energy load selected
+  in the official pit menu. The latest successful wearable response remains
+  latched across transient request failures until disconnect or session change;
+  strategy menu values expire independently when the response becomes stale.
 - `/rest/profile/getAuthSessionTicket`: only when RaceOS authentication needs a
   new token.
 

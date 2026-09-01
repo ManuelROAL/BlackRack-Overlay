@@ -21,6 +21,13 @@ Detailed Damage (`damage.md`).
 - Convert live `mBrakeTemp` from Kelvin to Celsius despite the inherited SDK
   comment.
 - `mWear` is remaining tread (`1.0` new), so show `mWear * 100`.
+- Learn per-wheel wear from the latest clean completed lap. Exclude pit, formation,
+  invalid and neutralized laps, then calculate remaining tyre life from the
+  limiting wheel as remaining tread divided by its wear per lap.
+- Express that life in full resource stints. A full stint is limited by tank range
+  in fuel-only cars and by the shorter fuel/virtual-energy range in regulated
+  cars. Keep the estimate unavailable until one clean wear sample and a valid
+  consumption reference exist.
 - Estimate flat spot by accumulating actual tread loss while at least half of the
   contact patch is sliding and the tyre's peripheral speed is at least 30% below
   its per-wheel ground speed. This detects localized dragging during both braking
@@ -77,6 +84,9 @@ Detailed Damage (`damage.md`).
   corner/value abbreviations.
 - Cache nodes and skip unchanged text, attributes, datasets and CSS variables in
   the 50 Hz renderer.
+- Show remaining tyre life inside the chassis as a compact stint multiple: green
+  from three stints, amber from two and red below two. Its accessible description
+  also includes remaining laps.
 
 ## Verification focus
 

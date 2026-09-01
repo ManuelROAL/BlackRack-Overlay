@@ -263,6 +263,7 @@ struct SupplementUpdate {
     pit_stop: Option<RestPitStopEstimate>,
     vehicle_damage: Option<RestVehicleDamage>,
     fuel_ratio_assigned: Option<f64>,
+    pit_refill_targets: Option<RestPitRefillTargets>,
     session_info: Option<RestSessionInfo>,
     team_info: Option<RestTeamInfo>,
     steering_range_degrees: Option<f64>,
@@ -289,6 +290,8 @@ pub(super) struct LocalRestResolver {
     session_max_time_seconds: f64,
     steering_range_degrees: Option<f64>,
     fuel_ratio_assigned: f64,
+    pit_refill_targets: RestPitRefillTargets,
+    pit_menu_received_at: Option<Instant>,
     team_driver_names: Vec<String>,
     team_name: String,
     team_vehicle_name: String,
@@ -390,6 +393,7 @@ impl LocalRestResolver {
                     fuel_ratio_assigned: repair_and_refuel
                         .as_ref()
                         .map(|response| fuel_ratio_assigned(response).unwrap_or(0.0)),
+                    pit_refill_targets: repair_and_refuel.as_ref().map(pit_refill_targets),
                     session_info,
                     team_info,
                     steering_range_degrees,
@@ -452,6 +456,8 @@ impl LocalRestResolver {
             session_max_time_seconds: 0.0,
             steering_range_degrees: None,
             fuel_ratio_assigned: 0.0,
+            pit_refill_targets: RestPitRefillTargets::default(),
+            pit_menu_received_at: None,
             team_driver_names: Vec::new(),
             team_name: String::new(),
             team_vehicle_name: String::new(),
@@ -479,6 +485,8 @@ impl LocalRestResolver {
             session_max_time_seconds: 0.0,
             steering_range_degrees: None,
             fuel_ratio_assigned: 0.0,
+            pit_refill_targets: RestPitRefillTargets::default(),
+            pit_menu_received_at: None,
             team_driver_names: Vec::new(),
             team_name: String::new(),
             team_vehicle_name: String::new(),
@@ -572,6 +580,12 @@ impl LocalRestResolver {
             }
             if let Some(fuel_ratio_assigned) = update.fuel_ratio_assigned {
                 self.fuel_ratio_assigned = fuel_ratio_assigned;
+                self.pit_menu_received_at = Some(Instant::now());
+                received = true;
+            }
+            if let Some(pit_refill_targets) = update.pit_refill_targets {
+                self.pit_refill_targets = pit_refill_targets;
+                self.pit_menu_received_at = Some(Instant::now());
                 received = true;
             }
             if let Some(steering_range_degrees) = update.steering_range_degrees {
@@ -648,6 +662,8 @@ impl LocalRestResolver {
         self.session_max_time_seconds = 0.0;
         self.steering_range_degrees = None;
         self.fuel_ratio_assigned = 0.0;
+        self.pit_refill_targets = RestPitRefillTargets::default();
+        self.pit_menu_received_at = None;
         self.team_driver_names.clear();
         self.team_name.clear();
         self.team_vehicle_name.clear();
@@ -769,10 +785,21 @@ impl LocalRestResolver {
     }
 
     pub(super) fn fuel_ratio_assigned(&self) -> f64 {
-        if is_fresh(self.supplement_received_at, SUPPLEMENT_MAX_AGE) {
+        if is_fresh(self.pit_menu_received_at, SUPPLEMENT_MAX_AGE) {
             self.fuel_ratio_assigned
         } else {
             0.0
+        }
+    }
+
+    pub(super) fn pit_refill_target(&self, virtual_energy: bool) -> Option<f64> {
+        if !is_fresh(self.pit_menu_received_at, SUPPLEMENT_MAX_AGE) {
+            return None;
+        }
+        if virtual_energy {
+            self.pit_refill_targets.virtual_energy
+        } else {
+            self.pit_refill_targets.fuel
         }
     }
 
@@ -795,6 +822,38 @@ fn fuel_ratio_assigned(response: &RestRepairAndRefuel) -> Option<f64> {
         .parse::<f64>()
         .ok()?;
     (ratio.is_finite() && ratio > 0.0).then_some(ratio)
+}
+
+#[derive(Clone, Copy, Debug, Default)]
+struct RestPitRefillTargets {
+    fuel: Option<f64>,
+    virtual_energy: Option<f64>,
+}
+
+fn pit_refill_targets(response: &RestRepairAndRefuel) -> RestPitRefillTargets {
+    let mut targets = RestPitRefillTargets::default();
+    for item in &response.pit_menu.pit_menu {
+        let name = item.name.trim();
+        if name.eq_ignore_ascii_case("VIRTUAL ENERGY:") {
+            let value = item.current_setting as f64;
+            targets.virtual_energy = (value > 0.0).then_some(value);
+        } else if name.eq_ignore_ascii_case("FUEL:") {
+            targets.fuel = item
+                .settings
+                .get(item.current_setting)
+                .and_then(|setting| first_positive_number(&setting.text));
+        }
+    }
+    targets
+}
+
+fn first_positive_number(value: &str) -> Option<f64> {
+    let number = value
+        .split(|character: char| !(character.is_ascii_digit() || character == '.'))
+        .find(|part| !part.is_empty())?
+        .parse::<f64>()
+        .ok()?;
+    (number.is_finite() && number > 0.0).then_some(number)
 }
 
 fn team_info_for_player(info: &RestTeamInfo, player_name: &str) -> Option<RestTeamInfo> {
@@ -889,8 +948,8 @@ fn normalized_class(value: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::{
-        fuel_ratio_assigned, normalized_driver_identity, normalized_name, rest_demand,
-        steering_range, team_info_for_player, LocalRestResolver, RestGarageData,
+        fuel_ratio_assigned, normalized_driver_identity, normalized_name, pit_refill_targets,
+        rest_demand, steering_range, team_info_for_player, LocalRestResolver, RestGarageData,
         RestPitStopEstimate, RestRepairAndRefuel, RestSessionInfo, RestStanding,
         RestStandingHistory, RestTeamInfo, RestVehicleDamage, RestWeatherSession,
     };
@@ -1012,6 +1071,18 @@ mod tests {
         )
         .unwrap();
         assert_eq!(fuel_ratio_assigned(&response), Some(0.93));
+    }
+
+    #[test]
+    fn parses_absolute_fuel_and_energy_targets_from_pit_menu() {
+        let response: RestRepairAndRefuel = serde_json::from_str(
+            r#"{"pitMenu":{"pitMenu":[{"name":"FUEL:","currentSetting":1,"settings":[{"text":"40 L"},{"text":"75 L"}]},{"name":"VIRTUAL ENERGY:","currentSetting":82,"settings":[]}]}}"#,
+        )
+        .unwrap();
+
+        let targets = pit_refill_targets(&response);
+        assert_eq!(targets.fuel, Some(75.0));
+        assert_eq!(targets.virtual_energy, Some(82.0));
     }
 
     #[test]

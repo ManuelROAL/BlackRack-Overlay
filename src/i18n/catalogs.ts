@@ -216,7 +216,7 @@ export const es = {
   "fuel.autonomy": "AUTON.", "fuel.pitWindow": "VENTANA PIT", "fuel.targetsAria": "Objetivos de vueltas adicionales por stint", "fuel.targets": "OBJETIVO", "fuel.perStint": "POR STINT", "fuel.target": "OBJ/V", "fuel.load": "CARGA",
   "fuel.energyScenariosAria": "Escenarios de energía", "fuel.consumption": "CONSUMO", "fuel.totalAdd": "TOTAL +", "fuel.refuel": "REFUEL", "fuel.average": "PROMEDIO", "fuel.qualifying": "QUALY", "fuel.last": "ÚLTIMA",
   "fuel.fuelStrategyAria": "Estrategia de gasolina", "fuel.current": "ACTUAL", "fuel.refill": "CARGAR", "fuel.ratioAssigned": "RATIO", "fuel.ratioAverage": "R AVG", "fuel.ratioLast": "R LAST", "fuel.waiting": "ESPERA", "fuel.noCar": "SIN COCHE", "fuel.live": "DIRECTO", "fuel.noPit": "NO PIT",
-  "fuel.full": "FULL", "fuel.hold": "MANTÉN", "fuel.qualifyingLoad": "CARGA Q",
+  "fuel.full": "FULL", "fuel.hold": "MANTÉN", "fuel.qualifyingLoad": "CARGA Q", "fuel.postPit": "POST {value}V",
   "session.practice": "PRÁCTICA", "session.practiceNumber": "PRÁCTICA {number}", "session.qualifying": "CLASIFICACIÓN", "session.qualifyingNumber": "CLASIFICACIÓN {number}",
   "session.race": "CARRERA", "session.raceNumber": "CARRERA {number}", "session.warmup": "WARMUP", "common.tires": "Neumáticos", "relative.waitingPlayer": "Esperando al jugador…",
   "badge.noob": "Novato", "badge.probation": "En prueba", "badge.warning": "Advertencia", "badge.danger": "Peligro", "badge.clean": "Buen piloto", "badge.saint": "Piloto de confianza",
@@ -225,7 +225,7 @@ export const es = {
   "tires.tooltip": "Neumático {tire} · Disco {brake} · {remaining} restante · Plano {flat} · Suspensión {suspension} · Compuesto {compound}",
   "tires.chassisPart": "Chasis {part}: nivel {level}", "tires.part.frontCenter": "frontal central", "tires.part.frontLeft": "frontal izquierda", "tires.part.left": "lateral izquierda",
   "tires.part.rearLeft": "trasera izquierda", "tires.part.rearCenter": "trasera central", "tires.part.rearRight": "trasera derecha", "tires.part.right": "lateral derecha", "tires.part.frontRight": "frontal derecha",
-  "tires.wingDetached": "Alerón desprendido", "tires.aeroDamage": "Daño aerodinámico global {value}%", "tires.aeroUnavailable": "Daño aerodinámico global no disponible",
+  "tires.wingDetached": "Alerón desprendido", "tires.aeroDamage": "Daño aerodinámico global {value}%", "tires.aeroUnavailable": "Daño aerodinámico global no disponible", "tires.life": "VIDA", "tires.lifeTitle": "Vida restante: {stints} stints · {laps} vueltas",
   "common.lapsBehind": "+{count} V", "fuel.lapsValue": "{value}V", "fuel.lapRange": "V{first}–V{last}", "fuel.litersPerLap": "{value}L/V"
 } as const satisfies Record<string, Message>;
 
@@ -409,7 +409,7 @@ export const en = {
   "fuel.autonomy": "RANGE", "fuel.pitWindow": "PIT WINDOW", "fuel.targetsAria": "Extra-lap stint targets", "fuel.targets": "TARGET", "fuel.perStint": "PER STINT", "fuel.target": "TGT/L", "fuel.load": "LOAD",
   "fuel.energyScenariosAria": "Energy scenarios", "fuel.consumption": "USE", "fuel.totalAdd": "TOTAL +", "fuel.refuel": "REFUEL", "fuel.average": "AVERAGE", "fuel.qualifying": "QUALY", "fuel.last": "LAST",
   "fuel.fuelStrategyAria": "Fuel strategy", "fuel.current": "CURRENT", "fuel.refill": "REFILL", "fuel.ratioAssigned": "RATIO", "fuel.ratioAverage": "R AVG", "fuel.ratioLast": "R LAST", "fuel.waiting": "WAITING", "fuel.noCar": "NO CAR", "fuel.live": "LIVE", "fuel.noPit": "NO PIT",
-  "fuel.hold": "HOLD", "fuel.qualifyingLoad": "QUALY LOAD",
+  "fuel.hold": "HOLD", "fuel.qualifyingLoad": "QUALY LOAD", "fuel.postPit": "POST {value}L",
   "session.practice": "PRACTICE", "session.practiceNumber": "PRACTICE {number}", "session.qualifying": "QUALIFYING", "session.qualifyingNumber": "QUALIFYING {number}",
   "session.race": "RACE", "session.raceNumber": "RACE {number}", "session.warmup": "WARMUP", "common.tires": "Tyres", "relative.waitingPlayer": "Waiting for player…",
   "badge.noob": "Rookie", "badge.probation": "Probation", "badge.warning": "Warning", "badge.danger": "Danger", "badge.clean": "Clean driver", "badge.saint": "Trusted driver",
@@ -417,7 +417,7 @@ export const en = {
   "tires.unknown": "unknown", "tires.detached": "Wheel detached", "tires.flat": "Punctured tyre", "tires.tooltip": "Tyre {tire} · Disc {brake} · {remaining} remaining · Flat spot {flat} · Suspension {suspension} · Compound {compound}",
   "tires.chassisPart": "Chassis {part}: level {level}", "tires.part.frontCenter": "front centre", "tires.part.frontLeft": "front left", "tires.part.left": "left side",
   "tires.part.rearLeft": "rear left", "tires.part.rearCenter": "rear centre", "tires.part.rearRight": "rear right", "tires.part.right": "right side", "tires.part.frontRight": "front right",
-  "tires.wingDetached": "Rear wing detached", "tires.aeroDamage": "Overall aerodynamic damage {value}%", "tires.aeroUnavailable": "Overall aerodynamic damage unavailable",
+  "tires.wingDetached": "Rear wing detached", "tires.aeroDamage": "Overall aerodynamic damage {value}%", "tires.aeroUnavailable": "Overall aerodynamic damage unavailable", "tires.life": "LIFE", "tires.lifeTitle": "Remaining life: {stints} stints · {laps} laps",
   "common.lapsBehind": "+{count} L", "fuel.lapsValue": "{value}L", "fuel.lapRange": "L{first}–L{last}", "fuel.litersPerLap": "{value}L/LAP"
 } as const satisfies Catalog;
 

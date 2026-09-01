@@ -129,6 +129,12 @@ body[data-overlay-fit="true"].fuel-body .fuel-shell {
   text-align: center;
 }
 
+.wide-stat #next-stint-range {
+  margin-left: 4px;
+  color: #79d9ff;
+  font-size: .84em;
+}
+
 .strategy-summary .wide-stat > span {
   display: block;
   margin: 0 0 3px;

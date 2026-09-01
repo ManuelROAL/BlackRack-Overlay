@@ -5,7 +5,7 @@ use super::fuel_strategy::{
 };
 use super::{
     FlagWarning, RejoinWarning, StandingEntry, TelemetryDemand, TelemetryFrame, TelemetrySource,
-    TrackMapVehicle,
+    TireLifeModel, TrackMapVehicle,
 };
 
 pub struct MockTelemetrySource {
@@ -26,6 +26,7 @@ impl TelemetrySource for MockTelemetrySource {
             include_standings,
             include_track_map,
             include_fuel_strategy,
+            include_tire_life,
             include_flag_warning,
             include_rejoin_warning,
             ..
@@ -306,6 +307,13 @@ impl TelemetrySource for MockTelemetrySource {
             ],
             player_brake_temperature_c: [540.0, 575.0, 420.0, 445.0],
             player_tire_remaining_by_wheel_percent: [94.0, 94.0, 95.0, 95.0],
+            tire_life_model: include_tire_life.then_some(TireLifeModel {
+                wear_per_lap_percent: [1.2, 1.2, 1.1, 1.1],
+                full_stint_laps: 32.0,
+                remaining_laps: 78.3,
+                remaining_stints: 2.4,
+                projected_remaining_percent: [55.6, 17.2, 0.0],
+            }),
             player_tire_flat_spot_percent: [0.08, 0.0, 0.15, 0.03],
             player_tire_compounds: ["M".into(), "M".into(), "M".into(), "M".into()],
             player_tire_flat: [false; 4],

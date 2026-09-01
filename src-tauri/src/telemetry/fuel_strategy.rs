@@ -37,6 +37,7 @@ pub(crate) struct ResourceStrategy {
 pub(crate) struct StintTarget {
     pub extra_laps: u32,
     pub target_consumption: f64,
+    pub consumption_delta: Option<f64>,
     pub saving_percent: f64,
     pub stops_saved: u32,
     pub net_time_seconds: Option<f64>,
@@ -53,6 +54,25 @@ pub(crate) struct FuelStrategies {
     pub conservative_next_fill: f64,
     pub conservative_fill_active: bool,
     pub stint_targets: [Option<StintTarget>; 3],
+    pub next_stint_load: Option<f64>,
+    pub next_stint_laps: Option<f64>,
+    pub next_stint_minutes: Option<f64>,
+}
+
+pub(super) fn next_stint_autonomy(
+    configured_load: Option<f64>,
+    consumption: f64,
+    lap_seconds: f64,
+) -> (Option<f64>, Option<f64>, Option<f64>) {
+    let Some(load) = configured_load.filter(|value| value.is_finite() && *value >= 0.0) else {
+        return (None, None, None);
+    };
+    if !valid_positive(consumption) {
+        return (Some(load), None, None);
+    }
+    let laps = load / consumption;
+    let minutes = valid_positive(lap_seconds).then_some(laps * lap_seconds / 60.0);
+    (Some(load), Some(laps), minutes)
 }
 
 impl FuelStrategies {
@@ -97,6 +117,7 @@ pub(super) fn calculate_stint_targets(
     resource_service_seconds: f64,
     other_service_seconds: f64,
     pit_traversal_seconds: f64,
+    projected_consumption: f64,
 ) -> [Option<StintTarget>; 3] {
     if !valid_positive(input.consumption) || !valid_positive(input.capacity) {
         return [None; 3];
@@ -182,6 +203,8 @@ pub(super) fn calculate_stint_targets(
         Some(StintTarget {
             extra_laps,
             target_consumption,
+            consumption_delta: valid_positive(projected_consumption)
+                .then_some(projected_consumption - target_consumption),
             saving_percent,
             stops_saved,
             net_time_seconds,
@@ -558,6 +581,7 @@ mod tests {
             10.0,
             0.0,
             0.0,
+            10.0,
         );
 
         let plus_one = targets[0].unwrap();
@@ -589,6 +613,7 @@ mod tests {
             0.0,
             0.0,
             0.0,
+            10.0,
         )[0]
         .unwrap();
         let with_bias = calculate_stint_targets(
@@ -603,6 +628,7 @@ mod tests {
             0.0,
             0.0,
             0.0,
+            10.0,
         )[0]
         .unwrap();
 
@@ -633,6 +659,7 @@ mod tests {
             10.0,
             0.0,
             42.0,
+            10.5,
         );
 
         let plus_one = targets[0].unwrap();
@@ -642,8 +669,20 @@ mod tests {
 
     #[test]
     fn stint_target_time_is_unknown_without_a_pace_or_pit_reference() {
-        let targets =
-            calculate_stint_targets(input(), 120.0, 0, 0.2, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+        let targets = calculate_stint_targets(
+            input(),
+            120.0,
+            0,
+            0.2,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            10.0,
+        );
         assert!(targets
             .iter()
             .flatten()
@@ -672,6 +711,7 @@ mod tests {
             10.0,
             0.0,
             0.0,
+            10.0,
         );
 
         assert_eq!(targets[0].unwrap().stops_saved, 1);
@@ -700,6 +740,7 @@ mod tests {
             10.0,
             0.0,
             0.0,
+            10.0,
         );
 
         let plus_one = targets[0].unwrap();
@@ -730,6 +771,7 @@ mod tests {
             30.0,
             26.0,
             0.0,
+            10.0,
         )[0]
         .unwrap();
         let driver_swap_is_longer = calculate_stint_targets(
@@ -744,6 +786,7 @@ mod tests {
             20.0,
             26.0,
             0.0,
+            10.0,
         )[0]
         .unwrap();
         let fixed_overhead_is_preserved = calculate_stint_targets(
@@ -758,11 +801,44 @@ mod tests {
             30.0,
             26.0,
             0.0,
+            10.0,
         )[0]
         .unwrap();
 
         assert!((refuelling_is_longer.net_time_seconds.unwrap() - 4.0).abs() < 1e-9);
         assert!(driver_swap_is_longer.net_time_seconds.unwrap().abs() < 1e-9);
         assert!((fixed_overhead_is_preserved.net_time_seconds.unwrap() - 4.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn stint_target_exposes_live_consumption_delta() {
+        let target = calculate_stint_targets(
+            input(),
+            120.0,
+            0,
+            0.2,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            10.6,
+        )[0]
+        .unwrap();
+
+        assert!(
+            (target.consumption_delta.unwrap() - (10.6 - target.target_consumption)).abs() < 1e-9
+        );
+    }
+
+    #[test]
+    fn next_stint_autonomy_uses_the_absolute_mfd_load() {
+        let (load, laps, minutes) = next_stint_autonomy(Some(75.0), 10.0, 120.0);
+
+        assert_eq!(load, Some(75.0));
+        assert_eq!(laps, Some(7.5));
+        assert_eq!(minutes, Some(15.0));
     }
 }

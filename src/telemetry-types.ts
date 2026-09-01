@@ -258,6 +258,7 @@ export interface TelemetryFrame {
   ];
   player_brake_temperature_c: [number, number, number, number];
   player_tire_remaining_by_wheel_percent: [number, number, number, number];
+  tire_life_model: TireLifeModel | null;
   player_tire_flat_spot_percent: [number, number, number, number];
   player_tire_compounds: [string, string, string, string];
   player_tire_flat: [boolean, boolean, boolean, boolean];
@@ -314,14 +315,26 @@ export interface FuelStrategies {
   conservative_next_fill: number;
   conservative_fill_active: boolean;
   stint_targets: Array<StintTarget | null>;
+  next_stint_load: number | null;
+  next_stint_laps: number | null;
+  next_stint_minutes: number | null;
 }
 
 export interface StintTarget {
   extra_laps: number;
   target_consumption: number;
+  consumption_delta: number | null;
   saving_percent: number;
   stops_saved: number;
   net_time_seconds: number | null;
+}
+
+export interface TireLifeModel {
+  wear_per_lap_percent: [number, number, number, number];
+  full_stint_laps: number;
+  remaining_laps: number;
+  remaining_stints: number;
+  projected_remaining_percent: [number, number, number];
 }
 
 export interface StrengthOfFieldModel {

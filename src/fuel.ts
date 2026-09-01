@@ -48,20 +48,23 @@ const format = (value: number, decimals = 2): string =>
 const consumptionReference = (...values: number[]): number | undefined =>
   values.find((value) => Number.isFinite(value) && value > 0);
 
-const formatTimeDelta = (value: number | null): string => {
+const formatConsumptionDelta = (value: number | null): string => {
   if (value == null || !Number.isFinite(value)) return "";
-  const sign = value > 0.5 ? "+" : value < -0.5 ? "−" : "±";
-  return `${sign}${formatNumber(Math.abs(value), 0)}s`;
+  const sign = value > 0.005 ? "+" : value < -0.005 ? "−" : "±";
+  return `Δ${sign}${formatNumber(Math.abs(value), 2)}`;
 };
 
 const renderStintTargets = (frame: TelemetryFrame, unit: string): void => {
   for (let index = 0; index < 3; index += 1) {
     const target = frame.fuel_strategies.stint_targets[index];
     const number = index + 1;
+    const consumptionDelta = target ? formatConsumptionDelta(target.consumption_delta) : "";
     text(`stint-target-${number}`, target ? `${format(target.target_consumption)}${unit}` : "--");
     text(
       `stint-target-${number}-meta`,
-      target ? `+${target.extra_laps}${formatTimeDelta(target.net_time_seconds) ? ` · ${formatTimeDelta(target.net_time_seconds)}` : ""}` : `+${number}`
+      target
+        ? `+${target.extra_laps}${consumptionDelta ? ` · ${consumptionDelta}` : ""}`
+        : `+${number}`
     );
     tone(
       `stint-target-${number}`,
@@ -134,7 +137,14 @@ const render = (frame: TelemetryFrame): void => {
     frame.fuel_qualifying_lap
   ) ?? 0;
   const strategy = frame.fuel_strategies.active;
+  const nextStintLaps = frame.fuel_strategies.next_stint_laps;
   text("scenario-value-label", t(settings.scenarioMode === "refuel" ? "fuel.refuel" : "fuel.totalAdd"));
+  text(
+    "next-stint-range",
+    nextStintLaps != null && Number.isFinite(nextStintLaps)
+      ? t("fuel.postPit", { value: format(nextStintLaps, 1) })
+      : ""
+  );
 
   const shell = document.querySelector<HTMLElement>(".fuel-shell");
   shell?.setAttribute("data-resource-mode", mode);

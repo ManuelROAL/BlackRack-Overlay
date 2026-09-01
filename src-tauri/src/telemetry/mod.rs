@@ -695,6 +695,7 @@ pub struct TelemetryFrame {
     player_tire_zone_temperature_c: [[f64; 3]; 4],
     player_brake_temperature_c: [f64; 4],
     player_tire_remaining_by_wheel_percent: [f64; 4],
+    tire_life_model: Option<TireLifeModel>,
     player_tire_flat_spot_percent: [f64; 4],
     player_tire_compounds: [String; 4],
     player_tire_flat: [bool; 4],
@@ -734,6 +735,15 @@ pub struct TelemetryFrame {
     flag_warning: FlagWarning,
     rejoin_warning: RejoinWarning,
     standings: Vec<StandingEntry>,
+}
+
+#[derive(Clone, Copy, Debug, Serialize)]
+struct TireLifeModel {
+    wear_per_lap_percent: [f64; 4],
+    full_stint_laps: f64,
+    remaining_laps: f64,
+    remaining_stints: f64,
+    projected_remaining_percent: [f64; 3],
 }
 
 #[derive(Clone, Serialize)]
@@ -808,6 +818,7 @@ struct TelemetryDemand {
     include_standings: bool,
     include_track_map: bool,
     include_fuel_strategy: bool,
+    include_tire_life: bool,
     include_flag_warning: bool,
     include_rejoin_warning: bool,
     include_rest_standings: bool,
@@ -939,6 +950,7 @@ impl TelemetryFrame {
             player_tire_zone_temperature_c: [[-1.0; 3]; 4],
             player_brake_temperature_c: [-1.0; 4],
             player_tire_remaining_by_wheel_percent: [-1.0; 4],
+            tire_life_model: None,
             player_tire_flat_spot_percent: [0.0; 4],
             player_tire_compounds: std::array::from_fn(|_| String::new()),
             player_tire_flat: [false; 4],
@@ -1048,6 +1060,8 @@ pub fn spawn_source(app: AppHandle) {
                 (track_map_due && track_map_visible) || (standings_due && browser_track_map);
             let fuel_requested = super::overlay_is_active(&app, "fuel")
                 || (standings_due && crate::browser_source::overlay_has_clients("fuel"));
+            let tire_life_requested = super::overlay_is_active(&app, "tires")
+                || (standings_due && crate::browser_source::overlay_has_clients("tires"));
             let flags_requested = super::overlay_is_active(&app, "flags")
                 || (standings_due && crate::browser_source::overlay_has_clients("flags"));
             let rejoin_requested = super::overlay_is_active(&app, "rejoin")
@@ -1081,6 +1095,7 @@ pub fn spawn_source(app: AppHandle) {
                 include_standings: standings_requested,
                 include_track_map: track_map_requested,
                 include_fuel_strategy: fuel_requested,
+                include_tire_life: tire_life_requested,
                 include_flag_warning: flags_requested,
                 include_rejoin_warning: rejoin_requested,
                 include_rest_standings: rest_standings_requested,

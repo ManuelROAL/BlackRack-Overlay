@@ -112,6 +112,9 @@ calculated only for a visible native panel or connected `/fuel` route.
   flooring, and divides the remaining resource across each target lap count.
   Once a complete pit passage has been learned and more stops remain, bias the
   available resource from the finish line towards the learned pit-entry position.
+- For each target, expose TinyPedal's live consumption delta: projected current-lap
+  consumption minus target consumption. Positive means the driver still needs to
+  save that amount per lap; negative means the target is already being beaten.
 - When qualifying pace/consumption and LMU's current pit-time estimate are
   available, estimate the net remaining-race time for each stint target. Compare
   stops avoided and the shorter total resource service with the linearly
@@ -127,6 +130,11 @@ calculated only for a visible native panel or connected `/fuel` route.
   color a positive result green, a negative result red and a near-zero result
   amber. Keep the target neutral and omit the time when those references are not
   available; never invent a pace cost in the frontend.
+- Keep the target's time calculation as color semantics only; the compact caption
+  shows the extra range and live consumption delta instead of repeating seconds.
+- Parse the absolute fuel or virtual-energy load selected in LMU's official pit
+  menu and show its post-pit autonomy using the projected valid consumption.
+  Keep it unavailable when the REST value or consumption reference is unavailable.
 - Omit diagnostic context (confidence, pit-cycle delta, qualifying gain and
   pit-service estimate) from the driving overlay; those values are not needed for
   the immediate stop/save decision.
