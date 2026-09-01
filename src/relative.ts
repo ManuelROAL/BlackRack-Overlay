@@ -443,7 +443,8 @@ const createCell = (entry: StandingEntry, column: RelativeColumnId, trackLimit: 
     case "driver": {
       const cell = node("div", "standing-driver");
       const fullName = entry.driver_name || "—";
-      const name = node("b", "driver-name", formatDriverName(fullName, relativeSettings.driverNameFormat));
+      const name = node("b", "driver-name");
+      name.append(node("span", "driver-name-text", formatDriverName(fullName, relativeSettings.driverNameFormat)));
       name.title = fullName;
       cell.append(name);
       appendDriverPitStatus(cell, entry);

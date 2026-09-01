@@ -41,8 +41,9 @@ the prepared vehicle IDs and formats them; it must not repeat domain selection.
 - Show a compact, cumulative `OUT` chip in Signals. Pit request and pit-lane
   states belong exclusively to the integrated driver-cell status. Damage is represented
   only by a restrained underline on the driver name, becoming red at the shared
-  50% heavy-damage threshold. Render it as text decoration rather than a box edge
-  so it ends with the visible name and text scaling cannot clip it.
+  50% heavy-damage threshold. Render it on a text-sized inner element rather than
+  the flexible name cell so it stays visible, ends with the displayed name and
+  remains safely clipped when the name is truncated or text is scaled.
 - For a red car physically behind, describe the state as about to lap the player;
   for a red car ahead, describe it as having lapped the player. Blue consistently
   means the player has lapped that car.
