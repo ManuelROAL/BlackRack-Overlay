@@ -775,6 +775,24 @@ select {
   font-size: 14px;
 }
 
+.paired-setting-group {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  column-gap: 14px;
+}
+
+.paired-setting {
+  display: grid;
+  min-width: 0;
+  align-content: start;
+  gap: 9px;
+}
+
+.paired-setting .select-field select {
+  width: 100%;
+  min-width: 0;
+}
+
 .global-setting-group .select-field select {
   width: 100%;
   min-width: 0;
@@ -2453,6 +2471,7 @@ select {
   }
 
   .global-setting-group,
+  .paired-setting-group,
   .performance-profile-list,
   .configuration-export {
     grid-template-columns: 1fr;

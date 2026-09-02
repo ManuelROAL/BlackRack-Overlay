@@ -79,41 +79,43 @@
             <select id="overlay-monitor" aria-label="Monitor de overlays" data-i18n-aria-label="general.monitorAria"></select>
           </label>
         </div>
-        <div class="global-setting-group language-setting-group">
-          <div class="global-setting-copy">
-            <span data-i18n="general.transparency">TRANSPARENCIA</span>
-            <strong data-i18n="general.transparencySub">General o por overlay</strong>
+        <div class="global-setting-group paired-setting-group">
+          <div class="paired-setting">
+            <div class="global-setting-copy">
+              <span data-i18n="general.transparency">TRANSPARENCIA</span>
+              <strong data-i18n="general.transparencySub">General o por overlay</strong>
+            </div>
+            <label class="select-field">
+              <span data-i18n="general.apply">APLICAR</span>
+              <select id="transparency-mode" aria-label="Modo de transparencia" data-i18n-aria-label="general.transparencyModeAria">
+                <option value="individual" data-i18n="general.individual">Por overlay</option>
+                <option value="global" data-i18n="general.global">General</option>
+              </select>
+            </label>
+            <label id="global-transparency-control" class="global-transparency-control">
+              <span data-i18n="general.globalValue">VALOR GENERAL</span>
+              <input id="global-transparency" type="range" min="0" max="100" step="5" />
+              <output id="global-transparency-output">5%</output>
+            </label>
           </div>
-          <label class="select-field">
-            <span data-i18n="general.apply">APLICAR</span>
-            <select id="transparency-mode" aria-label="Modo de transparencia" data-i18n-aria-label="general.transparencyModeAria">
-              <option value="individual" data-i18n="general.individual">Por overlay</option>
-              <option value="global" data-i18n="general.global">General</option>
-            </select>
-          </label>
-          <label id="global-transparency-control" class="global-transparency-control">
-            <span data-i18n="general.globalValue">VALOR GENERAL</span>
-            <input id="global-transparency" type="range" min="0" max="100" step="5" />
-            <output id="global-transparency-output">5%</output>
-          </label>
-        </div>
-        <div class="global-setting-group language-setting-group">
-          <div class="global-setting-copy">
-            <span data-i18n="general.fontSize">TAMAÑO DEL TEXTO</span>
-            <strong data-i18n="general.fontSizeSub">General o por overlay</strong>
+          <div class="paired-setting">
+            <div class="global-setting-copy">
+              <span data-i18n="general.fontSize">TAMAÑO DEL TEXTO</span>
+              <strong data-i18n="general.fontSizeSub">General o por overlay</strong>
+            </div>
+            <label class="select-field">
+              <span data-i18n="general.apply">APLICAR</span>
+              <select id="font-size-mode" aria-label="Modo de tamaño del texto" data-i18n-aria-label="general.fontSizeModeAria">
+                <option value="individual" data-i18n="general.individual">Por overlay</option>
+                <option value="global" data-i18n="general.global">General</option>
+              </select>
+            </label>
+            <label id="global-font-size-control" class="global-transparency-control">
+              <span data-i18n="general.globalValue">VALOR GENERAL</span>
+              <input id="global-font-size" type="range" min="75" max="200" step="5" />
+              <output id="global-font-size-output">100%</output>
+            </label>
           </div>
-          <label class="select-field">
-            <span data-i18n="general.apply">APLICAR</span>
-            <select id="font-size-mode" aria-label="Modo de tamaño del texto" data-i18n-aria-label="general.fontSizeModeAria">
-              <option value="individual" data-i18n="general.individual">Por overlay</option>
-              <option value="global" data-i18n="general.global">General</option>
-            </select>
-          </label>
-          <label id="global-font-size-control" class="global-transparency-control">
-            <span data-i18n="general.globalValue">VALOR GENERAL</span>
-            <input id="global-font-size" type="range" min="75" max="200" step="5" />
-            <output id="global-font-size-output">100%</output>
-          </label>
         </div>
       </section>
 
@@ -204,7 +206,7 @@
           <span data-i18n="general.appHeading">APLICACIÓN</span>
           <strong data-i18n="general.appTitle">Idioma y atajos de teclado</strong>
         </header>
-        <div class="global-setting-group language-setting-group">
+        <div class="global-setting-group">
           <div class="global-setting-copy">
             <span data-i18n="general.language">IDIOMA</span>
             <strong data-i18n="general.languageSub">Idioma de la aplicación</strong>

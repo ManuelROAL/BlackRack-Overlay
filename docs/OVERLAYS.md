@@ -87,7 +87,8 @@ telemetry semantics and file ownership live under `docs/overlays/`; use
   Visibility stays immediately accessible. Per-overlay monitor, transparency,
   reset and content options live in that overlay's single settings disclosure.
 - Present general settings as labelled full-width blocks that each open with the
-  shared section heading: Display (monitor, transparency, text size), Mode (the
+  shared section heading: Display (the monitor, then transparency and text size
+  paired on one row, each with its own general-value slider), Mode (the
   follow modes with the configuration profiles and their per-mode bindings),
   Performance, Application (interface language and the global shortcuts) and
   Backup. Keep the controls inside a block consistently aligned, preserve
