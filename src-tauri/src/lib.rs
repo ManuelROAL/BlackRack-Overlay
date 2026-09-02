@@ -910,8 +910,8 @@ fn create_control_window(app: &AppHandle) -> Result<(), String> {
         .data_directory(app_paths::webview_data_directory())
         .additional_browser_args(WEBVIEW_BROWSER_ARGUMENTS)
         .title("BlackRack Overlay · Panel de control")
-        .inner_size(590.0, 910.0)
-        .min_inner_size(560.0, 880.0)
+        .inner_size(700.0, 950.0)
+        .min_inner_size(670.0, 920.0)
         .transparent(false)
         .decorations(true)
         .shadow(true)
@@ -2014,11 +2014,11 @@ pub fn run() {
                 }
                 if panel
                     .inner_size()
-                    .map(|size| size.height < 880)
+                    .map(|size| size.height < 920)
                     .unwrap_or(false)
                 {
-                    let _ = panel.set_size(tauri::LogicalSize::new(590.0, 910.0));
-                    startup_log::record("control window size restored to 590x910");
+                    let _ = panel.set_size(tauri::LogicalSize::new(700.0, 950.0));
+                    startup_log::record("control window size restored to 700x950");
                 }
             } else {
                 startup_log::record("warning: control window not found during setup");
