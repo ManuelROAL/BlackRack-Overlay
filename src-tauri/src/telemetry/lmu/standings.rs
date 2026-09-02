@@ -356,9 +356,22 @@ impl LmuTelemetrySource {
             });
         }
 
-        let driver_qualifying_positions = Self::class_positions_with_complete_preferred_order(
+        let qualifying_class_positions =
+            Self::scored_class_positions(&entries, &driver_qualifying_overall_positions);
+        let is_race = (10..=13).contains(&snapshot.session_type);
+        if is_race {
+            Self::latch_race_qualifying_positions(
+                &mut self.race_qualifying_positions,
+                &qualifying_class_positions,
+            );
+        }
+        let driver_qualifying_positions = Self::class_positions_with_preferred_class_order(
             &entries,
-            &driver_qualifying_overall_positions,
+            if is_race {
+                &self.race_qualifying_positions
+            } else {
+                &qualifying_class_positions
+            },
             &self.starting_positions,
         );
         for entry in &mut entries {

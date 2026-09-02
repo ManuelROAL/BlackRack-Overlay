@@ -506,9 +506,12 @@ fn qualifying_grid_converts_complete_overall_order_and_never_mixes_partial_rest(
     ];
     let fallback = HashMap::from([(1, 1), (2, 2), (3, 3), (4, 1), (5, 2)]);
 
-    let complete = LmuTelemetrySource::class_positions_with_complete_preferred_order(
+    let complete = LmuTelemetrySource::class_positions_with_preferred_class_order(
         &entries,
-        &HashMap::from([(1, 1), (2, 2), (3, 10), (4, 30), (5, 20)]),
+        &LmuTelemetrySource::scored_class_positions(
+            &entries,
+            &HashMap::from([(1, 1), (2, 2), (3, 10), (4, 30), (5, 20)]),
+        ),
         &fallback,
     );
     assert_eq!(
@@ -516,12 +519,36 @@ fn qualifying_grid_converts_complete_overall_order_and_never_mixes_partial_rest(
         HashMap::from([(1, 1), (2, 2), (3, 1), (4, 3), (5, 2)])
     );
 
-    let partial = LmuTelemetrySource::class_positions_with_complete_preferred_order(
+    let partial = LmuTelemetrySource::class_positions_with_preferred_class_order(
         &entries,
-        &HashMap::from([(1, 1), (2, 2), (3, 10), (4, 30)]),
+        &LmuTelemetrySource::scored_class_positions(
+            &entries,
+            &HashMap::from([(1, 1), (2, 2), (3, 10), (4, 30)]),
+        ),
         &fallback,
     );
     assert_eq!(partial, fallback);
+}
+
+#[test]
+fn latched_race_grid_ignores_a_later_reordered_qualifying_read() {
+    let mut latched = HashMap::new();
+    let grid = HashMap::from([(1, 1), (2, 2), (3, 3)]);
+
+    LmuTelemetrySource::latch_race_qualifying_positions(&mut latched, &grid);
+    assert_eq!(latched, grid);
+
+    // Una actualización de RaceControl puede llegar completa pero con la
+    // parrilla reordenada. La lectura original manda.
+    LmuTelemetrySource::latch_race_qualifying_positions(
+        &mut latched,
+        &HashMap::from([(1, 3), (2, 1), (3, 2)]),
+    );
+    assert_eq!(latched, grid);
+
+    // Un coche que no se había visto todavía sí entra.
+    LmuTelemetrySource::latch_race_qualifying_positions(&mut latched, &HashMap::from([(4, 4)]));
+    assert_eq!(latched, HashMap::from([(1, 1), (2, 2), (3, 3), (4, 4)]));
 }
 
 #[test]

@@ -302,13 +302,25 @@ impl LmuTelemetrySource {
         positions
     }
 
-    pub(super) fn class_positions_with_complete_preferred_order(
+    /// La parrilla de una carrera se forma una vez y ya no cambia. RaceControl
+    /// puede devolver un orden de clasificación completo pero equivocado
+    /// durante un ciclo, y eso reordenaba toda la parrilla y contaminaba la
+    /// estimación de DR. Conservar la primera lectura autoritativa de cada
+    /// coche descarta esas reescrituras posteriores.
+    pub(super) fn latch_race_qualifying_positions(
+        latched: &mut HashMap<i32, i32>,
+        authoritative_class_positions: &HashMap<i32, i32>,
+    ) {
+        for (vehicle_id, position) in authoritative_class_positions {
+            latched.entry(*vehicle_id).or_insert(*position);
+        }
+    }
+
+    pub(super) fn class_positions_with_preferred_class_order(
         entries: &[StandingEntry],
-        preferred_overall_positions: &HashMap<i32, i32>,
+        preferred_class_positions: &HashMap<i32, i32>,
         fallback_class_positions: &HashMap<i32, i32>,
     ) -> HashMap<i32, i32> {
-        let preferred_class_positions =
-            Self::scored_class_positions(entries, preferred_overall_positions);
         entries
             .iter()
             .map(|entry| {

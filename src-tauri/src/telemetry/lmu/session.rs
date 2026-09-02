@@ -23,6 +23,7 @@ impl LmuTelemetrySource {
             && previous_session.is_none_or(|previous| !(10..=13).contains(&previous))
         {
             self.driver_rank_race_sequence = self.driver_rank_race_sequence.saturating_add(1);
+            self.race_qualifying_positions.clear();
         }
         self.last_lap = -1;
         self.fuel_at_lap_start = None;
