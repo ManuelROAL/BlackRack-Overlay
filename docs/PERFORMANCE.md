@@ -36,7 +36,20 @@ the visible per-lap strategy CSV.
 
 Cycle-aligned cadences, panel/body containment, short native shadows, the removal
 of root `text-rendering: geometricPrecision` and the quantised panel scale are
-implemented but not yet measured. The moving capture below must report GPU
+implemented but not yet measured. So are three later changes, whose expected
+effects differ and must be read separately in the same capture:
+
+- Shared Chromium arguments for every webview. Expect private memory to fall and
+  CPU/GPU to stay flat; confirm the process count and that the control panel
+  still repaints correctly after being covered by the game.
+- The host bounded to the visible panels in game mode. This is the change aimed
+  at the game's own frametime, so measure GPU average/P95 and, preferably,
+  LMU frametime with and without the overlay rather than only the overlay's CPU.
+  Confirm click-through, edit mode, monitor switch and a panel cropped at the
+  monitor edge.
+- Pre-rasterised country flags and manufacturer logos (2.8 MB of SVG to 270 KB of
+  PNG). Expect lower memory and a cheaper first Standings/Relative paint; confirm
+  the icons still look correct at 100%, 125% and 150%. The moving capture below must report GPU
 average/P95 before and after, and the release language pass must confirm the text
 metric change at 100%, 125% and 150%.
 

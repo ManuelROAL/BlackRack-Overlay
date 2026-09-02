@@ -181,10 +181,23 @@ const formatLapTime = (seconds: number): string => {
   return `${minutes}:${(seconds % 60).toFixed(3).padStart(6, "0")}`;
 };
 
+const countryFlagRasterModules = import.meta.glob<string>(
+  "./assets/countries-raster/*.png",
+  { eager: true, query: "?url", import: "default" }
+);
+
 const countryFlagModules = import.meta.glob<string>(
   "./assets/countries/*.{svg,png}",
   { eager: true, query: "?url", import: "default" }
 );
+
+// The overlays draw flags into a box of a few pixels. `tools/rasterize-icons.mjs`
+// pre-renders them so WebView2 never parses a vector document to fill it; the
+// SVG source is only reached for an icon that has not been rasterised yet.
+const countryFlagSource = (code: string): string | undefined =>
+  countryFlagRasterModules[`./assets/countries-raster/${code}.png`]
+    ?? countryFlagModules[`./assets/countries/${code}.svg`]
+    ?? countryFlagModules[`./assets/countries/${code}.png`];
 
 const countryCode = (nationality: string): string => {
   const aliases: Record<string, string> = {
@@ -208,11 +221,9 @@ const countryCode = (nationality: string): string => {
 
 const countryFlag = (nationality: string): HTMLImageElement | undefined => {
   const code = countryCode(nationality);
-  const source = countryFlagModules[`./assets/countries/${code}.svg`]
-    ?? countryFlagModules[`./assets/countries/${code}.png`];
+  const source = countryFlagSource(code);
   if (!code || !source) return undefined;
-  const fallbackSource = countryFlagModules["./assets/countries/XX.svg"]
-    ?? countryFlagModules["./assets/countries/XX.png"];
+  const fallbackSource = countryFlagSource("XX");
   const flag = node("img", "country-flag");
   flag.src = source;
   flag.alt = code;

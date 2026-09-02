@@ -47,6 +47,36 @@ const CONTROL_WINDOW_LABEL: &str = "control";
 const DEFAULT_CLICK_THROUGH: bool = true;
 const KOFI_SUPPORT_URL: &str = "https://ko-fi.com/blackrack";
 
+/// Chromium arguments for every webview of the application. WebView2 keeps one
+/// browser process per user data directory, so the environment created first
+/// decides the arguments for the whole application; both windows share
+/// `app_paths::webview_data_directory` and therefore must pass this same string.
+///
+/// The leading `--disable-features` entries restore wry's own defaults, which
+/// this method replaces: without them the mini menu and SmartScreen come back.
+/// The rest removes browser subsystems the overlay never uses and that only
+/// cost resident memory. `--js-flags` bounds the V8 heap: with plenty of RAM its
+/// default limit delays collection and holds memory no overlay needs.
+///
+/// `--renderer-process-limit=1` is deliberately absent. It would save one
+/// renderer process, but it also puts the control panel on the same renderer
+/// main thread as the overlay host, so opening the panel mid-session could
+/// stall the overlays. Latency on the surface drawn over the game outweighs
+/// those megabytes.
+///
+/// Native window occlusion stays enabled on purpose. The control panel then
+/// stops rendering while the game covers it, and the overlay host is always on
+/// top, so it is never reported as occluded.
+const WEBVIEW_BROWSER_ARGUMENTS: &str = concat!(
+    "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection,",
+    "Translate,MediaRouter,OptimizationHints,AutofillServerCommunication,",
+    "BackForwardCache,InterestFeedContentSuggestions",
+    " --disable-background-networking",
+    " --disable-component-update",
+    " --disable-sync",
+    " --js-flags=--max-old-space-size=192",
+);
+
 /// Guard for privileged commands that must only ever run on behalf of the
 /// control panel. Overlay webviews render live session data (driver names, chat,
 /// race control) and are also served over the local network by the browser
@@ -191,6 +221,27 @@ struct OverlayInteractionRegion {
     height: f64,
 }
 
+/// Rectangle the overlay host must cover, in physical pixels relative to the
+/// monitor's top-left corner.
+#[derive(Clone, Deserialize)]
+struct OverlayHostBounds {
+    x: f64,
+    y: f64,
+    width: f64,
+    height: f64,
+}
+
+/// The host monitor measured in CSS pixels. The composite needs it because once
+/// the host stops covering the whole monitor its own viewport no longer
+/// describes the surface the panels are laid out on.
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct OverlayHostViewport {
+    width: f64,
+    height: f64,
+    scale_factor: f64,
+}
+
 #[cfg(windows)]
 #[derive(Default)]
 struct NativeOverlayInputState {
@@ -327,6 +378,95 @@ fn set_native_overlay_click_through(click_through: bool) {
     NATIVE_OVERLAY_INPUT_THREAD
         .get()
         .map(std::thread::Thread::unpark);
+}
+
+/// Clamp a requested host rectangle to the monitor. The result is always at
+/// least one pixel wide and tall and never reaches outside the monitor, so a
+/// stale or malformed layout can never move the host off the display or
+/// collapse it to nothing.
+fn clamped_host_bounds(
+    bounds: &OverlayHostBounds,
+    monitor_width: u32,
+    monitor_height: u32,
+) -> Option<(i32, i32, u32, u32)> {
+    if !bounds.x.is_finite()
+        || !bounds.y.is_finite()
+        || !bounds.width.is_finite()
+        || !bounds.height.is_finite()
+        || bounds.width <= 0.0
+        || bounds.height <= 0.0
+        || monitor_width == 0
+        || monitor_height == 0
+    {
+        return None;
+    }
+
+    // Round outward: a host one pixel short of a panel edge would clip it.
+    let monitor_width = monitor_width.min(i32::MAX as u32) as i32;
+    let monitor_height = monitor_height.min(i32::MAX as u32) as i32;
+    let left = (bounds.x.floor() as i64).clamp(0, monitor_width as i64 - 1) as i32;
+    let top = (bounds.y.floor() as i64).clamp(0, monitor_height as i64 - 1) as i32;
+    let right = ((bounds.x + bounds.width).ceil() as i64).clamp(left as i64 + 1, monitor_width as i64)
+        as i32;
+    let bottom = ((bounds.y + bounds.height).ceil() as i64)
+        .clamp(top as i64 + 1, monitor_height as i64) as i32;
+    Some((left, top, (right - left) as u32, (bottom - top) as u32))
+}
+
+#[cfg(test)]
+mod host_bounds_tests {
+    use super::{clamped_host_bounds, OverlayHostBounds};
+
+    #[test]
+    fn rounds_outward_and_keeps_the_panel_edges_inside() {
+        let bounds = OverlayHostBounds {
+            x: 10.4,
+            y: 20.6,
+            width: 100.3,
+            height: 50.2,
+        };
+        assert_eq!(clamped_host_bounds(&bounds, 1920, 1080), Some((10, 20, 101, 51)));
+    }
+
+    #[test]
+    fn clamps_a_rectangle_that_overflows_the_monitor() {
+        let bounds = OverlayHostBounds {
+            x: -50.0,
+            y: -50.0,
+            width: 4000.0,
+            height: 4000.0,
+        };
+        assert_eq!(clamped_host_bounds(&bounds, 1920, 1080), Some((0, 0, 1920, 1080)));
+    }
+
+    #[test]
+    fn keeps_a_rectangle_starting_at_the_last_pixel_visible() {
+        let bounds = OverlayHostBounds {
+            x: 1919.0,
+            y: 1079.0,
+            width: 10.0,
+            height: 10.0,
+        };
+        assert_eq!(clamped_host_bounds(&bounds, 1920, 1080), Some((1919, 1079, 1, 1)));
+    }
+
+    #[test]
+    fn rejects_empty_and_invalid_rectangles() {
+        let empty = OverlayHostBounds {
+            x: 0.0,
+            y: 0.0,
+            width: 0.0,
+            height: 100.0,
+        };
+        let invalid = OverlayHostBounds {
+            x: f64::NAN,
+            y: 0.0,
+            width: 100.0,
+            height: 100.0,
+        };
+        assert_eq!(clamped_host_bounds(&empty, 1920, 1080), None);
+        assert_eq!(clamped_host_bounds(&invalid, 1920, 1080), None);
+    }
 }
 
 fn physical_interaction_region(
@@ -473,6 +613,68 @@ fn set_overlay_interaction_regions(
     let _ = regions;
 
     Ok(())
+}
+
+/// The monitor the overlay host belongs to, resolved the same way
+/// `create_overlay_host` resolves it so both agree after a monitor switch.
+fn host_monitor(app: &AppHandle) -> Result<tauri::Monitor, String> {
+    let monitors = sorted_monitors(app)?;
+    let index = load_overlay_monitor_index(app);
+    monitors
+        .get(index)
+        .or_else(|| monitors.first())
+        .cloned()
+        .ok_or_else(|| "monitors_unavailable".to_string())
+}
+
+/// Shrink the transparent host to the rectangle the visible panels occupy, or
+/// restore the whole monitor with `None`.
+///
+/// A full-screen transparent always-on-top window costs the game a composited
+/// surface the size of the display on every present. Bounding the host to the
+/// panels bounds that cost, and the host keeps covering the monitor while the
+/// user edits the layout, where panels must be draggable anywhere.
+///
+/// Returns the monitor in CSS pixels: once the host is smaller than the display
+/// its own viewport no longer describes the surface the layout is placed on.
+#[tauri::command]
+fn set_overlay_host_bounds(
+    app: AppHandle,
+    window: WebviewWindow,
+    bounds: Option<OverlayHostBounds>,
+) -> Result<OverlayHostViewport, String> {
+    if !window.label().starts_with(OVERLAY_HOST_PREFIX) {
+        return Err("overlay_host_required".into());
+    }
+
+    let monitor = host_monitor(&app)?;
+    let monitor_position = *monitor.position();
+    let monitor_size = *monitor.size();
+    let scale_factor = if monitor.scale_factor() > 0.0 {
+        monitor.scale_factor()
+    } else {
+        1.0
+    };
+    let (left, top, width, height) = bounds
+        .as_ref()
+        .and_then(|bounds| clamped_host_bounds(bounds, monitor_size.width, monitor_size.height))
+        .unwrap_or((0, 0, monitor_size.width, monitor_size.height));
+
+    window
+        .set_size(Size::Physical(PhysicalSize::new(width, height)))
+        .map_err(|error| startup_log::command_error("overlay_host_geometry_failed", error))?;
+    window
+        .set_position(Position::Physical(PhysicalPosition::new(
+            monitor_position.x.saturating_add(left),
+            monitor_position.y.saturating_add(top),
+        )))
+        .map_err(|error| startup_log::command_error("overlay_host_geometry_failed", error))?;
+
+    Ok(OverlayHostViewport {
+        width: f64::from(monitor_size.width) / scale_factor,
+        height: f64::from(monitor_size.height) / scale_factor,
+        scale_factor,
+    })
 }
 
 #[tauri::command]
@@ -700,6 +902,7 @@ fn save_overlay_monitor_index(app: &AppHandle, index: usize) -> Result<(), Strin
 fn create_control_window(app: &AppHandle) -> Result<(), String> {
     WebviewWindowBuilder::new(app, "control", WebviewUrl::App("index.html".into()))
         .data_directory(app_paths::webview_data_directory())
+        .additional_browser_args(WEBVIEW_BROWSER_ARGUMENTS)
         .title("BlackRack Overlay · Panel de control")
         .inner_size(590.0, 910.0)
         .min_inner_size(560.0, 880.0)
@@ -730,6 +933,7 @@ fn create_overlay_host(app: &AppHandle) -> Result<(), String> {
     let logical_size = monitor.size().to_logical::<f64>(monitor.scale_factor());
     let window = WebviewWindowBuilder::new(app, &label, WebviewUrl::App("composite.html".into()))
         .data_directory(app_paths::webview_data_directory())
+        .additional_browser_args(WEBVIEW_BROWSER_ARGUMENTS)
         .title(format!("BlackRack Overlay · Monitor {}", host_index + 1))
         .inner_size(logical_size.width, logical_size.height)
         .transparent(true)
@@ -1722,6 +1926,7 @@ pub fn run() {
             get_default_overlay_placement,
             get_interaction_mode,
             set_overlay_interaction_regions,
+            set_overlay_host_bounds,
             toggle_interaction_mode_command,
             get_telemetry_logging,
             set_telemetry_logging,

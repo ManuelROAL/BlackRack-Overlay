@@ -215,10 +215,23 @@ const sessionLabel = (sessionType: number): string => {
 
 const isPracticeSession = (sessionType: number): boolean => sessionType >= 0 && sessionType <= 4;
 
+const countryFlagRasterModules = import.meta.glob<string>(
+  "./assets/countries-raster/*.png",
+  { eager: true, query: "?url", import: "default" }
+);
+
 const countryFlagModules = import.meta.glob<string>(
   "./assets/countries/*.{svg,png}",
   { eager: true, query: "?url", import: "default" }
 );
+
+// The overlays draw flags into a box of a few pixels. `tools/rasterize-icons.mjs`
+// pre-renders them so WebView2 never parses a vector document to fill it; the
+// SVG source is only reached for an icon that has not been rasterised yet.
+const countryFlagSource = (code: string): string | undefined =>
+  countryFlagRasterModules[`./assets/countries-raster/${code}.png`]
+    ?? countryFlagModules[`./assets/countries/${code}.svg`]
+    ?? countryFlagModules[`./assets/countries/${code}.png`];
 
 const countryCode = (nationality: string): string => {
   const aliases: Record<string, string> = {
@@ -242,8 +255,7 @@ const countryCode = (nationality: string): string => {
 
 const countryFlag = (nationality: string): HTMLImageElement | undefined => {
   const code = countryCode(nationality);
-  const source = countryFlagModules[`./assets/countries/${code}.svg`]
-    ?? countryFlagModules[`./assets/countries/${code}.png`];
+  const source = countryFlagSource(code);
   if (!code || !source) return undefined;
   const flag = node("img", "country-flag");
   flag.src = source;
@@ -260,6 +272,11 @@ const classTone = (vehicleClass: string): string => {
   if (value.includes("LMGT3") || value.includes("GT3")) return "lmgt3";
   return "other";
 };
+
+const manufacturerLogoRasterModules = import.meta.glob<string>(
+  "./assets/manufacturers-raster/*.png",
+  { eager: true, query: "?url", import: "default" }
+);
 
 const manufacturerLogoModules = import.meta.glob<string>(
   "./assets/manufacturers/*.{svg,png}",
@@ -318,7 +335,8 @@ const manufacturer = (entry: StandingEntry): string | undefined => {
 const manufacturerLogo = (entry: StandingEntry): HTMLImageElement | undefined => {
   const name = manufacturer(entry);
   if (!name) return undefined;
-  const source = manufacturerLogoModules[`./assets/manufacturers/${name}.svg`]
+  const source = manufacturerLogoRasterModules[`./assets/manufacturers-raster/${name}.png`]
+    ?? manufacturerLogoModules[`./assets/manufacturers/${name}.svg`]
     ?? manufacturerLogoModules[`./assets/manufacturers/${name}.png`];
   if (!source) return undefined;
   const logo = node("img", "manufacturer-logo");

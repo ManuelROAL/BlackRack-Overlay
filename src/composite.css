@@ -15,7 +15,11 @@ body,
 }
 
 .overlay-stage {
-  position: relative;
+  /* The host shrinks to the panels in game mode, so the stage keeps the
+     monitor size and is offset into the window instead of following it. */
+  position: absolute;
+  top: 0;
+  left: 0;
   user-select: none;
   -webkit-user-select: none;
   touch-action: none;

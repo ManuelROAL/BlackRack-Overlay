@@ -47,6 +47,12 @@ interface OverlayInteractionRegion {
   height: number;
 }
 
+interface OverlayHostViewport {
+  width: number;
+  height: number;
+  scaleFactor: number;
+}
+
 interface TelemetryBatch {
   targets: OverlayId[];
   frame: TelemetryFrame;
@@ -145,7 +151,20 @@ const latestFrames = new Map<OverlayId, TelemetryFrame>();
 const projectedFrames = new Map<OverlayId, TelemetryFrame>();
 const designSizes = new Map<OverlayId, OverlayDesignSize>();
 const visible = new Set<OverlayId>();
+const placements = new Map<OverlayId, OverlayPlacement>();
 let clickThrough = false;
+// The monitor in CSS pixels. While the host covers the display this is its own
+// viewport, but once the host shrinks to the panels the viewport stops
+// describing the surface the layout is placed on, so the backend owns it.
+let monitorViewport: OverlayDesignSize = {
+  width: window.innerWidth,
+  height: window.innerHeight
+};
+// Margin kept around the panels so panel shadows and the edit chrome border are
+// never clipped by the host edge.
+const HOST_BOUNDS_MARGIN = 24;
+let appliedHostBounds: OverlayInteractionRegion | null = null;
+let hostBoundsPending: Promise<unknown> | null = null;
 let interactionRegionFrame: number | undefined;
 let interactionRegionSyncing = false;
 let interactionRegionDirty = false;
@@ -185,6 +204,91 @@ const scheduleInteractionRegionSync = (): void => {
   }
 };
 
+// The rectangle the host must cover, in CSS pixels relative to the monitor, or
+// null for the whole display. Editing keeps the full monitor because panels are
+// dragged anywhere on it; in game mode the transparent surface the compositor
+// puts over the game shrinks to what the overlays actually occupy.
+const computeHostBounds = (): OverlayInteractionRegion | null => {
+  if (!clickThrough || panels.size === 0) return null;
+  let left = Number.POSITIVE_INFINITY;
+  let top = Number.POSITIVE_INFINITY;
+  let right = Number.NEGATIVE_INFINITY;
+  let bottom = Number.NEGATIVE_INFINITY;
+  for (const overlay of panels.keys()) {
+    const placement = placements.get(overlay);
+    if (!placement) return null;
+    left = Math.min(left, placement.x);
+    top = Math.min(top, placement.y);
+    right = Math.max(right, placement.x + placement.width);
+    bottom = Math.max(bottom, placement.y + placement.height);
+  }
+  if (!Number.isFinite(left) || !Number.isFinite(top)) return null;
+  left = Math.max(0, Math.floor(left - HOST_BOUNDS_MARGIN));
+  top = Math.max(0, Math.floor(top - HOST_BOUNDS_MARGIN));
+  right = Math.min(monitorViewport.width, Math.ceil(right + HOST_BOUNDS_MARGIN));
+  bottom = Math.min(monitorViewport.height, Math.ceil(bottom + HOST_BOUNDS_MARGIN));
+  if (right <= left || bottom <= top) return null;
+  if (left === 0 && top === 0
+    && right >= monitorViewport.width && bottom >= monitorViewport.height) return null;
+  return { x: left, y: top, width: right - left, height: bottom - top };
+};
+
+const sameHostBounds = (
+  left: OverlayInteractionRegion | null,
+  right: OverlayInteractionRegion | null
+): boolean => left === right
+  || (left !== null && right !== null
+    && left.x === right.x && left.y === right.y
+    && left.width === right.width && left.height === right.height);
+
+const applyStageOffset = (bounds: OverlayInteractionRegion | null, dpr: number): void => {
+  // Mirror the backend's own flooring so the panels sit on exactly the pixel the
+  // host was moved to instead of drifting by a fraction at fractional scales.
+  const left = bounds ? Math.floor(bounds.x * dpr) / dpr : 0;
+  const top = bounds ? Math.floor(bounds.y * dpr) / dpr : 0;
+  stage.style.left = `${-left}px`;
+  stage.style.top = `${-top}px`;
+  stage.style.width = `${monitorViewport.width}px`;
+  stage.style.height = `${monitorViewport.height}px`;
+};
+
+const synchronizeHostBounds = (): void => {
+  // A change while a resize is in flight is picked up by the recomputation
+  // that runs when it settles.
+  if (hostBoundsPending) return;
+  const bounds = computeHostBounds();
+  if (sameHostBounds(bounds, appliedHostBounds)) return;
+  const dpr = window.devicePixelRatio || 1;
+  const physical = bounds && {
+    x: bounds.x * dpr,
+    y: bounds.y * dpr,
+    width: bounds.width * dpr,
+    height: bounds.height * dpr
+  };
+  // Never leave a frame with panels outside the host: grow the window before
+  // moving the stage into it, and move the stage before shrinking the window.
+  const growing = !bounds
+    || !appliedHostBounds
+    || (bounds.x <= appliedHostBounds.x && bounds.y <= appliedHostBounds.y);
+  if (!growing) applyStageOffset(bounds, dpr);
+  hostBoundsPending = invoke<OverlayHostViewport>("set_overlay_host_bounds", { bounds: physical })
+    .then((viewport) => {
+      appliedHostBounds = bounds;
+      const monitorChanged = viewport.width !== monitorViewport.width
+        || viewport.height !== monitorViewport.height;
+      if (monitorChanged) monitorViewport = { width: viewport.width, height: viewport.height };
+      if (growing || monitorChanged) applyStageOffset(bounds, dpr);
+      scheduleInteractionRegionSync();
+      return monitorChanged;
+    })
+    .catch(() => false)
+    .then((monitorChanged) => {
+      hostBoundsPending = null;
+      if (monitorChanged) void synchronizePanels();
+      else synchronizeHostBounds();
+    });
+};
+
 const suppressBrowserInteraction = (event: Event): void => {
   event.preventDefault();
   event.stopPropagation();
@@ -216,6 +320,7 @@ const projectTelemetryFrame = (overlay: OverlayId, frame: TelemetryFrame): Telem
 };
 
 const applyPlacement = (panel: HTMLElement, placement: OverlayPlacement): void => {
+  placements.set(placement.overlay, placement);
   panel.style.left = `${placement.x}px`;
   panel.style.top = `${placement.y}px`;
   panel.style.width = `${placement.width}px`;
@@ -239,23 +344,23 @@ const fitPlacementToMonitor = (placement: OverlayPlacement): OverlayPlacement =>
       0.1
     );
     const maximumScale = Math.min(
-      window.innerWidth / designSize.width,
-      window.innerHeight / designSize.height
+      monitorViewport.width / designSize.width,
+      monitorViewport.height / designSize.height
     );
     fittedScale = Math.min(maximumScale, Math.max(minimumScale, requestedScale));
     width = designSize.width * fittedScale;
     height = designSize.height * fittedScale;
   } else {
-    width = Math.min(width, window.innerWidth);
-    height = Math.min(height, window.innerHeight);
+    width = Math.min(width, monitorViewport.width);
+    height = Math.min(height, monitorViewport.height);
   }
   return {
     ...placement,
     width,
     height,
     ...(fittedScale === undefined ? {} : { scale: fittedScale }),
-    x: clampPanelCoordinate(placement.x, width, window.innerWidth),
-    y: clampPanelCoordinate(placement.y, height, window.innerHeight)
+    x: clampPanelCoordinate(placement.x, width, monitorViewport.width),
+    y: clampPanelCoordinate(placement.y, height, monitorViewport.height)
   };
 };
 
@@ -286,8 +391,8 @@ const bindPointerMove = (
     const placement = mode === "move"
       ? {
           ...initial,
-          x: clampPanelCoordinate(initial.x + dx, initial.width, window.innerWidth),
-          y: clampPanelCoordinate(initial.y + dy, initial.height, window.innerHeight)
+          x: clampPanelCoordinate(initial.x + dx, initial.width, monitorViewport.width),
+          y: clampPanelCoordinate(initial.y + dy, initial.height, monitorViewport.height)
         }
       : {
           ...initial,
@@ -305,8 +410,8 @@ const bindPointerMove = (
               0.1
             );
             const maximumScale = Math.max(minimumScale, Math.min(
-              (window.innerWidth - initial.x) / designSize.width,
-              (window.innerHeight - initial.y) / designSize.height
+              (monitorViewport.width - initial.x) / designSize.width,
+              (monitorViewport.height - initial.y) / designSize.height
             ));
             const scale = Math.max(minimumScale, Math.min(requestedScale, maximumScale));
             return {
@@ -335,6 +440,7 @@ const removePanel = (overlay: OverlayId): void => {
   panels.get(overlay)?.remove();
   panels.delete(overlay);
   frames.delete(overlay);
+  placements.delete(overlay);
 };
 
 const createPanel = (overlay: OverlayId, placement: OverlayPlacement): void => {
@@ -394,6 +500,7 @@ const synchronizePanels = async (): Promise<void> => {
   }
   if (normalized) localStorage.setItem(COMPOSITE_LAYOUT_KEY, JSON.stringify(layout));
   scheduleInteractionRegionSync();
+  synchronizeHostBounds();
 };
 
 const applyInteractionMode = (mode: InteractionMode): void => {
@@ -403,6 +510,7 @@ const applyInteractionMode = (mode: InteractionMode): void => {
     postEvent(overlay, "overlay://interaction-mode", mode);
   }
   scheduleInteractionRegionSync();
+  synchronizeHostBounds();
 };
 
 void listen<TelemetryBatch>("telemetry://batch", ({ payload }) => {
@@ -486,6 +594,7 @@ window.addEventListener("message", (event: MessageEvent<RuntimeMessage>) => {
       layout[overlay] = fitted;
       applyPlacement(panel, fitted);
       scheduleInteractionRegionSync();
+      synchronizeHostBounds();
       void saveOverlayPlacement(fitted);
     }
     return;

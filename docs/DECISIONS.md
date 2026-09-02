@@ -21,11 +21,26 @@ in `docs/overlays/` and should not be duplicated here.
   persist. A panel may be deliberately cropped at the monitor edge while
   retaining a recoverable strip.
 - Roboto Condensed and all required flags, logos and badges remain bundled.
+  Flags and manufacturer logos are pre-rasterised to small PNGs by
+  `tools/rasterize-icons.mjs` and committed, because the overlays draw them into
+  boxes of a few pixels and WebView2 would otherwise parse a whole vector
+  document to fill one. The SVG sources stay in the repository as the masters
+  and as the fallback for an icon that has not been rasterised yet.
 
 ## Host and configuration
 
 - Each host and its WebView use explicit transparent RGBA backgrounds; the
   transparent flag alone is insufficient in release WebView2 builds.
+- Every webview passes the same Chromium arguments. WebView2 keeps one browser
+  process per user data directory, so the environment created first decides them
+  for the whole application. They restore wry's own defaults, which the option
+  replaces, drop browser subsystems the overlay never uses and bound the V8
+  heap. They do not limit the renderer count: sharing one renderer would put the
+  control panel on the overlay host's main thread. Native window occlusion stays
+  enabled so the control panel stops rendering behind the game.
+- The overlay host is bounded to its visible panels in game mode and restored to
+  the full monitor for editing. Panel geometry is expressed in monitor
+  coordinates in both states.
 - General/per-overlay transparency preserves its independent saved values while a
   common value is active.
 - General/per-overlay text size preserves its independent saved values while a
