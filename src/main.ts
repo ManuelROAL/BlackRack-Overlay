@@ -822,8 +822,6 @@ const setCardState = (id: OverlayId, visible: boolean): void => {
   document
     .querySelector<HTMLElement>(`[data-overlay-card="${id}"]`)
     ?.classList.toggle("active", visible);
-  const state = document.querySelector<HTMLElement>(`[data-overlay-state="${id}"]`);
-  if (state) state.textContent = t(visible ? "card.visible" : "card.hidden");
   renderActiveOverlaySummary();
   if (activeOverlayFilter === "active") filterOverlays();
 };

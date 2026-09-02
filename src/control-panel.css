@@ -1524,7 +1524,7 @@ select {
 }
 
 .overlay-list > .overlay-option {
-  grid-template-columns: 34px minmax(0, 1fr) auto auto;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
   grid-template-rows: auto auto auto;
   column-gap: 9px;
   row-gap: 7px;
@@ -1545,14 +1545,14 @@ select {
 }
 
 .overlay-list > .overlay-option:not(.expanded) > .overlay-copy strong {
-  grid-column: 2 / 4;
+  grid-column: 2;
   grid-row: 1;
   align-self: center;
   min-width: 0;
 }
 
 .overlay-list > .overlay-option:not(.expanded) > .overlay-copy span {
-  grid-column: 1 / 4;
+  grid-column: 1 / -1;
   grid-row: 2;
   min-width: 0;
 }
@@ -1569,20 +1569,9 @@ select {
 }
 
 .overlay-list > .overlay-option > .switch {
-  grid-column: 4;
+  grid-column: 3;
   grid-row: 1;
   align-self: center;
-}
-
-.overlay-list > .overlay-option > .overlay-state {
-  grid-column: 4;
-  grid-row: 2;
-  align-self: start;
-  justify-self: end;
-}
-
-.overlay-list > .overlay-option.expanded > .overlay-state {
-  display: none;
 }
 
 .overlay-list > .overlay-option.expanded {
@@ -1607,23 +1596,6 @@ select {
 .overlay-list > .overlay-option.expanded > .switch {
   grid-column: 4;
   grid-row: 1;
-}
-
-.overlay-state {
-  padding: 3px 6px 2px;
-  border: 1px solid rgb(255 255 255 / 12%);
-  border-radius: 4px;
-  color: #9daab8;
-  background: rgb(255 255 255 / 4%);
-  font-size: 11px;
-  font-weight: 900;
-  letter-spacing: 0.08em;
-}
-
-.overlay-option.active .overlay-state {
-  border-color: rgb(216 255 62 / 45%);
-  color: #d8ff3e;
-  background: rgb(216 255 62 / 12%);
 }
 
 .overlay-details-toggle {
@@ -1653,7 +1625,7 @@ select {
 
 .overlay-list > .overlay-option:not(.expanded) > .overlay-details-toggle {
   display: flex;
-  grid-column: 1 / 4;
+  grid-column: 1 / 3;
   grid-row: 3;
   align-items: center;
   justify-content: center;
@@ -1706,7 +1678,7 @@ select {
 }
 
 .overlay-list > .overlay-option:not(.expanded) > .overlay-guide-button {
-  grid-column: 4;
+  grid-column: 3;
   grid-row: 3;
   align-self: center;
   justify-self: end;

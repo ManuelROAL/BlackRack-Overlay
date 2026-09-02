@@ -111,11 +111,10 @@ telemetry semantics and file ownership live under `docs/overlays/`; use
   configuration disclosure reads as a full-width action button with the
   contextual help action beside it. Collapse the catalog to one column when the
   window is narrow.
-- State an overlay's visibility in text as well as colour: every card carries an
-  ON/OFF chip next to its switch, and the catalog header reports how many
-  overlays of the total are open. The filter row exposes an Active chip that
-  narrows the catalog to the open overlays and refreshes whenever a card's
-  visibility changes.
+- Keep an overlay's visibility readable without inspecting its switch: the
+  catalog header reports how many overlays of the total are open, and the filter
+  row exposes an Active chip that narrows the catalog to the open overlays and
+  refreshes whenever a card's visibility changes.
 - The overlay catalog provides a global guide action and one contextual help
   action per card. Both open the same bundled, accessible dialog; contextual
   help selects that overlay directly. `src/overlay-guide.ts` owns the complete
