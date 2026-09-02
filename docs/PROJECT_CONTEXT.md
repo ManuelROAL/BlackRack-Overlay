@@ -33,6 +33,8 @@ on their runtime or source code.
 - All overlays share one host on a single selected monitor.
 - Optional telemetry/performance analysis logging.
 - Optional per-lap strategy CSV with consumption, tyre wear and track conditions.
+- Named overlay configuration profiles, with one bound to each of game,
+  spectator and team mode and applied when the mode is selected.
 - Spectator mode keeps overlays attached to the car currently watched between driving stints.
 - Team mode keeps overlays attached to the player's registered team car regardless of the spectator camera.
 - Compact tyre/damage schematic plus an independent detailed damage overlay.

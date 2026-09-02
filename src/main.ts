@@ -121,6 +121,7 @@ import {
 import {
   ensureCompositeLayout,
   COMPOSITE_LAYOUT_KEY,
+  type CompositeLayout,
   getDefaultCompositeLayout,
   getOverlayDisplays,
   readCompositeLayout,
@@ -144,6 +145,26 @@ import {
   SPECTATOR_MODE_KEY,
   TEAM_MODE_KEY
 } from "./spectator-settings";
+import {
+  createProfileId,
+  isOverlayMode,
+  MAX_OVERLAY_PROFILES,
+  MAX_PROFILE_NAME_LENGTH,
+  modeFromFlags,
+  normalizeBindings,
+  normalizeProfiles,
+  OVERLAY_MODES,
+  OVERLAY_PROFILES_KEY,
+  PROFILE_BINDINGS_KEY,
+  readProfileState,
+  sanitizeProfileName,
+  saveProfileState,
+  type OverlayMode,
+  type OverlayProfile,
+  type OverlayProfileData,
+  type ProfileBindings,
+  type ProfileState
+} from "./overlay-profiles";
 import { OVERLAY_GUIDE, OVERLAY_GUIDE_ORDER } from "./overlay-guide";
 
 installFrontendDiagnostics("control", (diagnostic) =>
@@ -200,9 +221,11 @@ interface BrowserSourceStatus {
 
 interface OverlayConfigurationExport {
   format: "blackrack-overlay-configuration";
-  schemaVersion: 16;
+  schemaVersion: 17;
   exportedAt: string;
   ui: { locale: Locale };
+  profiles: OverlayProfile[];
+  modeBindings: ProfileBindings;
   overlays: {
     visibility: Record<OverlayId, boolean>;
     transparency: {
@@ -258,56 +281,6 @@ if (spectatorMode && teamMode) {
   spectatorMode = false;
   saveSpectatorMode(false);
 }
-const spectatorModeInput = document.getElementById("spectator-mode") as HTMLInputElement | null;
-const teamModeInput = document.getElementById("team-mode") as HTMLInputElement | null;
-if (spectatorModeInput) {
-  spectatorModeInput.checked = spectatorMode;
-  spectatorModeInput.addEventListener("change", () => {
-    const previous = spectatorMode;
-    const previousTeam = teamMode;
-    spectatorMode = spectatorModeInput.checked;
-    if (spectatorMode) {
-      teamMode = false;
-      if (teamModeInput) teamModeInput.checked = false;
-    }
-    spectatorModeInput.disabled = true;
-    void invoke("set_spectator_mode", { enabled: spectatorMode }).then(() => {
-      saveSpectatorMode(spectatorMode);
-      saveTeamMode(teamMode);
-    }).catch(() => {
-      spectatorMode = previous;
-      teamMode = previousTeam;
-      spectatorModeInput.checked = previous;
-      if (teamModeInput) teamModeInput.checked = previousTeam;
-    }).finally(() => {
-      spectatorModeInput.disabled = false;
-    });
-  });
-}
-if (teamModeInput) {
-  teamModeInput.checked = teamMode;
-  teamModeInput.addEventListener("change", () => {
-    const previous = teamMode;
-    const previousSpectator = spectatorMode;
-    teamMode = teamModeInput.checked;
-    if (teamMode) {
-      spectatorMode = false;
-      if (spectatorModeInput) spectatorModeInput.checked = false;
-    }
-    teamModeInput.disabled = true;
-    void invoke("set_team_mode", { enabled: teamMode }).then(() => {
-      saveTeamMode(teamMode);
-      saveSpectatorMode(spectatorMode);
-    }).catch(() => {
-      teamMode = previous;
-      spectatorMode = previousSpectator;
-      teamModeInput.checked = previous;
-      if (spectatorModeInput) spectatorModeInput.checked = previousSpectator;
-    }).finally(() => {
-      teamModeInput.disabled = false;
-    });
-  });
-}
 void invoke("set_spectator_mode", { enabled: spectatorMode })
   .then(() => invoke("set_team_mode", { enabled: teamMode }))
   .catch(reportInitializationError("spectator modes"));
@@ -344,7 +317,7 @@ if (localeSelect) {
   });
 }
 
-const CURRENT_CONFIGURATION_SCHEMA = 16;
+const CURRENT_CONFIGURATION_SCHEMA = 17;
 const CURRENT_CONFIGURATION_FORMAT = "blackrack-overlay-configuration";
 const LEGACY_CONFIGURATION_FORMAT = "lmu-overlay-configuration";
 const overlayIds: OverlayId[] = ["delta", "timing", "stinthistory", "driving", "liftcoast", "tires", "damage", "standings", "relative", "fuel", "pitstop", "flags", "rejoin", "trackmap", "forecast", "conditions"];
@@ -471,6 +444,13 @@ let overlayTransparencyScope: OverlayTransparencyScope = readOverlayTransparency
 const overlayFontSize = readOverlayFontSize();
 let overlayFontSizeScope: OverlayFontSizeScope = readOverlayFontSizeScope();
 
+/**
+ * Assigned once the profile store exists. Every live overlay setting funnels
+ * through syncBrowserSourcePreferences or persist, so the active profile can be
+ * snapshotted from a single place without touching each control handler.
+ */
+let onLiveSettingsChanged: () => void = () => {};
+
 const syncBrowserSourcePreferences = (): void => {
   void invoke("set_overlay_view_settings", {
     settings: {
@@ -504,6 +484,7 @@ const syncBrowserSourcePreferences = (): void => {
   }).catch(() => undefined);
   void invoke("set_delta_settings", { settings: deltaSettings }).catch(() => undefined);
   void invoke("set_timing_settings", { settings: timingSettings }).catch(() => undefined);
+  onLiveSettingsChanged();
 };
 
 const shortcutInputs: Record<ShortcutAction, HTMLInputElement | null> = {
@@ -834,6 +815,7 @@ const setCardState = (id: OverlayId, visible: boolean): void => {
 
 const persist = (): void => {
   localStorage.setItem(storageKey, JSON.stringify(preferences));
+  onLiveSettingsChanged();
 };
 
 const setOverlay = async (id: OverlayId, visible: boolean): Promise<void> => {
@@ -1066,6 +1048,426 @@ const publishOverlayConfigurationReset = async (
   await Promise.all(events);
   reloadKeepingActiveView();
 };
+
+/**
+ * Overlay profiles. A profile owns the overlay-facing configuration only;
+ * monitor, performance profile, locale, shortcuts and the browser source stay
+ * global so switching mode never moves the host or changes cadence.
+ */
+const layoutIsComplete = (layout: unknown): layout is CompositeLayout =>
+  layout !== null && typeof layout === "object"
+    && overlayIds.every((id) => (layout as Record<string, unknown>)[id] !== undefined);
+
+const captureProfileData = (previous?: OverlayProfileData): OverlayProfileData => {
+  const layout = readCompositeLayout();
+  return {
+    visibility: { ...preferences },
+    transparency: {
+      scope: { ...overlayTransparencyScope },
+      values: { ...overlayTransparency }
+    },
+    fontSize: {
+      scope: { ...overlayFontSizeScope },
+      values: { ...overlayFontSize }
+    },
+    layout: layoutIsComplete(layout) ? layout : (previous?.layout ?? {} as CompositeLayout),
+    standings: standingsSettings,
+    relative: relativeSettings,
+    driving: drivingSettings,
+    delta: deltaSettings,
+    timing: timingSettings,
+    trackMap: trackMapSettings,
+    fuel: fuelSettings,
+    tires: tiresSettings,
+    conditions: conditionsSettings
+  };
+};
+
+const defaultProfileData = (layout: CompositeLayout): OverlayProfileData => ({
+  visibility: defaultVisibility(),
+  transparency: {
+    scope: { mode: "individual", globalTransparency: 100 },
+    values: { ...DEFAULT_OVERLAY_TRANSPARENCY }
+  },
+  fontSize: {
+    scope: { mode: "individual", globalFontSize: 100 },
+    values: { ...DEFAULT_OVERLAY_FONT_SIZE }
+  },
+  layout,
+  standings: defaultStandingsSettings(),
+  relative: defaultRelativeSettings(),
+  driving: defaultDrivingSettings(),
+  delta: defaultDeltaSettings(),
+  timing: defaultTimingSettings(),
+  trackMap: defaultTrackMapSettings(),
+  fuel: defaultFuelSettings(),
+  tires: defaultTiresSettings(),
+  conditions: defaultConditionsSettings()
+});
+
+let activeMode: OverlayMode = modeFromFlags(spectatorMode, teamMode);
+let profileState: ProfileState = readProfileState(t("profiles.defaultName"))
+  ?? (() => {
+    const profile: OverlayProfile = {
+      id: createProfileId(),
+      name: t("profiles.defaultName"),
+      data: captureProfileData()
+    };
+    const state: ProfileState = {
+      profiles: [profile],
+      bindings: { game: profile.id, spectator: profile.id, team: profile.id }
+    };
+    saveProfileState(state);
+    return state;
+  })();
+let activeProfileId = profileState.bindings[activeMode];
+let applyingProfile = false;
+let profileSnapshotTimer = 0;
+
+const activeProfile = (): OverlayProfile | undefined =>
+  profileState.profiles.find(({ id }) => id === activeProfileId);
+
+const writeProfileSnapshot = (): void => {
+  const profile = activeProfile();
+  if (!profile) return;
+  profile.data = captureProfileData(profile.data);
+  saveProfileState(profileState);
+};
+
+const scheduleProfileSnapshot = (): void => {
+  if (applyingProfile) return;
+  if (profileSnapshotTimer) window.clearTimeout(profileSnapshotTimer);
+  profileSnapshotTimer = window.setTimeout(() => {
+    profileSnapshotTimer = 0;
+    writeProfileSnapshot();
+  }, 1000);
+};
+
+const flushProfileSnapshot = (): void => {
+  if (profileSnapshotTimer) {
+    window.clearTimeout(profileSnapshotTimer);
+    profileSnapshotTimer = 0;
+  }
+  if (applyingProfile) return;
+  writeProfileSnapshot();
+};
+
+onLiveSettingsChanged = scheduleProfileSnapshot;
+
+// Panel geometry is written by the composite host, so its storage event is the
+// only signal that the active profile layout changed.
+window.addEventListener("storage", (event) => {
+  if (event.key === COMPOSITE_LAYOUT_KEY) scheduleProfileSnapshot();
+});
+window.addEventListener("beforeunload", flushProfileSnapshot);
+
+// The layout may not exist yet on a first run; record it once it does.
+void ensureCompositeLayout()
+  .then(() => scheduleProfileSnapshot())
+  .catch(() => undefined);
+
+const applyProfileData = async (data: OverlayProfileData): Promise<void> => {
+  applyingProfile = true;
+  try {
+    standingsSettings = data.standings;
+    relativeSettings = data.relative;
+    drivingSettings = data.driving;
+    deltaSettings = data.delta;
+    timingSettings = data.timing;
+    trackMapSettings = data.trackMap;
+    fuelSettings = data.fuel;
+    tiresSettings = data.tires;
+    conditionsSettings = data.conditions;
+    overlayTransparencyScope = data.transparency.scope;
+    overlayFontSizeScope = data.fontSize.scope;
+    for (const id of overlayIds) {
+      overlayTransparency[id] = data.transparency.values[id] ?? DEFAULT_OVERLAY_TRANSPARENCY[id];
+      overlayFontSize[id] = data.fontSize.values[id] ?? DEFAULT_OVERLAY_FONT_SIZE[id];
+    }
+
+    localStorage.setItem(STANDINGS_SETTINGS_KEY, JSON.stringify(standingsSettings));
+    localStorage.setItem(RELATIVE_SETTINGS_KEY, JSON.stringify(relativeSettings));
+    localStorage.setItem(DRIVING_SETTINGS_KEY, JSON.stringify(drivingSettings));
+    localStorage.setItem(DELTA_SETTINGS_KEY, JSON.stringify(deltaSettings));
+    localStorage.setItem(TIMING_SETTINGS_KEY, JSON.stringify(timingSettings));
+    localStorage.setItem(TRACK_MAP_SETTINGS_KEY, JSON.stringify(trackMapSettings));
+    localStorage.setItem(FUEL_SETTINGS_KEY, JSON.stringify(fuelSettings));
+    localStorage.setItem(TIRES_SETTINGS_KEY, JSON.stringify(tiresSettings));
+    localStorage.setItem(CONDITIONS_SETTINGS_KEY, JSON.stringify(conditionsSettings));
+    localStorage.setItem(OVERLAY_TRANSPARENCY_KEY, JSON.stringify(overlayTransparency));
+    localStorage.setItem(OVERLAY_TRANSPARENCY_SCOPE_KEY, JSON.stringify(overlayTransparencyScope));
+    localStorage.setItem(OVERLAY_FONT_SIZE_KEY, JSON.stringify(overlayFontSize));
+    localStorage.setItem(OVERLAY_FONT_SIZE_SCOPE_KEY, JSON.stringify(overlayFontSizeScope));
+    if (layoutIsComplete(data.layout)) {
+      localStorage.setItem(COMPOSITE_LAYOUT_KEY, JSON.stringify(data.layout));
+    }
+
+    const effectiveTransparency = effectiveOverlayTransparency(overlayTransparency, overlayTransparencyScope);
+    const effectiveFontSize = effectiveOverlayFontSize(overlayFontSize, overlayFontSizeScope);
+    const events: Promise<unknown>[] = [
+      emit("standings://settings", standingsSettings),
+      emit("relative://settings", relativeSettings),
+      emit("driving://settings", drivingSettings),
+      emit("delta://settings", deltaSettings),
+      emit("timing://settings", timingSettings),
+      emit("trackmap://settings", trackMapSettings),
+      emit("fuel://settings", fuelSettings),
+      emit("tires://settings", tiresSettings),
+      emit("conditions://settings", conditionsSettings)
+    ];
+    for (const id of overlayIds) {
+      events.push(emit("overlay://background-transparency", {
+        overlay: id,
+        transparency: effectiveTransparency[id]
+      } satisfies OverlayTransparencyChange));
+      events.push(emit("overlay://font-size", {
+        overlay: id,
+        fontSize: effectiveFontSize[id]
+      } satisfies OverlayFontSizeChange));
+    }
+    // Visibility travels through the backend so it also updates the desired set
+    // that drives automatic hiding.
+    for (const id of overlayIds) await setOverlay(id, data.visibility[id] === true);
+    syncBrowserSourcePreferences();
+    await Promise.all(events);
+  } finally {
+    applyingProfile = false;
+  }
+  reloadKeepingActiveView();
+};
+
+const profileListElement = document.getElementById("overlay-profile-list");
+const createProfileButton = document.getElementById("create-overlay-profile") as HTMLButtonElement | null;
+const profileStatus = document.getElementById("overlay-profile-status");
+const profileBindingSelects = new Map<OverlayMode, HTMLSelectElement>(
+  OVERLAY_MODES.flatMap((mode) => {
+    const select = document.querySelector<HTMLSelectElement>(`select[data-profile-binding="${mode}"]`);
+    return select ? [[mode, select] as [OverlayMode, HTMLSelectElement]] : [];
+  })
+);
+const modeButtons = [...document.querySelectorAll<HTMLButtonElement>("[data-overlay-mode]")];
+
+const modeLabel = (mode: OverlayMode): string =>
+  t(mode === "spectator" ? "follow.spectator" : mode === "team" ? "follow.team" : "follow.game");
+
+const setProfileControlsBusy = (busy: boolean): void => {
+  if (createProfileButton) {
+    createProfileButton.disabled = busy || profileState.profiles.length >= MAX_OVERLAY_PROFILES;
+  }
+  for (const select of profileBindingSelects.values()) select.disabled = busy;
+  for (const button of modeButtons) button.disabled = busy;
+  for (const button of profileListElement?.querySelectorAll("button") ?? []) button.disabled = busy;
+};
+
+const renderModeSelection = (): void => {
+  for (const button of modeButtons) {
+    const selected = button.dataset.overlayMode === activeMode;
+    button.classList.toggle("active", selected);
+    button.setAttribute("aria-pressed", String(selected));
+  }
+};
+
+const addProfile = (name: string, data: OverlayProfileData): void => {
+  if (profileState.profiles.length >= MAX_OVERLAY_PROFILES) {
+    if (profileStatus) profileStatus.textContent = t("profiles.limit");
+    return;
+  }
+  profileState.profiles.push({ id: createProfileId(), name, data });
+  saveProfileState(profileState);
+  if (profileStatus) profileStatus.textContent = "";
+  renderProfiles();
+};
+
+const renderProfiles = (): void => {
+  for (const [mode, select] of profileBindingSelects) {
+    select.replaceChildren(...profileState.profiles.map((profile) => {
+      const option = document.createElement("option");
+      option.value = profile.id;
+      option.textContent = profile.name;
+      return option;
+    }));
+    select.value = profileState.bindings[mode];
+  }
+  if (profileListElement) {
+    profileListElement.replaceChildren(...profileState.profiles.map((profile) => {
+      const item = document.createElement("li");
+      item.className = "overlay-profile";
+      item.classList.toggle("active", profile.id === activeProfileId);
+
+      const name = document.createElement("input");
+      name.type = "text";
+      name.className = "overlay-profile-name";
+      name.value = profile.name;
+      name.maxLength = MAX_PROFILE_NAME_LENGTH;
+      name.setAttribute("aria-label", t("profiles.nameAria", { name: profile.name }));
+      name.addEventListener("change", () => {
+        profile.name = sanitizeProfileName(name.value, profile.name);
+        name.value = profile.name;
+        saveProfileState(profileState);
+        renderProfiles();
+      });
+
+      const meta = document.createElement("span");
+      meta.className = "overlay-profile-meta";
+      const boundModes = OVERLAY_MODES.filter((mode) => profileState.bindings[mode] === profile.id);
+      meta.textContent = profile.id === activeProfileId
+        ? t("profiles.active")
+        : boundModes.length > 0
+          ? t("profiles.usedBy", { modes: boundModes.map(modeLabel).join(", ") })
+          : "";
+
+      const actions = document.createElement("div");
+      actions.className = "overlay-profile-buttons";
+
+      if (profile.id !== activeProfileId) {
+        const use = document.createElement("button");
+        use.type = "button";
+        use.textContent = t("profiles.use");
+        use.setAttribute("aria-label", t("profiles.useAria", { name: profile.name }));
+        use.addEventListener("click", () => void bindAndActivate(activeMode, profile.id));
+        actions.append(use);
+      }
+
+      const duplicate = document.createElement("button");
+      duplicate.type = "button";
+      duplicate.textContent = t("profiles.duplicate");
+      duplicate.setAttribute("aria-label", t("profiles.duplicateAria", { name: profile.name }));
+      duplicate.addEventListener("click", () => {
+        flushProfileSnapshot();
+        const source = profileState.profiles.find(({ id }) => id === profile.id);
+        if (!source) return;
+        addProfile(
+          t("profiles.copyName", { name: source.name }),
+          JSON.parse(JSON.stringify(source.data)) as OverlayProfileData
+        );
+      });
+      actions.append(duplicate);
+
+      if (profileState.profiles.length > 1) {
+        const remove = document.createElement("button");
+        remove.type = "button";
+        remove.className = "overlay-profile-delete";
+        remove.textContent = t("profiles.delete");
+        remove.setAttribute("aria-label", t("profiles.deleteAria", { name: profile.name }));
+        remove.addEventListener("click", () => void deleteProfile(profile.id));
+        actions.append(remove);
+      }
+
+      item.append(name, meta, actions);
+      return item;
+    }));
+  }
+  setProfileControlsBusy(false);
+};
+
+const deleteProfile = async (id: string): Promise<void> => {
+  const profile = profileState.profiles.find((candidate) => candidate.id === id);
+  if (!profile || profileState.profiles.length <= 1) return;
+  if (!await confirmReset(t("profiles.deleteConfirm", { name: profile.name }))) return;
+  flushProfileSnapshot();
+  const remaining = profileState.profiles.filter((candidate) => candidate.id !== id);
+  const requested = Object.fromEntries(OVERLAY_MODES.map((mode) => [
+    mode,
+    profileState.bindings[mode] === id ? null : profileState.bindings[mode]
+  ]));
+  profileState = { profiles: remaining, bindings: normalizeBindings(requested, remaining) };
+  saveProfileState(profileState);
+  if (activeProfileId !== id) {
+    renderProfiles();
+    return;
+  }
+  activeProfileId = profileState.bindings[activeMode];
+  const next = activeProfile();
+  renderProfiles();
+  if (!next) return;
+  setProfileControlsBusy(true);
+  if (profileStatus) profileStatus.textContent = t("profiles.applying");
+  await applyProfileData(next.data);
+};
+
+const bindAndActivate = async (mode: OverlayMode, profileId: string): Promise<void> => {
+  if (!profileState.profiles.some(({ id }) => id === profileId)) return;
+  flushProfileSnapshot();
+  profileState.bindings = { ...profileState.bindings, [mode]: profileId };
+  saveProfileState(profileState);
+  if (mode !== activeMode || profileId === activeProfileId) {
+    renderProfiles();
+    return;
+  }
+  activeProfileId = profileId;
+  const profile = activeProfile();
+  renderProfiles();
+  if (!profile) return;
+  setProfileControlsBusy(true);
+  if (profileStatus) profileStatus.textContent = t("profiles.applying");
+  await applyProfileData(profile.data);
+};
+
+const selectOverlayMode = async (mode: OverlayMode): Promise<void> => {
+  if (mode === activeMode) return;
+  flushProfileSnapshot();
+  setProfileControlsBusy(true);
+  try {
+    await invoke("set_spectator_mode", { enabled: mode === "spectator" });
+    await invoke("set_team_mode", { enabled: mode === "team" });
+  } catch {
+    // Restore the backend to the mode the panel still shows.
+    await invoke("set_spectator_mode", { enabled: spectatorMode }).catch(() => undefined);
+    await invoke("set_team_mode", { enabled: teamMode }).catch(() => undefined);
+    renderModeSelection();
+    setProfileControlsBusy(false);
+    if (profileStatus) profileStatus.textContent = t("profiles.modeError");
+    return;
+  }
+  spectatorMode = mode === "spectator";
+  teamMode = mode === "team";
+  saveSpectatorMode(spectatorMode);
+  saveTeamMode(teamMode);
+  activeMode = mode;
+  renderModeSelection();
+  const nextProfileId = profileState.bindings[mode];
+  if (nextProfileId === activeProfileId) {
+    renderProfiles();
+    if (profileStatus) profileStatus.textContent = "";
+    return;
+  }
+  activeProfileId = nextProfileId;
+  const profile = activeProfile();
+  if (!profile) {
+    renderProfiles();
+    return;
+  }
+  if (profileStatus) profileStatus.textContent = t("profiles.applying");
+  await applyProfileData(profile.data);
+};
+
+for (const button of modeButtons) {
+  button.addEventListener("click", () => {
+    const mode = button.dataset.overlayMode;
+    if (isOverlayMode(mode)) void selectOverlayMode(mode);
+  });
+}
+
+for (const [mode, select] of profileBindingSelects) {
+  select.addEventListener("change", () => {
+    void bindAndActivate(mode, select.value);
+  });
+}
+
+createProfileButton?.addEventListener("click", () => {
+  void (async () => {
+    // Without authored defaults the new profile keeps whatever layout is live,
+    // because applying an incomplete layout would seed panels off-screen.
+    const layout = await getDefaultCompositeLayout().catch(() => readCompositeLayout());
+    addProfile(
+      t("profiles.newName", { number: profileState.profiles.length + 1 }),
+      defaultProfileData(layoutIsComplete(layout) ? layout : {} as CompositeLayout)
+    );
+  })().catch(() => undefined);
+});
+
+renderModeSelection();
+renderProfiles();
 
 const resetOverlayConfiguration = async (id: OverlayId): Promise<void> => {
   if (!await confirmReset(
@@ -1361,6 +1763,8 @@ const parseOverlayConfiguration = (
   const fuel = configurationObject(overlays?.fuel);
   const tires = configurationObject(overlays?.tires);
   const conditions = configurationObject(overlays?.conditions);
+  const importedProfiles = root?.profiles;
+  const importedBindings = root?.modeBindings;
   const importedPerformanceProfile = overlays?.performanceProfile;
   const importedSpectatorMode = overlays?.spectatorMode;
   const importedTeamMode = overlays?.teamMode;
@@ -1578,8 +1982,10 @@ const parseOverlayConfiguration = (
         scope: { mode: "individual", globalFontSize: 100 } as OverlayFontSizeScope,
         values: { ...DEFAULT_OVERLAY_FONT_SIZE }
       };
-  return {
+  const result: OverlayConfigurationExport = {
     ...normalized,
+    profiles: [],
+    modeBindings: { game: "", spectator: "", team: "" },
     format: CURRENT_CONFIGURATION_FORMAT,
     schemaVersion: CURRENT_CONFIGURATION_SCHEMA,
     ui: { locale: isLocale(ui?.locale) ? ui.locale : getLocale() },
@@ -1632,6 +2038,35 @@ const parseOverlayConfiguration = (
       teamMode: typeof importedTeamMode === "boolean" ? importedTeamMode : false
     }
   };
+  const activeData: OverlayProfileData = {
+    visibility: result.overlays.visibility,
+    transparency: result.overlays.transparency,
+    fontSize: result.overlays.fontSize,
+    layout: result.overlays.layout,
+    standings: result.overlays.standings,
+    relative: result.overlays.relative,
+    driving: result.overlays.driving,
+    delta: result.overlays.delta,
+    timing: result.overlays.timing,
+    trackMap: result.overlays.trackMap,
+    fuel: result.overlays.fuel,
+    tires: result.overlays.tires,
+    conditions: result.overlays.conditions
+  };
+  // Documents written before schema 17 carry a single configuration; it becomes
+  // the one profile every mode starts bound to.
+  const profiles = normalizeProfiles(importedProfiles, t("profiles.defaultName"));
+  if (profiles.length === 0) {
+    profiles.push({ id: createProfileId(), name: t("profiles.defaultName"), data: activeData });
+  }
+  const modeBindings = normalizeBindings(importedBindings, profiles);
+  // The overlays block is the validated configuration the panel will run, so the
+  // profile bound to the imported mode has to carry exactly that.
+  const boundProfile = profiles.find(({ id }) => id === modeBindings[
+    modeFromFlags(result.overlays.spectatorMode, result.overlays.teamMode)
+  ]);
+  if (boundProfile) boundProfile.data = activeData;
+  return { ...result, profiles, modeBindings };
 };
 
 const normalizeImportedMonitor = async (
@@ -1665,7 +2100,9 @@ const applyImportedConfiguration = (configuration: OverlayConfigurationExport): 
     [CONDITIONS_SETTINGS_KEY, configuration.overlays.conditions],
     [PERFORMANCE_PROFILE_KEY, configuration.overlays.performanceProfile],
     [SPECTATOR_MODE_KEY, configuration.overlays.spectatorMode && !configuration.overlays.teamMode],
-    [TEAM_MODE_KEY, configuration.overlays.teamMode]
+    [TEAM_MODE_KEY, configuration.overlays.teamMode],
+    [OVERLAY_PROFILES_KEY, configuration.profiles],
+    [PROFILE_BINDINGS_KEY, configuration.modeBindings]
   ];
   const previous = entries.map(([key]) => [key, localStorage.getItem(key)] as const);
   const previousLocale = localStorage.getItem(LOCALE_STORAGE_KEY);
@@ -1693,6 +2130,7 @@ exportConfigurationButton?.addEventListener("click", () => {
   if (exportConfigurationStatus) exportConfigurationStatus.textContent = t("config.preparing");
   void (async () => {
     const now = new Date();
+    flushProfileSnapshot();
     const layout = readCompositeLayout() ?? await ensureCompositeLayout();
     const monitor = await resolveOverlayMonitor();
     const configuration: OverlayConfigurationExport = {
@@ -1700,6 +2138,8 @@ exportConfigurationButton?.addEventListener("click", () => {
       schemaVersion: CURRENT_CONFIGURATION_SCHEMA,
       exportedAt: now.toISOString(),
       ui: { locale: getLocale() },
+      profiles: profileState.profiles,
+      modeBindings: profileState.bindings,
       overlays: {
         visibility: { ...preferences },
         transparency: {

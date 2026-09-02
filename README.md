@@ -21,6 +21,9 @@ Overlay de telemetría para **Le Mans Ultimate**, pensado para Windows y Linux. 
 - Fuente de datos desacoplada mediante `TelemetrySource` y lector oficial de LMU en Windows.
 - `Ctrl+Shift+O` alterna entre edición y modo juego; los overlays dejan pasar el ratón.
 - `Ctrl+Shift+M` muestra y enfoca el panel de control.
+- Perfiles de configuración con nombre: cada uno guarda visibilidad, posición, tamaño,
+  transparencia, tamaño de texto y ajustes de los overlays, y se asigna al modo juego,
+  al modo espectador o al modo equipo. Al cambiar de modo se aplica su perfil.
 - La selección, posición y tamaño de las ventanas se conservan entre ejecuciones.
 - Los overlays se ocultan fuera del juego y en el garaje, y reaparecen al volver a pista.
 - Registro de análisis activable desde el panel, persistente entre ejecuciones y guardado en JSONL.

@@ -144,25 +144,25 @@
             <output id="global-font-size-output">100%</output>
           </label>
         </div>
-        <div class="global-setting-group">
+        <div class="global-setting-group overlay-mode-group">
           <div class="global-setting-copy">
-            <span data-i18n="general.spectator">MODO ESPECTADOR</span>
-            <strong data-i18n="general.spectatorSub">Sigue el coche que estás observando</strong>
+            <span data-i18n="follow.heading">MODO</span>
+            <strong data-i18n="follow.sub">A qué coche siguen los overlays</strong>
           </div>
-          <label class="switch">
-            <input id="spectator-mode" type="checkbox" aria-label="Activar modo espectador" data-i18n-aria-label="general.spectatorAria" />
-            <span></span>
-          </label>
-        </div>
-        <div class="global-setting-group">
-          <div class="global-setting-copy">
-            <span data-i18n="general.teamMode">MODO EQUIPO</span>
-            <strong data-i18n="general.teamModeSub">Sigue siempre el coche de tu equipo</strong>
+          <div class="overlay-mode-list" role="group" aria-label="Modo de seguimiento" data-i18n-aria-label="follow.groupAria">
+            <button type="button" data-overlay-mode="game" aria-pressed="false">
+              <b data-i18n="follow.game">Juego</b>
+              <small data-i18n="follow.gameSub">Tu coche mientras conduces</small>
+            </button>
+            <button type="button" data-overlay-mode="spectator" aria-pressed="false">
+              <b data-i18n="follow.spectator">Espectador</b>
+              <small data-i18n="follow.spectatorSub">El coche que estás observando</small>
+            </button>
+            <button type="button" data-overlay-mode="team" aria-pressed="false">
+              <b data-i18n="follow.team">Equipo</b>
+              <small data-i18n="follow.teamSub">Siempre el coche de tu equipo</small>
+            </button>
           </div>
-          <label class="switch">
-            <input id="team-mode" type="checkbox" aria-label="Activar modo equipo" data-i18n-aria-label="general.teamModeAria" />
-            <span></span>
-          </label>
         </div>
         <div class="global-setting-group">
           <div class="global-setting-copy">
@@ -174,6 +174,33 @@
             <select id="overlay-monitor" aria-label="Monitor de overlays" data-i18n-aria-label="general.monitorAria"></select>
           </label>
         </div>
+      </section>
+
+      <section class="overlay-profiles-section" data-view-section="general" aria-label="Perfiles de configuración" data-i18n-aria-label="profiles.aria">
+        <div class="overlay-profiles-heading">
+          <span data-i18n="profiles.heading">PERFILES</span>
+          <strong data-i18n="profiles.title">Una configuración de overlays por modo</strong>
+          <small data-i18n="profiles.sub">Cada perfil guarda visibilidad, posición, tamaño, transparencia y ajustes de los overlays. Los cambios se guardan en el perfil activo.</small>
+        </div>
+        <ul id="overlay-profile-list" class="overlay-profile-list"></ul>
+        <div class="overlay-profile-actions">
+          <button id="create-overlay-profile" type="button" data-i18n="profiles.create">NUEVO PERFIL</button>
+        </div>
+        <div class="overlay-profile-bindings">
+          <label class="select-field">
+            <span data-i18n="profiles.bindingGame">PERFIL EN MODO JUEGO</span>
+            <select data-profile-binding="game" aria-label="Perfil del modo juego" data-i18n-aria-label="profiles.bindingGameAria"></select>
+          </label>
+          <label class="select-field">
+            <span data-i18n="profiles.bindingSpectator">PERFIL EN MODO ESPECTADOR</span>
+            <select data-profile-binding="spectator" aria-label="Perfil del modo espectador" data-i18n-aria-label="profiles.bindingSpectatorAria"></select>
+          </label>
+          <label class="select-field">
+            <span data-i18n="profiles.bindingTeam">PERFIL EN MODO EQUIPO</span>
+            <select data-profile-binding="team" aria-label="Perfil del modo equipo" data-i18n-aria-label="profiles.bindingTeamAria"></select>
+          </label>
+        </div>
+        <p id="overlay-profile-status" aria-live="polite"></p>
       </section>
 
       <section class="configuration-export" data-view-section="general" aria-label="Importar o exportar configuración" data-i18n-aria-label="config.aria">

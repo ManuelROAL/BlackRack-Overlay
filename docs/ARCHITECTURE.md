@@ -123,6 +123,9 @@ Tauri events    analysis JSONL/strategy CSV    browser-source SSE
 - `src/overlay-fit.ts`: scales the complete design when a window is resized.
 - `src/overlay-interaction.ts`: drag/click-through behavior.
 - `src/overlay-appearance.ts`: transparency and text-size persistence and application.
+- `src/overlay-profiles.ts`: profile/binding storage model and validation. The
+  control panel owns capture and application; the composite host and overlays
+  never read profiles, only the live keys a profile writes.
 - `src/overlay-performance.ts`: optional five-second frontend render metrics.
 
 Every overlay has a separate CSS file. `src/styles.css` contains only genuinely
@@ -188,6 +191,14 @@ blocking HTTP calls into `next_frame()`.
   `ui.locale`.
 - The selected performance profile: WebView `localStorage`; configuration schema
   9 exports it with overlay settings and reapplies it to the Rust scheduler.
+- Overlay profiles and their game/spectator/team bindings: WebView `localStorage` under
+  `blackrack-overlay.profiles.v1` and `blackrack-overlay.profile-bindings.v1`.
+  A profile stores overlay visibility, layout, transparency, text size and the
+  per-overlay settings; monitor, performance profile, locale, shortcuts and the
+  browser source stay global. The live keys above remain authoritative for the
+  active profile, which is refreshed from them on a short debounce and flushed
+  before switching mode, profile or exporting. Configuration schema 17 exports
+  both, and a document below that version becomes one profile bound to every mode.
 - Spectator mode: WebView `localStorage`; configuration schema 10 exports it and
   reapplies it to the telemetry source when the control panel starts.
 - Overlay visual scale: composite-layout `localStorage`; configuration schema 11

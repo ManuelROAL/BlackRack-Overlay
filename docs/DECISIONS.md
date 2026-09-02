@@ -43,6 +43,16 @@ in `docs/overlays/` and should not be duplicated here.
 - The overlay host is bounded to its visible panels in game mode and restored to
   the full monitor for editing. Panel geometry is expressed in monitor
   coordinates in both states.
+- Overlay configuration is grouped into named profiles, and game, spectator and
+  team mode each bind to one of them. Selecting a mode applies the bound profile.
+  A profile owns only overlay-facing state: visibility, layout, transparency,
+  text size and per-overlay settings. Monitor, performance profile, locale,
+  shortcuts and the browser source stay global, so changing mode never moves the
+  host or alters cadence.
+- The active profile is the live configuration rather than a copy: the existing
+  `localStorage` keys stay authoritative and the profile store is refreshed from
+  them. Overlays and OBS routes therefore need no knowledge of profiles, and
+  edits cannot be lost to a forgotten save step.
 - General/per-overlay transparency preserves its independent saved values while a
   common value is active.
 - General/per-overlay text size preserves its independent saved values while a
