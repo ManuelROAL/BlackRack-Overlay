@@ -1,6 +1,6 @@
 [package]
 name = "blackrack-overlay"
-version = "0.7.4"
+version = "0.7.5"
 description = "Overlay multiplataforma de telemetría para Le Mans Ultimate"
 authors = ["BlackRack Overlay contributors"]
 edition = "2021"
