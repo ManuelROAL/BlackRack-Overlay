@@ -112,6 +112,14 @@ html.composite-embed .standings-class::before {
   box-shadow: 0 2px 6px rgb(0 0 0 / 45%);
 }
 
+/* Standings and Relative drop the shell shadow because each class group
+   carries its own. Shortening a shadow must not turn into adding one: the shell
+   spans the whole overlay, so its shadow reads as a dark line under the last
+   row. */
+html.composite-embed .overlay-shell.standings-shell {
+  box-shadow: none;
+}
+
 html.composite-embed .flag-card {
   box-shadow: 0 2px 6px rgb(0 0 0 / 45%), inset 0 0 24px rgb(0 0 0 / 12%);
 }
