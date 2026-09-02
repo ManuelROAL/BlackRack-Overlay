@@ -99,10 +99,23 @@ telemetry semantics and file ownership live under `docs/overlays/`; use
   fast ones too. Smooth delivers at 20/40/40/40/100 ms, Balanced at
   40/80/80/80/160 ms and Efficiency at 60/120/120/120/240 ms
   (fast / relative / Track Map / secondary / standings).
+- Keep the control panel legible at arm's length from a driving position: no
+  user-facing copy below 11 px, secondary text at a contrast that stays readable
+  over the dark surface, and selection controls large enough to hit without
+  aiming. Selected performance profiles, follow modes and filter chips share one
+  loud lime treatment so the current choice is never inferred from a faint
+  border.
 - Keep the overlay catalog scannable in two columns at the normal control-panel
-  width: descriptions may use two lines, configuration must read as an action,
-  and enabled state should remain clear without turning every card into a bright
-  outline. Collapse the catalog to one column when the window is narrow.
+  width: the card title shares its row with the visibility switch, the
+  description spans the full card below them with up to three lines, and the
+  configuration disclosure reads as a full-width action button with the
+  contextual help action beside it. Collapse the catalog to one column when the
+  window is narrow.
+- State an overlay's visibility in text as well as colour: every card carries an
+  ON/OFF chip next to its switch, and the catalog header reports how many
+  overlays of the total are open. The filter row exposes an Active chip that
+  narrows the catalog to the open overlays and refreshes whenever a card's
+  visibility changes.
 - The overlay catalog provides a global guide action and one contextual help
   action per card. Both open the same bundled, accessible dialog; contextual
   help selects that overlay directly. `src/overlay-guide.ts` owns the complete

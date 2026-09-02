@@ -54,7 +54,7 @@ select {
   border-radius: 5px;
   color: #080a0d;
   background: #d8ff3e;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 900;
 }
 
@@ -64,13 +64,13 @@ select {
 }
 
 .control-brand strong {
-  font-size: 13px;
+  font-size: 15px;
   letter-spacing: 0.2em;
 }
 
 .control-brand div span {
-  color: #687382;
-  font-size: 8px;
+  color: #9daab8;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.15em;
 }
@@ -78,18 +78,28 @@ select {
 .game-status {
   display: flex;
   align-items: center;
-  gap: 8px;
-  color: #7c8794;
-  font-size: 9px;
+  gap: 9px;
+  padding: 6px 12px 5px;
+  border: 1px solid rgb(255 255 255 / 12%);
+  border-radius: 999px;
+  color: #b0bcc8;
+  background: rgb(255 255 255 / 5%);
+  font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.1em;
 }
 
 .game-status i {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
   background: #5e6874;
+}
+
+.game-status[data-state="standby"] {
+  border-color: rgb(255 184 77 / 42%);
+  color: #ffb84d;
+  background: rgb(255 184 77 / 10%);
 }
 
 .game-status[data-state="standby"] i {
@@ -98,7 +108,15 @@ select {
 }
 
 .game-status[data-state="error"] {
+  border-color: rgb(255 82 102 / 45%);
   color: #ff6675;
+  background: rgb(255 82 102 / 12%);
+}
+
+.game-status[data-state="live"] {
+  border-color: rgb(216 255 62 / 48%);
+  color: #d8ff3e;
+  background: rgb(216 255 62 / 12%);
 }
 
 .game-status[data-state="error"] i {
@@ -127,9 +145,9 @@ select {
   position: relative;
   display: grid;
   gap: 3px;
-  padding: 11px 10px 10px;
+  padding: 13px 10px 12px;
   border: 0;
-  color: #687482;
+  color: #9daab8;
   background: transparent;
   cursor: pointer;
   text-align: left;
@@ -140,7 +158,7 @@ select {
   right: 10px;
   bottom: -1px;
   left: 10px;
-  height: 2px;
+  height: 3px;
   background: transparent;
   content: "";
 }
@@ -156,14 +174,14 @@ select {
 }
 
 .control-navigation span {
-  font-size: 9px;
+  font-size: 14px;
   font-weight: 900;
-  letter-spacing: .12em;
+  letter-spacing: .1em;
 }
 
 .control-navigation small {
-  color: #7b8794;
-  font-size: 8px;
+  color: #a6b3c0;
+  font-size: 11px;
 }
 
 [data-view-section][hidden] {
@@ -171,39 +189,59 @@ select {
 }
 
 .control-intro {
-  display: flex;
-  align-items: end;
-  justify-content: space-between;
+  display: grid;
+  gap: 12px;
+  justify-items: start;
   padding: 23px 28px 14px;
 }
 
 .control-intro p {
   margin: 0 0 7px;
   color: #d8ff3e;
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 900;
   letter-spacing: 0.18em;
 }
 
 .control-intro h1 {
   margin: 0;
-  font-size: 21px;
+  font-size: 24px;
   letter-spacing: -0.03em;
+}
+
+.overlay-active-summary {
+  display: inline-block;
+  margin: 9px 0 0;
+  padding: 4px 9px 3px;
+  border: 1px solid rgb(216 255 62 / 30%);
+  border-radius: 5px;
+  color: #d8ff3e;
+  background: rgb(216 255 62 / 9%);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.overlay-active-summary:empty {
+  display: none;
 }
 
 .bulk-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 7px;
 }
 
 .bulk-actions button {
-  padding: 7px 10px;
-  border: 1px solid rgb(255 255 255 / 10%);
-  border-radius: 5px;
-  color: #aeb7c2;
-  background: rgb(255 255 255 / 4%);
+  min-height: 34px;
+  padding: 8px 12px;
+  white-space: nowrap;
+  border: 1px solid rgb(255 255 255 / 14%);
+  border-radius: 6px;
+  color: #ccd5de;
+  background: rgb(255 255 255 / 6%);
   cursor: pointer;
-  font-size: 9px;
+  font-size: 14px;
   font-weight: 700;
 }
 
@@ -247,13 +285,13 @@ select {
 
 .performance-profile-heading span {
   color: #d8ff3e;
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 900;
   letter-spacing: .14em;
 }
 
 .performance-profile-heading strong {
-  font-size: 13px;
+  font-size: 15px;
 }
 
 .performance-profile-list {
@@ -286,9 +324,13 @@ select {
 }
 
 .performance-profile-list button.active {
-  border-color: rgb(216 255 62 / 48%);
-  background: linear-gradient(145deg, rgb(216 255 62 / 10%), #101720 62%);
-  box-shadow: inset 0 2px 0 rgb(216 255 62 / 70%);
+  border-color: #d8ff3e;
+  background: linear-gradient(145deg, rgb(216 255 62 / 16%), #101720 66%);
+  box-shadow: inset 0 3px 0 #d8ff3e;
+}
+
+.performance-profile-list button.active b {
+  color: #eaff9a;
 }
 
 .performance-profile-icon {
@@ -300,13 +342,14 @@ select {
   border-radius: 6px;
   color: #84909c;
   background: #080d13;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 950;
 }
 
 .performance-profile-list button.active .performance-profile-icon {
-  border-color: rgb(216 255 62 / 32%);
-  color: #d8ff3e;
+  border-color: #d8ff3e;
+  color: #10140c;
+  background: #d8ff3e;
 }
 
 .performance-profile-copy {
@@ -316,19 +359,19 @@ select {
 }
 
 .performance-profile-copy b {
-  font-size: 11px;
+  font-size: 13px;
 }
 
 .performance-profile-copy small {
-  color: #87939f;
-  font-size: 8px;
+  color: #aab6c3;
+  font-size: 11px;
   line-height: 1.25;
 }
 
 .performance-profile-list em {
   grid-column: 1 / -1;
-  color: #687582;
-  font-size: 7px;
+  color: #9daab8;
+  font-size: 11px;
   font-style: normal;
   font-weight: 900;
   letter-spacing: .1em;
@@ -364,9 +407,13 @@ select {
 }
 
 .overlay-mode-list button.active {
-  border-color: rgb(216 255 62 / 48%);
-  background: linear-gradient(145deg, rgb(216 255 62 / 10%), #101720 62%);
-  box-shadow: inset 0 2px 0 rgb(216 255 62 / 70%);
+  border-color: #d8ff3e;
+  background: linear-gradient(145deg, rgb(216 255 62 / 16%), #101720 66%);
+  box-shadow: inset 0 3px 0 #d8ff3e;
+}
+
+.overlay-mode-list button.active b {
+  color: #eaff9a;
 }
 
 .overlay-mode-list button:disabled {
@@ -376,12 +423,12 @@ select {
 
 .overlay-mode-list b {
   color: #edf1f4;
-  font-size: 11px;
+  font-size: 13px;
 }
 
 .overlay-mode-list small {
-  color: #7b8794;
-  font-size: 9px;
+  color: #a6b3c0;
+  font-size: 12px;
   line-height: 1.3;
 }
 
@@ -402,19 +449,19 @@ select {
 
 .overlay-profiles-heading span {
   color: #d8ff3e;
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 900;
   letter-spacing: .14em;
 }
 
 .overlay-profiles-heading strong {
-  font-size: 11px;
+  font-size: 13px;
 }
 
 .overlay-profiles-heading small,
 .overlay-profiles-section > p {
-  color: #7b8794;
-  font-size: 9px;
+  color: #a6b3c0;
+  font-size: 12px;
   line-height: 1.3;
 }
 
@@ -450,7 +497,7 @@ select {
   color: #edf1f4;
   background: rgb(0 0 0 / 25%);
   font-family: inherit;
-  font-size: 11px;
+  font-size: 13px;
 }
 
 .overlay-profile-name:focus-visible {
@@ -459,8 +506,8 @@ select {
 }
 
 .overlay-profile-meta {
-  color: #7b8794;
-  font-size: 8px;
+  color: #a6b3c0;
+  font-size: 11px;
   font-weight: 900;
   letter-spacing: .1em;
   white-space: nowrap;
@@ -483,7 +530,7 @@ select {
   color: #d8ff3e;
   background: rgb(216 255 62 / 7%);
   cursor: pointer;
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 900;
   letter-spacing: .07em;
 }
@@ -551,19 +598,19 @@ select {
 
 .configuration-export span {
   color: #d8ff3e;
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 900;
   letter-spacing: .14em;
 }
 
 .configuration-export strong {
-  font-size: 11px;
+  font-size: 13px;
 }
 
 .configuration-export small,
 .configuration-export p {
-  color: #7b8794;
-  font-size: 9px;
+  color: #a6b3c0;
+  font-size: 12px;
   line-height: 1.3;
 }
 
@@ -574,7 +621,7 @@ select {
   color: #d8ff3e;
   background: rgb(216 255 62 / 7%);
   cursor: pointer;
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 900;
   letter-spacing: .07em;
 }
@@ -616,9 +663,9 @@ select {
 
 .overlay-toolbar {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);
   align-items: center;
-  gap: 10px;
+  gap: 9px;
   padding: 0 28px 14px;
 }
 
@@ -626,7 +673,7 @@ select {
   display: grid;
   grid-template-columns: 24px 1fr;
   align-items: center;
-  min-height: 36px;
+  min-height: 40px;
   padding: 0 10px;
   border: 1px solid rgb(255 255 255 / 10%);
   border-radius: 7px;
@@ -643,44 +690,50 @@ select {
   border: 0;
   color: #e8edf1;
   background: transparent;
-  font-size: 10px;
+  font-size: 14px;
   outline: 0;
 }
 
 .overlay-search input::placeholder {
-  color: #5f6b78;
+  color: #8b96a3;
 }
 
 .overlay-filters {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 6px;
 }
 
 .overlay-filters button {
-  min-height: 28px;
-  padding: 6px 9px;
-  border: 1px solid rgb(255 255 255 / 9%);
-  border-radius: 5px;
-  color: #717d8a;
-  background: rgb(255 255 255 / 2.5%);
+  min-height: 34px;
+  padding: 6px 7px;
+  border: 1px solid rgb(255 255 255 / 12%);
+  border-radius: 6px;
+  color: #a6b3c0;
+  background: rgb(255 255 255 / 4%);
   cursor: pointer;
-  font-size: 8px;
+  font-size: 12px;
   font-weight: 900;
-  letter-spacing: .08em;
+  letter-spacing: .06em;
 }
 
-.overlay-filters button:hover,
-.overlay-filters button.active {
-  border-color: rgb(216 255 62 / 28%);
+.overlay-filters button:hover {
+  border-color: rgb(216 255 62 / 30%);
   color: #d8ff3e;
-  background: rgb(216 255 62 / 7%);
+  background: rgb(216 255 62 / 8%);
+}
+
+.overlay-filters button.active {
+  border-color: #d8ff3e;
+  color: #10140c;
+  background: #d8ff3e;
 }
 
 .overlay-filter-empty {
   grid-column: 1 / -1;
   margin: 10px 0 0;
   color: #6d7885;
-  font-size: 10px;
+  font-size: 12px;
   text-align: center;
 }
 
@@ -707,14 +760,14 @@ select {
 
 .global-setting-copy span {
   color: #d8ff3e;
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 900;
   letter-spacing: 0.14em;
 }
 
 .global-setting-copy strong {
   color: #edf1f4;
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .global-setting-group .select-field select {
@@ -732,8 +785,8 @@ select {
   grid-template-columns: 1fr 34px;
   align-items: center;
   gap: 4px 8px;
-  color: #7b8794;
-  font-size: 8px;
+  color: #a6b3c0;
+  font-size: 11px;
   font-weight: 900;
   letter-spacing: 0.08em;
 }
@@ -810,23 +863,23 @@ select {
 .browser-source-section summary span {
   grid-column: 1;
   color: #d8ff3e;
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 900;
   letter-spacing: 0.14em;
 }
 
 .browser-source-section summary strong {
   grid-column: 1;
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .browser-source-section summary::after {
   grid-column: 2;
   grid-row: 1 / span 2;
   align-self: center;
-  color: #82909d;
+  color: #aab6c3;
   content: "\2212";
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 700;
 }
 
@@ -843,13 +896,13 @@ select {
 
 .integration-section-heading span {
   color: #d8ff3e;
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 900;
   letter-spacing: .14em;
 }
 
 .integration-section-heading strong {
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .browser-source-content {
@@ -863,7 +916,7 @@ select {
 }
 
 .browser-source-option .overlay-icon {
-  font-size: 9px;
+  font-size: 12px;
 }
 
 .logging-section .logging-option {
@@ -885,9 +938,9 @@ select {
   grid-column: 2;
   grid-row: 1 / span 2;
   align-self: center;
-  color: #82909d;
+  color: #aab6c3;
   content: "+";
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 700;
 }
 
@@ -901,9 +954,9 @@ select {
   padding: 2px 5px;
   border: 1px solid rgb(255 255 255 / 8%);
   border-radius: 4px;
-  color: #7e8a96;
+  color: #a6b3c0;
   background: rgb(255 255 255 / 3%);
-  font-size: 7px;
+  font-size: 11px;
 }
 
 .browser-source-option.active .overlay-copy small,
@@ -933,8 +986,8 @@ select {
 
 .browser-source-urls p {
   margin: 0 0 3px;
-  color: #7c8794;
-  font-size: 8px;
+  color: #a6b3c0;
+  font-size: 11px;
 }
 
 .browser-source-urls > div {
@@ -947,7 +1000,7 @@ select {
 .browser-source-urls code {
   overflow: hidden;
   color: #cbd4dd;
-  font-size: 9px;
+  font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -959,7 +1012,7 @@ select {
   color: #d8ff3e;
   background: rgb(216 255 62 / 5%);
   cursor: pointer;
-  font-size: 7px;
+  font-size: 11px;
   font-weight: 900;
 }
 
@@ -977,13 +1030,13 @@ select {
 
 .shortcut-settings-section summary span {
   color: #d8ff3e;
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 900;
   letter-spacing: 0.14em;
 }
 
 .shortcut-settings-section summary strong {
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .shortcut-settings-list {
@@ -1007,12 +1060,12 @@ select {
 
 .shortcut-setting b {
   color: #dce2e7;
-  font-size: 11px;
+  font-size: 13px;
 }
 
 .shortcut-setting small {
-  color: #7b8794;
-  font-size: 9px;
+  color: #a6b3c0;
+  font-size: 12px;
 }
 
 .shortcut-setting input {
@@ -1023,7 +1076,7 @@ select {
   color: #e8edf1;
   background: #111720;
   cursor: pointer;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 900;
   text-align: center;
   outline: none;
@@ -1042,8 +1095,8 @@ select {
 .shortcut-message {
   min-height: 12px;
   margin: 2px 0 0;
-  color: #7b8794;
-  font-size: 9px;
+  color: #a6b3c0;
+  font-size: 12px;
   font-weight: 700;
 }
 
@@ -1065,7 +1118,7 @@ select {
 
 .delta-wheel-binding > div { display: grid; gap: 3px; }
 .delta-wheel-binding span,
-.delta-wheel-binding strong { font-size: 9px; }
+.delta-wheel-binding strong { font-size: 12px; }
 .delta-wheel-binding span { color: #8b98a5; font-weight: 900; }
 .delta-wheel-binding strong { color: #dce2e7; }
 
@@ -1076,7 +1129,7 @@ select {
   border-radius: 5px;
   color: #e8edf1;
   background: #111720;
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 900;
   text-align: center;
 }
@@ -1104,13 +1157,13 @@ select {
 
 .settings-section-heading span {
   color: #d8ff3e;
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 900;
   letter-spacing: 0.14em;
 }
 
 .settings-section-heading strong {
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .standings-content-settings {
@@ -1142,7 +1195,7 @@ select {
   gap: 7px;
   color: #d8dee4;
   cursor: pointer;
-  font-size: 10px;
+  font-size: 12px;
 }
 
 .standings-setting-toggle input {
@@ -1169,7 +1222,7 @@ select {
 .standings-setting-toggle input:checked + span::after {
   color: #07110a;
   content: "✓";
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 950;
 }
 
@@ -1180,8 +1233,8 @@ select {
 .standings-row-setting {
   display: grid;
   gap: 5px;
-  color: #8f9ba7;
-  font-size: 8px;
+  color: #b0bcc8;
+  font-size: 11px;
   font-weight: 900;
   letter-spacing: 0.07em;
 }
@@ -1193,7 +1246,7 @@ select {
   border-radius: 5px;
   color: #eef2f5;
   background: #111720;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 900;
   text-align: center;
 }
@@ -1206,8 +1259,8 @@ select {
 .standings-name-format-setting {
   display: grid;
   gap: 5px;
-  color: #8f9ba7;
-  font-size: 8px;
+  color: #b0bcc8;
+  font-size: 11px;
   font-weight: 900;
   letter-spacing: 0.07em;
 }
@@ -1219,7 +1272,7 @@ select {
   border-radius: 5px;
   color: #eef2f5;
   background: #111720;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 900;
   outline: none;
 }
@@ -1243,7 +1296,7 @@ select {
 .settings-subtitle {
   padding: 12px 16px 0;
   color: #a0abb6;
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 950;
   letter-spacing: 0.1em;
 }
@@ -1260,7 +1313,7 @@ select {
   min-width: 0;
   color: #cbd3da;
   cursor: pointer;
-  font-size: 10px;
+  font-size: 12px;
 }
 
 .column-toggle input {
@@ -1287,7 +1340,7 @@ select {
 .column-toggle input:checked + span::after {
   color: #07110a;
   content: "✓";
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 950;
 }
 
@@ -1337,22 +1390,22 @@ select {
 .column-order-lock {
   grid-column: 3 / 5;
   padding-right: 7px;
-  color: #687482;
-  font-size: 7px;
+  color: #9daab8;
+  font-size: 11px;
   font-weight: 900;
   letter-spacing: 0.08em;
   text-align: right;
 }
 
 .column-order-grip {
-  color: #687482;
-  font-size: 11px;
+  color: #9daab8;
+  font-size: 13px;
   text-align: center;
 }
 
 .column-order-label {
   overflow: hidden;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 800;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1376,7 +1429,7 @@ select {
   margin: 0;
   padding: 11px 16px 13px;
   color: #85929f;
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 600;
   line-height: 1.4;
 }
@@ -1408,8 +1461,8 @@ select {
 .select-field {
   display: grid;
   gap: 5px;
-  color: #7b8794;
-  font-size: 8px;
+  color: #a6b3c0;
+  font-size: 11px;
   font-weight: 900;
   letter-spacing: 0.08em;
 }
@@ -1423,7 +1476,7 @@ select {
   color: #dce2e7;
   background: #121923;
   cursor: pointer;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 800;
   outline: none;
 }
@@ -1437,7 +1490,7 @@ select {
 }
 
 .logging-icon {
-  font-size: 9px;
+  font-size: 12px;
   letter-spacing: 0.06em;
 }
 
@@ -1450,7 +1503,7 @@ select {
 .overlay-copy small {
   overflow: hidden;
   color: #56616e;
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.03em;
   text-overflow: ellipsis;
@@ -1471,20 +1524,37 @@ select {
 }
 
 .overlay-list > .overlay-option {
-  grid-template-columns: 34px minmax(0, 1fr) auto;
-  grid-template-rows: auto auto;
-  column-gap: 10px;
-  row-gap: 6px;
+  grid-template-columns: 34px minmax(0, 1fr) auto auto;
+  grid-template-rows: auto auto auto;
+  column-gap: 9px;
+  row-gap: 7px;
   min-height: 94px;
-  padding: 11px 12px 9px;
+  padding: 12px 12px 10px;
 }
 
 .overlay-list > .overlay-option > .overlay-icon {
   grid-column: 1;
-  grid-row: 1 / span 2;
-  align-self: start;
+  grid-row: 1;
+  align-self: center;
   width: 34px;
   height: 34px;
+}
+
+.overlay-list > .overlay-option:not(.expanded) > .overlay-copy {
+  display: contents;
+}
+
+.overlay-list > .overlay-option:not(.expanded) > .overlay-copy strong {
+  grid-column: 2 / 4;
+  grid-row: 1;
+  align-self: center;
+  min-width: 0;
+}
+
+.overlay-list > .overlay-option:not(.expanded) > .overlay-copy span {
+  grid-column: 1 / 4;
+  grid-row: 2;
+  min-width: 0;
 }
 
 .overlay-list > .overlay-option > .overlay-copy {
@@ -1499,9 +1569,20 @@ select {
 }
 
 .overlay-list > .overlay-option > .switch {
-  grid-column: 3;
+  grid-column: 4;
   grid-row: 1;
   align-self: center;
+}
+
+.overlay-list > .overlay-option > .overlay-state {
+  grid-column: 4;
+  grid-row: 2;
+  align-self: start;
+  justify-self: end;
+}
+
+.overlay-list > .overlay-option.expanded > .overlay-state {
+  display: none;
 }
 
 .overlay-list > .overlay-option.expanded {
@@ -1528,6 +1609,23 @@ select {
   grid-row: 1;
 }
 
+.overlay-state {
+  padding: 3px 6px 2px;
+  border: 1px solid rgb(255 255 255 / 12%);
+  border-radius: 4px;
+  color: #9daab8;
+  background: rgb(255 255 255 / 4%);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
+.overlay-option.active .overlay-state {
+  border-color: rgb(216 255 62 / 45%);
+  color: #d8ff3e;
+  background: rgb(216 255 62 / 12%);
+}
+
 .overlay-details-toggle {
   grid-column: 2;
   grid-row: 2;
@@ -1537,7 +1635,7 @@ select {
   color: #9aa6b2;
   background: transparent;
   cursor: pointer;
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 900;
   letter-spacing: .08em;
 }
@@ -1555,21 +1653,31 @@ select {
 
 .overlay-list > .overlay-option:not(.expanded) > .overlay-details-toggle {
   display: flex;
-  grid-column: 2;
-  grid-row: 2;
+  grid-column: 1 / 4;
+  grid-row: 3;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
+  gap: 7px;
   width: 100%;
-  padding: 7px 0 2px;
-  border-top: 1px solid rgb(255 255 255 / 7%);
-  color: #82909e;
-  text-align: left;
+  min-height: 30px;
+  padding: 5px 9px;
+  border: 1px solid rgb(255 255 255 / 12%);
+  border-radius: 6px;
+  color: #c2ccd6;
+  background: rgb(255 255 255 / 5%);
+  text-align: center;
+}
+
+.overlay-list > .overlay-option:not(.expanded) > .overlay-details-toggle:hover {
+  border-color: rgb(216 255 62 / 45%);
+  color: #d8ff3e;
+  background: rgb(216 255 62 / 10%);
 }
 
 .overlay-list > .overlay-option:not(.expanded) > .overlay-details-toggle::after {
-  color: #667482;
+  color: inherit;
   content: "\2192";
-  font-size: 11px;
+  font-size: 13px;
 }
 
 .overlay-list > .overlay-option.expanded > .overlay-details-toggle {
@@ -1580,15 +1688,15 @@ select {
 
 .overlay-guide-button {
   display: grid;
-  width: 24px;
-  height: 24px;
+  width: 30px;
+  height: 30px;
   place-items: center;
   border: 1px solid rgb(255 255 255 / 11%);
   border-radius: 50%;
   color: #8b97a4;
   background: #0b1016;
   cursor: pointer;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 900;
 }
 
@@ -1598,8 +1706,9 @@ select {
 }
 
 .overlay-list > .overlay-option:not(.expanded) > .overlay-guide-button {
-  grid-column: 3;
-  grid-row: 2;
+  grid-column: 4;
+  grid-row: 3;
+  align-self: center;
   justify-self: end;
 }
 
@@ -1623,7 +1732,7 @@ select {
   display: -webkit-box;
   overflow: hidden;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 3;
   text-overflow: ellipsis;
   white-space: normal;
 }
@@ -1647,7 +1756,7 @@ select {
 .overlay-reset-label {
   flex-basis: 100%;
   color: #9aa6b2;
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 900;
   letter-spacing: 0.08em;
   text-align: right;
@@ -1657,10 +1766,10 @@ select {
   padding: 4px 7px;
   border: 1px solid rgb(255 255 255 / 10%);
   border-radius: 4px;
-  color: #7f8a96;
+  color: #a6b3c0;
   background: #0b1016;
   cursor: pointer;
-  font-size: 7px;
+  font-size: 11px;
   font-weight: 900;
   letter-spacing: 0.06em;
 }
@@ -1706,7 +1815,7 @@ select {
   border-radius: 7px;
   color: #d8ff3e;
   background: rgb(216 255 62 / 7%);
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 900;
 }
 
@@ -1717,19 +1826,19 @@ select {
 
 .reset-confirmation-copy span {
   color: #d8ff3e;
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 900;
   letter-spacing: 0.14em;
 }
 
 .reset-confirmation-copy strong {
-  font-size: 14px;
+  font-size: 16px;
 }
 
 .reset-confirmation-copy p {
   margin: 4px 0 0;
   color: #8894a1;
-  font-size: 10px;
+  font-size: 12px;
   line-height: 1.4;
 }
 
@@ -1748,7 +1857,7 @@ select {
   color: #aeb7c2;
   background: rgb(255 255 255 / 4%);
   cursor: pointer;
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 900;
   letter-spacing: 0.06em;
 }
@@ -1811,20 +1920,20 @@ select {
 .overlay-guide-overlay-heading small,
 .overlay-guide-content h2 {
   color: #d8ff3e;
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 900;
   letter-spacing: .14em;
 }
 
 .overlay-guide-header strong {
-  font-size: 19px;
+  font-size: 22px;
   letter-spacing: -.02em;
 }
 
 .overlay-guide-header p {
   margin: 1px 0 0;
-  color: #87939f;
-  font-size: 10px;
+  color: #aab6c3;
+  font-size: 12px;
 }
 
 .overlay-guide-close {
@@ -1839,7 +1948,7 @@ select {
   color: #919ca8;
   background: rgb(255 255 255 / 3%);
   cursor: pointer;
-  font-size: 18px;
+  font-size: 21px;
 }
 
 .overlay-guide-close:hover {
@@ -1894,7 +2003,7 @@ select {
   background: transparent;
   cursor: pointer;
   font: inherit;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 750;
   text-align: left;
 }
@@ -1908,7 +2017,7 @@ select {
   border-radius: 5px;
   color: #6f7b87;
   background: #0b1118;
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 900;
 }
 
@@ -1952,7 +2061,7 @@ select {
   border-radius: 8px;
   color: #d8ff3e;
   background: rgb(216 255 62 / 6%);
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 900;
 }
 
@@ -1962,7 +2071,7 @@ select {
 }
 
 .overlay-guide-overlay-heading strong {
-  font-size: 18px;
+  font-size: 21px;
 }
 
 .overlay-guide-content section,
@@ -1978,7 +2087,7 @@ select {
 
 .overlay-guide-content p {
   color: #b0bac4;
-  font-size: 11px;
+  font-size: 13px;
   line-height: 1.48;
 }
 
@@ -1996,8 +2105,8 @@ select {
   grid-template-columns: 1fr 34px;
   align-items: center;
   gap: 3px 7px;
-  color: #73808d;
-  font-size: 8px;
+  color: #9daab8;
+  font-size: 11px;
   font-weight: 850;
   letter-spacing: 0.08em;
 }
@@ -2033,9 +2142,13 @@ select {
 }
 
 .overlay-option.active {
-  border-color: rgb(216 255 62 / 20%);
-  background: linear-gradient(90deg, rgb(216 255 62 / 6%), rgb(255 255 255 / 2.5%) 68%);
-  box-shadow: inset 2px 0 0 #d8ff3e;
+  border-color: rgb(216 255 62 / 34%);
+  background: linear-gradient(90deg, rgb(216 255 62 / 11%), rgb(255 255 255 / 3%) 72%);
+  box-shadow: inset 4px 0 0 #d8ff3e;
+}
+
+.overlay-option.active .overlay-copy strong {
+  color: #eaff9a;
 }
 
 .overlay-list > .overlay-option:hover {
@@ -2054,15 +2167,16 @@ select {
   place-items: center;
   border: 1px solid rgb(255 255 255 / 9%);
   border-radius: 7px;
-  color: #73808d;
+  color: #9daab8;
   background: #0a0e14;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 900;
 }
 
 .overlay-option.active .overlay-icon {
-  color: #d8ff3e;
-  border-color: rgb(216 255 62 / 24%);
+  color: #10140c;
+  border-color: #d8ff3e;
+  background: #d8ff3e;
 }
 
 .overlay-copy {
@@ -2071,19 +2185,19 @@ select {
 }
 
 .overlay-copy strong {
-  font-size: 13px;
+  font-size: 15px;
 }
 
 .overlay-copy span {
   color: #a3aeb9;
-  font-size: 11px;
+  font-size: 13px;
   line-height: 1.25;
 }
 
 .switch {
   position: relative;
-  width: 42px;
-  height: 23px;
+  width: 48px;
+  height: 26px;
 }
 
 .switch input {
@@ -2095,19 +2209,24 @@ select {
 .switch span {
   position: absolute;
   inset: 0;
-  border: 1px solid rgb(255 255 255 / 11%);
+  border: 1px solid rgb(255 255 255 / 18%);
   border-radius: 20px;
-  background: #1b222c;
+  background: #232c38;
   cursor: pointer;
   transition: 140ms ease;
+}
+
+.switch input:focus-visible + span {
+  outline: 2px solid #d8ff3e;
+  outline-offset: 2px;
 }
 
 .switch span::after {
   position: absolute;
   top: 3px;
   left: 3px;
-  width: 15px;
-  height: 15px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
   background: #7b8591;
   content: "";
@@ -2120,7 +2239,7 @@ select {
 }
 
 .switch input:checked + span::after {
-  transform: translateX(19px);
+  transform: translateX(22px);
   background: #10140c;
 }
 
@@ -2137,7 +2256,7 @@ select {
   padding: 0 28px;
   border-top: 1px solid rgb(255 255 255 / 7%);
   color: #5f6a77;
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.06em;
 }
@@ -2152,9 +2271,9 @@ select {
   padding: 3px 5px;
   border: 1px solid rgb(255 255 255 / 12%);
   border-radius: 3px;
-  color: #929ca8;
+  color: #b0bcc8;
   background: rgb(255 255 255 / 4%);
-  font-size: 7px;
+  font-size: 11px;
 }
 
 #open-kofi {
@@ -2166,7 +2285,7 @@ select {
   border-radius: 5px;
   color: #071019;
   background: #72cbff;
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 900;
   letter-spacing: 0.08em;
   cursor: pointer;
@@ -2182,7 +2301,7 @@ select {
 }
 
 #open-kofi span {
-  font-size: 13px;
+  font-size: 15px;
 }
 
 .support-section {
@@ -2206,19 +2325,19 @@ select {
 
 .support-copy > span {
   color: #72cbff;
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 900;
   letter-spacing: 0.14em;
 }
 
 .support-copy strong {
-  font-size: 14px;
+  font-size: 16px;
 }
 
 .support-copy small {
   max-width: 340px;
   color: #96a2ae;
-  font-size: 10px;
+  font-size: 12px;
   line-height: 1.35;
 }
 
@@ -2226,7 +2345,7 @@ select {
   min-height: 10px;
   margin: 2px 0 0;
   color: #aab5bf;
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.06em;
 }
@@ -2249,7 +2368,7 @@ select {
   color: #d8ff3e;
   background: rgb(216 255 62 / 8%);
   font: inherit;
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 800;
   letter-spacing: .08em;
 }
@@ -2274,9 +2393,6 @@ select {
   }
 
   .control-intro {
-    align-items: start;
-    flex-direction: column;
-    gap: 12px;
     padding-right: 18px;
     padding-left: 18px;
   }
@@ -2388,8 +2504,7 @@ select {
   }
 
   .overlay-filters {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .global-setting-group,

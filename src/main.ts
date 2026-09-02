@@ -404,7 +404,10 @@ const filterOverlays = (): void => {
   const query = overlaySearch?.value.trim().toLocaleLowerCase(getLocale()) ?? "";
   let matches = 0;
   for (const card of document.querySelectorAll<HTMLElement>("[data-overlay-card]")) {
-    const categoryMatches = activeOverlayFilter === "all" || card.dataset.overlayCategory === activeOverlayFilter;
+    const categoryMatches = activeOverlayFilter === "all"
+      || (activeOverlayFilter === "active"
+        ? card.classList.contains("active")
+        : card.dataset.overlayCategory === activeOverlayFilter);
     const queryMatches = !query || (card.textContent ?? "").toLocaleLowerCase(getLocale()).includes(query);
     const visible = categoryMatches && queryMatches;
     card.hidden = !visible;
@@ -805,12 +808,24 @@ for (const [id, setting] of tiresToggles) {
 const inputFor = (id: OverlayId): HTMLInputElement | null =>
   document.querySelector<HTMLInputElement>(`input[data-overlay="${id}"]`);
 
+const activeOverlaySummary = document.getElementById("overlay-active-summary");
+
+const renderActiveOverlaySummary = (): void => {
+  if (!activeOverlaySummary) return;
+  const count = document.querySelectorAll("[data-overlay-card].active").length;
+  activeOverlaySummary.textContent = t("control.activeCount", { count, total: overlayIds.length });
+};
+
 const setCardState = (id: OverlayId, visible: boolean): void => {
   const input = inputFor(id);
   if (input) input.checked = visible;
   document
     .querySelector<HTMLElement>(`[data-overlay-card="${id}"]`)
     ?.classList.toggle("active", visible);
+  const state = document.querySelector<HTMLElement>(`[data-overlay-state="${id}"]`);
+  if (state) state.textContent = t(visible ? "card.visible" : "card.hidden");
+  renderActiveOverlaySummary();
+  if (activeOverlayFilter === "active") filterOverlays();
 };
 
 const persist = (): void => {
