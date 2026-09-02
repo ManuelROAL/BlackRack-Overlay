@@ -127,6 +127,15 @@ telemetry semantics and file ownership live under `docs/overlays/`; use
   explicit localized reset label, neither changes visibility or another overlay,
   confirmation uses the styled in-panel dialog, and neither action changes the
   selected top-level control-panel view.
+- A bulk reset card closes the Overlays view with one configuration and one
+  position action that apply the same per-overlay defaults to every overlay at
+  once. It reuses the single-overlay reset paths, keeps the same in-panel
+  confirmation dialog with its own localized message, reports progress in a
+  polite live region, and changes neither visibility, monitor selection,
+  language, general transparency/text scopes nor the selected control-panel
+  view. The configuration action reloads the panel once after every overlay has
+  been restored; the position action restores geometry sequentially without a
+  reload.
 - Import/export uses one versioned JSON document with visibility, transparency,
   monitor selection, geometry, performance profile and content preferences. Use native dialogs,
   validate before applying, and map unavailable monitors to the primary display.

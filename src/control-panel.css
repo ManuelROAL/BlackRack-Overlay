@@ -406,6 +406,25 @@ select {
   letter-spacing: .05em;
 }
 
+.overlay-bulk-reset {
+  margin-top: 3px;
+}
+
+.overlay-bulk-reset span {
+  color: #ff8f6b;
+}
+
+.overlay-bulk-reset button {
+  border-color: rgb(255 143 107 / 30%);
+  color: #ff8f6b;
+  background: rgb(255 143 107 / 7%);
+}
+
+.overlay-bulk-reset button:hover:not(:disabled) {
+  border-color: rgb(255 143 107 / 58%);
+  background: rgb(255 143 107 / 11%);
+}
+
 .overlay-toolbar {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;

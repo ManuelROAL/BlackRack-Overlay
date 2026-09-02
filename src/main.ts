@@ -993,16 +993,10 @@ overlayGuideDialog?.addEventListener("click", (event) => {
 });
 renderOverlayGuide(selectedGuideOverlay);
 
-const resetOverlayConfiguration = async (id: OverlayId): Promise<void> => {
-  if (!await confirmReset(
-    t("overlay.configConfirm", { overlay: overlayDisplayName(id) })
-  )) return;
+const applyOverlayConfigurationDefaults = (id: OverlayId, events: Promise<unknown>[]): void => {
   overlayTransparency[id] = DEFAULT_OVERLAY_TRANSPARENCY[id];
-  localStorage.setItem(OVERLAY_TRANSPARENCY_KEY, JSON.stringify(overlayTransparency));
   overlayFontSize[id] = DEFAULT_OVERLAY_FONT_SIZE[id];
-  localStorage.setItem(OVERLAY_FONT_SIZE_KEY, JSON.stringify(overlayFontSize));
 
-  const events: Promise<unknown>[] = [];
   if (id === "standings") {
     standingsSettings = defaultStandingsSettings();
     localStorage.setItem(STANDINGS_SETTINGS_KEY, JSON.stringify(standingsSettings));
@@ -1040,24 +1034,46 @@ const resetOverlayConfiguration = async (id: OverlayId): Promise<void> => {
     localStorage.setItem(CONDITIONS_SETTINGS_KEY, JSON.stringify(conditionsSettings));
     events.push(emit("conditions://settings", conditionsSettings));
   }
+};
 
-  const effective = effectiveOverlayTransparency(overlayTransparency, overlayTransparencyScope);
-  events.push(emit("overlay://background-transparency", {
-    overlay: id,
-    transparency: effective[id]
-  } satisfies OverlayTransparencyChange));
-  const effectiveFontSize = effectiveOverlayFontSize(overlayFontSize, overlayFontSizeScope);
-  events.push(emit("overlay://font-size", {
-    overlay: id,
-    fontSize: effectiveFontSize[id]
-  } satisfies OverlayFontSizeChange));
-  syncBrowserSourcePreferences();
-  await Promise.all(events);
+const reloadKeepingActiveView = (): void => {
   const activeView = document.querySelector<HTMLElement>(".control-panel")?.dataset.activeView;
   if (activeView && controlViews.has(activeView)) {
     sessionStorage.setItem(PENDING_CONTROL_VIEW_KEY, activeView);
   }
   window.location.reload();
+};
+
+const publishOverlayConfigurationReset = async (
+  ids: readonly OverlayId[],
+  events: Promise<unknown>[]
+): Promise<void> => {
+  localStorage.setItem(OVERLAY_TRANSPARENCY_KEY, JSON.stringify(overlayTransparency));
+  localStorage.setItem(OVERLAY_FONT_SIZE_KEY, JSON.stringify(overlayFontSize));
+  const effective = effectiveOverlayTransparency(overlayTransparency, overlayTransparencyScope);
+  const effectiveFontSize = effectiveOverlayFontSize(overlayFontSize, overlayFontSizeScope);
+  for (const id of ids) {
+    events.push(emit("overlay://background-transparency", {
+      overlay: id,
+      transparency: effective[id]
+    } satisfies OverlayTransparencyChange));
+    events.push(emit("overlay://font-size", {
+      overlay: id,
+      fontSize: effectiveFontSize[id]
+    } satisfies OverlayFontSizeChange));
+  }
+  syncBrowserSourcePreferences();
+  await Promise.all(events);
+  reloadKeepingActiveView();
+};
+
+const resetOverlayConfiguration = async (id: OverlayId): Promise<void> => {
+  if (!await confirmReset(
+    t("overlay.configConfirm", { overlay: overlayDisplayName(id) })
+  )) return;
+  const events: Promise<unknown>[] = [];
+  applyOverlayConfigurationDefaults(id, events);
+  await publishOverlayConfigurationReset([id], events);
 };
 
 const resetOverlayPosition = async (id: OverlayId, button: HTMLButtonElement): Promise<void> => {
@@ -1078,6 +1094,48 @@ const resetOverlayPosition = async (id: OverlayId, button: HTMLButtonElement): P
     button.disabled = false;
   }
 };
+
+const resetAllStatus = document.getElementById("reset-all-status");
+const resetAllConfigurationButton = document.getElementById("reset-all-configuration") as HTMLButtonElement | null;
+const resetAllPositionButton = document.getElementById("reset-all-position") as HTMLButtonElement | null;
+
+const setResetAllBusy = (busy: boolean): void => {
+  if (resetAllConfigurationButton) resetAllConfigurationButton.disabled = busy;
+  if (resetAllPositionButton) resetAllPositionButton.disabled = busy;
+};
+
+const resetAllOverlayConfigurations = async (): Promise<void> => {
+  if (!await confirmReset(t("reset.allConfigConfirm"))) return;
+  setResetAllBusy(true);
+  if (resetAllStatus) resetAllStatus.textContent = t("reset.working");
+  try {
+    const events: Promise<unknown>[] = [];
+    for (const id of overlayIds) applyOverlayConfigurationDefaults(id, events);
+    await publishOverlayConfigurationReset(overlayIds, events);
+  } catch (error) {
+    console.error("No se pudo restaurar la configuración de los overlays:", error);
+    if (resetAllStatus) resetAllStatus.textContent = t("reset.allError");
+    setResetAllBusy(false);
+  }
+};
+
+const resetAllOverlayPositions = async (): Promise<void> => {
+  if (!await confirmReset(t("reset.allPositionConfirm"))) return;
+  setResetAllBusy(true);
+  if (resetAllStatus) resetAllStatus.textContent = t("reset.working");
+  try {
+    for (const id of overlayIds) await resetOverlayPlacement(id);
+    if (resetAllStatus) resetAllStatus.textContent = t("reset.allPositionDone");
+  } catch (error) {
+    console.error("No se pudo restaurar la posición de los overlays:", error);
+    if (resetAllStatus) resetAllStatus.textContent = t("reset.allError");
+  } finally {
+    setResetAllBusy(false);
+  }
+};
+
+resetAllConfigurationButton?.addEventListener("click", () => void resetAllOverlayConfigurations());
+resetAllPositionButton?.addEventListener("click", () => void resetAllOverlayPositions());
 
 for (const id of overlayIds) {
   const input = inputFor(id);
