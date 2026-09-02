@@ -25,8 +25,10 @@ and reports an arbitrary point on it. Either start the capture with the
 application already warm, or pass `-MemoryWarmupSeconds` so the collector
 excludes the ramp from the memory figures while CPU keeps using every sample.
 Comparing memory between two runs that were not both warm measures the run
-order, not the builds. `docs/PERFORMANCE_HISTORY.md` records the measured
-profile.
+order, not the builds. Memory also overshoots before it settles: the ramp peaks
+near minute six and then relaxes about 130 MB, so read the last third of a long
+capture rather than the first warm sample. `docs/PERFORMANCE_HISTORY.md` records
+the measured profile.
 
 Do not enable detailed telemetry logging during the primary external comparison;
 file writes add overhead. Use separate internal-diagnostic passes.
@@ -118,12 +120,42 @@ or replay capture.
 Do not perform another speculative optimization until this moving capture
 identifies the largest remaining cost.
 
+## Next memory step
+
+Attribution is done. The overlay host renderer holds 829 MB and the GPU process
+201 MB, together 87% of the application, while the control panel renderer is
+58 MB and the Rust process 30 MB. The JS heap is 33 MB, so what has to be
+explained is roughly 800 MB of non-script memory in one renderer.
+
+Two hypotheses remain and one experiment separates them. Take two warm captures
+with the same overlays and the same content, changing only the layout: one with
+the panels spread so the bounded host covers the whole monitor, one with them
+clustered so it covers a small fraction of it.
+
+- If the host renderer scales with the host rectangle, the memory is compositing
+  tiles. The lever is then the graphics budget, not the V8 heap that failed:
+  `--force-gpu-mem-available-mb` and the discardable limit starve a subsystem
+  that has no garbage collector to storm, and must be measured for raster churn
+  the same way.
+- If it stays flat, the memory belongs to the mounted documents rather than the
+  painted area, and the lever is what each overlay iframe costs, measured by
+  warm plateau per overlay rather than by slope.
+
+A debug build reaches the same answer faster: `Ctrl+Shift+D` opens the inspector
+on the host, and the Layers panel lists every composited layer with its size.
+Layer structure is the same in debug even though the totals are not.
+
+Do not change any argument or lifetime before one of these two says which.
+
 ## Likely measured follow-ups
 
 - Reduce String/HashMap churn in full roster construction only if it remains the
   dominant cost.
 - Re-measure WebView2 memory/GPU composition for one- and multi-monitor hosts.
 - Investigate large image decode/memory cost without breaking offline assets.
+- Destroying the control panel renderer while it is hidden is measured and
+  rejected: 58 MB of 1190, for decoupling "hide" from "quit" on the only window
+  the application has.
 
 These are hypotheses, not approved changes.
 

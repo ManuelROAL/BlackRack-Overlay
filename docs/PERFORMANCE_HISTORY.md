@@ -3,6 +3,39 @@
 This file preserves completed measurements. The active procedure and next target
 live in `docs/PERFORMANCE.md`.
 
+## Where the plateau lives — 2026-09-02
+
+The first capture with per-process attribution answers what the totals never
+could. Twenty-one minutes, memory read from the last sixteen:
+
+- Overlay host renderer: 829 MB average, 982 MB maximum.
+- GPU process: 201 MB.
+- Control panel renderer: 58 MB.
+- Browser process 47 MB, Rust process 30 MB, utilities 22 MB, crashpad 3 MB.
+- Total 1190 MB average over the warm window, and 1155 MB over the last nine
+  minutes, where it is flat.
+
+The host renderer and the GPU process are 87% of the application. Everything
+else together is 160 MB, and the Rust process confirms its 30 MB.
+
+Memory also overshoots before it settles. Per three-minute band the total reads
+770, 1219, 1286, 1182, 1149, 1161 and 1153 MB: the ramp peaks near minute six
+and then relaxes about 130 MB onto a flat plateau. A window that ends at minute
+six therefore reads the peak rather than the plateau, which is the same trap the
+ramp already set one step earlier. CPU is homogeneous, 2.88% average against a
+2.70% median, and settles at 2.78%.
+
+This retires the control panel as a target. Destroying its renderer while the
+panel is hidden would free 58 MB of 1190, about 5%, and would cost decoupling
+"hide" from "quit" on the only window the application has.
+
+What the capture does not say is what the 829 MB is. The JS heap measured flat
+at 33 MB in the same configuration, so about 96% of the host renderer is not
+script: compositing tiles, the image decode cache and Blink's own structures for
+the mounted overlay documents.
+
+Source CSV stem: `overlay-performance-20260902-214705`.
+
 ## Memory warm-up profile — 2026-09-02
 
 A 21-minute capture of the renderer processes settled the question of whether
