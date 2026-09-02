@@ -34,9 +34,11 @@ in `docs/overlays/` and should not be duplicated here.
 - Every webview passes the same Chromium arguments. WebView2 keeps one browser
   process per user data directory, so the environment created first decides them
   for the whole application. They restore wry's own defaults, which the option
-  replaces, drop browser subsystems the overlay never uses and bound the V8
-  heap. They do not limit the renderer count: sharing one renderer would put the
-  control panel on the overlay host's main thread. Native window occlusion stays
+  replaces and drop browser subsystems the overlay never uses. They bound
+  neither the renderer count nor the V8 heap. Sharing one renderer would put the
+  control panel on the overlay host's main thread, and a 192 MB heap cap held
+  memory near 605 MB instead of 1.2 GB but produced 42-48% CPU collection bursts
+  every ~80 s that the uncapped build never showed. Native window occlusion stays
   enabled so the control panel stops rendering behind the game.
 - The overlay host is bounded to its visible panels in game mode and restored to
   the full monitor for editing. Panel geometry is expressed in monitor

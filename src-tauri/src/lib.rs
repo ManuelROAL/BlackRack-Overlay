@@ -55,8 +55,15 @@ const KOFI_SUPPORT_URL: &str = "https://ko-fi.com/blackrack";
 /// The leading `--disable-features` entries restore wry's own defaults, which
 /// this method replaces: without them the mini menu and SmartScreen come back.
 /// The rest removes browser subsystems the overlay never uses and that only
-/// cost resident memory. `--js-flags` bounds the V8 heap: with plenty of RAM its
-/// default limit delays collection and holds memory no overlay needs.
+/// cost resident memory.
+///
+/// `--js-flags=--max-old-space-size` is deliberately absent. Bounding the V8
+/// heap to 192 MB did hold private memory to about 605 MB instead of growing
+/// past 1.2 GB, but it left the host renderer living against the limit: a 300 s
+/// capture measured bursts of 42-48% CPU across every logical processor, about
+/// 30 s long and roughly every 80 s, which the uncapped build never showed.
+/// Collection storms on the surface drawn over the game cost far more than the
+/// memory they save.
 ///
 /// `--renderer-process-limit=1` is deliberately absent. It would save one
 /// renderer process, but it also puts the control panel on the same renderer
@@ -74,7 +81,6 @@ const WEBVIEW_BROWSER_ARGUMENTS: &str = concat!(
     " --disable-background-networking",
     " --disable-component-update",
     " --disable-sync",
-    " --js-flags=--max-old-space-size=192",
 );
 
 /// Guard for privileged commands that must only ever run on behalf of the
