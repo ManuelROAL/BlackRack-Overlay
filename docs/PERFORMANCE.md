@@ -10,16 +10,23 @@ comparison; Smooth is the full-cadence baseline for captures predating profiles.
 Primary external metrics include BlackRack Overlay's WebView2 child processes:
 
 - CPU average and P95
-- private memory average and maximum
+- private memory average and maximum, attributed per process role
 - GPU average and P95
+
+Private memory is also broken down by Chromium process role (`app`, `browser`,
+`gpu`, `renderer`, `utility`). A total says how much the application costs but
+never which part holds it, and the overlay host and the control panel are
+separate renderers. Read `-processes.csv` before proposing any memory change:
+its first row names the process to attack.
 
 Memory needs a warm-up window that CPU does not. The application ramps for about
 four minutes and then holds a plateau, so a 300 s capture ends inside the ramp
 and reports an arbitrary point on it. Either start the capture with the
-application already warm, or discard its first five minutes before reading any
-memory figure. Comparing memory between two runs that were not both warm
-measures the run order, not the builds. `docs/PERFORMANCE_HISTORY.md` records
-the measured profile.
+application already warm, or pass `-MemoryWarmupSeconds` so the collector
+excludes the ramp from the memory figures while CPU keeps using every sample.
+Comparing memory between two runs that were not both warm measures the run
+order, not the builds. `docs/PERFORMANCE_HISTORY.md` records the measured
+profile.
 
 Do not enable detailed telemetry logging during the primary external comparison;
 file writes add overhead. Use separate internal-diagnostic passes.
@@ -98,7 +105,8 @@ or replay capture.
 2. Use the same Standings/Fuel configuration and visible overlays as the baseline.
 3. Disable detailed logging for the external comparison, then run a separate
    internal diagnostic pass.
-4. Generate the external CSV with `tools/performance/compare-overlays.ps1`.
+4. Generate the external CSVs with `tools/performance/compare-overlays.ps1`,
+   passing `-MemoryWarmupSeconds 300` whenever the run is not already warm.
 5. Confirm the source loop is near 50 Hz with zero or near-zero overruns.
 6. With Standings visible, requested roster cycles should be about one fifth of
    source cycles; with Relative, about two fifths. With neither nor OBS demand,

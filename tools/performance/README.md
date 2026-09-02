@@ -42,3 +42,39 @@ Comprueba también que la captura sea homogénea: si la media de CPU se separa d
 la mediana más de un 50 %, la pasada mezcló estados distintos —la sesión
 terminó, los overlays se auto-ocultaron— y el resumen promedia situaciones que
 nunca coexistieron.
+
+Para leer la memoria sin la rampa, pasa `-MemoryWarmupSeconds`. Las cifras de
+memoria se calculan solo con las muestras posteriores a ese instante; la CPU
+sigue usando la captura entera porque no necesita margen. El resumen registra el
+valor usado y cuántas muestras quedaron:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\tools\performance\compare-overlays.ps1 -DurationSeconds 1260 -MemoryWarmupSeconds 300
+```
+
+## Atribución por proceso
+
+WebView2 se reparte en un proceso navegador, uno de GPU, un renderer por ventana
+y varias utilidades. Sumarlos en una sola cifra dice cuánto cuesta la aplicación
+pero nunca qué parte lo retiene, así que cada proceso se clasifica además por su
+conmutador `--type=` de Chromium:
+
+- `app`: el proceso Tauri/Rust.
+- `browser`: el proceso navegador de WebView2.
+- `gpu`: el proceso de GPU.
+- `renderer`: uno por ventana. El host de overlays y el panel de control son
+  renderers distintos, así que `renderer_count` y `renderer_max_mb` separan el
+  mayor del resto.
+- `utility`: red, almacenamiento, audio.
+- `other`: crashpad y cualquier proceso cuya línea de comandos no se pueda leer.
+
+El recolector genera tres archivos. `overlay-performance-<sello>.csv` mantiene
+las columnas de siempre y añade una `private_*_mb` por rol; sus valores suman
+`private_memory_mb`. `-summary.csv` añade la media de cada rol.
+`-processes.csv` es la atribución propiamente dicha: una fila por proceso con su
+PID, su rol, su media y su máximo de memoria privada, y el intervalo en que
+estuvo vivo.
+
+Lee `-processes.csv` primero. Ordena por memoria privada media, así que la
+primera fila nombra el proceso que hay que atacar; el resto del trabajo de
+memoria sale de ahí.
