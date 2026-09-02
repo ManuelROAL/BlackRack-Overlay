@@ -918,7 +918,7 @@ fn create_control_window(app: &AppHandle) -> Result<(), String> {
         .always_on_top(false)
         .skip_taskbar(false)
         .resizable(false)
-        .devtools(false)
+        .devtools(cfg!(debug_assertions))
         .center()
         .build()
         .map_err(|error| startup_log::command_error("control_window_failed", error))?;
@@ -949,7 +949,7 @@ fn create_overlay_host(app: &AppHandle) -> Result<(), String> {
         .always_on_top(true)
         .skip_taskbar(true)
         .resizable(false)
-        .devtools(false)
+        .devtools(cfg!(debug_assertions))
         .visible(false)
         .build()
         .map_err(|error| {
@@ -1709,6 +1709,36 @@ fn register_panel_shortcut(app: &AppHandle, shortcut: &str) -> Result<(), String
         .map_err(|error| error.to_string())
 }
 
+/// Opens the inspector on every window of the application in debug builds.
+///
+/// The overlay host suppresses its own context menu and is click-through in
+/// game mode, so right-clicking can never reach the inspector; this shortcut is
+/// the only way in. It covers the control panel too, which otherwise would have
+/// no way to reach it either once the release profile stops enabling devtools. A failed registration is recorded and ignored, because a diagnostic
+/// aid must never keep the application from starting the way a missing
+/// interaction shortcut does.
+#[cfg(debug_assertions)]
+fn register_devtools_shortcut(app: &AppHandle) {
+    const DEVTOOLS_SHORTCUT: &str = "Ctrl+Shift+D";
+    match app
+        .global_shortcut()
+        .on_shortcut(DEVTOOLS_SHORTCUT, |app, _, event| {
+            if event.state() == ShortcutState::Pressed {
+                for_each_overlay_host(app, |window| window.open_devtools());
+                if let Some(panel) = app.get_webview_window(CONTROL_WINDOW_LABEL) {
+                    panel.open_devtools();
+                }
+            }
+        }) {
+        Ok(()) => startup_log::record(format!(
+            "debug devtools shortcut {DEVTOOLS_SHORTCUT} registered"
+        )),
+        Err(error) => startup_log::record(format!(
+            "warning: debug devtools shortcut {DEVTOOLS_SHORTCUT} unavailable: {error}"
+        )),
+    }
+}
+
 fn shortcut_status(runtime: &ShortcutRuntime) -> ShortcutSettingsStatus {
     ShortcutSettingsStatus {
         interaction_mode: ShortcutBindingStatus {
@@ -1996,6 +2026,8 @@ pub fn run() {
 
             create_overlay_host(app.handle())?;
             startup_log::record("overlay host created");
+            #[cfg(debug_assertions)]
+            register_devtools_shortcut(app.handle());
             if let Some(panel) = app.get_webview_window("control") {
                 let _ = panel.set_always_on_top(!DEFAULT_CLICK_THROUGH);
             }

@@ -3,6 +3,67 @@
 This file preserves completed measurements. The active procedure and next target
 live in `docs/PERFORMANCE.md`.
 
+## Memory warm-up profile — 2026-09-02
+
+A 21-minute capture of the renderer processes settled the question of whether
+memory grows without bound. It does not: the application warms up and then holds
+a working set.
+
+- Ramp: 377 to 1002 MB in 4.3 minutes, 163 MB/min.
+- Plateau: 16.6 minutes, 1041 MB average, 986 to 1108 MB, residual 2.47 MB/min.
+  The two halves of the plateau average 1033 and 1049 MB, which the sawtooth
+  alone can account for.
+
+Every 300 s capture therefore ends inside the ramp, so its memory figure is an
+arbitrary point on a warm-up curve and depends on how long the application had
+been running when the capture started. The historical 909 MB, and the 605 and
+807 MB measured the same day, are not comparable to each other for that reason.
+CPU is unaffected and valid from the first sample.
+
+This retracts an earlier reading of the same data as a 105 MB/min leak. Three
+supporting observations that also dissolve with it: a heap snapshot showed the
+JS heap flat at 32.9 to 33.7 MB, which is correct because nothing was leaking;
+per-overlay slopes of 7.5 (Standings), 27.3 (Fuel) and 15.8 MB/min (Track Map)
+did not add up to the whole, because each measured a different portion of a
+different ramp; and the Rust process stayed at 29 MB throughout while the host
+renderer held about 700 MB.
+
+## Chromium arguments and the V8 heap cap — 2026-09-02
+
+Explicit browser arguments were added to every webview. Bounding the V8 heap
+with `--js-flags=--max-old-space-size=192` held private memory near 605 MB
+instead of about 1 GB, but left the host renderer against the limit: CPU burst
+to 42-48% of every logical processor for roughly 30 s every 80 s, four times in
+five minutes. Removing the cap removed the bursts and produced the lowest CPU of
+the three builds compared that day.
+
+- Before the changes: 2.63% median CPU, 6.52% maximum.
+- With the heap cap: 2.54% median, 48.76% maximum.
+- Without the cap: 2.21% median, 4.39% maximum.
+
+Source CSV stems: `overlay-performance-20260902-154158` (before),
+`overlay-performance-20260902-154739` (capped) and
+`overlay-performance-20260902-160456` (final).
+
+## Frame cost to the game — 2026-09-02
+
+PresentMon 2.5.1 measured LMU with and without the overlay over the same replay
+segment at 177 FPS, uncapped, in Hardware Composed: Independent Flip. The game
+keeps that presentation mode with the overlay active.
+
+- MsBetweenPresents: 5.652 to 5.661 ms, +0.008 ms average, +0.386 ms at P99.
+- MsGPUBusy: +0.147 ms average. MsCPUBusy: +0.234 ms. MsGPUWait: -0.139 ms.
+
+The overlay does real work and it fits in the slack: with 2.3 ms of GPU wait per
+frame there was room for it, so frame delivery barely moved. On a GPU-bound
+configuration without that slack the 0.147 ms would show up directly.
+
+A capture of the WebView2 GPU process itself showed two swap chains, both
+Composed: Flip: the overlay host at 46.8 presents/s with its interval histogram
+peaked exactly on the 20 ms source cycle, and a second window at 2.0/s. The host
+presents on the source cadence rather than at monitor refresh, which is what the
+cadence alignment is for.
+
 ## Implemented optimizations
 
 - Vite assets are not inlined; production JS uses moderate Terser settings.

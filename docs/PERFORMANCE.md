@@ -13,8 +13,21 @@ Primary external metrics include BlackRack Overlay's WebView2 child processes:
 - private memory average and maximum
 - GPU average and P95
 
+Memory needs a warm-up window that CPU does not. The application ramps for about
+four minutes and then holds a plateau, so a 300 s capture ends inside the ramp
+and reports an arbitrary point on it. Either start the capture with the
+application already warm, or discard its first five minutes before reading any
+memory figure. Comparing memory between two runs that were not both warm
+measures the run order, not the builds. `docs/PERFORMANCE_HISTORY.md` records
+the measured profile.
+
 Do not enable detailed telemetry logging during the primary external comparison;
 file writes add overhead. Use separate internal-diagnostic passes.
+
+Check that a capture is homogeneous before trusting it. Average and median CPU
+should be close; a ratio above about 1.5 means the capture mixed states, such as
+the session ending or the overlays auto-hiding partway through, and the summary
+averages regimes that never coexisted.
 
 ## Internal instrumentation
 
@@ -31,6 +44,19 @@ the visible per-lap strategy CSV.
 - `source_stage_performance`: snapshot, REST reception, session processing,
   standings-state update, full roster build, warnings and frame/strategy work.
 - Frontend samples: average/max render duration and item count.
+
+## Inspecting the overlay host
+
+Debug builds enable the webview inspector and register `Ctrl+Shift+D`, which
+opens it on the overlay hosts. The shortcut exists because the host suppresses
+its context menu and is click-through in game mode, so right-clicking can never
+reach the inspector. Release builds keep both disabled and a failed
+registration is only logged, never fatal.
+
+Use `npm run tauri dev` for this: the frontend is unminified, so a heap snapshot
+names real classes and functions. Renderer memory is where growth has been
+observed; the Rust process stayed at 29 MB across a six-minute session while the
+host renderer reached 704 MB.
 
 ## Pending measurement
 
@@ -49,7 +75,15 @@ effects differ and must be read separately in the same capture:
   monitor edge.
 - Pre-rasterised country flags and manufacturer logos (2.8 MB of SVG to 270 KB of
   PNG). Expect lower memory and a cheaper first Standings/Relative paint; confirm
-  the icons still look correct at 100%, 125% and 150%. The moving capture below must report GPU
+  the icons still look correct at 100%, 125% and 150%.
+
+The Chromium arguments have been measured and are recorded in the history. Two
+questions stay open. The bounded host has never been confirmed to act: GPU
+memory read about 140 MB across three captures and the WMI GPU counters reported
+nothing for the WebView, so it has to be verified from the host window rectangle
+in game mode and from PresentMon against the game. And whether the icon and
+argument changes lower the plateau, rather than only the ramp, needs the
+21-minute warm capture repeated on the build that precedes them. The moving capture below must report GPU
 average/P95 before and after, and the release language pass must confirm the text
 metric change at 100%, 125% and 150%.
 
@@ -87,7 +121,8 @@ These are hypotheses, not approved changes.
 
 ## Principles
 
-- Measure before and after with the same workload.
+- Measure before and after with the same workload, and with both runs equally
+  warm. Memory needs about five minutes of warm-up; CPU does not.
 - A successful build is not performance evidence.
 - Match cadence to human-visible need without reducing safety-warning response.
 - Keep the native composite free of CSS animation, transition and backdrop-filter

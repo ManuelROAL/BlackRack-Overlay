@@ -28,3 +28,17 @@ principal, porque añade una pequeña carga de escritura a BlackRack Overlay.
 Para aislar posibles interferencias, completa además dos pasadas de cinco
 minutos: una solo con BlackRack Overlay y otra solo con TinyPedal. Mantén el mismo
 fragmento de repetición y la misma configuración visual.
+
+## Calentamiento antes de leer la memoria
+
+La memoria sube durante unos cuatro minutos hasta un régimen estable y ahí se
+queda. Una captura de 300 s termina dentro de esa rampa, así que su cifra de
+memoria es un punto arbitrario de la subida y depende de cuánto llevaba abierta
+la aplicación. Arranca la captura con la aplicación ya caliente, o descarta sus
+primeros cinco minutos antes de leer cualquier valor de memoria. La CPU no
+necesita ese margen y es válida desde la primera muestra.
+
+Comprueba también que la captura sea homogénea: si la media de CPU se separa de
+la mediana más de un 50 %, la pasada mezcló estados distintos —la sesión
+terminó, los overlays se auto-ocultaron— y el resumen promedia situaciones que
+nunca coexistieron.
