@@ -250,48 +250,53 @@ select {
   color: #e9edf1;
 }
 
-.global-overlay-settings {
+.general-settings-section {
   display: grid;
-  margin: 14px 28px 12px;
+  margin: 0 28px 12px;
   overflow: hidden;
   border: 1px solid rgb(255 255 255 / 9%);
   border-radius: 10px;
   background: rgb(255 255 255 / 2.5%);
 }
 
-.performance-profile-settings {
-  display: grid;
-  gap: 12px;
-  margin: 14px 28px 12px;
-  padding: 14px;
-  border: 1px solid rgb(216 255 62 / 14%);
-  border-radius: 10px;
+.general-settings-lead {
+  margin-top: 14px;
+}
+
+.general-settings-accent {
+  border-color: rgb(216 255 62 / 20%);
   background:
     radial-gradient(circle at 100% 0, rgb(216 255 62 / 7%), transparent 42%),
     rgb(255 255 255 / 2.5%);
 }
 
-.performance-profile-heading {
-  display: flex;
-  align-items: end;
-  justify-content: space-between;
-  gap: 18px;
+.general-settings-section > .settings-section-heading {
+  border-bottom: 1px solid rgb(255 255 255 / 7%);
 }
 
-.performance-profile-heading > div {
-  display: grid;
-  gap: 4px;
+.general-settings-section > .global-setting-group:last-child {
+  border-bottom: 0;
 }
 
-.performance-profile-heading span {
-  color: #d8ff3e;
-  font-size: 12px;
-  font-weight: 900;
-  letter-spacing: .14em;
+.general-settings-section > .performance-profile-list {
+  padding: 12px 14px 14px;
 }
 
-.performance-profile-heading strong {
-  font-size: 15px;
+.general-settings-section > .configuration-export,
+.general-settings-section > .overlay-profiles-section {
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.general-settings-section > .overlay-profiles-section {
+  border-top: 1px solid rgb(255 255 255 / 7%);
+}
+
+.shortcut-setting-group > .shortcut-settings-list {
+  grid-column: 1 / -1;
+  padding: 0;
 }
 
 .performance-profile-list {
@@ -831,13 +836,6 @@ select {
   padding: 0 28px 9px;
 }
 
-.shortcut-settings-section {
-  margin: 0 28px 12px;
-  border: 1px solid rgb(255 255 255 / 8%);
-  border-radius: 9px;
-  background: rgb(255 255 255 / 2.5%);
-}
-
 .browser-source-section {
   margin: 0 28px 12px;
   overflow: hidden;
@@ -1014,29 +1012,6 @@ select {
   cursor: pointer;
   font-size: 11px;
   font-weight: 900;
-}
-
-.shortcut-settings-section summary {
-  display: grid;
-  gap: 4px;
-  padding: 12px 14px;
-  cursor: pointer;
-  list-style: none;
-}
-
-.shortcut-settings-section summary::-webkit-details-marker {
-  display: none;
-}
-
-.shortcut-settings-section summary span {
-  color: #d8ff3e;
-  font-size: 12px;
-  font-weight: 900;
-  letter-spacing: 0.14em;
-}
-
-.shortcut-settings-section summary strong {
-  font-size: 14px;
 }
 
 .shortcut-settings-list {
@@ -2353,10 +2328,8 @@ select {
     padding-left: 18px;
   }
 
-  .global-overlay-settings,
-  .performance-profile-settings,
+  .general-settings-section,
   .configuration-export,
-  .shortcut-settings-section,
   .browser-source-section,
   .logging-section,
   .support-section {
@@ -2483,12 +2456,6 @@ select {
   .performance-profile-list,
   .configuration-export {
     grid-template-columns: 1fr;
-  }
-
-  .performance-profile-heading {
-    align-items: start;
-    flex-direction: column;
-    gap: 5px;
   }
 
   .global-setting-group {

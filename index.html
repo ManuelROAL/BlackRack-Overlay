@@ -64,50 +64,19 @@
         <p id="overlay-filter-empty" class="overlay-filter-empty" hidden data-i18n="filter.empty">No hay overlays que coincidan.</p>
       </section>
 
-      <section class="performance-profile-settings" data-view-section="general" aria-label="Perfil de rendimiento" data-i18n-aria-label="performance.aria">
-        <div class="performance-profile-heading">
-          <div>
-            <span data-i18n="performance.heading">RENDIMIENTO</span>
-            <strong data-i18n="performance.title">Elige el equilibrio para tu equipo</strong>
-          </div>
-        </div>
-        <div class="performance-profile-list" role="group" aria-label="Perfiles de rendimiento" data-i18n-aria-label="performance.groupAria">
-          <button type="button" data-performance-profile="smooth" aria-pressed="false">
-            <span class="performance-profile-icon">50</span>
-            <span class="performance-profile-copy">
-              <b data-i18n="performance.smooth">Fluido</b>
-              <small data-i18n="performance.smoothSub">Respuesta visual máxima y mapa completo.</small>
-            </span>
-            <em data-i18n="performance.smoothMeta">MÁS SUAVE</em>
-          </button>
-          <button type="button" data-performance-profile="balanced" aria-pressed="false">
-            <span class="performance-profile-icon">25</span>
-            <span class="performance-profile-copy">
-              <b data-i18n="performance.balanced">Equilibrado</b>
-              <small data-i18n="performance.balancedSub">Menos renderizado, conservando todos los coches.</small>
-            </span>
-            <em data-i18n="performance.recommended">RECOMENDADO</em>
-          </button>
-          <button type="button" data-performance-profile="efficiency" aria-pressed="false">
-            <span class="performance-profile-icon">17</span>
-            <span class="performance-profile-copy">
-              <b data-i18n="performance.efficiency">Ahorro</b>
-              <small data-i18n="performance.efficiencySub">Cadencia reducida y mapa completo sin pulso.</small>
-            </span>
-            <em data-i18n="performance.efficiencyMeta">MENOR CARGA</em>
-          </button>
-        </div>
-      </section>
-
-      <section class="global-overlay-settings" data-view-section="general" aria-label="Configuración general de overlays" data-i18n-aria-label="general.aria">
-        <div class="global-setting-group language-setting-group">
+      <section class="general-settings-section general-settings-lead" data-view-section="general" aria-label="Pantalla y apariencia" data-i18n-aria-label="display.aria">
+        <header class="settings-section-heading">
+          <span data-i18n="display.heading">PANTALLA</span>
+          <strong data-i18n="display.title">Dónde y cómo se ven los overlays</strong>
+        </header>
+        <div class="global-setting-group">
           <div class="global-setting-copy">
-            <span data-i18n="general.language">IDIOMA</span>
-            <strong data-i18n="general.languageSub">Idioma de la aplicación</strong>
+            <span data-i18n="general.monitor">MONITOR</span>
+            <strong data-i18n="general.monitorSub">Overlays en un solo monitor</strong>
           </div>
           <label class="select-field">
-            <span data-i18n="general.languageLabel">IDIOMA DE LA INTERFAZ</span>
-            <select id="interface-locale" aria-label="Idioma de la interfaz" data-i18n-aria-label="general.languageAria"></select>
+            <span data-i18n="general.monitorLabel">MONITOR DE OVERLAYS</span>
+            <select id="overlay-monitor" aria-label="Monitor de overlays" data-i18n-aria-label="general.monitorAria"></select>
           </label>
         </div>
         <div class="global-setting-group language-setting-group">
@@ -146,11 +115,14 @@
             <output id="global-font-size-output">100%</output>
           </label>
         </div>
+      </section>
+
+      <section class="general-settings-section" data-view-section="general" aria-label="Modo de seguimiento" data-i18n-aria-label="follow.groupAria">
+        <header class="settings-section-heading">
+          <span data-i18n="follow.heading">MODO</span>
+          <strong data-i18n="follow.sub">A qué coche siguen los overlays</strong>
+        </header>
         <div class="global-setting-group overlay-mode-group">
-          <div class="global-setting-copy">
-            <span data-i18n="follow.heading">MODO</span>
-            <strong data-i18n="follow.sub">A qué coche siguen los overlays</strong>
-          </div>
           <div class="overlay-mode-list" role="group" aria-label="Modo de seguimiento" data-i18n-aria-label="follow.groupAria">
             <button type="button" data-overlay-mode="game" aria-pressed="false">
               <b data-i18n="follow.game">Juego</b>
@@ -166,88 +138,130 @@
             </button>
           </div>
         </div>
-        <div class="global-setting-group">
+        <div class="overlay-profiles-section">
+          <div class="overlay-profiles-heading">
+            <span data-i18n="profiles.heading">PERFILES</span>
+            <strong data-i18n="profiles.title">Una configuración de overlays por modo</strong>
+            <small data-i18n="profiles.sub">Cada perfil guarda visibilidad, posición, tamaño, transparencia y ajustes de los overlays. Los cambios se guardan en el perfil activo.</small>
+          </div>
+          <ul id="overlay-profile-list" class="overlay-profile-list"></ul>
+          <div class="overlay-profile-actions">
+            <button id="create-overlay-profile" type="button" data-i18n="profiles.create">NUEVO PERFIL</button>
+          </div>
+          <div class="overlay-profile-bindings">
+            <label class="select-field">
+              <span data-i18n="profiles.bindingGame">PERFIL EN MODO JUEGO</span>
+              <select data-profile-binding="game" aria-label="Perfil del modo juego" data-i18n-aria-label="profiles.bindingGameAria"></select>
+            </label>
+            <label class="select-field">
+              <span data-i18n="profiles.bindingSpectator">PERFIL EN MODO ESPECTADOR</span>
+              <select data-profile-binding="spectator" aria-label="Perfil del modo espectador" data-i18n-aria-label="profiles.bindingSpectatorAria"></select>
+            </label>
+            <label class="select-field">
+              <span data-i18n="profiles.bindingTeam">PERFIL EN MODO EQUIPO</span>
+              <select data-profile-binding="team" aria-label="Perfil del modo equipo" data-i18n-aria-label="profiles.bindingTeamAria"></select>
+            </label>
+          </div>
+          <p id="overlay-profile-status" aria-live="polite"></p>
+        </div>
+      </section>
+
+      <section class="general-settings-section general-settings-accent" data-view-section="general" aria-label="Perfil de rendimiento" data-i18n-aria-label="performance.aria">
+        <header class="settings-section-heading">
+          <span data-i18n="performance.heading">RENDIMIENTO</span>
+          <strong data-i18n="performance.title">Elige el equilibrio para tu equipo</strong>
+        </header>
+        <div class="performance-profile-list" role="group" aria-label="Perfiles de rendimiento" data-i18n-aria-label="performance.groupAria">
+          <button type="button" data-performance-profile="smooth" aria-pressed="false">
+            <span class="performance-profile-icon">50</span>
+            <span class="performance-profile-copy">
+              <b data-i18n="performance.smooth">Fluido</b>
+              <small data-i18n="performance.smoothSub">Respuesta visual máxima y mapa completo.</small>
+            </span>
+            <em data-i18n="performance.smoothMeta">MÁS SUAVE</em>
+          </button>
+          <button type="button" data-performance-profile="balanced" aria-pressed="false">
+            <span class="performance-profile-icon">25</span>
+            <span class="performance-profile-copy">
+              <b data-i18n="performance.balanced">Equilibrado</b>
+              <small data-i18n="performance.balancedSub">Menos renderizado, conservando todos los coches.</small>
+            </span>
+            <em data-i18n="performance.recommended">RECOMENDADO</em>
+          </button>
+          <button type="button" data-performance-profile="efficiency" aria-pressed="false">
+            <span class="performance-profile-icon">17</span>
+            <span class="performance-profile-copy">
+              <b data-i18n="performance.efficiency">Ahorro</b>
+              <small data-i18n="performance.efficiencySub">Cadencia reducida y mapa completo sin pulso.</small>
+            </span>
+            <em data-i18n="performance.efficiencyMeta">MENOR CARGA</em>
+          </button>
+        </div>
+      </section>
+
+      <section class="general-settings-section" data-view-section="general" aria-label="Idioma y atajos" data-i18n-aria-label="general.appAria">
+        <header class="settings-section-heading">
+          <span data-i18n="general.appHeading">APLICACIÓN</span>
+          <strong data-i18n="general.appTitle">Idioma y atajos de teclado</strong>
+        </header>
+        <div class="global-setting-group language-setting-group">
           <div class="global-setting-copy">
-            <span data-i18n="general.monitor">MONITOR</span>
-            <strong data-i18n="general.monitorSub">Overlays en un solo monitor</strong>
+            <span data-i18n="general.language">IDIOMA</span>
+            <strong data-i18n="general.languageSub">Idioma de la aplicación</strong>
           </div>
           <label class="select-field">
-            <span data-i18n="general.monitorLabel">MONITOR DE OVERLAYS</span>
-            <select id="overlay-monitor" aria-label="Monitor de overlays" data-i18n-aria-label="general.monitorAria"></select>
+            <span data-i18n="general.languageLabel">IDIOMA DE LA INTERFAZ</span>
+            <select id="interface-locale" aria-label="Idioma de la interfaz" data-i18n-aria-label="general.languageAria"></select>
           </label>
+        </div>
+        <div class="global-setting-group shortcut-setting-group">
+          <div class="global-setting-copy">
+            <span data-i18n="shortcuts.heading">ATAJOS GLOBALES</span>
+            <strong data-i18n="shortcuts.sub">Configurar combinaciones de teclado</strong>
+          </div>
+          <div class="shortcut-settings-list">
+            <label class="shortcut-setting">
+              <span>
+                <b data-i18n="shortcuts.interaction">Modo juego / edición</b>
+                <small data-i18n="shortcuts.interactionSub">Activa o desactiva la interacción con los overlays.</small>
+              </span>
+              <input id="shortcut-interaction-mode" type="text" readonly
+                aria-label="Atajo para cambiar el modo de interacción" data-i18n-aria-label="shortcuts.interactionAria" />
+            </label>
+            <label class="shortcut-setting">
+              <span>
+                <b data-i18n="shortcuts.showPanel">Mostrar panel</b>
+                <small data-i18n="shortcuts.showPanelSub">Recupera esta ventana cuando está oculta.</small>
+              </span>
+              <input id="shortcut-show-panel" type="text" readonly
+                aria-label="Atajo para mostrar el panel" data-i18n-aria-label="shortcuts.showPanelAria" />
+            </label>
+            <p id="shortcut-message" class="shortcut-message" data-i18n="shortcuts.instruction">
+              Haz clic en un campo y pulsa la nueva combinación.
+            </p>
+            <button id="toggle-interaction-mode" class="mode-action" type="button" data-i18n="mode.toEdit">
+              CAMBIAR A MODO EDICIÓN
+            </button>
+          </div>
         </div>
       </section>
 
-      <section class="overlay-profiles-section" data-view-section="general" aria-label="Perfiles de configuración" data-i18n-aria-label="profiles.aria">
-        <div class="overlay-profiles-heading">
-          <span data-i18n="profiles.heading">PERFILES</span>
-          <strong data-i18n="profiles.title">Una configuración de overlays por modo</strong>
-          <small data-i18n="profiles.sub">Cada perfil guarda visibilidad, posición, tamaño, transparencia y ajustes de los overlays. Los cambios se guardan en el perfil activo.</small>
-        </div>
-        <ul id="overlay-profile-list" class="overlay-profile-list"></ul>
-        <div class="overlay-profile-actions">
-          <button id="create-overlay-profile" type="button" data-i18n="profiles.create">NUEVO PERFIL</button>
-        </div>
-        <div class="overlay-profile-bindings">
-          <label class="select-field">
-            <span data-i18n="profiles.bindingGame">PERFIL EN MODO JUEGO</span>
-            <select data-profile-binding="game" aria-label="Perfil del modo juego" data-i18n-aria-label="profiles.bindingGameAria"></select>
-          </label>
-          <label class="select-field">
-            <span data-i18n="profiles.bindingSpectator">PERFIL EN MODO ESPECTADOR</span>
-            <select data-profile-binding="spectator" aria-label="Perfil del modo espectador" data-i18n-aria-label="profiles.bindingSpectatorAria"></select>
-          </label>
-          <label class="select-field">
-            <span data-i18n="profiles.bindingTeam">PERFIL EN MODO EQUIPO</span>
-            <select data-profile-binding="team" aria-label="Perfil del modo equipo" data-i18n-aria-label="profiles.bindingTeamAria"></select>
-          </label>
-        </div>
-        <p id="overlay-profile-status" aria-live="polite"></p>
-      </section>
-
-      <section class="configuration-export" data-view-section="general" aria-label="Importar o exportar configuración" data-i18n-aria-label="config.aria">
-        <div>
+      <section class="general-settings-section" data-view-section="general" aria-label="Importar o exportar configuración" data-i18n-aria-label="config.aria">
+        <header class="settings-section-heading">
           <span data-i18n="config.backup">COPIA DE SEGURIDAD</span>
           <strong data-i18n="config.title">Configuración completa de overlays</strong>
-          <small data-i18n="config.sub">Guarda o restaura idioma, visibilidad, opciones, monitor, posición y tamaño con un único JSON.</small>
+        </header>
+        <div class="configuration-export">
+          <div>
+            <small data-i18n="config.sub">Guarda o restaura idioma, visibilidad, opciones, monitor, posición y tamaño con un único JSON.</small>
+          </div>
+          <div class="configuration-transfer-actions">
+            <button id="import-overlay-configuration" type="button" data-i18n="config.import">IMPORTAR</button>
+            <button id="export-overlay-configuration" type="button" data-i18n="config.export">EXPORTAR</button>
+          </div>
+          <p id="export-overlay-configuration-status" aria-live="polite" data-i18n="config.chooseDestination">ELIGE EL ARCHIVO O LA CARPETA DE DESTINO</p>
         </div>
-        <div class="configuration-transfer-actions">
-          <button id="import-overlay-configuration" type="button" data-i18n="config.import">IMPORTAR</button>
-          <button id="export-overlay-configuration" type="button" data-i18n="config.export">EXPORTAR</button>
-        </div>
-        <p id="export-overlay-configuration-status" aria-live="polite" data-i18n="config.chooseDestination">ELIGE EL ARCHIVO O LA CARPETA DE DESTINO</p>
       </section>
-      
-      <details class="shortcut-settings-section" data-view-section="general" open>
-        <summary>
-          <span data-i18n="shortcuts.heading">ATAJOS GLOBALES</span>
-          <strong data-i18n="shortcuts.sub">Configurar combinaciones de teclado</strong>
-        </summary>
-        <div class="shortcut-settings-list">
-          <label class="shortcut-setting">
-            <span>
-              <b data-i18n="shortcuts.interaction">Modo juego / edición</b>
-              <small data-i18n="shortcuts.interactionSub">Activa o desactiva la interacción con los overlays.</small>
-            </span>
-            <input id="shortcut-interaction-mode" type="text" readonly
-              aria-label="Atajo para cambiar el modo de interacción" data-i18n-aria-label="shortcuts.interactionAria" />
-          </label>
-          <label class="shortcut-setting">
-            <span>
-              <b data-i18n="shortcuts.showPanel">Mostrar panel</b>
-              <small data-i18n="shortcuts.showPanelSub">Recupera esta ventana cuando está oculta.</small>
-            </span>
-            <input id="shortcut-show-panel" type="text" readonly
-              aria-label="Atajo para mostrar el panel" data-i18n-aria-label="shortcuts.showPanelAria" />
-          </label>
-           <p id="shortcut-message" class="shortcut-message" data-i18n="shortcuts.instruction">
-             Haz clic en un campo y pulsa la nueva combinación.
-           </p>
-           <button id="toggle-interaction-mode" class="mode-action" type="button" data-i18n="mode.toEdit">
-             CAMBIAR A MODO EDICIÓN
-           </button>
-        </div>
-      </details>
 
       <section class="overlay-list" data-view-section="overlays" aria-label="Overlays disponibles" data-i18n-aria-label="overlay.listAria">
       

@@ -86,9 +86,14 @@ telemetry semantics and file ownership live under `docs/overlays/`; use
   General is the leftmost tab and the default view when the control panel opens.
   Visibility stays immediately accessible. Per-overlay monitor, transparency,
   reset and content options live in that overlay's single settings disclosure.
-- Present general settings as a single compact, full-width group with consistently
-  aligned controls. Preserve readable secondary copy and stack fields on narrow
-  windows instead of leaving partial rows or unused columns.
+- Present general settings as labelled full-width blocks that each open with the
+  shared section heading: Display (monitor, transparency, text size), Mode (the
+  follow modes with the configuration profiles and their per-mode bindings),
+  Performance, Application (interface language and the global shortcuts) and
+  Backup. Keep the controls inside a block consistently aligned, preserve
+  readable secondary copy and stack fields on narrow windows instead of leaving
+  partial rows or unused columns. A block heading already names its content, so
+  do not repeat it on the row below.
 - General settings expose Smooth, Balanced and Efficiency performance profiles.
   Profiles change delivery/render cadence while the source,
   delta engine and strategy calculations remain sampled at 50 Hz. Smooth preserves
