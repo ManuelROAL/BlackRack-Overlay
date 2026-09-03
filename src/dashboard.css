@@ -130,6 +130,21 @@ body.dashboard-body {
 #dashboard-delta[data-trend="improving"] { color: #8fe04f; }
 #dashboard-delta[data-trend="worsening"] { color: #f05252; }
 
+/* A warning, not a readout: it is absent while the limiter is off and loud
+   enough to catch the eye the moment it engages. */
+.dash-limiter {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 5px 9px;
+  border-radius: 14px;
+  background: #ffb84d;
+  color: #12161c;
+  font-size: calc(12px * var(--overlay-font-scale, 1));
+  font-weight: 900;
+  letter-spacing: .1em;
+  white-space: nowrap;
+}
+
 .dash-empty {
   display: flex;
   align-items: center;

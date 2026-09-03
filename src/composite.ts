@@ -140,7 +140,10 @@ const telemetryFields: Record<OverlayId, readonly (keyof TelemetryFrame)[]> = {
     "hybrid_available", "battery_charge_percent",
     "car_electronics_available", "engine_map", "engine_map_max",
     "traction_control_level", "traction_control_max",
+    "traction_control_slip", "traction_control_slip_max",
+    "traction_control_cut", "traction_control_cut_max",
     "anti_lock_brakes_level", "anti_lock_brakes_max", "brake_bias_percent",
+    "speed_limiter_active",
     "ambient_temperature_c", "track_temperature_c"
   ]
 };

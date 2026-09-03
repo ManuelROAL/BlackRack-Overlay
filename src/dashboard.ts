@@ -100,6 +100,12 @@ const available = (id: DashboardFieldId, frame: TelemetryFrame): boolean => {
   switch (id) {
     case "map": return frame.car_electronics_available && frame.engine_map_max > 1;
     case "tc": return frame.car_electronics_available && frame.traction_control_max > 0;
+    case "tcslip":
+      return frame.car_electronics_available && frame.traction_control_slip_max > 0;
+    case "tccut":
+      return frame.car_electronics_available && frame.traction_control_cut_max > 0;
+    // The chip is the warning itself, so it exists only while the limiter does.
+    case "limiter": return frame.speed_limiter_active;
     case "abs": return frame.car_electronics_available && frame.anti_lock_brakes_max > 0;
     case "battery": return frame.hybrid_available;
     case "energy": return frame.virtual_energy_active;
@@ -158,6 +164,8 @@ const renderValues = (frame: TelemetryFrame): void => {
 
   setText(value("map"), level(frame.engine_map, frame.engine_map_max));
   setText(value("tc"), level(frame.traction_control_level, frame.traction_control_max));
+  setText(value("tcslip"), level(frame.traction_control_slip, frame.traction_control_slip_max));
+  setText(value("tccut"), level(frame.traction_control_cut, frame.traction_control_cut_max));
   setText(value("abs"), level(frame.anti_lock_brakes_level, frame.anti_lock_brakes_max));
   setText(value("bias"), `${frame.brake_bias_percent.toFixed(1)}%`);
   setText(value("air"), rounded(frame.ambient_temperature_c, 0, "°"));
@@ -172,7 +180,7 @@ const render = (frame: TelemetryFrame): void => {
   for (const { id } of DASHBOARD_FIELDS) {
     const shown = live && settings.visible[id] && available(id, frame);
     toggle(fields[id], shown);
-    if (shown && id !== "gear" && id !== "revs") rowFields += 1;
+    if (shown && id !== "gear" && id !== "revs" && id !== "limiter") rowFields += 1;
   }
   const gearShown = live && settings.visible.gear;
   const revsShown = live && settings.visible.revs;
@@ -184,7 +192,11 @@ const render = (frame: TelemetryFrame): void => {
 
 const applySettings = (next: DashboardSettings): void => {
   settings = next;
-  for (const { id } of DASHBOARD_FIELDS) toggle(fields[id], settings.visible[id]);
+  for (const { id } of DASHBOARD_FIELDS) {
+    // The limiter chip is driven by the car, not by the preference alone, so it
+    // waits for the next frame rather than flashing on when it is enabled.
+    toggle(fields[id], id !== "limiter" && settings.visible[id]);
+  }
   synchronizeOverlaySize();
 };
 
@@ -214,6 +226,11 @@ const previewFrame = {
   engine_map_max: 9,
   traction_control_level: 3,
   traction_control_max: 11,
+  traction_control_slip: 5,
+  traction_control_slip_max: 11,
+  traction_control_cut: 4,
+  traction_control_cut_max: 11,
+  speed_limiter_active: false,
   anti_lock_brakes_level: 2,
   anti_lock_brakes_max: 11,
   brake_bias_percent: 56.5,

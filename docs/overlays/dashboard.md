@@ -26,6 +26,10 @@ One pill-shaped strip, not a cluster:
 - Everything else is a uniform label-over-value pair in a single row. Class
   position carries the accent colour, since it is the one value read as a
   standing rather than as a measurement.
+- The pit limiter is the one exception to that uniformity: an amber chip at the
+  right end of the strip, present only while the limiter is engaged. It is a
+  warning, not a readout, so it is loud and it costs no room the rest of the
+  time.
 
 ## Visible fields and the cap
 
@@ -36,6 +40,14 @@ it is short, so the cap is what protects it: the driver chooses what matters for
 this car and this session instead of accumulating every field the game
 publishes.
 
+- A field marked `counts: false` draws only while its own state is active, so
+  it takes no room on the strip the rest of the time and is not charged against
+  the cap. The pit limiter is the only one. Adding another means arguing that it
+  is a warning rather than a readout.
+- The three traction-control trims are separate fields, because a car can expose
+  any combination of them: the level (`mTC`), the slip target (`mTCSlip`) and
+  the cut (`mTCCut`). Each is gated on its own maximum, so a car without one
+  simply never offers it.
 - The control panel disables the remaining entries once the cap is reached and
   says so in the note under the list. Turning one off re-enables the rest.
 - `normalizeDashboardSettings` also trims a configuration that asks for more —
@@ -43,7 +55,8 @@ publishes.
   order rather than rejecting the whole configuration.
 - The defaults are the eight that read the same in every car and every session:
   gear, rev lights, speed, class position, fuel, last lap, air and track
-  temperature. Anything car-specific is opt-in.
+  temperature, plus the uncounted pit-limiter warning. Anything car-specific is
+  opt-in.
 
 ## Data semantics
 
@@ -99,10 +112,13 @@ publishes.
 
 Check a Hypercar and an LMP2 in the same session: the battery, the engine map
 and ABS must appear for one and be absent for the other, and the strip must
-shorten accordingly. Confirm the cap disables the remaining toggles at eight and
-releases them when one is turned off, that the delta and lap times fill in with
-the Delta and Timing overlays closed, the range with and without virtual energy,
-the OBS route and a configuration export/import round trip.
+shorten accordingly. Confirm the limiter chip appears entering and leaving the
+pits and never counts against the cap, and that each traction-control trim
+appears only on a car that publishes a maximum for it. Confirm the cap disables
+the remaining toggles at eight and releases them when one is turned off, that
+the delta and lap times fill in with the Delta and Timing overlays closed, the
+range with and without virtual energy, the OBS route and a configuration
+export/import round trip.
 
 ## Localization
 
