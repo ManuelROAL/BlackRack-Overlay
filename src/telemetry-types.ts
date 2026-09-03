@@ -212,6 +212,9 @@ export interface TelemetryFrame {
   lap_number: number;
   player_sector: number;
   player_total_laps: number;
+  player_position: number;
+  player_class_position: number;
+  player_class_size: number;
   player_lap_valid: boolean;
   player_in_pits: boolean;
   speed_kph: number;
@@ -314,6 +317,7 @@ export interface TelemetryFrame {
   player_brake_temperature_c: [number, number, number, number];
   player_tire_sliding_fraction: [number, number, number, number];
   player_tire_remaining_by_wheel_percent: [number, number, number, number];
+  player_tire_pressure_kpa: [number, number, number, number];
   tire_life_model: TireLifeModel | null;
   player_tire_flat_spot_percent: [number, number, number, number];
   player_tire_compounds: [string, string, string, string];

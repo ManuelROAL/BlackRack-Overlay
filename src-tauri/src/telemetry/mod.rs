@@ -625,6 +625,11 @@ pub struct TelemetryFrame {
     #[serde(skip)]
     yellow_sectors: u32,
     player_total_laps: i32,
+    /// Overall place, and the place inside the player's own class alongside the
+    /// size of that class. A multiclass grid is raced on the class one.
+    player_position: i32,
+    player_class_position: i32,
+    player_class_size: i32,
     player_lap_valid: bool,
     player_in_pits: bool,
     speed_kph: f64,
@@ -729,6 +734,7 @@ pub struct TelemetryFrame {
     player_brake_temperature_c: [f64; 4],
     player_tire_sliding_fraction: [f64; 4],
     player_tire_remaining_by_wheel_percent: [f64; 4],
+    player_tire_pressure_kpa: [f64; 4],
     tire_life_model: Option<TireLifeModel>,
     player_tire_flat_spot_percent: [f64; 4],
     player_tire_compounds: [String; 4],
@@ -920,6 +926,9 @@ impl TelemetryFrame {
             player_sector: 0,
             yellow_sectors: 0,
             player_total_laps: 0,
+            player_position: 0,
+            player_class_position: 0,
+            player_class_size: 0,
             player_lap_valid: false,
             player_in_pits: false,
             speed_kph: 0.0,
@@ -1018,6 +1027,7 @@ impl TelemetryFrame {
             player_brake_temperature_c: [-1.0; 4],
             player_tire_sliding_fraction: [0.0; 4],
             player_tire_remaining_by_wheel_percent: [-1.0; 4],
+            player_tire_pressure_kpa: [0.0; 4],
             tire_life_model: None,
             player_tire_flat_spot_percent: [0.0; 4],
             player_tire_compounds: std::array::from_fn(|_| String::new()),
@@ -1153,10 +1163,16 @@ pub fn spawn_source(app: AppHandle) {
             });
             frame.spectator_mode = observer_mode();
             frame.performance_profile = tuning.profile.name();
+            // The Dashboard draws the delta and the lap times, and both view
+            // models are only built for the overlays that ask for them.
+            let dashboard_requested = super::overlay_is_active(&app, "dashboard")
+                || (standings_due && crate::browser_source::overlay_has_clients("dashboard"));
             let delta_requested = super::overlay_is_active(&app, "delta")
-                || (standings_due && crate::browser_source::overlay_has_clients("delta"));
+                || (standings_due && crate::browser_source::overlay_has_clients("delta"))
+                || dashboard_requested;
             let timing_requested = super::overlay_is_active(&app, "timing")
-                || (standings_due && crate::browser_source::overlay_has_clients("timing"));
+                || (standings_due && crate::browser_source::overlay_has_clients("timing"))
+                || dashboard_requested;
             let stint_history_requested = super::overlay_is_active(&app, "stinthistory")
                 || crate::browser_source::overlay_has_clients("stinthistory");
             delta_engine.update(
@@ -1230,7 +1246,7 @@ pub fn spawn_source(app: AppHandle) {
             let weather_due = cycle_due(cycle, WEATHER_CYCLES);
             let emit_forecast = weather_due && super::overlay_is_active(&app, "forecast");
             let emit_conditions = secondary_due && super::overlay_is_active(&app, "conditions");
-            let emit_dashboard = secondary_due && super::overlay_is_active(&app, "dashboard");
+            let emit_dashboard = driving_due && super::overlay_is_active(&app, "dashboard");
             let emit_fuel = driving_due && super::overlay_is_active(&app, "fuel");
             // An active warning follows the fast cadence so its response never
             // depends on a separate timer landing between repaint cycles.

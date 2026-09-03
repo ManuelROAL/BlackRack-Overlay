@@ -147,6 +147,10 @@ struct LmuSnapshot {
     double hybrid_regen_kw;
     double hybrid_motor_temperature_c;
     double hybrid_motor_rpm;
+    double player_tire_pressure_kpa[4];
+    int32_t player_position;
+    int32_t player_class_position;
+    int32_t player_class_size;
     uint8_t hybrid_motor_state;
     uint8_t engine_map;
     uint8_t engine_map_max;
@@ -437,6 +441,7 @@ extern "C" int lmu_read_snapshot(LmuSnapshot* output, int32_t spectator_vehicle_
                     // LMU entrega mBrakeTemp en Kelvin pese al comentario heredado del SDK.
                     output->player_brake_temperature_c[wheel_index] = wheel.mBrakeTemp - 273.15;
                     output->player_tire_remaining_by_wheel_percent[wheel_index] = tire_remaining;
+                    output->player_tire_pressure_kpa[wheel_index] = wheel.mPressure;
                     const double radius_m = static_cast<double>(wheel.mStaticUndeflectedRadius) / 100.0;
                     const double ground_speed_mps = std::hypot(
                         wheel.mLongitudinalGroundVel,
@@ -489,6 +494,7 @@ extern "C" int lmu_read_snapshot(LmuSnapshot* output, int32_t spectator_vehicle_
             output->leader_time_into_lap = source.mTimeIntoLap;
         }
         if (destination.is_player) {
+            output->player_position = static_cast<int32_t>(source.mPlace);
             output->player_in_garage = source.mInGarageStall ? 1u : 0u;
             output->player_sector = static_cast<int32_t>(source.mSector);
             output->player_total_laps = static_cast<int32_t>(source.mTotalLaps);
@@ -501,6 +507,33 @@ extern "C" int lmu_read_snapshot(LmuSnapshot* output, int32_t spectator_vehicle_
             output->player_time_into_lap = source.mTimeIntoLap;
             output->player_lap_distance = source.mLapDist;
         }
+    }
+
+    // Class position is what a multiclass grid is actually raced on, and the
+    // scoring class name is filled for every car, including the ones without
+    // per-vehicle telemetry, so it is the grouping that never leaves a car out.
+    for (int index = 0; index < vehicle_count; ++index) {
+        const LmuStandingEntry& player = output->standings[index];
+        if (!player.is_player) {
+            continue;
+        }
+        int class_position = 1;
+        int class_size = 0;
+        for (int other = 0; other < vehicle_count; ++other) {
+            const LmuStandingEntry& rival = output->standings[other];
+            if (std::strncmp(rival.vehicle_class, player.vehicle_class,
+                             sizeof(rival.vehicle_class)) != 0) {
+                continue;
+            }
+            ++class_size;
+            if (rival.position > 0 && player.position > 0
+                && rival.position < player.position) {
+                ++class_position;
+            }
+        }
+        output->player_class_position = class_position;
+        output->player_class_size = class_size;
+        break;
     }
 
     if (!selected_vehicle) {

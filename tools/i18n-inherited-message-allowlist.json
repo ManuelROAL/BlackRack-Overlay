@@ -24,5 +24,7 @@
   { "key": "title.dashboard", "reason": "Dashboard is the overlay product name." },
   { "key": "dashboard.tcShort", "reason": "TC is the abbreviation printed on the car." },
   { "key": "dashboard.absShort", "reason": "ABS is the abbreviation printed on the car." },
-  { "key": "dashboard.regenShort", "reason": "Regen is established hybrid notation in both locales." }
+  { "key": "dashboard.regenShort", "reason": "Regen is established hybrid notation in both locales." },
+  { "key": "dashboard.deltaShort", "reason": "Delta is the established timing term in both locales." },
+  { "key": "dashboard.speedUnit", "reason": "km/h is the same unit symbol in both locales." }
 ]

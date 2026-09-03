@@ -258,6 +258,9 @@ impl TelemetrySource for MockTelemetrySource {
                 0
             },
             player_total_laps: completed_laps,
+            player_position: 4,
+            player_class_position: 2,
+            player_class_size: 9,
             player_lap_valid: true,
             player_in_pits: false,
             speed_kph,
@@ -308,6 +311,7 @@ impl TelemetrySource for MockTelemetrySource {
             },
             hybrid_motor_temperature_c: 62.0 + (elapsed * 0.4).sin() * 6.0,
             hybrid_motor_rpm: throttle * 21_000.0,
+            player_tire_pressure_kpa: [158.0, 159.4, 162.1, 161.2],
             steering_angle_degrees: (elapsed * 1.35).sin() * 230.0,
             force_feedback: (elapsed * 4.2).sin() * 0.82,
             fuel_liters,

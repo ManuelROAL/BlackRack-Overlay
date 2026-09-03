@@ -699,6 +699,9 @@ impl TelemetrySource for LmuTelemetrySource {
             player_sector: snapshot.player_sector,
             yellow_sectors: snapshot.yellow_sectors,
             player_total_laps: snapshot.player_total_laps,
+            player_position: snapshot.player_position.max(0),
+            player_class_position: snapshot.player_class_position.max(0),
+            player_class_size: snapshot.player_class_size.max(0),
             player_lap_valid: current_player_lap_valid,
             player_in_pits: in_pits,
             speed_kph: snapshot.speed_kph.max(0.0),
@@ -843,6 +846,7 @@ impl TelemetrySource for LmuTelemetrySource {
             player_brake_temperature_c: snapshot.player_brake_temperature_c,
             player_tire_sliding_fraction: snapshot.player_tire_sliding_fraction,
             player_tire_remaining_by_wheel_percent: snapshot.player_tire_remaining_by_wheel_percent,
+            player_tire_pressure_kpa: snapshot.player_tire_pressure_kpa,
             tire_life_model,
             player_tire_flat_spot_percent,
             player_tire_compounds: Self::tire_compounds(

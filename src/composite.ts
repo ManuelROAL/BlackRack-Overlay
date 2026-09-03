@@ -130,6 +130,7 @@ const telemetryFields: Record<OverlayId, readonly (keyof TelemetryFrame)[]> = {
     "weather_forecast"
   ],
   dashboard: [
+    "player_active",
     "car_electronics_available", "engine_map", "engine_map_max",
     "traction_control_level", "traction_control_max", "traction_control_slip",
     "traction_control_slip_max", "traction_control_cut", "traction_control_cut_max",
@@ -137,7 +138,17 @@ const telemetryFields: Record<OverlayId, readonly (keyof TelemetryFrame)[]> = {
     "brake_migration", "brake_migration_max", "front_anti_roll_bar",
     "rear_anti_roll_bar", "speed_limiter_active", "headlights_on", "wiper_state",
     "hybrid_available", "battery_charge_percent", "hybrid_regen_kw",
-    "hybrid_motor_state", "hybrid_motor_temperature_c"
+    "hybrid_motor_state", "hybrid_motor_temperature_c",
+    "gear", "speed_kph", "rpm", "max_rpm",
+    "ambient_temperature_c", "track_temperature_c",
+    "session_time_remaining", "session_max_laps", "lap_number",
+    "player_position", "player_class_position", "player_class_size",
+    "delta_model", "timing_model",
+    "fuel_liters", "fuel_per_lap", "estimated_fuel_laps",
+    "virtual_energy_active", "virtual_energy_percent", "estimated_virtual_energy_laps",
+    "player_tire_pressure_kpa", "player_tire_temperature_c", "player_brake_temperature_c",
+    "player_tire_remaining_by_wheel_percent", "player_tire_optimal_temperature_c",
+    "player_tire_compounds"
   ]
 };
 const overlayTitleKeys: Record<OverlayId, import("./i18n").TranslationKey> = {

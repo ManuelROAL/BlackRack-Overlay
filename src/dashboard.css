@@ -2,8 +2,8 @@
 @import "./styles.css";
 
 body.dashboard-body {
-  min-width: 240px;
-  min-height: 96px;
+  min-width: 420px;
+  min-height: 200px;
   padding: 6px;
 }
 
@@ -45,28 +45,33 @@ body.dashboard-body {
   display: none;
 }
 
-.dashboard-grid {
+.dash-band {
   display: flex;
-  flex-wrap: wrap;
-  padding: 4px 6px 4px 8px;
-  gap: 0;
+  align-items: stretch;
+  min-width: 0;
 }
 
-/* Fixed-width tracks rather than growing ones: a wrapped last row keeps the
-   column widths of the row above instead of stretching two values across the
-   whole panel. */
-.dashboard-cell {
+.dash-band + .dash-band:not([hidden]) {
+  border-top: 1px solid rgb(255 255 255 / 9%);
+}
+
+.dash-band > :not([hidden]) + :not([hidden]) {
+  border-left: 1px solid rgb(255 255 255 / 8%);
+}
+
+/* Shared label/value cell, used by the electronics row and the hybrid row. */
+.dash-cell {
   display: flex;
-  flex: 0 0 calc(100% / var(--dashboard-columns, 4));
+  flex: 1 1 0;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 1px;
   min-width: 0;
-  padding: 2px 3px;
+  padding: 3px 4px;
 }
 
-.dashboard-cell span {
+.dash-cell span {
   color: #84909d;
   font-size: calc(8px * var(--overlay-font-scale, 1));
   font-weight: 800;
@@ -74,44 +79,343 @@ body.dashboard-body {
   white-space: nowrap;
 }
 
-.dashboard-cell b {
+.dash-cell b {
   color: #e7edf3;
-  font-size: calc(14px * var(--overlay-font-scale, 1));
+  font-size: calc(17px * var(--overlay-font-scale, 1));
   font-weight: 900;
   line-height: 1.05;
   white-space: nowrap;
 }
 
-/* A value the driver changed a moment ago is the one worth finding again, so it
-   stays highlighted for a beat instead of blending back into the row. */
-.dashboard-cell[data-changed="true"] b {
+/* A rotary the driver has just turned stays marked for a beat so the change is
+   findable without hunting the row again. */
+.dash-cell[data-changed="true"] b {
   color: #d8ff3e;
 }
 
-.dashboard-hybrid {
-  display: flex;
+/* ---------------------------------------------------------------- top band */
+
+.dash-band-top {
   align-items: center;
-  gap: 8px;
-  padding: 5px 8px 5px 9px;
-  border-top: 1px solid rgb(255 255 255 / 9%);
 }
 
-.dashboard-battery {
+.dash-lamps {
   display: flex;
-  flex: 1 1 auto;
-  flex-direction: column;
-  gap: 3px;
+  flex: 0 0 26%;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  padding: 5px 7px;
+}
+
+.dash-lamps span {
+  flex: 1 1 0;
+  padding: 3px 0;
+  border-radius: 3px;
+  background: rgb(255 255 255 / 5%);
+  color: #58636e;
+  font-size: calc(9px * var(--overlay-font-scale, 1));
+  font-weight: 900;
+  letter-spacing: .06em;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.dash-lamps span[data-state="on"] {
+  background: rgb(216 255 62 / 16%);
+  color: #d8ff3e;
+}
+
+.dash-delta {
+  display: flex;
+  flex: 1 1 0;
+  align-items: baseline;
+  justify-content: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 4px 8px;
+}
+
+.dash-delta span {
+  color: #84909d;
+  font-size: calc(9px * var(--overlay-font-scale, 1));
+  font-weight: 800;
+  letter-spacing: .1em;
+}
+
+.dash-delta b {
+  color: #e7edf3;
+  font-size: calc(22px * var(--overlay-font-scale, 1));
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.dash-delta b[data-trend="improving"] { color: #8fe04f; }
+.dash-delta b[data-trend="worsening"] { color: #f05252; }
+
+.dash-session {
+  display: flex;
+  flex: 0 0 38%;
+  align-items: center;
+  margin: 0;
   min-width: 0;
 }
 
-.dashboard-battery-head {
+.dash-session > div {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  min-width: 0;
+  padding: 4px 3px;
+}
+
+.dash-session dt,
+.dash-laptimes dt,
+.dash-fuel dt {
+  color: #84909d;
+  font-size: calc(8px * var(--overlay-font-scale, 1));
+  font-weight: 800;
+  letter-spacing: .08em;
+  white-space: nowrap;
+}
+
+.dash-session dd {
+  margin: 0;
+  color: #e7edf3;
+  font-size: calc(15px * var(--overlay-font-scale, 1));
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+/* --------------------------------------------------------------- main band */
+
+/* The two rows fill the band so the compound chip, centred on the block, lands
+   exactly on the axle line between them. */
+.dash-tires {
+  position: relative;
+  display: grid;
+  flex: 0 0 30%;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  min-width: 0;
+  padding: 8px;
+}
+
+.dash-tire {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-width: 0;
+  padding: 4px 2px 3px;
+  border: 1px solid rgb(255 255 255 / 7%);
+  border-radius: 5px;
+  background: rgb(255 255 255 / 3%);
+}
+
+.dash-tire b {
+  color: #e7edf3;
+  font-size: calc(19px * var(--overlay-font-scale, 1));
+  font-weight: 900;
+  line-height: 1;
+}
+
+.dash-tire-meta {
+  display: flex;
+  gap: 6px;
+}
+
+.dash-tire-meta span {
+  font-size: calc(9px * var(--overlay-font-scale, 1));
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.dash-tire-meta span[data-dashboard-tire="tire"] { color: var(--tire-color, #687481); }
+.dash-tire-meta span[data-dashboard-tire="brake"] { color: var(--brake-color, #687481); }
+
+.dash-tire-wear {
+  width: 82%;
+  height: 3px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: rgb(255 255 255 / 10%);
+}
+
+.dash-tire-wear i {
+  display: block;
+  width: 0;
+  height: 100%;
+  background: #8fe04f;
+}
+
+.dash-tire[data-wear="medium"] .dash-tire-wear i { background: #efdb3d; }
+.dash-tire[data-wear="low"] .dash-tire-wear i { background: #f05252; }
+
+.dash-compound {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  padding: 1px 6px;
+  border: 1px solid rgb(255 255 255 / 12%);
+  border-radius: 3px;
+  background: #0b0f15;
+  color: #b7c0c9;
+  font-size: calc(8px * var(--overlay-font-scale, 1));
+  font-weight: 900;
+  letter-spacing: .08em;
+  white-space: nowrap;
+  transform: translate(-50%, -50%);
+}
+
+.dash-core {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-width: 0;
+  padding: 7px 8px 8px;
+}
+
+.dash-rev {
+  width: 100%;
+  height: 5px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: rgb(255 255 255 / 10%);
+}
+
+#dashboard-rev-fill {
+  display: block;
+  width: 0;
+  height: 100%;
+  background: #d8ff3e;
+}
+
+.dash-core[data-rev="high"] #dashboard-rev-fill { background: #efdb3d; }
+.dash-core[data-rev="limit"] #dashboard-rev-fill { background: #f05252; }
+
+#dashboard-gear {
+  color: #f5f9ff;
+  font-size: calc(72px * var(--overlay-font-scale, 1));
+  font-weight: 900;
+  line-height: .92;
+}
+
+.dash-core[data-rev="limit"] #dashboard-gear { color: #f05252; }
+
+.dash-speed {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  margin: 0;
+}
+
+.dash-speed b {
+  color: #e7edf3;
+  font-size: calc(26px * var(--overlay-font-scale, 1));
+  font-weight: 900;
+  line-height: 1;
+}
+
+.dash-speed span {
+  color: #84909d;
+  font-size: calc(9px * var(--overlay-font-scale, 1));
+  font-weight: 800;
+  letter-spacing: .08em;
+}
+
+.dash-ambient {
+  display: flex;
+  gap: 10px;
+  margin: 2px 0 0;
+}
+
+.dash-ambient i {
+  color: #84909d;
+  font-size: calc(8px * var(--overlay-font-scale, 1));
+  font-style: normal;
+  font-weight: 800;
+  letter-spacing: .08em;
+}
+
+.dash-ambient b {
+  color: #b7c0c9;
+  font-size: calc(11px * var(--overlay-font-scale, 1));
+  font-weight: 900;
+}
+
+.dash-laptimes {
+  display: flex;
+  flex: 0 0 34%;
+  flex-direction: column;
+  justify-content: center;
+  margin: 0;
+  min-width: 0;
+  padding: 8px 10px;
+}
+
+.dash-laptimes > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-width: 0;
+}
+
+.dash-laptimes > div + div {
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid rgb(255 255 255 / 7%);
+}
+
+.dash-laptimes dd {
+  margin: 0;
+  font-size: calc(24px * var(--overlay-font-scale, 1));
+  font-weight: 900;
+  line-height: 1.05;
+  white-space: nowrap;
+}
+
+.dash-laptimes > div[data-lap="predicted"] dd { color: #f5f9ff; }
+.dash-laptimes > div[data-lap="last"] dd { color: #b7c0c9; }
+.dash-laptimes > div[data-lap="best"] dd { color: #d8ff3e; }
+
+/* ------------------------------------------------------------- hybrid band */
+
+.dash-band-hybrid {
+  align-items: center;
+  gap: 8px;
+  padding: 5px 9px;
+}
+
+.dash-band-hybrid > :not([hidden]) + :not([hidden]) {
+  border-left: 0;
+}
+
+.dash-battery {
+  display: flex;
+  flex: 0 1 42%;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  margin-right: auto;
+}
+
+.dash-battery-head {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 6px;
 }
 
-.dashboard-battery-head span {
+.dash-battery-head span {
   color: #84909d;
   font-size: calc(8px * var(--overlay-font-scale, 1));
   font-weight: 800;
@@ -119,15 +423,14 @@ body.dashboard-body {
   white-space: nowrap;
 }
 
-.dashboard-battery-head b {
+.dash-battery-head b {
   color: #e7edf3;
-  font-size: calc(14px * var(--overlay-font-scale, 1));
+  font-size: calc(15px * var(--overlay-font-scale, 1));
   font-weight: 900;
   white-space: nowrap;
 }
 
-.dashboard-battery-track {
-  position: relative;
+.dash-battery-track {
   height: 6px;
   overflow: hidden;
   border-radius: 3px;
@@ -138,27 +441,21 @@ body.dashboard-body {
   display: block;
   width: 0;
   height: 100%;
-  border-radius: 3px;
   background: #d8ff3e;
 }
 
-.dashboard-battery[data-level="medium"] #dashboard-battery-fill { background: #ffb84d; }
-.dashboard-battery[data-level="low"] #dashboard-battery-fill { background: #ff6b5e; }
+.dash-battery[data-level="medium"] #dashboard-battery-fill { background: #ffb84d; }
+.dash-battery[data-level="low"] #dashboard-battery-fill { background: #ff6b5e; }
 
-.dashboard-hybrid-values {
-  display: flex;
-  flex: 0 1 auto;
-  min-width: 0;
-}
-
-.dashboard-hybrid-values .dashboard-cell {
+.dash-band-hybrid .dash-cell {
   flex: 0 0 auto;
-  min-width: 46px;
+  min-width: 58px;
 }
 
-.dashboard-motor-state {
+.dash-motor-state {
+  flex: 0 0 auto;
   margin: 0;
-  padding: 3px 6px;
+  padding: 3px 7px;
   border: 1px solid rgb(255 255 255 / 12%);
   border-radius: 4px;
   color: #7f8997;
@@ -168,50 +465,67 @@ body.dashboard-body {
   white-space: nowrap;
 }
 
-.dashboard-motor-state[data-state="propulsion"] {
+.dash-motor-state[data-state="propulsion"] {
   border-color: rgb(216 255 62 / 45%);
   color: #d8ff3e;
 }
 
-.dashboard-motor-state[data-state="regeneration"] {
+.dash-motor-state[data-state="regeneration"] {
   border-color: rgb(111 168 220 / 45%);
   color: #6fa8dc;
 }
 
-.dashboard-status {
+/* ------------------------------------------------------------- bottom band */
+
+.dash-electronics {
   display: flex;
-  justify-content: space-between;
-  gap: 6px;
-  padding: 4px 8px 4px 9px;
-  border-top: 1px solid rgb(255 255 255 / 9%);
+  flex: 1 1 0;
+  min-width: 0;
 }
 
-.dashboard-status span {
+.dash-electronics > :not([hidden]) + :not([hidden]) {
+  border-left: 1px solid rgb(255 255 255 / 8%);
+}
+
+.dash-fuel {
+  display: flex;
+  flex: 0 0 34%;
+  align-items: center;
+  margin: 0;
+  min-width: 0;
+}
+
+.dash-fuel > div {
+  display: flex;
   flex: 1 1 0;
-  padding: 2px 0;
-  border-radius: 3px;
-  background: rgb(255 255 255 / 5%);
-  color: #58636e;
-  font-size: calc(9px * var(--overlay-font-scale, 1));
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  min-width: 0;
+  padding: 3px;
+}
+
+.dash-fuel > div:not([hidden]) + div:not([hidden]) {
+  border-left: 1px solid rgb(255 255 255 / 8%);
+}
+
+.dash-fuel dd {
+  margin: 0;
+  color: #e7edf3;
+  font-size: calc(17px * var(--overlay-font-scale, 1));
   font-weight: 900;
-  letter-spacing: .08em;
-  text-align: center;
   white-space: nowrap;
 }
 
-.dashboard-status span[data-state="on"] {
-  background: rgb(216 255 62 / 16%);
-  color: #d8ff3e;
-}
-
-.dashboard-empty {
+.dash-empty {
   display: flex;
   align-items: center;
   justify-content: center;
   margin: 0;
-  padding: 0 9px;
+  padding: 18px 9px;
   color: #687481;
-  font-size: calc(10px * var(--overlay-font-scale, 1));
+  font-size: calc(11px * var(--overlay-font-scale, 1));
   font-weight: 900;
   letter-spacing: .1em;
   text-align: center;

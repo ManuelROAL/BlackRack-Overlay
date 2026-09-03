@@ -22,7 +22,7 @@ UI behavior, telemetry semantics, cadence and special invariants.
 | Rejoin | [rejoin.md](rejoin.md) | `rejoin.html` | `/rejoin` | 20 Hz active, 4 Hz inactive |
 | Weather Forecast | [forecast.md](forecast.md) | `forecast.html` | `/forecast` | 2 Hz |
 | Current conditions | [conditions.md](conditions.md) | `conditions.html` | `/conditions` | 20/12.5/~8 Hz by profile |
-| Dashboard | [dashboard.md](dashboard.md) | `dashboard.html` | `/dashboard` | 20 Hz |
+| Dashboard | [dashboard.md](dashboard.md) | `dashboard.html` | `/dashboard` | 50 Hz |
 
 `src/overlay-appearance.ts`'s `OverlayId` is the roster every other surface has to
 match. `npm run check:overlays` reads each of them back and reports drift: this

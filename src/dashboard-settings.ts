@@ -1,4 +1,11 @@
 export type DashboardOptionId =
+  | "status"
+  | "delta"
+  | "session"
+  | "tires"
+  | "core"
+  | "laptimes"
+  | "fuel"
   | "map"
   | "tc"
   | "tcslip"
@@ -9,8 +16,7 @@ export type DashboardOptionId =
   | "arb"
   | "battery"
   | "regen"
-  | "motor"
-  | "status";
+  | "motor";
 
 export interface DashboardSettings {
   visible: Record<DashboardOptionId, boolean>;
@@ -19,12 +25,20 @@ export interface DashboardSettings {
 export const DASHBOARD_SETTINGS_KEY = "blackrack-overlay.dashboard.v1";
 
 /**
- * `visible` is the driver's own shortlist, so the default is the set that is
- * changed from the wheel during a stint rather than every value the car
- * publishes: the fine traction-control trims, the motor temperature and the
- * lamp row start hidden and are opt-in.
+ * The panel is a full dash, so the first group turns whole blocks on and off
+ * and the rest picks the individual readouts inside the electronics and hybrid
+ * rows. The defaults are the shortlist a driver actually changes or watches
+ * during a stint: the fine traction-control trims and the motor temperature
+ * start hidden and are opt-in.
  */
 export const DASHBOARD_OPTIONS = [
+  { id: "core", labelKey: "dashboard.core", default: true },
+  { id: "delta", labelKey: "dashboard.delta", default: true },
+  { id: "laptimes", labelKey: "dashboard.laptimes", default: true },
+  { id: "session", labelKey: "dashboard.session", default: true },
+  { id: "tires", labelKey: "dashboard.tires", default: true },
+  { id: "fuel", labelKey: "dashboard.fuel", default: true },
+  { id: "status", labelKey: "dashboard.status", default: true },
   { id: "map", labelKey: "dashboard.map", default: true },
   { id: "tc", labelKey: "dashboard.tc", default: true },
   { id: "tcslip", labelKey: "dashboard.tcSlip", default: false },
@@ -35,8 +49,7 @@ export const DASHBOARD_OPTIONS = [
   { id: "arb", labelKey: "dashboard.arb", default: true },
   { id: "battery", labelKey: "dashboard.battery", default: true },
   { id: "regen", labelKey: "dashboard.regen", default: true },
-  { id: "motor", labelKey: "dashboard.motor", default: false },
-  { id: "status", labelKey: "dashboard.status", default: false }
+  { id: "motor", labelKey: "dashboard.motor", default: false }
 ] as const satisfies readonly { id: DashboardOptionId; labelKey: string; default: boolean }[];
 
 export const defaultDashboardSettings = (): DashboardSettings => ({
