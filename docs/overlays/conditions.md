@@ -5,7 +5,7 @@
 - Entry: `conditions.html`
 - Renderer/style: `src/conditions.ts`, `src/conditions.css`
 - Icon mapping: `src/weather-icons.ts`, icons under `src/assets/lmu-icons/weather/`
-- REST source: `src-tauri/src/telemetry/lmu_rest.rs` (forecast humidity fallback
+- REST source: `src-tauri/src/telemetry/sim/lmu/rest.rs` (forecast humidity fallback
   from `/rest/sessions/weather`)
 - OBS route: `/conditions`
 - Cadence: 20 Hz Smooth, 12.5 Hz Balanced, about 8 Hz Efficiency; the faster

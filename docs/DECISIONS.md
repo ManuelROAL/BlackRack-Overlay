@@ -27,6 +27,27 @@ in `docs/overlays/` and should not be duplicated here.
   document to fill one. The SVG sources stay in the repository as the masters
   and as the fallback for an icon that has not been rasterised yet.
 
+## Simulators
+
+- The telemetry source is chosen at runtime from a registry in
+  `telemetry/sim`, not by `#[cfg]` at the point of use. A simulator's SDK may
+  still be a compile-time gate inside its own module, but nothing outside
+  `sim/<id>/` names a simulator.
+- A source declares what it can *ever* report as capabilities on its
+  descriptor, and the frame carries them. That is a different question from
+  the per-session availability the frame already expressed through
+  `virtual_energy_active`, `rest_weather_available` and the `-1` sentinels;
+  neither replaces the other. The control panel retires an overlay a
+  simulator can never feed instead of offering one that stays empty.
+- Work the app needs off the telemetry thread — the official track outline
+  and the dependency probe — is reached through function pointers on the
+  descriptor rather than through `&mut self` on the source.
+- Visible copy names the active simulator through a parameter. Overlay window
+  titles carry no simulator prefix at all, because the app is meant to serve
+  more than one.
+- Settings, profiles and the exported configuration stay global for now. They
+  are namespaced per simulator when a second one lands, not before.
+
 ## Host and configuration
 
 - Each host and its WebView use explicit transparent RGBA backgrounds; the

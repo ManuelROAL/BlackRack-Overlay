@@ -5,7 +5,7 @@
 - Entry: `forecast.html`
 - Renderer/style: `src/forecast.ts`, `src/forecast.css`
 - Icon mapping: `src/weather-icons.ts`, icons under `src/assets/lmu-icons/weather/`
-- REST source: `src-tauri/src/telemetry/lmu_rest.rs` (weather thread on
+- REST source: `src-tauri/src/telemetry/sim/lmu/rest.rs` (weather thread on
   `/rest/sessions/weather`, selecting the active session)
 - OBS route: `/forecast`
 - Cadence: 2 Hz (500 ms); REST forecast polled at 1 Hz and accepted while fresh

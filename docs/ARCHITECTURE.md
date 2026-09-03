@@ -6,7 +6,7 @@
 LMU shared memory                LMU local REST          RaceControl/RaceOS
        |                              |                        |
        v                              v                        v
-lmu_bridge.cpp -> LmuSnapshot -> LmuTelemetrySource <- async/cached enrichments
+sim/lmu/bridge.cpp -> LmuSnapshot -> LmuTelemetrySource <- async/cached enrichments
                                       |
                                       v
                                 TelemetryFrame
@@ -44,7 +44,10 @@ Tauri events    analysis JSONL/strategy CSV    browser-source SSE
     Each batch serializes one frame once and carries the overlay IDs that consume
     that payload variant.
 - `src-tauri/src/telemetry/mod.rs`
-  - Defines `TelemetryFrame`, `StandingEntry`, warnings and `TelemetrySource`.
+  - Defines `TelemetryFrame`, `StandingEntry` and the warnings, and stays
+    simulator agnostic: the source contract lives in `telemetry/sim`.
+  - Asks `sim::detect` for the source once at startup, so the registry is
+    settled before the control panel asks which simulator is active.
   - Owns the 50 Hz scheduler, per-overlay emission rates and payload grouping.
     Standings/Relative share one batch when due, Track Map uses its stripped batch,
     and the remaining active overlays share the base-frame batch.
@@ -57,23 +60,29 @@ Tauri events    analysis JSONL/strategy CSV    browser-source SSE
     overall, session, stint and last-lap comparisons.
   - Keeps the 50 Hz calculation in memory and sends boundary records to a
     dedicated SQLite worker.
-- `src-tauri/src/telemetry/lmu_bridge.cpp`
+- `src-tauri/src/telemetry/sim/lmu/bridge.cpp`
   - Opens the official `LMU_Data` mapping read-only.
   - Copies the shared-memory object while holding the SDK lock.
   - Normalizes the required subset into fixed C-compatible structs.
-- `src-tauri/src/telemetry/lmu.rs`
+- `src-tauri/src/telemetry/sim/lmu/source.rs`
   - Converts the snapshot to stable application semantics.
   - Maintains session, vehicle identity, lap, pit, standings and warning state.
   - Calculates resource usage, total-lap estimates and DR gain estimates.
   - Owns the shared-memory layout, the per-car trackers and the source struct;
     the models are split into `lmu/` child modules that read those private
-    types directly: `frame.rs` assembles a frame and the rest hold one family
+    types directly, under `source/`: `frame.rs` assembles a frame and the rest hold one family
     each (`standings.rs`, `warnings.rs`, `session.rs`, `fuel.rs`,
     `driver_rank.rs`, `vehicle.rs`, `weather.rs`, `tests.rs`).
-- `lmu_rest.rs`
+- `sim/lmu/rest.rs`
   - Polls local REST on background threads and exposes only fresh cached values.
-- `driver_ranks.rs`, `event_split.rs`, `racecontrol.rs`
+- `sim/lmu/driver_ranks.rs`, `sim/lmu/event_split.rs`, `sim/lmu/racecontrol.rs`
   - Authenticate and enrich online sessions without blocking the hot loop.
+- `sim/lmu/trackmap.rs`, `sim/lmu/install.rs`
+  - Read the official track outline and locate the telemetry plugin. Both are
+    reached through the descriptor, never from the agnostic modules.
+- `src-tauri/src/telemetry/sim/mod.rs`
+  - Holds `TelemetrySource`, `SourceDescriptor`, `SourceCapabilities` and the
+    `detect` chain that picks a simulator. See `docs/SIMULATORS.md`.
 - `browser_source.rs`
   - Optional localhost-only HTTP/SSE server at `127.0.0.1:47636`.
   - Serves OBS pages through Tauri's embedded `frontendDist` asset resolver; it

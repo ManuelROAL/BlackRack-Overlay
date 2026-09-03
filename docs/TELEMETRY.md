@@ -2,16 +2,21 @@
 
 This document describes infrastructure shared by several overlays. Detailed
 calculation, selection and presentation semantics live in the relevant file under
-`docs/overlays/`.
+`docs/overlays/`. The contract a simulator implements, and what it takes to add
+one, live in `docs/SIMULATORS.md`.
 
 ## Source precedence
+
+Within Le Mans Ultimate, the only simulator implemented today:
 
 1. Official LMU shared memory (`LMU_Data`) is authoritative for real-time and
    safety-critical telemetry.
 2. Fresh LMU local REST data supplements fields that are absent or more reliable
    there, including assigned number, qualification, pit estimates and wearables.
 3. RaceControl/RaceOS adds optional DR/SR, profile and online-event metadata.
-4. The mock source supports builds without the Windows SDK.
+4. The mock source supports builds without the Windows SDK. It is also the
+   standing second implementation of the source contract, so the seam stays
+   honest without a second simulator.
 
 Every optional source must tolerate missing or stale data. Losing REST or RaceOS
 may remove enrichment but must not stop overlays or shared-memory telemetry.

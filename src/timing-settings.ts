@@ -10,7 +10,7 @@ export interface TimingSettings {
 export const TIMING_SETTINGS_KEY = "blackrack-overlay.timing.v1";
 
 export const TIMING_SECTOR_REFERENCES = [
-  { value: "lmu", labelKey: "timing.lmu" },
+  { value: "lmu", labelKey: "timing.game" },
   { value: "session", labelKey: "timing.session" },
   { value: "overall", labelKey: "timing.overall" }
 ] as const;

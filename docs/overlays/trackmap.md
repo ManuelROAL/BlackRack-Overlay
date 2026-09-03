@@ -6,7 +6,7 @@
 - Renderer/style: `src/trackmap.ts`, `src/trackmap.css`
 - Rust model: `src-tauri/src/telemetry/track_map_model.rs`
 - REST geometry: `src-tauri/src/telemetry/track_geometry.rs`
-- Shared-memory coordinates: `src-tauri/src/telemetry/lmu_bridge.cpp`
+- Shared-memory coordinates: `src-tauri/src/telemetry/sim/lmu/bridge.cpp`
 - OBS route/API: `/trackmap`, `/api/trackmap`
 - Cadence: lightweight coordinate roster at approximately 30 Hz in Smooth,
   16.7 Hz in Balanced and 8.3 Hz in Efficiency

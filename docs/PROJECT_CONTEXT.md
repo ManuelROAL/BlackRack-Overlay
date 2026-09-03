@@ -114,8 +114,9 @@ src/                           TypeScript and CSS overlays/control panel
 src/assets/                    Country flags, badges and manufacturer logos
 src-tauri/src/lib.rs           Tauri windows, commands, shortcuts and lifecycle
 src-tauri/src/browser_source.rs Local HTTP/SSE source for OBS
-src-tauri/src/telemetry/       Telemetry, REST, ranks and calculations
-src-tauri/src/telemetry/lmu_bridge.cpp Official shared-memory adapter
+src-tauri/src/telemetry/       Simulator-agnostic frame, loop and calculations
+src-tauri/src/telemetry/sim/   One module per simulator; see docs/SIMULATORS.md
+src-tauri/src/telemetry/sim/lmu/bridge.cpp Official shared-memory adapter
 docs/overlays/                 Per-overlay behavior, telemetry and ownership
 postman/                       Local LMU and RaceOS request collections
 tools/performance/             BlackRack Overlay/TinyPedal comparison tooling

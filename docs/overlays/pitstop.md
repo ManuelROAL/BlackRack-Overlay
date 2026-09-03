@@ -4,7 +4,7 @@
 
 - Entry: `pitstop.html`
 - Renderer/style: `src/pitstop.ts`, `src/pitstop.css`
-- REST source: `src-tauri/src/telemetry/lmu_rest.rs`
+- REST source: `src-tauri/src/telemetry/sim/lmu/rest.rs`
 - OBS route: `/pitstop`
 - Cadence: 20 Hz; REST estimate polled at 1 Hz and accepted while fresh
 

@@ -286,8 +286,73 @@ for (const overlay of overlays) {
   if (unused.length > 0) fail(`${overlay}: unused projected telemetry fields: ${unused.join(", ")}`);
 }
 
+// Simulator boundary. Everything that knows a simulator exists belongs under
+// telemetry/sim/<id>/; the frame, the loop, the domain models and the visible
+// copy stay agnostic and take the simulator as data. See docs/SIMULATORS.md.
+const simRoot = "src-tauri/src/telemetry/sim";
+const simulatorIds = read(`${simRoot}/mod.rs`)
+  .split(/\r?\n/)
+  .map((line) => line.trim())
+  .filter((line) => line.startsWith("pub(crate) mod ") && line.endsWith(";"))
+  .map((line) => line.slice("pub(crate) mod ".length, -1));
+if (simulatorIds.length === 0) fail("sim/mod.rs declares no simulator modules");
+
+const simulatorNames = simulatorIds.flatMap((id) => {
+  const nested = path.join(root, simRoot, id, "mod.rs");
+  const file = fs.existsSync(nested) ? nested : path.join(root, simRoot, `${id}.rs`);
+  if (!fs.existsSync(file)) {
+    fail(`${id}: declared in sim/mod.rs but has no module file`);
+    return [];
+  }
+  const names = [...fs.readFileSync(file, "utf8").matchAll(/display_name: "([^"]+)"/g)].map(
+    (match) => match[1]
+  );
+  if (names.length !== 1) fail(`${id}: expected one display_name, found ${names.length}`);
+  return names;
+});
+
+const rustFilesOutsideSim = (directory) =>
+  fs.readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const full = path.join(directory, entry.name);
+    if (entry.isDirectory()) return entry.name === "sim" ? [] : rustFilesOutsideSim(full);
+    return entry.name.endsWith(".rs") ? [full] : [];
+  });
+
+for (const file of rustFilesOutsideSim(path.join(root, "src-tauri/src"))) {
+  const source = fs.readFileSync(file, "utf8");
+  const relative = path.relative(root, file).split(path.sep).join("/");
+  for (const id of simulatorIds) {
+    if (source.includes(`sim::${id}`)) {
+      fail(`${relative}: reaches into sim::${id}; go through the source contract instead`);
+    }
+  }
+  for (const name of simulatorNames) {
+    if (source.includes(`"${name}"`)) fail(`${relative}: hard-codes the simulator name ${name}`);
+  }
+}
+
+// Visible copy names the simulator through a {simulator} parameter, never as a
+// literal, so a second simulator does not need a copy pass.
+const copyNeedles = [...simulatorIds, ...simulatorNames].filter((value) => value !== "mock");
+// Asset paths and element attributes are not copy, so only text between tags is
+// read out of the HTML entries.
+const visibleCopy = (file) =>
+  file.endsWith(".html")
+    ? [...read(file).matchAll(/<([a-z][a-z0-9-]*)[^>]*>([^<>]+)<\/\1>/gi)]
+        .map((match) => match[2])
+        .join("\n")
+    : read(file);
+
+for (const file of ["src/i18n/catalogs.ts", ...fs.readdirSync(root).filter((name) => name.endsWith(".html"))]) {
+  const source = visibleCopy(file);
+  for (const needle of copyNeedles) {
+    const pattern = new RegExp(String.raw`\b${needle.split(" ").join(String.raw`\s+`)}\b`, "i");
+    if (pattern.test(source)) fail(`${file}: names the simulator ${needle} in visible copy`);
+  }
+}
+
 if (!process.exitCode) {
   console.log(
-    `Validated ${overlays.length} overlay registrations across 8 surfaces, ${backendFrameFields.size} frame fields and telemetry projections.`
+    `Validated ${overlays.length} overlay registrations across 8 surfaces, ${backendFrameFields.size} frame fields, telemetry projections and the ${simulatorIds.length}-simulator boundary.`
   );
 }

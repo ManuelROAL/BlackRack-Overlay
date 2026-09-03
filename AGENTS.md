@@ -20,6 +20,7 @@ Read a cross-cutting document only when the task needs it:
 
 - Backend, data flow, persistence or windows: `docs/ARCHITECTURE.md`
 - Shared telemetry, REST or RaceOS infrastructure: `docs/TELEMETRY.md`
+- The telemetry source contract or adding a simulator: `docs/SIMULATORS.md`
 - Shared overlay host, control panel or visual behavior: `docs/OVERLAYS.md`
 - Profiling or optimization: `docs/PERFORMANCE.md`
 
@@ -71,6 +72,10 @@ document.
   `composite-embed` motion/blur safeguard; use cadence-driven state changes for
   native warnings and keep decorative motion limited to standalone/OBS pages.
 - Keep `src/telemetry-types.ts` synchronized with serialized Rust frame fields.
+- Keep every simulator-specific detail inside `telemetry/sim/<id>/`. The
+  frame, the loop, the domain models and the frontend name no simulator; they
+  read the source contract and the capability set instead. Visible copy takes
+  the simulator as a `{simulator}` parameter.
 - Keep domain calculations and roster selection in Rust. TypeScript owns
   presentation and browser-only state, not duplicated telemetry semantics.
 - Prefer cached DOM nodes and changed-value updates in hot render paths. Do not

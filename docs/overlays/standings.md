@@ -6,7 +6,7 @@
 - Renderer/style/settings: `src/standings.ts`, `src/standings.css`,
   `src/standings-settings.ts`
 - Rust view model: `src-tauri/src/telemetry/standings_models.rs`
-- Timing/history/enrichment: `src-tauri/src/telemetry/lmu/standings.rs`,
+- Timing/history/enrichment: `src-tauri/src/telemetry/sim/lmu/source/standings.rs`,
   `driver_ranks.rs`, `event_split.rs`, `lmu_rest.rs`
 - OBS route: `/standings`
 - Cadence: enriched roster and renderer at 10 Hz in Smooth, 6.25 Hz in Balanced
