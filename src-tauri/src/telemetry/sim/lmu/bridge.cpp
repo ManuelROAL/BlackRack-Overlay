@@ -575,7 +575,11 @@ extern "C" int lmu_read_snapshot(LmuSnapshot* output, int32_t spectator_vehicle_
     output->front_anti_roll_bar_max = vehicle.mFrontAntiSwayMax;
     output->rear_anti_roll_bar = vehicle.mRearAntiSway;
     output->rear_anti_roll_bar_max = vehicle.mRearAntiSwayMax;
-    output->speed_limiter_active = vehicle.mSpeedLimiterActive ? 1u : 0u;
+    // The limiter is published twice: mSpeedLimiter comes from the rFactor
+    // telemetry block and mSpeedLimiterActive from the one LMU appends. A car
+    // is not guaranteed to fill both, so either one engaged counts.
+    output->speed_limiter_active =
+        vehicle.mSpeedLimiter != 0 || vehicle.mSpeedLimiterActive ? 1u : 0u;
     output->headlights_on = vehicle.mHeadlights ? 1u : 0u;
     output->wiper_state = vehicle.mWiperState;
     // The charge is published twice and the two fields do not share a scale:

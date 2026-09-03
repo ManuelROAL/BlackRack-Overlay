@@ -2626,7 +2626,7 @@ for (const option of CONDITIONS_OPTIONS) {
 
 const dashboardOptions = document.getElementById("dashboard-options");
 const dashboardLimitNote = document.getElementById("dashboard-limit");
-const dashboardToggles = new Map<DashboardFieldId, HTMLInputElement>();
+const dashboardToggles = new Map<DashboardFieldId, { input: HTMLInputElement; counts: boolean }>();
 
 /**
  * The strip is only readable while it is short, so the cap is enforced here
@@ -2635,9 +2635,11 @@ const dashboardToggles = new Map<DashboardFieldId, HTMLInputElement>();
  */
 const applyDashboardLimit = (): void => {
   const full = countVisibleDashboardFields(dashboardSettings) >= DASHBOARD_MAX_FIELDS;
-  for (const [id, input] of dashboardToggles) {
+  for (const [id, { input, counts }] of dashboardToggles) {
     input.checked = dashboardSettings.visible[id];
-    input.disabled = full && !dashboardSettings.visible[id];
+    // A field that does not count against the cap must never be locked by it:
+    // the pit-limiter warning has to stay reachable with the strip full.
+    input.disabled = full && counts && !dashboardSettings.visible[id];
   }
   if (dashboardLimitNote) {
     dashboardLimitNote.textContent = t("dashboard.limit", { count: DASHBOARD_MAX_FIELDS });
@@ -2645,19 +2647,22 @@ const applyDashboardLimit = (): void => {
 };
 
 for (const field of DASHBOARD_FIELDS) {
-  dashboardToggles.set(field.id, appendToggle(
-    dashboardOptions,
-    t(field.labelKey),
-    dashboardSettings.visible[field.id],
-    (checked) => {
-      dashboardSettings = {
-        ...dashboardSettings,
-        visible: { ...dashboardSettings.visible, [field.id]: checked }
-      };
-      persistDashboardSettings();
-      applyDashboardLimit();
-    }
-  ));
+  dashboardToggles.set(field.id, {
+    counts: field.counts,
+    input: appendToggle(
+      dashboardOptions,
+      t(field.labelKey),
+      dashboardSettings.visible[field.id],
+      (checked) => {
+        dashboardSettings = {
+          ...dashboardSettings,
+          visible: { ...dashboardSettings.visible, [field.id]: checked }
+        };
+        persistDashboardSettings();
+        applyDashboardLimit();
+      }
+    )
+  });
 }
 applyDashboardLimit();
 
