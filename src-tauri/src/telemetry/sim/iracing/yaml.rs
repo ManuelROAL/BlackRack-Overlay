@@ -180,6 +180,7 @@ impl Node {
         self.number().map(|value| value as i32)
     }
 
+    #[cfg(test)]
     pub(super) fn is_empty(&self) -> bool {
         matches!(self, Node::Empty)
     }
