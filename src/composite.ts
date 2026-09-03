@@ -94,6 +94,7 @@ const telemetryFields: Record<OverlayId, readonly (keyof TelemetryFrame)[]> = {
     "standings"
   ],
   relative: [
+    "session_type",
     "game_time_of_day_seconds", "rest_weather_available", "ambient_temperature_c", "track_temperature_c",
     "brake_bias_percent", "track_limits_steps", "track_limits_steps_per_penalty",
     "relative_model", "standings"

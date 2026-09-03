@@ -15,9 +15,17 @@ import { listenRuntimeEvent, listenTelemetry } from "./runtime-events";
 import { airTemperatureIconUrl, clockIconUrl, compoundIconUrl, trackTemperatureIconUrl, worldIconUrl } from "./lmu-icons";
 import { applyTrackLimitTone, formatTrackLimitPoints } from "./track-limit-tone";
 import { formatDriverName } from "./driver-name-format";
+import { isRaceSession } from "./session-phase";
 import { formatClock as formatRealClock, formatNumber, formatTimeOfDay, t, type TranslationKey } from "./i18n";
 
 let relativeSettings = readRelativeSettings();
+// V es el contador de vueltas de la sesión: fuera de carrera cada piloto lleva
+// las suyas desde que entró y el número no relaciona a dos filas contiguas.
+// La configuración del usuario se conserva y vuelve sola al empezar la carrera.
+const RACE_ONLY_COLUMNS = new Set<RelativeColumnId>(["lap"]);
+let raceSession = true;
+const activeColumns = () =>
+  visibleRelativeColumns(relativeSettings).filter(({ id }) => raceSession || !RACE_ONLY_COLUMNS.has(id));
 const columnExpansionRatio = (id: RelativeColumnId): number => {
   if (id === "driver") return 0.5;
   if (id === "country" || id === "badge" || id === "tire") return 0.5;
@@ -31,9 +39,9 @@ const relativeBaseHeight = (): number => Math.max(
 );
 const relativeBaseWidth = (): number => Math.max(
   344,
-  visibleRelativeColumns(relativeSettings).reduce((total, { width }) => total + width, 0) + 32
+  activeColumns().reduce((total, { width }) => total + width, 0) + 32
 );
-const expandableColumnsWidth = (): number => visibleRelativeColumns(relativeSettings)
+const expandableColumnsWidth = (): number => activeColumns()
   .reduce((total, { id, width }) => total + width * columnExpansionRatio(id), 0);
 const updateOverlayFit = fitOverlay({
   width: relativeBaseWidth(),
@@ -44,7 +52,6 @@ const renderPerformance = createOverlayPerformanceTracker("relative");
 
 let lastFrame: TelemetryFrame | null = null;
 
-const activeColumns = () => visibleRelativeColumns(relativeSettings);
 const columnLength = ({ id, width }: { id: RelativeColumnId; width: number }): string => {
   const ratio = columnExpansionRatio(id);
   if (ratio === 0) return `${width}px`;
@@ -331,15 +338,15 @@ const rankBadge = (
 
 const signals = (entry: StandingEntry): HTMLElement => {
   const container = node("div", "standing-signals");
-  if (entry.finish_status === 1) {
+  if (raceSession && entry.finish_status === 1) {
     const checkered = node("span", "race-flag checkered-flag");
     checkered.title = t("standings.finished");
     checkered.setAttribute("aria-label", t("standings.checkeredAria"));
     container.append(checkered);
     return container;
   }
-  if (entry.finish_status === 3) container.append(node("span", "race-flag dq-flag", "DQ"));
-  else if (entry.finish_status === 2) container.append(node("span", "race-flag dnf-flag", "DNF"));
+  if (raceSession && entry.finish_status === 3) container.append(node("span", "race-flag dq-flag", "DQ"));
+  else if (raceSession && entry.finish_status === 2) container.append(node("span", "race-flag dnf-flag", "DNF"));
   if (entry.in_garage) container.append(node("span", "race-flag garage-flag", "GAR"));
   else if (entry.is_out_lap) container.append(node("span", "race-flag out-lap-flag", "OUT"));
   if (entry.causing_yellow) container.append(node("span", "race-flag yellow-flag", "Y"));
@@ -389,7 +396,7 @@ const appendDriverPitStatus = (cell: HTMLElement, entry: StandingEntry): void =>
     summary.classList.add("requested");
     summary.append(node("b", "driver-pit-requested", "PIT"));
     summary.title = t("standings.pitRequested", { count: entry.pit_stops });
-  } else if (entry.pit_stop_time_seconds !== null && entry.pit_stop_lap !== null && entry.pit_stops > 0) {
+  } else if (raceSession && entry.pit_stop_time_seconds !== null && entry.pit_stop_lap !== null && entry.pit_stops > 0) {
     const time = pitTimeLabel(entry.pit_stop_time_seconds);
     summary.append(
       node("b", "driver-pit-lap", `L${entry.pit_stop_lap}`),
@@ -407,18 +414,18 @@ const appendDriverPitStatus = (cell: HTMLElement, entry: StandingEntry): void =>
 
 const cellSignature = (entry: StandingEntry, column: RelativeColumnId, trackLimit: number, relativeGapSeconds = entry.relative_gap_seconds): string => {
   switch (column) {
-    case "position": return `${entry.position}|${entry.position_change}|${relativeSettings.options.positionChange}`;
+    case "position": return `${entry.position}|${raceSession ? entry.position_change : ""}|${relativeSettings.options.positionChange}`;
     case "number": return liveCarNumbers.get(entry.vehicle_id) || entry.car_number || "--";
     case "country": return entry.nationality;
     case "badge": return entry.driver_badge;
-    case "driver": return `${entry.driver_name}|${entry.nationality}|${relativeSettings.driverNameFormat}|${relativeSettings.options.pitStops}|${entry.in_pits}|${entry.pit_stop_requested}|${entry.pit_stops}|${entry.pit_stop_lap ?? ""}|${entry.pit_stop_time_seconds === null ? "" : pitTimeLabel(entry.pit_stop_time_seconds)}`;
+    case "driver": return `${entry.driver_name}|${entry.nationality}|${relativeSettings.driverNameFormat}|${relativeSettings.options.pitStops}|${raceSession}|${entry.in_pits}|${entry.pit_stop_requested}|${entry.pit_stops}|${entry.pit_stop_lap ?? ""}|${entry.pit_stop_time_seconds === null ? "" : pitTimeLabel(entry.pit_stop_time_seconds)}`;
     case "ranks": return `${entry.driver_rank}|${Math.round(entry.driver_rank_progress)}|${Math.round(entry.estimated_driver_rank_gain)}|${entry.estimated_driver_rank_gain_available}|${entry.safety_rank}`;
     case "relative": return relativeGapSeconds.toFixed(2);
     case "lap": return entry.total_laps.toString();
     case "best": return `${formatLapTime(entry.best_lap_seconds)}|${entry.best_lap_seconds > 0}|${entry.has_fastest_lap}`;
     case "last": return `${entry.is_out_lap ? "OUT" : formatLapTime(entry.last_lap_seconds)}|${formatLapTime(entry.best_lap_seconds)}|${entry.has_fastest_lap}|${entry.last_lap_valid}`;
     case "average": return formatLapTime(entry.average_lap_seconds);
-    case "energy": return entry.virtual_energy_active && entry.virtual_energy_percent > 0
+    case "energy": return raceSession && entry.virtual_energy_active && entry.virtual_energy_percent > 0
       ? `${entry.virtual_energy_percent >= 99.95 ? "100" : decimal(entry.virtual_energy_percent, 1)}|${entry.virtual_energy_per_lap > 0 ? decimal(entry.virtual_energy_per_lap, 2) : ""}`
       : "--";
     case "damage": return Math.round(entry.damage_percent).toString();
@@ -427,7 +434,7 @@ const cellSignature = (entry: StandingEntry, column: RelativeColumnId, trackLimi
     case "tire": return entry.tire_compounds.join("/");
     case "signals": {
       const penalties = livePenalties.get(entry.vehicle_id);
-      return `${entry.finish_status}|${entry.in_garage}|${entry.is_out_lap}|${entry.causing_yellow}|${entry.penalty_count}|${entry.flag}|${penalties?.DT ?? 0}|${penalties?.SG ?? 0}`;
+      return `${raceSession ? entry.finish_status : 0}|${entry.in_garage}|${entry.is_out_lap}|${entry.causing_yellow}|${entry.penalty_count}|${entry.flag}|${penalties?.DT ?? 0}|${penalties?.SG ?? 0}`;
     }
   }
 };
@@ -437,7 +444,8 @@ const createCell = (entry: StandingEntry, column: RelativeColumnId, trackLimit: 
     case "position": {
       const cell = node("div", "standing-position-cell");
       cell.append(node("strong", "standing-position", entry.position.toString()));
-      if (relativeSettings.options.positionChange) {
+      // Sin parrilla no hay referencia para el cambio de posición.
+      if (relativeSettings.options.positionChange && raceSession) {
         cell.append(positionChange(entry.position_change));
       }
       return cell;
@@ -489,7 +497,7 @@ const createCell = (entry: StandingEntry, column: RelativeColumnId, trackLimit: 
     case "average": return node("b", "lap-time", formatLapTime(entry.average_lap_seconds));
     case "energy": {
       const cell = node("div", "standing-energy");
-      if (entry.virtual_energy_active && entry.virtual_energy_percent > 0) {
+      if (raceSession && entry.virtual_energy_active && entry.virtual_energy_percent > 0) {
         const percentage = entry.virtual_energy_percent >= 99.95 ? "100%" : `${decimal(entry.virtual_energy_percent, 1)}%`;
         cell.append(node("b", undefined, percentage));
         if (entry.virtual_energy_per_lap > 0) {
@@ -694,6 +702,16 @@ const cachedSessionHeaderFor = (frame: TelemetryFrame): HTMLElement => {
   return cachedSessionHeader.element;
 };
 
+// Entrar o salir de carrera cambia el juego de columnas visibles, así que hay
+// que rehacer la rejilla y el ancho de diseño antes de pintar las filas.
+const applySessionPhase = (sessionType: number): void => {
+  const nextRaceSession = isRaceSession(sessionType);
+  if (nextRaceSession === raceSession) return;
+  raceSession = nextRaceSession;
+  applyColumnLayout();
+  updateOverlayFit({ width: relativeBaseWidth(), height: relativeBaseHeight() });
+};
+
 const render = (frame: TelemetryFrame): void => {
   const list = document.getElementById("relative-list");
   if (!list) return;
@@ -707,6 +725,7 @@ const render = (frame: TelemetryFrame): void => {
     return;
   }
   lastFrame = frame;
+  applySessionPhase(frame.session_type);
 
   {
     const entriesById = new Map(frame.standings.map((entry) => [entry.vehicle_id, entry]));

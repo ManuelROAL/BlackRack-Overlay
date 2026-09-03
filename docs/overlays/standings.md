@@ -38,6 +38,15 @@ duplicate selection or timing semantics.
 - Reordering preserves the category-header boundary: identity columns without a
   label remain inside the colored category heading, while labeled data columns
   remain outside it. Signals stays fixed at the far right.
+- GAP and INT exist only during a race. They measure continuous progress on
+  track, and outside a race the table is ordered by best lap, so the value would
+  compare cars that are not racing each other and would report a lap difference
+  purely because one of them joined the session earlier. Hide both columns in
+  practice, qualifying and warmup, and restore them when the race starts. Hiding
+  never rewrites the saved configuration: the grid, the design width and the
+  category-header span follow the visible set on each session change.
+- The position-change marker is also race-only. Starting positions are recorded
+  only in a race, so every row would otherwise print the same fixed dash.
 - Use the session-assigned number. Driver-name presentation is independently
   configurable as full name, initial plus surname, name plus surname initial,
   surname only, name only or surname plus name initial. Prefer bundled
@@ -151,7 +160,10 @@ duplicate selection or timing semantics.
   Show an active request as a green `PIT` badge. While the car is in pit lane,
   show only its elapsed pit-cycle timer. Once the stop is confirmed, retain
   `L<lap>`, the final compact duration and the unprefixed completed-stop count
-  for the latest stop. The completed-stop count comes from shared-memory
+  for the latest stop only during a race, because the stop count and its lap are
+  strategy data that no other session can align between cars; the request badge
+  and the active pit-cycle timer remain in every session. The completed-stop
+  count comes from shared-memory
   `mNumPitstops`; REST `pitstops` must not override it because it can overcount in
   team races. Accept a delayed counter increase before the next finish-line
   crossing, and do not invent elapsed time or a stop lap when the app starts
@@ -159,12 +171,17 @@ duplicate selection or timing semantics.
 - Opponent track-limit steps come from the matched all-vehicle telemetry slot.
   Unmatched means unavailable (`--`), not zero. Four raw SDK steps equal one game
   point. Warning thresholds are 60% and 80% of the session penalty threshold.
-- NRG compares all-driver virtual energy only for regulated Hypercar/LMGT3.
-  Never substitute the player's fuel percentage; other classes display `--`.
+- NRG compares all-driver virtual energy only for regulated Hypercar/LMGT3
+  during a race, because comparing rivals' energy assumes a shared strategy.
+  Never substitute the player's fuel percentage; other classes and every
+  non-race session display `--`.
 - Opponent damage is shared-memory integrity inverted: dents plus 50 points for a
   detached body part or 100 for a detached wheel, clamped to 100%.
 - Signals may show yellow cause, pit, garage, stop/go and supported penalties.
-  Empty signals have no persistent background. Blue, fastest-lap and time-penalty
+  Finished, DNF and DQ are race classification states and appear only in a race;
+  the finished flag returns early, so gating it also keeps pit, garage and
+  penalties visible in the other sessions. Empty signals have no persistent
+  background. Blue, fastest-lap and time-penalty
   badges do not belong in this column.
 
 ## Visual and performance rules

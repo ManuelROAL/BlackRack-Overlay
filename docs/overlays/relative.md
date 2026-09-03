@@ -38,7 +38,8 @@ the prepared vehicle IDs and formats them; it must not repeat domain selection.
 - Derive the lap relationship in Rust from completed laps plus continuous lap
   phase. Do not flash a false lapping event while only one car has crossed the
   timing line.
-- Show a compact, cumulative `OUT` chip in Signals. Pit request and pit-lane
+- Show a compact, cumulative `OUT` chip in Signals in every session: it warns of
+  a slow car ahead in a race and of a car about to start a hot lap in qualifying. Pit request and pit-lane
   states belong exclusively to the integrated driver-cell status. Damage is represented
   only by a restrained underline on the driver name, becoming red at the shared
   50% heavy-damage threshold. Render it on a text-sized inner element rather than
@@ -58,6 +59,12 @@ the prepared vehicle IDs and formats them; it must not repeat domain selection.
   active timer and `L<lap> · duration · count` states as Standings.
 - Column visibility and order are independent from Standings. Signals remains
   fixed at the transparent far right. Relative has no column-label row or footer.
+- The lap column exists only during a race. Outside one it is the count of laps
+  each driver has completed since joining the session, so two adjacent rows carry
+  unrelated numbers. Hide it in practice, qualifying and warmup and restore it
+  when the race starts, without rewriting the saved configuration; the grid and
+  the design width follow the visible set on each session change. Position change
+  is race-only for the same reason as in Standings.
 - Driver-name format is independent from Standings and supports full name,
   initial plus surname, name plus surname initial, surname only, name only and
   surname plus name initial.
