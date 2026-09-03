@@ -123,6 +123,10 @@ degrades inside its own renderer.
 
 ## iRacing
 
+Still experimental: it is marked `experimental: true` in `CANDIDATES`, so only
+a build with `experimental-simulators` offers it. See *Shipping an unfinished
+simulator* below, and clear the flag once the overlays below are filled.
+
 The simulator publishes a memory-mapped file that only exists while it runs:
 a header, a table describing every telemetry variable, a small ring of value
 buffers and a YAML session string. Nothing is needed at build time, so
@@ -157,6 +161,29 @@ the remaining work:
 | Tyres | the per-corner wear and carcass temperature variables |
 | Conditions | `AirTemp`, `TrackTempCrew`, `Precipitation`, `TrackWetness`, `Skies`, wind |
 | Damage, Forecast, Lift and coast, Pit stop | not published; these four stay capability-gated off permanently |
+
+## Shipping an unfinished simulator
+
+A simulator is rarely useful the day its source compiles: it fills the frame
+one overlay at a time, and until it is done a build that offers it shows empty
+overlays and a picker entry nobody should choose. `Candidate::experimental`
+marks such a simulator, and `shipped()` decides whether this build lets the
+user reach it:
+
+- **`npm run tauri:dev`** enables the `experimental-simulators` feature, so
+  every candidate appears in the picker and in automatic selection.
+- **`npm run tauri dev`** and **`npm run tauri build`** leave the feature off.
+  An experimental candidate is then absent from the picker, never chosen
+  automatically, and refused by `set_simulator_preference` — so a preference
+  pinned in a development build cannot resurrect it. The control panel drops
+  the picker entirely while a single simulator is offered.
+
+The filter is deliberately in `shipped()` rather than on the `CANDIDATES`
+declaration: the module stays compiled and its tests keep running in every
+configuration, so a simulator waiting to be finished cannot rot. `cargo test
+--lib` covers the same 250 tests with and without the feature.
+
+Clear the flag when the simulator fills the overlays its capabilities claim.
 
 ## The guardrail
 

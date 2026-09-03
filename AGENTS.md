@@ -120,12 +120,17 @@ Run from the repository root on Windows and prefer `npm.cmd`:
 ```powershell
 npm.cmd install
 npm.cmd run dev
-npm.cmd run tauri dev
+npm.cmd run tauri:dev
 npm.cmd run build
 cargo fmt --manifest-path src-tauri\Cargo.toml
 cargo test --manifest-path src-tauri\Cargo.toml --lib
 npm.cmd run tauri build
 ```
+
+`npm.cmd run tauri:dev` runs the app with the simulators that are still being
+filled in; plain `npm.cmd run tauri dev` and `npm.cmd run tauri build` leave
+them out, so anything handed to a tester never offers one. See
+`docs/SIMULATORS.md`.
 
 `npm.cmd run tauri build` creates the Windows installer. Do not run it unless the
 user explicitly requests a release/build artifact or a production performance

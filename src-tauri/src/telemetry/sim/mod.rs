@@ -124,6 +124,10 @@ struct Candidate {
     display_name: &'static str,
     available: fn() -> bool,
     try_new: fn(&Path) -> Option<Box<dyn TelemetrySource>>,
+    /// Still filling the frame one overlay at a time. Such a candidate is
+    /// compiled and tested in every build, but only a build with
+    /// `experimental-simulators` lets the user reach it.
+    experimental: bool,
 }
 
 const CANDIDATES: [Candidate; 2] = [
@@ -132,14 +136,23 @@ const CANDIDATES: [Candidate; 2] = [
         display_name: "iRacing",
         available: iracing::available,
         try_new: iracing::try_new,
+        experimental: true,
     },
     Candidate {
         id: "lmu",
         display_name: "Le Mans Ultimate",
         available: lmu::available,
         try_new: lmu::try_new,
+        experimental: false,
     },
 ];
+
+/// Whether this build offers the candidate to the user at all. Filtering here
+/// rather than at the `CANDIDATES` declaration keeps every simulator compiled
+/// and covered by `cargo test`, so one waiting to be finished cannot rot.
+fn shipped(candidate: &Candidate) -> bool {
+    cfg!(feature = "experimental-simulators") || !candidate.experimental
+}
 
 /// How often a disconnected source looks for a simulator that is running.
 const PROBE_INTERVAL: Duration = Duration::from_secs(2);
@@ -188,7 +201,7 @@ pub(crate) fn set_preference(id: &str) -> Result<(), String> {
     } else {
         CANDIDATES
             .iter()
-            .position(|candidate| candidate.id == id)
+            .position(|candidate| candidate.id == id && shipped(candidate))
             .ok_or_else(|| format!("unknown_simulator_{id}"))?
     };
     PREFERENCE.store(index, Ordering::Relaxed);
@@ -206,6 +219,7 @@ pub(crate) struct SimulatorOption {
 pub(crate) fn options() -> Vec<SimulatorOption> {
     CANDIDATES
         .iter()
+        .filter(|candidate| shipped(candidate))
         .map(|candidate| SimulatorOption {
             id: candidate.id,
             display_name: candidate.display_name,
@@ -222,6 +236,7 @@ fn allowed_candidates() -> impl Iterator<Item = &'static Candidate> {
     CANDIDATES
         .iter()
         .enumerate()
+        .filter(|(_, candidate)| shipped(candidate))
         .filter(move |(index, _)| forced.is_none_or(|only| *index == only))
         .map(|(_, candidate)| candidate)
 }
@@ -355,4 +370,37 @@ pub(crate) fn detect(app_data: &Path) -> Box<dyn TelemetrySource> {
         probe_at: Instant::now() + PROBE_INTERVAL,
         preference_generation: PREFERENCE_GENERATION.load(Ordering::Relaxed),
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{options, set_preference, CANDIDATES};
+
+    /// A simulator still being filled in must be unreachable in the builds that
+    /// go to users: absent from the picker, and refused when something tries to
+    /// pin it from a preference saved by a development build.
+    #[test]
+    fn experimental_simulators_are_offered_only_when_the_build_asks_for_them() {
+        let shipped = cfg!(feature = "experimental-simulators");
+        let offered: Vec<&str> = options().iter().map(|option| option.id).collect();
+        let experimental = CANDIDATES.iter().filter(|candidate| candidate.experimental);
+        assert!(
+            CANDIDATES.iter().any(|candidate| candidate.experimental),
+            "the test proves nothing without an experimental candidate"
+        );
+        assert!(
+            experimental.into_iter().all(|candidate| {
+                offered.contains(&candidate.id) == shipped
+                    // Pinning is only exercised where it must fail, so the
+                    // shared preference is never disturbed.
+                    && (shipped || set_preference(candidate.id).is_err())
+            }),
+            "offered {offered:?} with experimental-simulators = {shipped}"
+        );
+    }
+
+    #[test]
+    fn every_build_offers_at_least_one_simulator() {
+        assert!(!options().is_empty());
+    }
 }

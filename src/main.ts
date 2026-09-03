@@ -315,7 +315,21 @@ document.addEventListener("keydown", (event) => {
 const applySimulatorPreferenceOptions = (options: SimulatorOption[]): void => {
   const label = simulatorPickerLabel;
   const menu = simulatorPickerMenu;
-  if (!label || !menu || menu.childElementCount > 0) return;
+  if (!label || !menu) return;
+
+  // A build that no longer offers the pinned simulator would keep rejecting
+  // it, so fall back to following whichever one is running.
+  if (simulatorPreference !== "auto" && !options.some((option) => option.id === simulatorPreference)) {
+    simulatorPreference = "auto";
+    saveSimulatorPreference("auto");
+    void invoke("set_simulator_preference", { simulator: "auto" })
+      .catch(reportInitializationError("simulator preference"));
+  }
+
+  // With a single simulator offered there is nothing to choose between, so
+  // the header keeps the status alone.
+  simulatorPickerTrigger?.closest<HTMLElement>(".simulator-picker")?.toggleAttribute("hidden", options.length < 2);
+  if (options.length < 2 || menu.childElementCount > 0) return;
 
   const entries = [{ id: "auto", display_name: t("simulator.auto") }, ...options];
   const optionButtons: HTMLButtonElement[] = [];
