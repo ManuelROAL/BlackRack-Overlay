@@ -62,9 +62,10 @@ construct a source before its simulator has even started, so it reports
 
 ## Pinning a preference
 
-The control panel's Simulator section offers Auto plus one button per
-`CANDIDATES` entry, labelled from `sim::options()` — never a literal name in
-TypeScript or the catalogs, the same rule visible copy already follows.
+The control panel's header carries a compact select, next to the connection
+pill, with Auto plus one option per `CANDIDATES` entry, labelled from
+`sim::options()` — never a literal name in TypeScript or the catalogs, the same
+rule visible copy already follows.
 `set_simulator_preference` (`sim::set_preference`) stores the choice as an
 index into `CANDIDATES`, with `CANDIDATES.len()` standing for "auto", and bumps
 a generation counter. `SelectedSource::next_frame` compares that counter every

@@ -277,61 +277,36 @@ const activeSimulatorName = (): string => simulatorStatus?.display_name || t("si
 applyTranslations();
 
 let simulatorPreference = readSimulatorPreference();
-const simulatorPreferenceContainer = document.getElementById("simulator-preference-list");
+const simulatorPreferenceSelect = document.getElementById("simulator-preference-select") as HTMLSelectElement | null;
 
 /**
- * Builds the "auto"/pinned buttons once the simulator options are known.
- * Their labels come from the backend rather than the catalog, the same way
+ * Fills the header select once the simulator options are known. Their labels
+ * come from the backend rather than the catalog, the same way
  * `activeSimulatorName` does, so no simulator name lives in visible copy.
  */
-const applySimulatorPreferenceButtons = (options: SimulatorOption[]): void => {
-  const container = simulatorPreferenceContainer;
-  if (!container || container.childElementCount > 0) return;
+const applySimulatorPreferenceOptions = (options: SimulatorOption[]): void => {
+  const select = simulatorPreferenceSelect;
+  if (!select || select.options.length > 0) return;
 
-  const buttons: HTMLButtonElement[] = [];
-  const highlightSimulatorPreference = (): void => {
-    for (const button of buttons) {
-      const selected = button.dataset.simulatorPreference === simulatorPreference;
-      button.classList.toggle("active", selected);
-      button.setAttribute("aria-pressed", String(selected));
-    }
-  };
+  select.add(new Option(t("simulator.auto"), "auto"));
+  for (const option of options) select.add(new Option(option.display_name, option.id));
+  select.value = simulatorPreference;
 
-  const addSimulatorPreferenceButton = (id: string, label: string, sub: string): void => {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.dataset.simulatorPreference = id;
-    button.setAttribute("aria-pressed", "false");
-    const strong = document.createElement("b");
-    strong.textContent = label;
-    const small = document.createElement("small");
-    small.textContent = sub;
-    button.append(strong, small);
-    button.addEventListener("click", () => {
-      const next = button.dataset.simulatorPreference;
-      if (!next || next === simulatorPreference) return;
-      const previous = simulatorPreference;
-      simulatorPreference = next;
-      highlightSimulatorPreference();
-      for (const other of buttons) other.disabled = true;
-      void invoke("set_simulator_preference", { simulator: next }).then(() => {
-        saveSimulatorPreference(next);
-      }).catch(() => {
-        simulatorPreference = previous;
-        highlightSimulatorPreference();
-      }).finally(() => {
-        for (const other of buttons) other.disabled = false;
-      });
+  select.addEventListener("change", () => {
+    const next = select.value;
+    if (next === simulatorPreference) return;
+    const previous = simulatorPreference;
+    simulatorPreference = next;
+    select.disabled = true;
+    void invoke("set_simulator_preference", { simulator: next }).then(() => {
+      saveSimulatorPreference(next);
+    }).catch(() => {
+      simulatorPreference = previous;
+      select.value = previous;
+    }).finally(() => {
+      select.disabled = false;
     });
-    buttons.push(button);
-    container.append(button);
-  };
-
-  addSimulatorPreferenceButton("auto", t("simulator.auto"), t("simulator.autoSub"));
-  for (const option of options) {
-    addSimulatorPreferenceButton(option.id, option.display_name, t("simulator.pinnedSub"));
-  }
-  highlightSimulatorPreference();
+  });
 };
 
 void invoke("set_simulator_preference", { simulator: simulatorPreference })
@@ -2986,7 +2961,7 @@ void invoke<InteractionMode>("get_interaction_mode")
 const refreshSimulatorStatus = (): void => {
   void invoke<SimulatorStatus>("get_simulator_status").then((status) => {
     simulatorStatus = status;
-    applySimulatorPreferenceButtons(status.options);
+    applySimulatorPreferenceOptions(status.options);
   }).catch(reportInitializationError("simulator status"));
 };
 refreshSimulatorStatus();
