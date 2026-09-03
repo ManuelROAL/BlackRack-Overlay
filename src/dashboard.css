@@ -78,7 +78,7 @@ body.dashboard-body {
   align-items: center;
   justify-content: center;
   min-width: 0;
-  padding: 3px 3px 4px;
+  padding: 2px 3px 3px;
 }
 
 .dash-cell span {
@@ -114,7 +114,7 @@ body.dashboard-body {
   align-items: center;
   gap: 3px;
   min-width: 0;
-  padding: 4px 5px;
+  padding: 3px 5px;
 }
 
 .dash-lamps span {
@@ -177,7 +177,7 @@ body.dashboard-body {
   align-items: center;
   justify-content: center;
   min-width: 0;
-  padding: 3px 2px;
+  padding: 2px;
 }
 
 .dash-session dt,
@@ -208,9 +208,9 @@ body.dashboard-body {
   flex: 0 0 27%;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   grid-template-rows: repeat(2, minmax(0, 1fr));
-  gap: 11px 3px;
+  gap: 5px 3px;
   min-width: 0;
-  padding: 4px 5px;
+  padding: 2px 5px;
 }
 
 /* No frame around each corner: at this size the four blocks read as a car on
@@ -220,14 +220,12 @@ body.dashboard-body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 1px;
   min-width: 0;
-  padding: 2px 1px;
 }
 
 .dash-tire b {
   color: #e7edf3;
-  font-size: calc(14px * var(--overlay-font-scale, 1));
+  font-size: calc(13px * var(--overlay-font-scale, 1));
   font-weight: 900;
   line-height: 1;
 }
@@ -238,7 +236,7 @@ body.dashboard-body {
 }
 
 .dash-tire-meta span {
-  font-size: calc(8px * var(--overlay-font-scale, 1));
+  font-size: calc(7px * var(--overlay-font-scale, 1));
   font-weight: 800;
   white-space: nowrap;
 }
@@ -285,9 +283,9 @@ body.dashboard-body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 3px;
+  gap: 2px;
   min-width: 0;
-  padding: 5px 7px 6px;
+  padding: 4px 6px 5px;
 }
 
 .dash-rev {
@@ -313,15 +311,15 @@ body.dashboard-body {
 .dash-readout {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   min-width: 0;
 }
 
 #dashboard-gear {
   color: #f5f9ff;
-  font-size: calc(40px * var(--overlay-font-scale, 1));
+  font-size: calc(36px * var(--overlay-font-scale, 1));
   font-weight: 900;
-  line-height: .9;
+  line-height: .85;
 }
 
 .dash-core[data-rev="limit"] #dashboard-gear { color: #f05252; }
@@ -329,7 +327,7 @@ body.dashboard-body {
 .dash-readout-meta {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
   min-width: 0;
 }
 
@@ -342,7 +340,7 @@ body.dashboard-body {
 
 .dash-speed b {
   color: #e7edf3;
-  font-size: calc(19px * var(--overlay-font-scale, 1));
+  font-size: calc(18px * var(--overlay-font-scale, 1));
   font-weight: 900;
   line-height: 1;
 }
@@ -356,7 +354,7 @@ body.dashboard-body {
 
 .dash-ambient {
   display: flex;
-  gap: 7px;
+  gap: 6px;
   margin: 0;
 }
 
@@ -370,7 +368,7 @@ body.dashboard-body {
 
 .dash-ambient b {
   color: #b7c0c9;
-  font-size: calc(9px * var(--overlay-font-scale, 1));
+  font-size: calc(8px * var(--overlay-font-scale, 1));
   font-weight: 900;
 }
 
@@ -381,7 +379,7 @@ body.dashboard-body {
   justify-content: center;
   margin: 0;
   min-width: 0;
-  padding: 5px 7px;
+  padding: 3px 7px;
 }
 
 /* Label and time on one line: three stacked pairs were three rows of label
@@ -395,14 +393,14 @@ body.dashboard-body {
 }
 
 .dash-laptimes > div + div {
-  margin-top: 2px;
-  padding-top: 2px;
+  margin-top: 1px;
+  padding-top: 1px;
   border-top: 1px solid rgb(255 255 255 / 7%);
 }
 
 .dash-laptimes dd {
   margin: 0;
-  font-size: calc(16px * var(--overlay-font-scale, 1));
+  font-size: calc(14px * var(--overlay-font-scale, 1));
   font-weight: 900;
   white-space: nowrap;
 }
@@ -416,7 +414,7 @@ body.dashboard-body {
 .dash-band-hybrid {
   align-items: center;
   gap: 7px;
-  padding: 3px 7px 4px;
+  padding: 2px 7px 3px;
 }
 
 .dash-band-hybrid > :not([hidden]) + :not([hidden]) {
@@ -526,7 +524,7 @@ body.dashboard-body {
   align-items: center;
   justify-content: center;
   min-width: 0;
-  padding: 3px 2px 4px;
+  padding: 2px 2px 3px;
 }
 
 .dash-fuel > div:not([hidden]) + div:not([hidden]) {

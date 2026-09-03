@@ -99,8 +99,12 @@ nothing inside it is visible:
   scale, no frame or fill around a tyre corner, the gear beside the speed rather
   than above it, and label-and-time on one line for the lap times. Use a 460 px
   base width; the height follows the visible content through
-  `fitOverlayToContent` and lands near 170 px with every block on. Keep the
-  shared 2 px translucent lime accent along the shell's left edge.
+  `fitOverlayToContent` and lands near 142 px with every block on.
+- The main band is as tall as its tallest column, and that is the tyre block,
+  not the core. Shortening only the core therefore changes nothing visible — it
+  just gains slack and starts to look empty. Keep the three columns close to the
+  same natural height when adjusting any of them.
+- Keep the shared 2 px translucent lime accent along the shell's left edge.
 
 ## Invariants
 
