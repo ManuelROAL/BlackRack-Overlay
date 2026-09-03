@@ -207,6 +207,30 @@ compareRoster(
   viteInputKeys().filter((key) => !VITE_NON_OVERLAY_INPUTS.includes(key))
 );
 
+// An overlay's own settings only reach its native panel through the composite
+// host, which forwards a fixed list of runtime events. An overlay listening for
+// one that is not on that list silently ignores every change the control panel
+// makes, and nothing else in the app reports it.
+const forwardedEvents = /for \(const event of \[([\s\S]*?)\]\)/.exec(read(compositeFile));
+if (!forwardedEvents) {
+  fail("composite: the forwarded runtime event list was not found");
+} else {
+  const forwarded = new Set(
+    [...forwardedEvents[1].matchAll(/"([^"]+)"/g)].map((match) => match[1])
+  );
+  for (const overlay of overlays) {
+    const listened = [
+      ...read(`src/${overlay}.ts`).matchAll(
+        /listenRuntimeEvent\s*(?:<[\s\S]*?>)?\s*\(\s*"([^"]+)"/g
+      )
+    ].map((match) => match[1]);
+    const unforwarded = listened.filter((event) => !forwarded.has(event));
+    if (unforwarded.length > 0) {
+      fail(`${overlay}: the composite host does not forward ${unforwarded.join(", ")}`);
+    }
+  }
+}
+
 const telemetryTypesFile = "src/telemetry-types.ts";
 const telemetryTypesSource = ts.createSourceFile(
   telemetryTypesFile,
