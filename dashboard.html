@@ -7,114 +7,31 @@
   </head>
   <body class="dashboard-body">
     <main class="dashboard-shell" data-tauri-drag-region>
-      <section class="dash-band dash-band-top" data-dashboard-band="top" data-tauri-drag-region>
-        <div class="dash-lamps" data-dashboard-part="status">
-          <span id="dashboard-limiter" data-state="off" data-i18n="dashboard.limiterShort">LIM</span>
-          <span id="dashboard-headlights" data-state="off" data-i18n="dashboard.headlightsShort">LUCES</span>
-          <span id="dashboard-wipers" data-state="off" data-i18n="dashboard.wipersShort">LIMPIA</span>
-        </div>
-        <div class="dash-delta" data-dashboard-part="delta">
-          <span data-i18n="dashboard.deltaShort">DELTA</span>
-          <b id="dashboard-delta" data-trend="neutral">--.---</b>
-        </div>
-        <dl class="dash-session" data-dashboard-part="session">
-          <div><dt data-i18n="dashboard.raceShort">CARRERA</dt><dd id="dashboard-session-time">--:--:--</dd></div>
-          <div><dt data-i18n="dashboard.positionShort">POS</dt><dd id="dashboard-position">--</dd></div>
-          <div><dt data-i18n="dashboard.classShort">CLASE</dt><dd id="dashboard-class-position">--</dd></div>
-          <div><dt data-i18n="dashboard.lapShort">VUELTA</dt><dd id="dashboard-lap">--</dd></div>
+      <div id="dashboard-gear" class="dash-gear" data-dashboard-field="gear" data-rev="normal">N</div>
+      <div class="dash-readout" data-tauri-drag-region>
+        <div id="dashboard-revs" class="dash-revs" data-dashboard-field="revs" data-rev="normal"></div>
+        <dl id="dashboard-fields" class="dash-fields">
+          <div data-dashboard-field="speed"><dt data-i18n="dashboard.speedShort">VEL</dt><dd id="dashboard-speed">--</dd></div>
+          <div data-dashboard-field="rpm"><dt data-i18n="dashboard.rpmShort">RPM</dt><dd id="dashboard-rpm">--</dd></div>
+          <div data-dashboard-field="position"><dt data-i18n="dashboard.positionShort">POS</dt><dd id="dashboard-position">--</dd></div>
+          <div data-dashboard-field="lap"><dt data-i18n="dashboard.lapShort">VUELTA</dt><dd id="dashboard-lap">--</dd></div>
+          <div data-dashboard-field="session"><dt data-i18n="dashboard.sessionShort">SESIÓN</dt><dd id="dashboard-session">--:--:--</dd></div>
+          <div data-dashboard-field="delta"><dt data-i18n="dashboard.deltaShort">DELTA</dt><dd id="dashboard-delta" data-trend="neutral">--.---</dd></div>
+          <div data-dashboard-field="lastlap"><dt data-i18n="dashboard.lastShort">ÚLT.</dt><dd id="dashboard-lastlap">--:--.---</dd></div>
+          <div data-dashboard-field="bestlap"><dt data-i18n="dashboard.bestShort">MEJOR</dt><dd id="dashboard-bestlap">--:--.---</dd></div>
+          <div data-dashboard-field="predicted"><dt data-i18n="dashboard.predictedShort">PREV.</dt><dd id="dashboard-predicted">--:--.---</dd></div>
+          <div data-dashboard-field="fuel"><dt data-i18n="dashboard.fuelShort">COMB.</dt><dd id="dashboard-fuel">--</dd></div>
+          <div data-dashboard-field="energy"><dt data-i18n="dashboard.energyShort">ENERGÍA</dt><dd id="dashboard-energy">--</dd></div>
+          <div data-dashboard-field="laps"><dt data-i18n="dashboard.lapsShort">VUELTAS</dt><dd id="dashboard-laps">--</dd></div>
+          <div data-dashboard-field="battery"><dt data-i18n="dashboard.batteryShort">BATERÍA</dt><dd id="dashboard-battery">--</dd></div>
+          <div data-dashboard-field="map"><dt data-i18n="dashboard.mapShort">MAPA</dt><dd id="dashboard-map">--</dd></div>
+          <div data-dashboard-field="tc"><dt data-i18n="dashboard.tcShort">TC</dt><dd id="dashboard-tc">--</dd></div>
+          <div data-dashboard-field="abs"><dt data-i18n="dashboard.absShort">ABS</dt><dd id="dashboard-abs">--</dd></div>
+          <div data-dashboard-field="bias"><dt data-i18n="dashboard.biasShort">REPARTO</dt><dd id="dashboard-bias">--</dd></div>
+          <div data-dashboard-field="air"><dt data-i18n="dashboard.airShort">AIRE</dt><dd id="dashboard-air">--</dd></div>
+          <div data-dashboard-field="track"><dt data-i18n="dashboard.trackShort">PISTA</dt><dd id="dashboard-track">--</dd></div>
         </dl>
-      </section>
-
-      <section class="dash-band dash-band-main" data-dashboard-band="main" data-tauri-drag-region>
-        <div class="dash-tires" data-dashboard-part="tires">
-          <div class="dash-tire" data-dashboard-wheel="0">
-            <b data-dashboard-tire="pressure">--</b>
-            <div class="dash-tire-meta">
-              <span data-dashboard-tire="tire">--°</span>
-              <span data-dashboard-tire="brake">--°</span>
-            </div>
-            <div class="dash-tire-wear"><i></i></div>
-          </div>
-          <div class="dash-tire" data-dashboard-wheel="1">
-            <b data-dashboard-tire="pressure">--</b>
-            <div class="dash-tire-meta">
-              <span data-dashboard-tire="tire">--°</span>
-              <span data-dashboard-tire="brake">--°</span>
-            </div>
-            <div class="dash-tire-wear"><i></i></div>
-          </div>
-          <div class="dash-tire" data-dashboard-wheel="2">
-            <b data-dashboard-tire="pressure">--</b>
-            <div class="dash-tire-meta">
-              <span data-dashboard-tire="tire">--°</span>
-              <span data-dashboard-tire="brake">--°</span>
-            </div>
-            <div class="dash-tire-wear"><i></i></div>
-          </div>
-          <div class="dash-tire" data-dashboard-wheel="3">
-            <b data-dashboard-tire="pressure">--</b>
-            <div class="dash-tire-meta">
-              <span data-dashboard-tire="tire">--°</span>
-              <span data-dashboard-tire="brake">--°</span>
-            </div>
-            <div class="dash-tire-wear"><i></i></div>
-          </div>
-          <span id="dashboard-compound" class="dash-compound">--</span>
-        </div>
-
-        <div class="dash-core" data-dashboard-part="core">
-          <div class="dash-rev"><i id="dashboard-rev-fill"></i></div>
-          <div class="dash-readout">
-            <b id="dashboard-gear">N</b>
-            <div class="dash-readout-meta">
-              <p class="dash-speed"><b id="dashboard-speed">---</b><span data-i18n="dashboard.speedUnit">KM/H</span></p>
-              <p class="dash-ambient">
-                <span><i data-i18n="dashboard.airShort">AIRE</i> <b id="dashboard-air">--°</b></span>
-                <span><i data-i18n="dashboard.trackShort">PISTA</i> <b id="dashboard-track">--°</b></span>
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <dl class="dash-laptimes" data-dashboard-part="laptimes">
-          <div data-lap="predicted"><dt data-i18n="dashboard.predictedLap">PREVISTA</dt><dd id="dashboard-predicted">--:--.---</dd></div>
-          <div data-lap="last"><dt data-i18n="dashboard.lastLap">ÚLTIMA</dt><dd id="dashboard-last">--:--.---</dd></div>
-          <div data-lap="best"><dt data-i18n="dashboard.bestLap">MEJOR</dt><dd id="dashboard-best">--:--.---</dd></div>
-        </dl>
-      </section>
-
-      <section class="dash-band dash-band-hybrid" data-dashboard-band="hybrid" data-tauri-drag-region hidden>
-        <div class="dash-battery" data-dashboard-part="battery">
-          <div class="dash-battery-head">
-            <span data-i18n="dashboard.batteryShort">BATERÍA</span>
-            <b data-dashboard-value="battery">--%</b>
-          </div>
-          <div class="dash-battery-track"><i id="dashboard-battery-fill"></i></div>
-        </div>
-        <div class="dash-cell" data-dashboard-part="regen"><span data-i18n="dashboard.regenShort">REGEN</span><b data-dashboard-value="regen">--</b></div>
-        <div class="dash-cell" data-dashboard-part="motor"><span data-i18n="dashboard.motorShort">MOTOR</span><b data-dashboard-value="motor">--</b></div>
-        <p id="dashboard-motor-state" class="dash-motor-state" data-state="inactive" data-i18n="dashboard.stateInactive">INACTIVO</p>
-      </section>
-
-      <section class="dash-band dash-band-bottom" data-dashboard-band="bottom" data-tauri-drag-region>
-        <div class="dash-electronics" data-dashboard-band="electronics">
-          <div class="dash-cell" data-dashboard-part="map"><span data-i18n="dashboard.mapShort">MAPA</span><b data-dashboard-value="map">--</b></div>
-          <div class="dash-cell" data-dashboard-part="tc"><span data-i18n="dashboard.tcShort">TC</span><b data-dashboard-value="tc">--</b></div>
-          <div class="dash-cell" data-dashboard-part="tcslip"><span data-i18n="dashboard.tcSlipShort">TC SLIP</span><b data-dashboard-value="tcslip">--</b></div>
-          <div class="dash-cell" data-dashboard-part="tccut"><span data-i18n="dashboard.tcCutShort">TC CORTE</span><b data-dashboard-value="tccut">--</b></div>
-          <div class="dash-cell" data-dashboard-part="abs"><span data-i18n="dashboard.absShort">ABS</span><b data-dashboard-value="abs">--</b></div>
-          <div class="dash-cell" data-dashboard-part="bias"><span data-i18n="dashboard.biasShort">REPARTO</span><b data-dashboard-value="bias">--</b></div>
-          <div class="dash-cell" data-dashboard-part="migration"><span data-i18n="dashboard.migrationShort">MIGR.</span><b data-dashboard-value="migration">--</b></div>
-          <div class="dash-cell" data-dashboard-part="arb"><span data-i18n="dashboard.arbShort">BARRAS</span><b data-dashboard-value="arb">--</b></div>
-        </div>
-        <dl class="dash-fuel" data-dashboard-part="fuel">
-          <div><dt data-i18n="dashboard.litres">LITROS</dt><dd id="dashboard-litres">--</dd></div>
-          <div><dt data-i18n="dashboard.average">MEDIA</dt><dd id="dashboard-average">--</dd></div>
-          <div id="dashboard-energy-cell"><dt data-i18n="dashboard.energyShort">ENERGÍA</dt><dd id="dashboard-energy">--</dd></div>
-          <div><dt data-i18n="dashboard.lapsShort">VUELTAS</dt><dd id="dashboard-range">--</dd></div>
-        </dl>
-      </section>
-
+      </div>
       <p id="dashboard-empty" class="dash-empty" data-i18n="dashboard.waiting">SIN DATOS DEL COCHE</p>
     </main>
     <script type="module" src="/src/dashboard.ts"></script>

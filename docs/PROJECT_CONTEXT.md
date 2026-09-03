@@ -42,10 +42,10 @@ on their runtime or source code.
 - Circuit map with live multiclass vehicle positions and a learned per-track path.
 - Weather forecast with the game's condition icons and a current-conditions panel
   for temperatures, wind, humidity, rain, grip and track state.
-- Dashboard cluster gathering what a cockpit dash shows at a glance: gear, speed
-  and revs, delta, predicted/last/best lap, session, overall and class position,
-  tyre pressure, temperature and wear, the electronics the driver trims from the
-  wheel, the hybrid battery and the fuel or energy range.
+- Dashboard strip with the gear, the rev lights and up to eight readouts chosen
+  from a flat list: speed, revs, class position, lap, session time, delta,
+  last/best/predicted lap, fuel, virtual energy, range, hybrid battery, engine
+  map, traction control, ABS, brake bias and air/track temperature.
 - Startup diagnostics for failures on other computers.
 
 ## Current data sources

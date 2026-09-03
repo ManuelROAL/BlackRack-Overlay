@@ -98,11 +98,14 @@ import {
   type ConditionsSettings
 } from "./conditions-settings";
 import {
-  DASHBOARD_OPTIONS,
+  DASHBOARD_FIELDS,
+  DASHBOARD_MAX_FIELDS,
   DASHBOARD_SETTINGS_KEY,
+  countVisibleDashboardFields,
   defaultDashboardSettings,
   normalizeDashboardSettings,
   readDashboardSettings,
+  type DashboardFieldId,
   type DashboardSettings
 } from "./dashboard-settings";
 import {
@@ -2569,7 +2572,7 @@ const appendToggle = (
   labelText: string,
   checked: boolean,
   onChange: (checked: boolean) => void
-): void => {
+): HTMLInputElement => {
   const label = document.createElement("label");
   label.className = "column-toggle";
   const input = document.createElement("input");
@@ -2581,6 +2584,7 @@ const appendToggle = (
   label.append(input, mark, text);
   input.addEventListener("change", () => onChange(input.checked));
   container?.append(label);
+  return input;
 };
 
 const standingsHeaderOptions = document.getElementById("standings-header-options");
@@ -2621,15 +2625,41 @@ for (const option of CONDITIONS_OPTIONS) {
 }
 
 const dashboardOptions = document.getElementById("dashboard-options");
-for (const option of DASHBOARD_OPTIONS) {
-  appendToggle(dashboardOptions, t(option.labelKey), dashboardSettings.visible[option.id], (checked) => {
-    dashboardSettings = {
-      ...dashboardSettings,
-      visible: { ...dashboardSettings.visible, [option.id]: checked }
-    };
-    persistDashboardSettings();
-  });
+const dashboardLimitNote = document.getElementById("dashboard-limit");
+const dashboardToggles = new Map<DashboardFieldId, HTMLInputElement>();
+
+/**
+ * The strip is only readable while it is short, so the cap is enforced here
+ * rather than left to the overlay to ignore quietly: once it is reached the
+ * fields that are still off are disabled and the note says why.
+ */
+const applyDashboardLimit = (): void => {
+  const full = countVisibleDashboardFields(dashboardSettings) >= DASHBOARD_MAX_FIELDS;
+  for (const [id, input] of dashboardToggles) {
+    input.checked = dashboardSettings.visible[id];
+    input.disabled = full && !dashboardSettings.visible[id];
+  }
+  if (dashboardLimitNote) {
+    dashboardLimitNote.textContent = t("dashboard.limit", { count: DASHBOARD_MAX_FIELDS });
+  }
+};
+
+for (const field of DASHBOARD_FIELDS) {
+  dashboardToggles.set(field.id, appendToggle(
+    dashboardOptions,
+    t(field.labelKey),
+    dashboardSettings.visible[field.id],
+    (checked) => {
+      dashboardSettings = {
+        ...dashboardSettings,
+        visible: { ...dashboardSettings.visible, [field.id]: checked }
+      };
+      persistDashboardSettings();
+      applyDashboardLimit();
+    }
+  ));
 }
+applyDashboardLimit();
 
 const showOtherClasses = document.getElementById("standings-show-other-classes") as HTMLInputElement | null;
 const ownClassRows = document.getElementById("standings-own-class-rows") as HTMLInputElement | null;

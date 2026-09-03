@@ -2,20 +2,23 @@
 @import "./styles.css";
 
 body.dashboard-body {
-  min-width: 300px;
-  min-height: 120px;
+  min-width: 160px;
+  min-height: 40px;
   padding: 5px;
 }
 
+/* The strip sizes itself to the fields that are on, so removing one shortens
+   the design surface instead of leaving a gap. */
 .dashboard-shell {
-  position: relative;
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  gap: 9px;
   box-sizing: border-box;
-  width: 100%;
+  width: max-content;
   overflow: hidden;
+  padding: 5px 12px 5px 5px;
   border: 1px solid rgb(255 255 255 / 10%);
-  border-radius: 7px;
+  border-radius: 26px;
   background: linear-gradient(
     145deg,
     rgb(12 16 22 / var(--overlay-background-opacity)),
@@ -29,527 +32,115 @@ body.dashboard-body {
   user-select: none;
 }
 
-.dashboard-shell::before {
-  position: absolute;
-  z-index: 2;
-  inset: 0 auto auto 0;
-  width: 2px;
-  height: 100%;
-  background: #d8ff3e;
-  content: "";
-  opacity: 0.82;
-}
-
 /* Every hidden element here is a flex or grid box, and an author display wins
    over the user-agent rule behind the hidden attribute. */
 .dashboard-shell [hidden] {
   display: none;
 }
 
-/* One label scale for the whole cluster: the labels are read once to learn the
-   layout, the values are read at speed, so only the values carry weight. */
-.dash-label {
-  color: #84909d;
-  font-size: calc(7px * var(--overlay-font-scale, 1));
-  font-weight: 800;
-  letter-spacing: .07em;
-  white-space: nowrap;
-}
-
-.dash-band {
+/* The accent lives on the gear ring rather than on a left edge bar: a pill has
+   no straight edge to carry one. */
+.dash-gear {
   display: flex;
-  align-items: stretch;
-  min-width: 0;
-}
-
-.dash-band + .dash-band:not([hidden]) {
-  border-top: 1px solid rgb(255 255 255 / 9%);
-}
-
-.dash-band > :not([hidden]) + :not([hidden]) {
-  border-left: 1px solid rgb(255 255 255 / 8%);
-}
-
-/* Shared label/value cell, used by the electronics row and the hybrid row. */
-.dash-cell {
-  display: flex;
-  flex: 1 1 0;
-  flex-direction: column;
+  flex: 0 0 auto;
   align-items: center;
   justify-content: center;
-  min-width: 0;
-  padding: 2px 3px 3px;
-}
-
-.dash-cell span {
-  color: #84909d;
-  font-size: calc(7px * var(--overlay-font-scale, 1));
-  font-weight: 800;
-  letter-spacing: .07em;
-  white-space: nowrap;
-}
-
-.dash-cell b {
-  color: #e7edf3;
-  font-size: calc(13px * var(--overlay-font-scale, 1));
-  font-weight: 900;
-  white-space: nowrap;
-}
-
-/* A rotary the driver has just turned stays marked for a beat so the change is
-   findable without hunting the row again. */
-.dash-cell[data-changed="true"] b {
-  color: #d8ff3e;
-}
-
-/* ---------------------------------------------------------------- top band */
-
-.dash-band-top {
-  align-items: center;
-}
-
-.dash-lamps {
-  display: flex;
-  flex: 0 0 25%;
-  align-items: center;
-  gap: 3px;
-  min-width: 0;
-  padding: 3px 5px;
-}
-
-.dash-lamps span {
-  flex: 1 1 0;
-  padding: 2px 0;
-  border-radius: 2px;
-  background: rgb(255 255 255 / 5%);
-  color: #58636e;
-  font-size: calc(7px * var(--overlay-font-scale, 1));
-  font-weight: 900;
-  letter-spacing: .05em;
-  text-align: center;
-  white-space: nowrap;
-}
-
-.dash-lamps span[data-state="on"] {
-  background: rgb(216 255 62 / 16%);
-  color: #d8ff3e;
-}
-
-.dash-delta {
-  display: flex;
-  flex: 1 1 0;
-  align-items: baseline;
-  justify-content: center;
-  gap: 5px;
-  min-width: 0;
-  padding: 3px 6px;
-}
-
-.dash-delta span {
-  color: #84909d;
-  font-size: calc(7px * var(--overlay-font-scale, 1));
-  font-weight: 800;
-  letter-spacing: .08em;
-}
-
-.dash-delta b {
-  color: #e7edf3;
-  font-size: calc(15px * var(--overlay-font-scale, 1));
-  font-weight: 900;
-  white-space: nowrap;
-}
-
-.dash-delta b[data-trend="improving"] { color: #8fe04f; }
-.dash-delta b[data-trend="worsening"] { color: #f05252; }
-
-.dash-session {
-  display: flex;
-  flex: 0 0 40%;
-  align-items: center;
-  margin: 0;
-  min-width: 0;
-}
-
-.dash-session > div {
-  display: flex;
-  flex: 1 1 0;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-width: 0;
-  padding: 2px;
-}
-
-.dash-session dt,
-.dash-laptimes dt,
-.dash-fuel dt {
-  color: #84909d;
-  font-size: calc(7px * var(--overlay-font-scale, 1));
-  font-weight: 800;
-  letter-spacing: .07em;
-  white-space: nowrap;
-}
-
-.dash-session dd {
-  margin: 0;
-  color: #e7edf3;
-  font-size: calc(12px * var(--overlay-font-scale, 1));
-  font-weight: 900;
-  white-space: nowrap;
-}
-
-/* --------------------------------------------------------------- main band */
-
-/* The two rows fill the band so the compound chip, centred on the block, lands
-   exactly on the axle line between them. */
-.dash-tires {
-  position: relative;
-  display: grid;
-  flex: 0 0 27%;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  grid-template-rows: repeat(2, minmax(0, 1fr));
-  gap: 5px 3px;
-  min-width: 0;
-  padding: 2px 5px;
-}
-
-/* No frame around each corner: at this size the four blocks read as a car on
-   their own, and the borders were most of what made the block look bulky. */
-.dash-tire {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-width: 0;
-}
-
-.dash-tire b {
-  color: #e7edf3;
-  font-size: calc(13px * var(--overlay-font-scale, 1));
+  width: calc(42px * var(--overlay-font-scale, 1));
+  height: calc(42px * var(--overlay-font-scale, 1));
+  border: 2px solid rgb(216 255 62 / 55%);
+  border-radius: 50%;
+  background: rgb(255 255 255 / 4%);
+  color: #f5f9ff;
+  font-size: calc(26px * var(--overlay-font-scale, 1));
   font-weight: 900;
   line-height: 1;
 }
 
-.dash-tire-meta {
-  display: flex;
-  gap: 4px;
+.dash-gear[data-rev="high"] { border-color: rgb(239 219 61 / 70%); }
+
+.dash-gear[data-rev="limit"] {
+  border-color: rgb(240 82 82 / 85%);
+  color: #f05252;
 }
 
-.dash-tire-meta span {
-  font-size: calc(7px * var(--overlay-font-scale, 1));
-  font-weight: 800;
-  white-space: nowrap;
-}
-
-.dash-tire-meta span[data-dashboard-tire="tire"] { color: var(--tire-color, #687481); }
-.dash-tire-meta span[data-dashboard-tire="brake"] { color: var(--brake-color, #687481); }
-
-.dash-tire-wear {
-  width: 74%;
-  height: 2px;
-  overflow: hidden;
-  border-radius: 1px;
-  background: rgb(255 255 255 / 10%);
-}
-
-.dash-tire-wear i {
-  display: block;
-  width: 0;
-  height: 100%;
-  background: #8fe04f;
-}
-
-.dash-tire[data-wear="medium"] .dash-tire-wear i { background: #efdb3d; }
-.dash-tire[data-wear="low"] .dash-tire-wear i { background: #f05252; }
-
-.dash-compound {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  padding: 0 4px;
-  border-radius: 2px;
-  background: #0b0f15;
-  color: #b7c0c9;
-  font-size: calc(7px * var(--overlay-font-scale, 1));
-  font-weight: 900;
-  letter-spacing: .07em;
-  white-space: nowrap;
-  transform: translate(-50%, -50%);
-}
-
-.dash-core {
-  display: flex;
-  flex: 1 1 0;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  min-width: 0;
-  padding: 4px 6px 5px;
-}
-
-.dash-rev {
-  width: 100%;
-  height: 4px;
-  overflow: hidden;
-  border-radius: 2px;
-  background: rgb(255 255 255 / 10%);
-}
-
-#dashboard-rev-fill {
-  display: block;
-  width: 0;
-  height: 100%;
-  background: #d8ff3e;
-}
-
-.dash-core[data-rev="high"] #dashboard-rev-fill { background: #efdb3d; }
-.dash-core[data-rev="limit"] #dashboard-rev-fill { background: #f05252; }
-
-/* Gear beside the speed rather than above it: the gear needs the height, and
-   stacking the readouts was the tallest thing in the panel. */
 .dash-readout {
   display: flex;
-  align-items: center;
-  gap: 6px;
+  flex-direction: column;
+  gap: 4px;
   min-width: 0;
 }
 
-#dashboard-gear {
-  color: #f5f9ff;
-  font-size: calc(36px * var(--overlay-font-scale, 1));
-  font-weight: 900;
-  line-height: .85;
+.dash-revs {
+  display: flex;
+  gap: 3px;
+  min-width: 0;
+  padding: 0 2px;
 }
 
-.dash-core[data-rev="limit"] #dashboard-gear { color: #f05252; }
+.dash-revs i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 13%);
+}
 
-.dash-readout-meta {
+.dash-revs i[data-lit="true"] { background: #8fe04f; }
+.dash-revs[data-rev="high"] i[data-lit="true"] { background: #efdb3d; }
+.dash-revs[data-rev="limit"] i[data-lit="true"] { background: #f05252; }
+
+.dash-fields {
   display: flex;
+  align-items: flex-end;
+  gap: 14px;
+  margin: 0;
+  min-width: 0;
+  padding: 0 2px;
+}
+
+.dash-fields > div {
+  display: flex;
+  flex: 0 0 auto;
   flex-direction: column;
+  align-items: center;
   gap: 1px;
   min-width: 0;
 }
 
-.dash-speed {
-  display: flex;
-  align-items: baseline;
-  gap: 3px;
-  margin: 0;
+.dash-fields dt {
+  color: #84909d;
+  font-size: calc(8px * var(--overlay-font-scale, 1));
+  font-weight: 800;
+  letter-spacing: .08em;
+  white-space: nowrap;
 }
 
-.dash-speed b {
-  color: #e7edf3;
-  font-size: calc(18px * var(--overlay-font-scale, 1));
+.dash-fields dd {
+  margin: 0;
+  color: #f0f4f8;
+  font-size: calc(19px * var(--overlay-font-scale, 1));
   font-weight: 900;
   line-height: 1;
-}
-
-.dash-speed span {
-  color: #84909d;
-  font-size: calc(7px * var(--overlay-font-scale, 1));
-  font-weight: 800;
-  letter-spacing: .07em;
-}
-
-.dash-ambient {
-  display: flex;
-  gap: 6px;
-  margin: 0;
-}
-
-.dash-ambient i {
-  color: #84909d;
-  font-size: calc(7px * var(--overlay-font-scale, 1));
-  font-style: normal;
-  font-weight: 800;
-  letter-spacing: .07em;
-}
-
-.dash-ambient b {
-  color: #b7c0c9;
-  font-size: calc(8px * var(--overlay-font-scale, 1));
-  font-weight: 900;
-}
-
-.dash-laptimes {
-  display: flex;
-  flex: 0 0 33%;
-  flex-direction: column;
-  justify-content: center;
-  margin: 0;
-  min-width: 0;
-  padding: 3px 7px;
-}
-
-/* Label and time on one line: three stacked pairs were three rows of label
-   height for information the driver already knows the order of. */
-.dash-laptimes > div {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 6px;
-  min-width: 0;
-}
-
-.dash-laptimes > div + div {
-  margin-top: 1px;
-  padding-top: 1px;
-  border-top: 1px solid rgb(255 255 255 / 7%);
-}
-
-.dash-laptimes dd {
-  margin: 0;
-  font-size: calc(14px * var(--overlay-font-scale, 1));
-  font-weight: 900;
   white-space: nowrap;
 }
 
-.dash-laptimes > div[data-lap="predicted"] dd { color: #f5f9ff; }
-.dash-laptimes > div[data-lap="last"] dd { color: #b7c0c9; }
-.dash-laptimes > div[data-lap="best"] dd { color: #d8ff3e; }
+/* Position is the one value read as a standing rather than as a measurement,
+   so it carries the accent the way the references highlight it. */
+.dash-fields > div[data-dashboard-field="position"] dd { color: #d8ff3e; }
 
-/* ------------------------------------------------------------- hybrid band */
-
-.dash-band-hybrid {
-  align-items: center;
-  gap: 7px;
-  padding: 2px 7px 3px;
-}
-
-.dash-band-hybrid > :not([hidden]) + :not([hidden]) {
-  border-left: 0;
-}
-
-.dash-battery {
-  display: flex;
-  flex: 0 1 42%;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-  margin-right: auto;
-}
-
-.dash-battery-head {
-  display: flex;
-  align-items: baseline;
-  gap: 5px;
-}
-
-.dash-battery-head span {
-  color: #84909d;
-  font-size: calc(7px * var(--overlay-font-scale, 1));
-  font-weight: 800;
-  letter-spacing: .07em;
-  white-space: nowrap;
-}
-
-.dash-battery-head b {
-  color: #e7edf3;
-  font-size: calc(12px * var(--overlay-font-scale, 1));
-  font-weight: 900;
-  white-space: nowrap;
-}
-
-.dash-battery-track {
-  height: 4px;
-  overflow: hidden;
-  border-radius: 2px;
-  background: rgb(255 255 255 / 10%);
-}
-
-#dashboard-battery-fill {
-  display: block;
-  width: 0;
-  height: 100%;
-  background: #d8ff3e;
-}
-
-.dash-battery[data-level="medium"] #dashboard-battery-fill { background: #ffb84d; }
-.dash-battery[data-level="low"] #dashboard-battery-fill { background: #ff6b5e; }
-
-.dash-band-hybrid .dash-cell {
-  flex: 0 0 auto;
-  min-width: 46px;
-  padding: 0;
-}
-
-.dash-motor-state {
-  flex: 0 0 auto;
-  margin: 0;
-  padding: 2px 5px;
-  border: 1px solid rgb(255 255 255 / 12%);
-  border-radius: 3px;
-  color: #7f8997;
-  font-size: calc(8px * var(--overlay-font-scale, 1));
-  font-weight: 900;
-  letter-spacing: .07em;
-  white-space: nowrap;
-}
-
-.dash-motor-state[data-state="propulsion"] {
-  border-color: rgb(216 255 62 / 45%);
-  color: #d8ff3e;
-}
-
-.dash-motor-state[data-state="regeneration"] {
-  border-color: rgb(111 168 220 / 45%);
-  color: #6fa8dc;
-}
-
-/* ------------------------------------------------------------- bottom band */
-
-.dash-electronics {
-  display: flex;
-  flex: 1 1 0;
-  min-width: 0;
-}
-
-.dash-electronics > :not([hidden]) + :not([hidden]) {
-  border-left: 1px solid rgb(255 255 255 / 8%);
-}
-
-.dash-fuel {
-  display: flex;
-  flex: 0 0 33%;
-  align-items: center;
-  margin: 0;
-  min-width: 0;
-}
-
-.dash-fuel > div {
-  display: flex;
-  flex: 1 1 0;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-width: 0;
-  padding: 2px 2px 3px;
-}
-
-.dash-fuel > div:not([hidden]) + div:not([hidden]) {
-  border-left: 1px solid rgb(255 255 255 / 8%);
-}
-
-.dash-fuel dd {
-  margin: 0;
-  color: #e7edf3;
-  font-size: calc(13px * var(--overlay-font-scale, 1));
-  font-weight: 900;
-  white-space: nowrap;
-}
+#dashboard-delta[data-trend="improving"] { color: #8fe04f; }
+#dashboard-delta[data-trend="worsening"] { color: #f05252; }
 
 .dash-empty {
   display: flex;
   align-items: center;
   justify-content: center;
   margin: 0;
-  padding: 12px 8px;
+  padding: 6px 10px;
   color: #687481;
   font-size: calc(10px * var(--overlay-font-scale, 1));
   font-weight: 900;
   letter-spacing: .09em;
-  text-align: center;
+  white-space: nowrap;
 }
 
 .click-through .dashboard-shell {

@@ -83,6 +83,38 @@ export const fitOverlay = (
   return setSize;
 };
 
+/**
+ * Ajusta la superficie de diseño al contenido real en los dos ejes. El panel
+ * que la usa debe dimensionarse a su contenido (`width: max-content`): así, al
+ * quitar elementos, el diseño encoge en vez de dejar hueco vacío.
+ */
+export const fitOverlayToContentBox = (content: HTMLElement): (() => void) => {
+  const body = document.body;
+  const measure = (): OverlaySize => {
+    const style = getComputedStyle(body);
+    const paddingRight = Number.parseFloat(style.paddingRight) || 0;
+    const paddingBottom = Number.parseFloat(style.paddingBottom) || 0;
+    return {
+      width: Math.max(1, Math.ceil(content.offsetLeft + content.offsetWidth + paddingRight)),
+      height: Math.max(1, Math.ceil(content.offsetTop + content.offsetHeight + paddingBottom))
+    };
+  };
+  let current = measure();
+  const resizeOverlay = fitOverlay(current);
+
+  const synchronizeSize = (): void => {
+    const size = measure();
+    if (size.width === current.width && size.height === current.height) return;
+    current = size;
+    resizeOverlay(size);
+  };
+
+  new ResizeObserver(synchronizeSize).observe(content);
+  synchronizeSize();
+  void document.fonts.ready.then(synchronizeSize);
+  return synchronizeSize;
+};
+
 /** Ajusta el alto de diseño al contenido real sin alterar el ancho elegido. */
 export const fitOverlayToContent = (
   width: number,

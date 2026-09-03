@@ -147,7 +147,6 @@ struct LmuSnapshot {
     double hybrid_regen_kw;
     double hybrid_motor_temperature_c;
     double hybrid_motor_rpm;
-    double player_tire_pressure_kpa[4];
     int32_t player_position;
     int32_t player_class_position;
     int32_t player_class_size;
@@ -441,7 +440,6 @@ extern "C" int lmu_read_snapshot(LmuSnapshot* output, int32_t spectator_vehicle_
                     // LMU entrega mBrakeTemp en Kelvin pese al comentario heredado del SDK.
                     output->player_brake_temperature_c[wheel_index] = wheel.mBrakeTemp - 273.15;
                     output->player_tire_remaining_by_wheel_percent[wheel_index] = tire_remaining;
-                    output->player_tire_pressure_kpa[wheel_index] = wheel.mPressure;
                     const double radius_m = static_cast<double>(wheel.mStaticUndeflectedRadius) / 100.0;
                     const double ground_speed_mps = std::hypot(
                         wheel.mLongitudinalGroundVel,
