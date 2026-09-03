@@ -1,6 +1,5 @@
 mod app_paths;
 mod browser_source;
-mod lmu_install;
 mod startup_log;
 mod telemetry;
 #[cfg(windows)]
@@ -1452,7 +1451,7 @@ fn set_timing_settings(window: WebviewWindow, settings: telemetry::TimingSetting
 #[tauri::command]
 fn get_lmu_dependency_status(window: WebviewWindow) -> Result<LmuDependencyStatus, String> {
     require_control_window(&window)?;
-    let plugin = lmu_install::telemetry_plugin();
+    let plugin = telemetry::lmu_telemetry_plugin();
     Ok(LmuDependencyStatus {
         telemetry_plugin_available: plugin.is_some(),
         telemetry_plugin_path: plugin.map(|path| path.display().to_string()),

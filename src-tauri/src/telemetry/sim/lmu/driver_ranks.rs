@@ -94,7 +94,7 @@ impl DriverRankResolver {
     }
 
     fn logging_active(&mut self) -> bool {
-        let Some(generation) = super::analysis_logging_generation() else {
+        let Some(generation) = crate::telemetry::analysis_logging_generation() else {
             return false;
         };
         if self.logging_generation != Some(generation) {
@@ -235,7 +235,7 @@ impl DriverRankResolver {
         }
         let signature = diagnostic.to_string();
         if self.logged_refresh.as_deref() != Some(&signature) {
-            super::queue_analysis_event(diagnostic);
+            crate::telemetry::queue_analysis_event(diagnostic);
             self.logged_refresh = Some(signature);
         }
     }
@@ -277,7 +277,7 @@ impl DriverRankResolver {
             });
             let signature = diagnostic.to_string();
             if self.logged_lookups.get(driver_name) != Some(&signature) {
-                super::queue_analysis_event(diagnostic);
+                crate::telemetry::queue_analysis_event(diagnostic);
                 self.logged_lookups
                     .insert(driver_name.to_owned(), signature);
             }

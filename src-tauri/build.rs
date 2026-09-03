@@ -78,7 +78,7 @@ fn repair_tauri_static_vcruntime_placeholder() {
 fn main() {
     println!("cargo:rustc-check-cfg=cfg(lmu_sdk)");
     println!("cargo:rerun-if-env-changed=LMU_SHARED_MEMORY_SDK");
-    println!("cargo:rerun-if-changed=src/telemetry/lmu_bridge.cpp");
+    println!("cargo:rerun-if-changed=src/telemetry/sim/lmu/bridge.cpp");
     println!("cargo:rerun-if-changed=src/wheel_input.cpp");
 
     if env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("windows") {
@@ -99,7 +99,7 @@ fn main() {
                     install_directory.display()
                 );
             }
-            native.file("src/telemetry/lmu_bridge.cpp").include(sdk);
+            native.file("src/telemetry/sim/lmu/bridge.cpp").include(sdk);
         } else {
             println!(
                 "cargo:warning=No se encontró el SDK de LMU; se compilará con telemetría simulada"

@@ -312,7 +312,7 @@ mod tests {
     #[test]
     fn ordinary_diagnostics_survive_the_shape_based_redaction() {
         for message in [
-            "at blackrack_overlay_lib::telemetry::lmu::read (src/telemetry/lmu.rs:3447)",
+            "at blackrack_overlay_lib::telemetry::lmu::read (src/telemetry/sim/lmu/source.rs:3447)",
             "eyJ",
             "keyJoin failed",
         ] {

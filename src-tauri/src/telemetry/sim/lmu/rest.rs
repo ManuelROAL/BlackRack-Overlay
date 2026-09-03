@@ -12,6 +12,7 @@ use std::sync::{Arc, Mutex};
 #[cfg(not(test))]
 use std::thread;
 use std::time::{Duration, Instant};
+use crate::telemetry::WeatherForecastNode;
 
 const STANDINGS_DEMAND: u8 = 1 << 0;
 const SUPPLEMENT_DEMAND: u8 = 1 << 1;
@@ -195,7 +196,7 @@ pub(super) struct RestWeatherSession {
 }
 
 impl RestWeatherSession {
-    pub(super) fn forecast_nodes(&self) -> Vec<super::WeatherForecastNode> {
+    pub(super) fn forecast_nodes(&self) -> Vec<WeatherForecastNode> {
         [
             &self.start,
             &self.node_25,
@@ -204,7 +205,7 @@ impl RestWeatherSession {
             &self.finish,
         ]
         .iter()
-        .map(|node| super::WeatherForecastNode {
+        .map(|node| WeatherForecastNode {
             sky: node.sky.current_value.round() as i32,
             sky_label: node.sky.string_value.clone(),
             temperature_c: node.temperature.current_value,

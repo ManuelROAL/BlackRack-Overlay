@@ -2,19 +2,8 @@
 mod consumption_profile;
 mod delta_records;
 mod dr_estimate_log;
-#[cfg(all(target_os = "windows", lmu_sdk))]
-mod driver_ranks;
-#[cfg(all(target_os = "windows", lmu_sdk))]
-mod event_split;
 mod fuel_strategy;
-#[cfg(all(target_os = "windows", lmu_sdk))]
-mod lmu;
-#[cfg(all(target_os = "windows", lmu_sdk))]
-mod lmu_rest;
-#[cfg(not(all(target_os = "windows", lmu_sdk)))]
-mod mock;
-#[cfg(all(target_os = "windows", lmu_sdk))]
-mod racecontrol;
+mod sim;
 mod standings_models;
 mod strategy_log;
 mod track_geometry;
@@ -40,6 +29,7 @@ pub(crate) use dr_estimate_log::{
     set_enabled as set_driver_rank_estimate_logging, status as driver_rank_estimate_logging_status,
     DriverRankEstimateLoggingStatus,
 };
+pub(crate) use sim::lmu::install::telemetry_plugin as lmu_telemetry_plugin;
 pub(crate) use standings_models::{set_overlay_view_settings, OverlayViewSettings};
 pub(crate) use strategy_log::{
     set_enabled as set_strategy_logging, status as strategy_logging_status, StrategyLoggingStatus,
@@ -48,9 +38,9 @@ pub(crate) use track_geometry::{track_map_geometry, TrackMapGeometry};
 pub(crate) use track_map_model::{migrate_legacy_track_map_learning, LearnedTrackPoint};
 
 #[cfg(all(target_os = "windows", lmu_sdk))]
-use lmu::LmuTelemetrySource;
+use sim::lmu::LmuTelemetrySource;
 #[cfg(not(all(target_os = "windows", lmu_sdk)))]
-use mock::MockTelemetrySource;
+use sim::mock::MockTelemetrySource;
 
 static LOGGING_ENABLED: AtomicBool = AtomicBool::new(false);
 static LOGGING_GENERATION: AtomicU64 = AtomicU64::new(0);

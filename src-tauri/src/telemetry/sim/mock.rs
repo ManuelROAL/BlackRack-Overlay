@@ -1,11 +1,11 @@
 use std::time::Instant;
 
-use super::fuel_strategy::{
+use crate::telemetry::fuel_strategy::{
     calculate_resource_strategy, calculate_stint_targets, FuelStrategies, ResourceStrategyInput,
 };
-use super::{
+use crate::telemetry::{
     FlagWarning, RejoinWarning, StandingEntry, TelemetryDemand, TelemetryFrame, TelemetrySource,
-    TireLifeModel, TrackMapVehicle,
+    TireLifeModel, TrackMapVehicle, WeatherForecastModel, WeatherForecastNode,
 };
 
 pub struct MockTelemetrySource {
@@ -155,13 +155,13 @@ impl TelemetrySource for MockTelemetrySource {
             track_wetness_percent: 45.0,
             track_wetness_min_percent: 4.0,
             track_wetness_max_percent: 22.0,
-            weather_forecast: super::WeatherForecastModel {
+            weather_forecast: WeatherForecastModel {
                 available: true,
                 session: "RACE".into(),
                 current_index: 1,
                 next_index: 2,
                 nodes: vec![
-                    super::WeatherForecastNode {
+                    WeatherForecastNode {
                         sky: 1,
                         sky_label: "Light Cloud".into(),
                         temperature_c: 19.4,
@@ -169,7 +169,7 @@ impl TelemetrySource for MockTelemetrySource {
                         humidity_percent: 62.0,
                         minutes_from_now: None,
                     },
-                    super::WeatherForecastNode {
+                    WeatherForecastNode {
                         sky: 2,
                         sky_label: "Partially Cloudy".into(),
                         temperature_c: 19.1,
@@ -177,7 +177,7 @@ impl TelemetrySource for MockTelemetrySource {
                         humidity_percent: 66.0,
                         minutes_from_now: Some(24),
                     },
-                    super::WeatherForecastNode {
+                    WeatherForecastNode {
                         sky: 3,
                         sky_label: "Mostly Cloudy".into(),
                         temperature_c: 18.6,
@@ -185,7 +185,7 @@ impl TelemetrySource for MockTelemetrySource {
                         humidity_percent: 72.0,
                         minutes_from_now: Some(46),
                     },
-                    super::WeatherForecastNode {
+                    WeatherForecastNode {
                         sky: 4,
                         sky_label: "Overcast".into(),
                         temperature_c: 18.2,
@@ -193,7 +193,7 @@ impl TelemetrySource for MockTelemetrySource {
                         humidity_percent: 80.0,
                         minutes_from_now: Some(62),
                     },
-                    super::WeatherForecastNode {
+                    WeatherForecastNode {
                         sky: 9,
                         sky_label: "Overcast and Heavy Rain".into(),
                         temperature_c: 17.9,

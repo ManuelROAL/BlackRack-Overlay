@@ -109,7 +109,7 @@ impl SessionSplitResolver {
         match result {
             Ok(split) => {
                 if split != self.current {
-                    super::queue_analysis_event(serde_json::json!({
+                    crate::telemetry::queue_analysis_event(serde_json::json!({
                         "event": "session_split",
                         "source": "racecontrol_event_overview",
                         "status": if split.number > 0 { "resolved" } else { "not_available" },
@@ -126,7 +126,7 @@ impl SessionSplitResolver {
                 }
                 self.current = split;
             }
-            Err(error) => super::queue_analysis_event(serde_json::json!({
+            Err(error) => crate::telemetry::queue_analysis_event(serde_json::json!({
                 "event": "session_split",
                 "source": "racecontrol_event_overview",
                 "status": "failed",
@@ -473,7 +473,7 @@ fn positive_u32(value: &Value) -> Option<u32> {
 }
 
 fn latest_online_event_id() -> Option<String> {
-    let latest = crate::lmu_install::installations()
+    let latest = super::install::installations()
         .into_iter()
         .flat_map(|installation| {
             fs::read_dir(installation.join("UserData/Log"))
@@ -528,7 +528,7 @@ fn event_id_from_text(text: &str) -> Option<String> {
 }
 
 fn cached_event_split(event_id: &str) -> Option<SessionSplit> {
-    crate::lmu_install::installations()
+    super::install::installations()
         .into_iter()
         .flat_map(|installation| {
             [

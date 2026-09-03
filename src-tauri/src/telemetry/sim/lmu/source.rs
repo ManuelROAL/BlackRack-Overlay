@@ -9,17 +9,17 @@ use std::collections::{HashMap, HashSet, VecDeque};
 use std::ffi::{c_char, c_int};
 use std::time::{Duration, Instant};
 
-use super::consumption_profile::{ConsumptionProfiler, ProfileEstimate};
 use super::driver_ranks::DriverRankResolver;
 use super::event_split::{DriverRankSettings, SessionSplitResolver};
-use super::fuel_strategy::{
+use super::rest::{
+    normalized_driver_identity, normalized_name, LocalRestResolver, RestVehicleDamage,
+};
+use crate::telemetry::consumption_profile::{ConsumptionProfiler, ProfileEstimate};
+use crate::telemetry::fuel_strategy::{
     calculate_resource_strategy, calculate_stint_targets, next_stint_autonomy, FuelStrategies,
     ResourceStrategyInput,
 };
-use super::lmu_rest::{
-    normalized_driver_identity, normalized_name, LocalRestResolver, RestVehicleDamage,
-};
-use super::{
+use crate::telemetry::{
     FlagWarning, RejoinWarning, StandingEntry, TelemetryDemand, TelemetryFrame, TelemetrySource,
     TireLifeModel, TrackMapVehicle,
 };
@@ -1161,7 +1161,7 @@ impl SourceStagePerformance {
     }
 
     fn record(&mut self, sample: SourceStageSample) {
-        if super::analysis_logging_generation().is_none() {
+        if crate::telemetry::analysis_logging_generation().is_none() {
             if self.cycles > 0 {
                 *self = Self::new();
             }
@@ -1189,7 +1189,7 @@ impl SourceStagePerformance {
         let cycles = self.cycles.max(1) as u128;
         let state_updates = self.standings_state_updates.max(1) as u128;
         let builds = self.standings_builds.max(1) as u128;
-        super::queue_analysis_event(serde_json::json!({
+        crate::telemetry::queue_analysis_event(serde_json::json!({
             "event": "source_stage_performance",
             "period_ms": elapsed.as_millis() as u64,
             "cycles": self.cycles,

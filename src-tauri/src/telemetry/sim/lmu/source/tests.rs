@@ -4,8 +4,8 @@ use super::{
     LmuStandingEntry, LmuTelemetrySource, PlayerLapDistanceEstimator, PlayerLapDistanceSample,
     PlayerLapTimeHistory, TireWearTracker,
 };
-use crate::telemetry::event_split::DriverRankSettings;
-use crate::telemetry::lmu_rest::{RestStanding, RestVehicleDamage};
+use crate::telemetry::sim::lmu::event_split::DriverRankSettings;
+use crate::telemetry::sim::lmu::rest::{RestStanding, RestVehicleDamage};
 use crate::telemetry::StandingEntry;
 use std::collections::{HashMap, HashSet};
 
