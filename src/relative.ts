@@ -24,8 +24,16 @@ let relativeSettings = readRelativeSettings();
 // La configuración del usuario se conserva y vuelve sola al empezar la carrera.
 const RACE_ONLY_COLUMNS = new Set<RelativeColumnId>(["lap"]);
 let raceSession = true;
+// Ancho de la pista del cambio de posición más su separación dentro de la
+// celda: sin indicador la columna sobra justo eso y dejaría el hueco vacío.
+const POSITION_CHANGE_WIDTH = 19;
+const positionChangeVisible = () => raceSession && relativeSettings.options.positionChange;
 const activeColumns = () =>
-  visibleRelativeColumns(relativeSettings).filter(({ id }) => raceSession || !RACE_ONLY_COLUMNS.has(id));
+  visibleRelativeColumns(relativeSettings)
+    .filter(({ id }) => raceSession || !RACE_ONLY_COLUMNS.has(id))
+    .map((column) => column.id === "position" && !positionChangeVisible()
+      ? { ...column, width: column.width - POSITION_CHANGE_WIDTH }
+      : column);
 const columnExpansionRatio = (id: RelativeColumnId): number => {
   if (id === "driver") return 0.5;
   if (id === "country" || id === "badge" || id === "tire") return 0.5;
@@ -445,9 +453,7 @@ const createCell = (entry: StandingEntry, column: RelativeColumnId, trackLimit: 
       const cell = node("div", "standing-position-cell");
       cell.append(node("strong", "standing-position", entry.position.toString()));
       // Sin parrilla no hay referencia para el cambio de posición.
-      if (relativeSettings.options.positionChange && raceSession) {
-        cell.append(positionChange(entry.position_change));
-      }
+      if (positionChangeVisible()) cell.append(positionChange(entry.position_change));
       return cell;
     }
     case "number": return node("span", "car-number", liveCarNumbers.get(entry.vehicle_id) || entry.car_number || "--");
