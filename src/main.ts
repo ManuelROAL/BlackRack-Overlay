@@ -138,6 +138,10 @@ import {
   type PerformanceProfile
 } from "./performance-settings";
 import {
+  readSimulatorPreference,
+  saveSimulatorPreference
+} from "./simulator-settings";
+import {
   readSpectatorMode,
   readTeamMode,
   saveSpectatorMode,
@@ -186,11 +190,19 @@ interface TelemetryLoggingStatus {
   active_file: string | null;
 }
 
+interface SimulatorOption {
+  id: string;
+  display_name: string;
+}
+
 interface SimulatorStatus {
   id: string;
   display_name: string;
   /** Absent when the simulator has nothing installable to check. */
   dependency: { available: boolean; detail: string | null } | null;
+  /** "auto" or the id of a pinned simulator. */
+  preference: string;
+  options: SimulatorOption[];
 }
 
 interface ShortcutBindingStatus {
@@ -263,6 +275,67 @@ let simulatorStatus: SimulatorStatus | null = null;
 const activeSimulatorName = (): string => simulatorStatus?.display_name || t("simulator.unknown");
 
 applyTranslations();
+
+let simulatorPreference = readSimulatorPreference();
+const simulatorPreferenceContainer = document.getElementById("simulator-preference-list");
+
+/**
+ * Builds the "auto"/pinned buttons once the simulator options are known.
+ * Their labels come from the backend rather than the catalog, the same way
+ * `activeSimulatorName` does, so no simulator name lives in visible copy.
+ */
+const applySimulatorPreferenceButtons = (options: SimulatorOption[]): void => {
+  const container = simulatorPreferenceContainer;
+  if (!container || container.childElementCount > 0) return;
+
+  const buttons: HTMLButtonElement[] = [];
+  const highlightSimulatorPreference = (): void => {
+    for (const button of buttons) {
+      const selected = button.dataset.simulatorPreference === simulatorPreference;
+      button.classList.toggle("active", selected);
+      button.setAttribute("aria-pressed", String(selected));
+    }
+  };
+
+  const addSimulatorPreferenceButton = (id: string, label: string, sub: string): void => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.dataset.simulatorPreference = id;
+    button.setAttribute("aria-pressed", "false");
+    const strong = document.createElement("b");
+    strong.textContent = label;
+    const small = document.createElement("small");
+    small.textContent = sub;
+    button.append(strong, small);
+    button.addEventListener("click", () => {
+      const next = button.dataset.simulatorPreference;
+      if (!next || next === simulatorPreference) return;
+      const previous = simulatorPreference;
+      simulatorPreference = next;
+      highlightSimulatorPreference();
+      for (const other of buttons) other.disabled = true;
+      void invoke("set_simulator_preference", { simulator: next }).then(() => {
+        saveSimulatorPreference(next);
+      }).catch(() => {
+        simulatorPreference = previous;
+        highlightSimulatorPreference();
+      }).finally(() => {
+        for (const other of buttons) other.disabled = false;
+      });
+    });
+    buttons.push(button);
+    container.append(button);
+  };
+
+  addSimulatorPreferenceButton("auto", t("simulator.auto"), t("simulator.autoSub"));
+  for (const option of options) {
+    addSimulatorPreferenceButton(option.id, option.display_name, t("simulator.pinnedSub"));
+  }
+  highlightSimulatorPreference();
+};
+
+void invoke("set_simulator_preference", { simulator: simulatorPreference })
+  .catch(reportInitializationError("simulator preference"));
 
 let performanceProfile = readPerformanceProfile();
 const performanceProfileButtons = [
@@ -2913,6 +2986,7 @@ void invoke<InteractionMode>("get_interaction_mode")
 const refreshSimulatorStatus = (): void => {
   void invoke<SimulatorStatus>("get_simulator_status").then((status) => {
     simulatorStatus = status;
+    applySimulatorPreferenceButtons(status.options);
   }).catch(reportInitializationError("simulator status"));
 };
 refreshSimulatorStatus();

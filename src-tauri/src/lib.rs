@@ -1449,6 +1449,12 @@ fn get_simulator_status(window: WebviewWindow) -> Result<telemetry::SimulatorSta
 }
 
 #[tauri::command]
+fn set_simulator_preference(window: WebviewWindow, simulator: String) -> Result<(), String> {
+    require_control_window(&window)?;
+    telemetry::set_simulator_preference(&simulator)
+}
+
+#[tauri::command]
 fn open_support_page(window: WebviewWindow) -> Result<(), String> {
     require_control_window(&window)?;
     #[cfg(windows)]
@@ -1973,6 +1979,7 @@ pub fn run() {
             set_delta_settings,
             set_timing_settings,
             get_simulator_status,
+            set_simulator_preference,
             open_support_page,
             get_shortcut_settings,
             set_shortcut,

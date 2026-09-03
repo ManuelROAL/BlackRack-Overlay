@@ -29,7 +29,9 @@ pub(crate) use dr_estimate_log::{
     set_enabled as set_driver_rank_estimate_logging, status as driver_rank_estimate_logging_status,
     DriverRankEstimateLoggingStatus,
 };
-pub(crate) use sim::{status as simulator_status, SimulatorStatus};
+pub(crate) use sim::{
+    set_preference as set_simulator_preference, status as simulator_status, SimulatorStatus,
+};
 pub(crate) use standings_models::{set_overlay_view_settings, OverlayViewSettings};
 pub(crate) use strategy_log::{
     set_enabled as set_strategy_logging, status as strategy_logging_status, StrategyLoggingStatus,

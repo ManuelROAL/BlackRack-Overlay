@@ -46,6 +46,10 @@ fn telemetry_dependency() -> SourceDependency {
     }
 }
 
+/// Whether the simulator's mapping is open right now. Used only to rank this
+/// candidate against the others in automatic selection — constructing the
+/// source below never depends on it, so a source pinned to iRacing while it
+/// is closed still gets its own "waiting" state instead of the mock's.
 #[cfg(target_os = "windows")]
 pub(super) fn available() -> bool {
     irsdk::available()
@@ -53,7 +57,7 @@ pub(super) fn available() -> bool {
 
 #[cfg(target_os = "windows")]
 pub(super) fn try_new(_app_data: &Path) -> Option<Box<dyn TelemetrySource>> {
-    available().then(|| Box::new(source::IracingTelemetrySource::new()) as Box<dyn TelemetrySource>)
+    Some(Box::new(source::IracingTelemetrySource::new()) as Box<dyn TelemetrySource>)
 }
 
 /// The shared memory is a Windows interface, so this simulator cannot be read

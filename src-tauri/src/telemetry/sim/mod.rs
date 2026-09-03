@@ -11,6 +11,7 @@
 
 use serde::Serialize;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::sync::RwLock;
 use std::time::{Duration, Instant};
 
@@ -114,9 +115,13 @@ pub(crate) trait TelemetrySource: Send + 'static {
 }
 
 /// One simulator the app can read, with the probe that says whether it can be
-/// read right now. Order is priority.
+/// read right now. Order is priority: a candidate whose `available` cannot
+/// fail — LMU, once its SDK is compiled in — goes last, or nothing after it
+/// would ever be reached in automatic selection.
 struct Candidate {
     id: &'static str,
+    /// Shown in the control panel's simulator picker.
+    display_name: &'static str,
     available: fn() -> bool,
     try_new: fn(&Path) -> Option<Box<dyn TelemetrySource>>,
 }
@@ -124,11 +129,13 @@ struct Candidate {
 const CANDIDATES: [Candidate; 2] = [
     Candidate {
         id: "iracing",
+        display_name: "iRacing",
         available: iracing::available,
         try_new: iracing::try_new,
     },
     Candidate {
         id: "lmu",
+        display_name: "Le Mans Ultimate",
         available: lmu::available,
         try_new: lmu::try_new,
     },
@@ -145,23 +152,131 @@ fn set_active(descriptor: SourceDescriptor) {
     }
 }
 
-/// Follows whichever simulator is running instead of deciding once at startup:
-/// the app is normally launched before the game, and closing one simulator to
-/// open another must not need a restart.
+pub(crate) fn active() -> Option<SourceDescriptor> {
+    ACTIVE.read().ok().and_then(|active| *active)
+}
+
+pub(super) fn active_official_geometry() -> Option<OfficialGeometryFetcher> {
+    active().and_then(|descriptor| descriptor.official_geometry)
+}
+
+/// The user's simulator choice. `CANDIDATES.len()` stands for "auto" — follow
+/// whichever candidate is running — so a plain index never needs an `Option`.
+static PREFERENCE: AtomicUsize = AtomicUsize::new(CANDIDATES.len());
+/// Bumped by every `set_preference` call so a running `SelectedSource` can
+/// tell a genuine change from the value it already acted on, without
+/// re-checking on every telemetry cycle.
+static PREFERENCE_GENERATION: AtomicU64 = AtomicU64::new(0);
+
+fn preference_index() -> Option<usize> {
+    let stored = PREFERENCE.load(Ordering::Relaxed);
+    (stored < CANDIDATES.len()).then_some(stored)
+}
+
+/// `"auto"` or the id of the pinned candidate, for the control panel to show
+/// what is configured next to what is actually active.
+pub(crate) fn preference() -> &'static str {
+    preference_index().map_or("auto", |index| CANDIDATES[index].id)
+}
+
+/// Pins telemetry to one simulator, or `"auto"` to go back to following
+/// whichever is running. Rejects an id that names no candidate rather than
+/// silently falling back, so a stale or mistyped id is visible to the caller.
+pub(crate) fn set_preference(id: &str) -> Result<(), String> {
+    let index = if id == "auto" {
+        CANDIDATES.len()
+    } else {
+        CANDIDATES
+            .iter()
+            .position(|candidate| candidate.id == id)
+            .ok_or_else(|| format!("unknown_simulator_{id}"))?
+    };
+    PREFERENCE.store(index, Ordering::Relaxed);
+    PREFERENCE_GENERATION.fetch_add(1, Ordering::Relaxed);
+    Ok(())
+}
+
+/// A simulator the control panel can offer as a preference.
+#[derive(Serialize)]
+pub(crate) struct SimulatorOption {
+    pub(crate) id: &'static str,
+    pub(crate) display_name: &'static str,
+}
+
+pub(crate) fn options() -> Vec<SimulatorOption> {
+    CANDIDATES
+        .iter()
+        .map(|candidate| SimulatorOption {
+            id: candidate.id,
+            display_name: candidate.display_name,
+        })
+        .collect()
+}
+
+/// The candidates the current preference allows: every one of them under
+/// "auto", or just the pinned one. `detect` and the gentle reselect below both
+/// choose from this instead of `CANDIDATES` directly, so a pinned choice is
+/// never quietly overridden by a higher-priority simulator starting up.
+fn allowed_candidates() -> impl Iterator<Item = &'static Candidate> {
+    let forced = preference_index();
+    CANDIDATES
+        .iter()
+        .enumerate()
+        .filter(move |(index, _)| forced.is_none_or(|only| *index == only))
+        .map(|(_, candidate)| candidate)
+}
+
+/// What the control panel reports about the simulator behind the overlays.
+#[derive(Serialize)]
+pub(crate) struct SimulatorStatus {
+    id: &'static str,
+    display_name: &'static str,
+    dependency: Option<SourceDependency>,
+    preference: &'static str,
+    options: Vec<SimulatorOption>,
+}
+
+pub(crate) fn status() -> SimulatorStatus {
+    let preference = preference();
+    let options = options();
+    let Some(descriptor) = active() else {
+        return SimulatorStatus {
+            id: "none",
+            display_name: "",
+            dependency: None,
+            preference,
+            options,
+        };
+    };
+    SimulatorStatus {
+        id: descriptor.id,
+        display_name: descriptor.display_name,
+        dependency: descriptor.dependency.map(|probe| probe()),
+        preference,
+        options,
+    }
+}
+
+/// Follows whichever simulator is running, or the one the user pinned,
+/// instead of deciding once at startup: the app is normally launched before
+/// the game, and closing one simulator to open another must not need a
+/// restart.
 struct SelectedSource {
     app_data: PathBuf,
     active: Box<dyn TelemetrySource>,
     on_mock: bool,
     probe_at: Instant,
+    /// The `PREFERENCE_GENERATION` this source has already reacted to.
+    preference_generation: u64,
 }
 
 impl SelectedSource {
-    /// Adopts the highest-priority simulator that is available now. Keeping the
-    /// current source when nothing is available is what leaves a waiting
-    /// simulator reporting itself instead of falling back to the mock.
+    /// Adopts the highest-priority allowed candidate that is available now.
+    /// Keeping the current source when nothing is available is what leaves a
+    /// waiting simulator reporting itself instead of falling back to mock.
     fn reselect(&mut self) {
         let current = self.active.descriptor().id;
-        let Some(candidate) = CANDIDATES.iter().find(|candidate| (candidate.available)()) else {
+        let Some(candidate) = allowed_candidates().find(|candidate| (candidate.available)()) else {
             return;
         };
         if candidate.id == current {
@@ -174,6 +289,30 @@ impl SelectedSource {
         self.active = source;
         self.on_mock = false;
     }
+
+    /// Reacts to a preference change immediately rather than waiting for a
+    /// disconnect: the user asked for something specific, so the source
+    /// switches away from a now-disallowed one even while it is connected.
+    fn force_reselect(&mut self) {
+        let source = match preference_index() {
+            // Pinned: build that candidate's own source even if it does not
+            // look available yet, so it reports "waiting for it" instead of
+            // falling through to fabricated mock data.
+            Some(index) => (CANDIDATES[index].try_new)(&self.app_data),
+            // Back to auto: let the normal priority order decide, the same
+            // way `detect` and the gentle `reselect` do.
+            None => CANDIDATES
+                .iter()
+                .find(|candidate| (candidate.available)())
+                .and_then(|candidate| (candidate.try_new)(&self.app_data)),
+        };
+        let source = source.unwrap_or_else(|| {
+            Box::new(mock::MockTelemetrySource::new()) as Box<dyn TelemetrySource>
+        });
+        self.on_mock = source.descriptor().id == "mock";
+        set_active(source.descriptor());
+        self.active = source;
+    }
 }
 
 impl TelemetrySource for SelectedSource {
@@ -182,6 +321,11 @@ impl TelemetrySource for SelectedSource {
     }
 
     fn next_frame(&mut self, demand: TelemetryDemand) -> TelemetryFrame {
+        let generation = PREFERENCE_GENERATION.load(Ordering::Relaxed);
+        if generation != self.preference_generation {
+            self.preference_generation = generation;
+            self.force_reselect();
+        }
         let frame = self.active.next_frame(demand);
         // A connected source is the right one by definition. The mock always
         // reports connected, so it is the one case that keeps probing.
@@ -193,12 +337,11 @@ impl TelemetrySource for SelectedSource {
     }
 }
 
-/// Picks the first simulator whose telemetry can be read, and keeps looking
-/// while none is connected. The mock is the last resort so a build made without
-/// any simulator still renders.
+/// Picks the first allowed simulator whose telemetry can be read, and keeps
+/// looking while none is connected. The mock is the last resort so a build
+/// made without any simulator still renders.
 pub(crate) fn detect(app_data: &Path) -> Box<dyn TelemetrySource> {
-    let selected = CANDIDATES
-        .iter()
+    let selected = allowed_candidates()
         .filter(|candidate| (candidate.available)())
         .find_map(|candidate| (candidate.try_new)(app_data));
     let on_mock = selected.is_none();
@@ -210,36 +353,6 @@ pub(crate) fn detect(app_data: &Path) -> Box<dyn TelemetrySource> {
         active,
         on_mock,
         probe_at: Instant::now() + PROBE_INTERVAL,
+        preference_generation: PREFERENCE_GENERATION.load(Ordering::Relaxed),
     })
-}
-
-pub(crate) fn active() -> Option<SourceDescriptor> {
-    ACTIVE.read().ok().and_then(|active| *active)
-}
-
-/// What the control panel reports about the simulator behind the overlays.
-#[derive(Serialize)]
-pub(crate) struct SimulatorStatus {
-    id: &'static str,
-    display_name: &'static str,
-    dependency: Option<SourceDependency>,
-}
-
-pub(crate) fn status() -> SimulatorStatus {
-    let Some(descriptor) = active() else {
-        return SimulatorStatus {
-            id: "none",
-            display_name: "",
-            dependency: None,
-        };
-    };
-    SimulatorStatus {
-        id: descriptor.id,
-        display_name: descriptor.display_name,
-        dependency: descriptor.dependency.map(|probe| probe()),
-    }
-}
-
-pub(super) fn active_official_geometry() -> Option<OfficialGeometryFetcher> {
-    active().and_then(|descriptor| descriptor.official_geometry)
 }

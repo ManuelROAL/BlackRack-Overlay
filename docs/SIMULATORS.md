@@ -51,6 +51,36 @@ answers whether the build has the SDK, because its bridge cannot be asked more
 cheaply than that. Consequently LMU is the last candidate: a build that has its
 SDK is always "available", so anything below it would never be reached.
 
+`try_new` is a different question from `available` and must not assume it was
+already checked: it answers whether this build can ever construct the source at
+all (wrong OS, no SDK), not whether the simulator is running. Both LMU's and
+iRacing's `try_new` succeed unconditionally on a capable build; the source they
+return handles "not running yet" itself, per frame, the same way it handles a
+mid-session disconnect. That gap is what lets a pinned preference (below)
+construct a source before its simulator has even started, so it reports
+"waiting for iRacing" instead of a fabricated mock frame.
+
+## Pinning a preference
+
+The control panel's Simulator section offers Auto plus one button per
+`CANDIDATES` entry, labelled from `sim::options()` — never a literal name in
+TypeScript or the catalogs, the same rule visible copy already follows.
+`set_simulator_preference` (`sim::set_preference`) stores the choice as an
+index into `CANDIDATES`, with `CANDIDATES.len()` standing for "auto", and bumps
+a generation counter. `SelectedSource::next_frame` compares that counter every
+cycle and reacts on the one cycle it changes: a pin builds the chosen
+candidate's own source regardless of `available`, and returning to Auto lets
+the normal priority order pick. This forced switch is what keeps a pin from
+being silently overridden by auto-reselecting the moment the pinned simulator
+happens to be closed — a pinned choice reports "waiting", not a different
+simulator's data.
+
+The preference itself is frontend state, following the same pattern as the
+performance profile: `src/simulator-settings.ts` persists it to `localStorage`
+and the control panel resends it to the backend on load. It resets to Auto on
+every cold start of the Rust process, same as the profile resets to Smooth,
+until the frontend's startup call lands a cycle or two later.
+
 ## Capabilities are not availability
 
 Two different questions share the frame and must not be confused:

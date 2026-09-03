@@ -38,6 +38,15 @@ in `docs/overlays/` and should not be duplicated here.
   restart, so a disconnected source re-probes the candidates every two seconds
   and adopts the first one that reports itself available. A connected source is
   never displaced.
+- Auto is the default, but the control panel lets a user pin one simulator.
+  The pin is frontend state resent to the backend on load, the same pattern the
+  performance profile already uses, rather than a file the backend persists
+  itself. A pin overrides selection on the one telemetry cycle it changes —
+  built from that candidate's own source regardless of whether it currently
+  looks available, so a pinned-but-closed simulator reports its own "waiting"
+  state instead of silently reading a different one or showing fabricated mock
+  data. `try_new` therefore must succeed independently of the `available` probe
+  used to rank candidates in Auto mode; only the OS/build gate can fail it.
 - A source declares what it can *ever* report as capabilities on its
   descriptor, and the frame carries them. A source still being built out turns
   a capability on only once it fills the frame fields behind it, so a partial
