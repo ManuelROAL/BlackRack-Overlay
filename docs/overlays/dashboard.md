@@ -25,9 +25,9 @@ One pill-shaped strip, not a cluster:
   shared `src/rpm-leds.ts`: twelve positions filling symmetrically from both
   ends between 84% and 96% of `max_rpm`, coloured by position — two green, two
   yellow, then the four reds in the middle — flashing cyan at the critical band
-  and magenta over the rev limit. Only the shape differs, since this panel draws
-  round dots rather than bar segments. The gear ring follows the same two
-  thresholds.
+  and magenta over the rev limit. The segments stretch across the readout the
+  way they do there too: a fixed-width cluster reads as a stray fragment in the
+  corner once the strip is wide. The gear ring follows the same two thresholds.
 - Everything else is a uniform label-over-value pair in a single row. Class
   position carries the accent colour, since it is the one value read as a
   standing rather than as a measurement.
@@ -109,6 +109,10 @@ publishes.
   defaults measure about 362 × 54, four fields about 179 × 54.
 - Keep every readout the same size and weight. The strip earns its density from
   uniformity, so a value that wants to be special should get colour, not scale.
+- The shell's small left padding is sized for the gear badge, whose circle
+  already keeps clear of the pill's corner radius. A strip configured without
+  the gear gets that clearance back through `data-gear="off"`, or the rev
+  segments and the first label sit inside the curve.
 
 ## Invariants
 

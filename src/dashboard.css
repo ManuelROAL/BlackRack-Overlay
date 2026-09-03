@@ -19,6 +19,9 @@ body.dashboard-body {
   padding: 5px 12px 5px 5px;
   border: 1px solid rgb(255 255 255 / 10%);
   border-radius: 26px;
+  /* The left padding is sized for the gear badge, whose circle already keeps
+     clear of the corner. With the gear off the content would sit inside the
+     radius instead, so it gets the clearance the badge was providing. */
   background: linear-gradient(
     145deg,
     rgb(12 16 22 / var(--overlay-background-opacity)),
@@ -56,6 +59,8 @@ body.dashboard-body {
   line-height: 1;
 }
 
+.dashboard-shell[data-gear="off"] { padding-left: 14px; }
+
 .dash-gear[data-rev="high"] { border-color: rgb(239 219 61 / 70%); }
 
 .dash-gear[data-rev="limit"] {
@@ -70,11 +75,14 @@ body.dashboard-body {
   min-width: 0;
 }
 
+/* Segments that stretch, as in Trailing + Pedal, rather than a fixed-width
+   cluster: the strip has to span the readout at any field count, or it reads as
+   a stray fragment in the corner instead of a shift light. */
 .dash-revs {
   display: flex;
   gap: 3px;
   min-width: 0;
-  padding: 0 2px;
+  padding: 0 1px;
 }
 
 /* Same shift-light reading as Trailing + Pedal: the band is fixed by the
@@ -82,9 +90,10 @@ body.dashboard-body {
    whole strip turns cyan at the critical band and magenta over the limiter.
    Only the shape differs, because this panel is a pill of round dots. */
 .dash-revs i {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
+  flex: 1 1 0;
+  min-width: 5px;
+  height: 4px;
+  border-radius: 2px;
   background: rgb(85 239 147 / 13%);
 }
 

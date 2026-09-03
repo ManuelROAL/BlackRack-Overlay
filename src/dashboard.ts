@@ -210,6 +210,7 @@ const render = (frame: TelemetryFrame): void => {
     && Math.floor(performance.now() / LIMITER_BLINK_MS) % 2 === 0;
   setState(gear, "limiter", lit && gearShown ? "on" : "off");
   setState(shell, "limiter", lit && !gearShown ? "on" : "off");
+  setState(shell, "gear", gearShown ? "on" : "off");
   toggle(row, rowFields > 0);
   toggle(readout, rowFields > 0 || revsShown);
   toggle(empty, !gearShown && rowFields === 0 && !revsShown);
