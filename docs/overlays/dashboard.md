@@ -24,9 +24,10 @@ nothing inside it is visible:
 1. **Top** — limiter/lights/wipers lamps, the delta to the active reference,
    and the session block: remaining time, overall position, class position and
    lap.
-2. **Main** — the tyre block (2×2 with the fitted compound on the axle line),
-   the core column (rev bar, gear, speed, air and track temperature) and the
-   lap times: predicted, last and best.
+2. **Main** — the tyre block (2×2 with the fitted compound in the channel on
+   the axle line), the core column (rev bar, then the gear beside the speed and
+   the air/track temperatures) and the lap times: predicted, last and best, each
+   as a label and a time on one line.
 3. **Hybrid** — battery bar, regeneration, motor temperature and the deployment
    state. Present only on a car that carries an electric boost system.
 4. **Bottom** — the wheel electronics row and the fuel block.
@@ -83,9 +84,13 @@ nothing inside it is visible:
 - Every block and every electronics/hybrid readout is independently optional.
   `tcslip`, `tccut` and the motor temperature start hidden. These preferences
   also apply to the OBS route and to configuration import/export.
-- Use a 700 px base width; the height follows the visible content through
-  `fitOverlayToContent`. Keep the shared 2 px translucent lime accent along the
-  shell's left edge.
+- The panel is meant to be read at a glance while the eyes are on the road, so
+  it is drawn as tight as it can be and still be legible: a single 7 px label
+  scale, no frame or fill around a tyre corner, the gear beside the speed rather
+  than above it, and label-and-time on one line for the lap times. Use a 460 px
+  base width; the height follows the visible content through
+  `fitOverlayToContent` and lands near 170 px with every block on. Keep the
+  shared 2 px translucent lime accent along the shell's left edge.
 
 ## Invariants
 

@@ -2,9 +2,9 @@
 @import "./styles.css";
 
 body.dashboard-body {
-  min-width: 420px;
-  min-height: 200px;
-  padding: 6px;
+  min-width: 300px;
+  min-height: 120px;
+  padding: 5px;
 }
 
 .dashboard-shell {
@@ -15,7 +15,7 @@ body.dashboard-body {
   width: 100%;
   overflow: hidden;
   border: 1px solid rgb(255 255 255 / 10%);
-  border-radius: 8px;
+  border-radius: 7px;
   background: linear-gradient(
     145deg,
     rgb(12 16 22 / var(--overlay-background-opacity)),
@@ -25,6 +25,7 @@ body.dashboard-body {
   color: #dce3ea;
   font-family: "Roboto Condensed", sans-serif;
   font-variant-numeric: tabular-nums;
+  line-height: 1.1;
   user-select: none;
 }
 
@@ -43,6 +44,16 @@ body.dashboard-body {
    over the user-agent rule behind the hidden attribute. */
 .dashboard-shell [hidden] {
   display: none;
+}
+
+/* One label scale for the whole cluster: the labels are read once to learn the
+   layout, the values are read at speed, so only the values carry weight. */
+.dash-label {
+  color: #84909d;
+  font-size: calc(7px * var(--overlay-font-scale, 1));
+  font-weight: 800;
+  letter-spacing: .07em;
+  white-space: nowrap;
 }
 
 .dash-band {
@@ -66,24 +77,22 @@ body.dashboard-body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 1px;
   min-width: 0;
-  padding: 3px 4px;
+  padding: 3px 3px 4px;
 }
 
 .dash-cell span {
   color: #84909d;
-  font-size: calc(8px * var(--overlay-font-scale, 1));
+  font-size: calc(7px * var(--overlay-font-scale, 1));
   font-weight: 800;
-  letter-spacing: .08em;
+  letter-spacing: .07em;
   white-space: nowrap;
 }
 
 .dash-cell b {
   color: #e7edf3;
-  font-size: calc(17px * var(--overlay-font-scale, 1));
+  font-size: calc(13px * var(--overlay-font-scale, 1));
   font-weight: 900;
-  line-height: 1.05;
   white-space: nowrap;
 }
 
@@ -101,22 +110,22 @@ body.dashboard-body {
 
 .dash-lamps {
   display: flex;
-  flex: 0 0 26%;
+  flex: 0 0 25%;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
   min-width: 0;
-  padding: 5px 7px;
+  padding: 4px 5px;
 }
 
 .dash-lamps span {
   flex: 1 1 0;
-  padding: 3px 0;
-  border-radius: 3px;
+  padding: 2px 0;
+  border-radius: 2px;
   background: rgb(255 255 255 / 5%);
   color: #58636e;
-  font-size: calc(9px * var(--overlay-font-scale, 1));
+  font-size: calc(7px * var(--overlay-font-scale, 1));
   font-weight: 900;
-  letter-spacing: .06em;
+  letter-spacing: .05em;
   text-align: center;
   white-space: nowrap;
 }
@@ -131,21 +140,21 @@ body.dashboard-body {
   flex: 1 1 0;
   align-items: baseline;
   justify-content: center;
-  gap: 8px;
+  gap: 5px;
   min-width: 0;
-  padding: 4px 8px;
+  padding: 3px 6px;
 }
 
 .dash-delta span {
   color: #84909d;
-  font-size: calc(9px * var(--overlay-font-scale, 1));
+  font-size: calc(7px * var(--overlay-font-scale, 1));
   font-weight: 800;
-  letter-spacing: .1em;
+  letter-spacing: .08em;
 }
 
 .dash-delta b {
   color: #e7edf3;
-  font-size: calc(22px * var(--overlay-font-scale, 1));
+  font-size: calc(15px * var(--overlay-font-scale, 1));
   font-weight: 900;
   white-space: nowrap;
 }
@@ -155,7 +164,7 @@ body.dashboard-body {
 
 .dash-session {
   display: flex;
-  flex: 0 0 38%;
+  flex: 0 0 40%;
   align-items: center;
   margin: 0;
   min-width: 0;
@@ -167,25 +176,24 @@ body.dashboard-body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 1px;
   min-width: 0;
-  padding: 4px 3px;
+  padding: 3px 2px;
 }
 
 .dash-session dt,
 .dash-laptimes dt,
 .dash-fuel dt {
   color: #84909d;
-  font-size: calc(8px * var(--overlay-font-scale, 1));
+  font-size: calc(7px * var(--overlay-font-scale, 1));
   font-weight: 800;
-  letter-spacing: .08em;
+  letter-spacing: .07em;
   white-space: nowrap;
 }
 
 .dash-session dd {
   margin: 0;
   color: #e7edf3;
-  font-size: calc(15px * var(--overlay-font-scale, 1));
+  font-size: calc(12px * var(--overlay-font-scale, 1));
   font-weight: 900;
   white-space: nowrap;
 }
@@ -197,41 +205,40 @@ body.dashboard-body {
 .dash-tires {
   position: relative;
   display: grid;
-  flex: 0 0 30%;
+  flex: 0 0 27%;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   grid-template-rows: repeat(2, minmax(0, 1fr));
-  gap: 4px;
+  gap: 11px 3px;
   min-width: 0;
-  padding: 8px;
+  padding: 4px 5px;
 }
 
+/* No frame around each corner: at this size the four blocks read as a car on
+   their own, and the borders were most of what made the block look bulky. */
 .dash-tire {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
+  gap: 1px;
   min-width: 0;
-  padding: 4px 2px 3px;
-  border: 1px solid rgb(255 255 255 / 7%);
-  border-radius: 5px;
-  background: rgb(255 255 255 / 3%);
+  padding: 2px 1px;
 }
 
 .dash-tire b {
   color: #e7edf3;
-  font-size: calc(19px * var(--overlay-font-scale, 1));
+  font-size: calc(14px * var(--overlay-font-scale, 1));
   font-weight: 900;
   line-height: 1;
 }
 
 .dash-tire-meta {
   display: flex;
-  gap: 6px;
+  gap: 4px;
 }
 
 .dash-tire-meta span {
-  font-size: calc(9px * var(--overlay-font-scale, 1));
+  font-size: calc(8px * var(--overlay-font-scale, 1));
   font-weight: 800;
   white-space: nowrap;
 }
@@ -240,10 +247,10 @@ body.dashboard-body {
 .dash-tire-meta span[data-dashboard-tire="brake"] { color: var(--brake-color, #687481); }
 
 .dash-tire-wear {
-  width: 82%;
-  height: 3px;
+  width: 74%;
+  height: 2px;
   overflow: hidden;
-  border-radius: 2px;
+  border-radius: 1px;
   background: rgb(255 255 255 / 10%);
 }
 
@@ -261,14 +268,13 @@ body.dashboard-body {
   position: absolute;
   top: 50%;
   left: 50%;
-  padding: 1px 6px;
-  border: 1px solid rgb(255 255 255 / 12%);
-  border-radius: 3px;
+  padding: 0 4px;
+  border-radius: 2px;
   background: #0b0f15;
   color: #b7c0c9;
-  font-size: calc(8px * var(--overlay-font-scale, 1));
+  font-size: calc(7px * var(--overlay-font-scale, 1));
   font-weight: 900;
-  letter-spacing: .08em;
+  letter-spacing: .07em;
   white-space: nowrap;
   transform: translate(-50%, -50%);
 }
@@ -279,16 +285,16 @@ body.dashboard-body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
+  gap: 3px;
   min-width: 0;
-  padding: 7px 8px 8px;
+  padding: 5px 7px 6px;
 }
 
 .dash-rev {
   width: 100%;
-  height: 5px;
+  height: 4px;
   overflow: hidden;
-  border-radius: 3px;
+  border-radius: 2px;
   background: rgb(255 255 255 / 10%);
 }
 
@@ -302,84 +308,102 @@ body.dashboard-body {
 .dash-core[data-rev="high"] #dashboard-rev-fill { background: #efdb3d; }
 .dash-core[data-rev="limit"] #dashboard-rev-fill { background: #f05252; }
 
+/* Gear beside the speed rather than above it: the gear needs the height, and
+   stacking the readouts was the tallest thing in the panel. */
+.dash-readout {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
 #dashboard-gear {
   color: #f5f9ff;
-  font-size: calc(72px * var(--overlay-font-scale, 1));
+  font-size: calc(40px * var(--overlay-font-scale, 1));
   font-weight: 900;
-  line-height: .92;
+  line-height: .9;
 }
 
 .dash-core[data-rev="limit"] #dashboard-gear { color: #f05252; }
 
+.dash-readout-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
 .dash-speed {
   display: flex;
   align-items: baseline;
-  gap: 4px;
+  gap: 3px;
   margin: 0;
 }
 
 .dash-speed b {
   color: #e7edf3;
-  font-size: calc(26px * var(--overlay-font-scale, 1));
+  font-size: calc(19px * var(--overlay-font-scale, 1));
   font-weight: 900;
   line-height: 1;
 }
 
 .dash-speed span {
   color: #84909d;
-  font-size: calc(9px * var(--overlay-font-scale, 1));
+  font-size: calc(7px * var(--overlay-font-scale, 1));
   font-weight: 800;
-  letter-spacing: .08em;
+  letter-spacing: .07em;
 }
 
 .dash-ambient {
   display: flex;
-  gap: 10px;
-  margin: 2px 0 0;
+  gap: 7px;
+  margin: 0;
 }
 
 .dash-ambient i {
   color: #84909d;
-  font-size: calc(8px * var(--overlay-font-scale, 1));
+  font-size: calc(7px * var(--overlay-font-scale, 1));
   font-style: normal;
   font-weight: 800;
-  letter-spacing: .08em;
+  letter-spacing: .07em;
 }
 
 .dash-ambient b {
   color: #b7c0c9;
-  font-size: calc(11px * var(--overlay-font-scale, 1));
+  font-size: calc(9px * var(--overlay-font-scale, 1));
   font-weight: 900;
 }
 
 .dash-laptimes {
   display: flex;
-  flex: 0 0 34%;
+  flex: 0 0 33%;
   flex-direction: column;
   justify-content: center;
   margin: 0;
   min-width: 0;
-  padding: 8px 10px;
+  padding: 5px 7px;
 }
 
+/* Label and time on one line: three stacked pairs were three rows of label
+   height for information the driver already knows the order of. */
 .dash-laptimes > div {
   display: flex;
-  flex-direction: column;
-  gap: 0;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
   min-width: 0;
 }
 
 .dash-laptimes > div + div {
-  margin-top: 4px;
-  padding-top: 4px;
+  margin-top: 2px;
+  padding-top: 2px;
   border-top: 1px solid rgb(255 255 255 / 7%);
 }
 
 .dash-laptimes dd {
   margin: 0;
-  font-size: calc(24px * var(--overlay-font-scale, 1));
+  font-size: calc(16px * var(--overlay-font-scale, 1));
   font-weight: 900;
-  line-height: 1.05;
   white-space: nowrap;
 }
 
@@ -391,8 +415,8 @@ body.dashboard-body {
 
 .dash-band-hybrid {
   align-items: center;
-  gap: 8px;
-  padding: 5px 9px;
+  gap: 7px;
+  padding: 3px 7px 4px;
 }
 
 .dash-band-hybrid > :not([hidden]) + :not([hidden]) {
@@ -403,7 +427,7 @@ body.dashboard-body {
   display: flex;
   flex: 0 1 42%;
   flex-direction: column;
-  gap: 3px;
+  gap: 2px;
   min-width: 0;
   margin-right: auto;
 }
@@ -411,29 +435,28 @@ body.dashboard-body {
 .dash-battery-head {
   display: flex;
   align-items: baseline;
-  justify-content: space-between;
-  gap: 6px;
+  gap: 5px;
 }
 
 .dash-battery-head span {
   color: #84909d;
-  font-size: calc(8px * var(--overlay-font-scale, 1));
+  font-size: calc(7px * var(--overlay-font-scale, 1));
   font-weight: 800;
-  letter-spacing: .08em;
+  letter-spacing: .07em;
   white-space: nowrap;
 }
 
 .dash-battery-head b {
   color: #e7edf3;
-  font-size: calc(15px * var(--overlay-font-scale, 1));
+  font-size: calc(12px * var(--overlay-font-scale, 1));
   font-weight: 900;
   white-space: nowrap;
 }
 
 .dash-battery-track {
-  height: 6px;
+  height: 4px;
   overflow: hidden;
-  border-radius: 3px;
+  border-radius: 2px;
   background: rgb(255 255 255 / 10%);
 }
 
@@ -449,19 +472,20 @@ body.dashboard-body {
 
 .dash-band-hybrid .dash-cell {
   flex: 0 0 auto;
-  min-width: 58px;
+  min-width: 46px;
+  padding: 0;
 }
 
 .dash-motor-state {
   flex: 0 0 auto;
   margin: 0;
-  padding: 3px 7px;
+  padding: 2px 5px;
   border: 1px solid rgb(255 255 255 / 12%);
-  border-radius: 4px;
+  border-radius: 3px;
   color: #7f8997;
-  font-size: calc(9px * var(--overlay-font-scale, 1));
+  font-size: calc(8px * var(--overlay-font-scale, 1));
   font-weight: 900;
-  letter-spacing: .08em;
+  letter-spacing: .07em;
   white-space: nowrap;
 }
 
@@ -489,7 +513,7 @@ body.dashboard-body {
 
 .dash-fuel {
   display: flex;
-  flex: 0 0 34%;
+  flex: 0 0 33%;
   align-items: center;
   margin: 0;
   min-width: 0;
@@ -501,9 +525,8 @@ body.dashboard-body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 1px;
   min-width: 0;
-  padding: 3px;
+  padding: 3px 2px 4px;
 }
 
 .dash-fuel > div:not([hidden]) + div:not([hidden]) {
@@ -513,7 +536,7 @@ body.dashboard-body {
 .dash-fuel dd {
   margin: 0;
   color: #e7edf3;
-  font-size: calc(17px * var(--overlay-font-scale, 1));
+  font-size: calc(13px * var(--overlay-font-scale, 1));
   font-weight: 900;
   white-space: nowrap;
 }
@@ -523,11 +546,11 @@ body.dashboard-body {
   align-items: center;
   justify-content: center;
   margin: 0;
-  padding: 18px 9px;
+  padding: 12px 8px;
   color: #687481;
-  font-size: calc(11px * var(--overlay-font-scale, 1));
+  font-size: calc(10px * var(--overlay-font-scale, 1));
   font-weight: 900;
-  letter-spacing: .1em;
+  letter-spacing: .09em;
   text-align: center;
 }
 

@@ -64,12 +64,16 @@
 
         <div class="dash-core" data-dashboard-part="core">
           <div class="dash-rev"><i id="dashboard-rev-fill"></i></div>
-          <b id="dashboard-gear">N</b>
-          <p class="dash-speed"><b id="dashboard-speed">---</b><span data-i18n="dashboard.speedUnit">KM/H</span></p>
-          <p class="dash-ambient">
-            <span><i data-i18n="dashboard.airShort">AIRE</i> <b id="dashboard-air">--°</b></span>
-            <span><i data-i18n="dashboard.trackShort">PISTA</i> <b id="dashboard-track">--°</b></span>
-          </p>
+          <div class="dash-readout">
+            <b id="dashboard-gear">N</b>
+            <div class="dash-readout-meta">
+              <p class="dash-speed"><b id="dashboard-speed">---</b><span data-i18n="dashboard.speedUnit">KM/H</span></p>
+              <p class="dash-ambient">
+                <span><i data-i18n="dashboard.airShort">AIRE</i> <b id="dashboard-air">--°</b></span>
+                <span><i data-i18n="dashboard.trackShort">PISTA</i> <b id="dashboard-track">--°</b></span>
+              </p>
+            </div>
+          </div>
         </div>
 
         <dl class="dash-laptimes" data-dashboard-part="laptimes">

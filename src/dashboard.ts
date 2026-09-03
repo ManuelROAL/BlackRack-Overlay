@@ -77,7 +77,7 @@ const wipers = document.getElementById("dashboard-wipers")!;
 const empty = document.getElementById("dashboard-empty")!;
 // Blocks come and go with the car and with the driver's shortlist, so the panel
 // is only ever as tall as what it is actually drawing.
-const synchronizeOverlayHeight = fitOverlayToContent(700, shell);
+const synchronizeOverlayHeight = fitOverlayToContent(460, shell);
 
 const ELECTRONICS: ElectronicsId[] = [
   "map", "tc", "tcslip", "tccut", "abs", "bias", "migration", "arb"
