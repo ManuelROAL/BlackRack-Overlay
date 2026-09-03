@@ -93,10 +93,10 @@ Two different questions share the frame and must not be confused:
   as `virtual_energy_active`, `rest_weather_available` and the `-1` sentinels.
   The renderers use it to hide a value that is missing right now.
 
-Only four overlays are gated by capability, because each exists for one of them:
+Only five overlays are gated by capability, because each exists for one of them:
 `damage` (`damage_detail`), `forecast` (`weather_forecast`), `liftcoast`
-(`lift_and_coast`) and `pitstop` (`pit_service_estimate`). Every other overlay
-degrades inside its own renderer.
+(`lift_and_coast`), `pitstop` (`pit_service_estimate`) and `dashboard`
+(`car_electronics`). Every other overlay degrades inside its own renderer.
 
 ## Adding a simulator
 

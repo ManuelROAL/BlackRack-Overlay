@@ -121,6 +121,13 @@ export const OVERLAY_GUIDE: Record<OverlayId, OverlayGuideEntry> = {
     purpose: "guide.conditions.purpose",
     reading: "guide.conditions.reading",
     tip: "guide.conditions.tip"
+  },
+  dashboard: {
+    icon: "⚙",
+    title: "card.dashboard",
+    purpose: "guide.dashboard.purpose",
+    reading: "guide.dashboard.reading",
+    tip: "guide.dashboard.tip"
   }
 };
 
@@ -140,5 +147,6 @@ export const OVERLAY_GUIDE_ORDER = [
   "stinthistory",
   "trackmap",
   "forecast",
-  "conditions"
+  "conditions",
+  "dashboard"
 ] as const satisfies readonly OverlayId[];

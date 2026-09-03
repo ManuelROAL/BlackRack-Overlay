@@ -73,6 +73,9 @@ pub struct SourceCapabilities {
     pub(crate) pit_service_estimate: bool,
     /// Lift and coast guidance from the car.
     pub(crate) lift_and_coast: bool,
+    /// Driver-selectable electronics — engine map, traction control, ABS,
+    /// brake migration, anti-roll bars — and the hybrid deployment state.
+    pub(crate) car_electronics: bool,
     /// Multi-split events, where the field is divided across sessions.
     pub(crate) session_splits: bool,
 }
@@ -93,6 +96,7 @@ impl SourceCapabilities {
         official_track_map: false,
         pit_service_estimate: false,
         lift_and_coast: false,
+        car_electronics: false,
         session_splits: false,
     };
 }

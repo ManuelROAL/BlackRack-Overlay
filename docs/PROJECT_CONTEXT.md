@@ -42,6 +42,9 @@ on their runtime or source code.
 - Circuit map with live multiclass vehicle positions and a learned per-track path.
 - Weather forecast with the game's condition icons and a current-conditions panel
   for temperatures, wind, humidity, rain, grip and track state.
+- Dashboard panel with the electronics the driver trims from the wheel — engine
+  map, traction control, ABS, brake bias and migration, anti-roll bars — and the
+  hybrid battery, deployment state, regeneration and motor temperature.
 - Startup diagnostics for failures on other computers.
 
 ## Current data sources

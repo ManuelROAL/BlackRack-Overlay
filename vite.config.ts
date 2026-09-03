@@ -41,7 +41,8 @@ export default defineConfig({
         rejoin: "rejoin.html",
         trackmap: "trackmap.html",
         forecast: "forecast.html",
-        conditions: "conditions.html"
+        conditions: "conditions.html",
+        dashboard: "dashboard.html"
       }
     }
   },

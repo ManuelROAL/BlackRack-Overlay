@@ -143,6 +143,30 @@ struct LmuSnapshot {
     uint8_t player_tire_flat[4];
     uint8_t player_tire_detached[4];
     uint8_t player_damage_severity[8];
+    double battery_charge_percent;
+    double hybrid_regen_kw;
+    double hybrid_motor_temperature_c;
+    double hybrid_motor_rpm;
+    uint8_t hybrid_motor_state;
+    uint8_t engine_map;
+    uint8_t engine_map_max;
+    uint8_t traction_control_level;
+    uint8_t traction_control_max;
+    uint8_t traction_control_slip;
+    uint8_t traction_control_slip_max;
+    uint8_t traction_control_cut;
+    uint8_t traction_control_cut_max;
+    uint8_t anti_lock_brakes_level;
+    uint8_t anti_lock_brakes_max;
+    uint8_t brake_migration;
+    uint8_t brake_migration_max;
+    uint8_t front_anti_roll_bar;
+    uint8_t front_anti_roll_bar_max;
+    uint8_t rear_anti_roll_bar;
+    uint8_t rear_anti_roll_bar_max;
+    uint8_t speed_limiter_active;
+    uint8_t headlights_on;
+    uint8_t wiper_state;
     char vehicle_name[64];
     char vehicle_model[30];
     char track_name[64];
@@ -501,6 +525,40 @@ extern "C" int lmu_read_snapshot(LmuSnapshot* output, int32_t spectator_vehicle_
     output->tc_active = vehicle.mTCActive ? 1u : 0u;
     output->abs_active = vehicle.mABSActive ? 1u : 0u;
     output->lift_and_coast_progress = static_cast<uint32_t>(vehicle.mLiftAndCoastProgress);
+    // Driver-selectable electronics and the hybrid system. The car's own MFD is
+    // the only other place they can be read, and reading it means taking the
+    // eyes off the road, so every value is copied from the player telemetry.
+    output->engine_map = vehicle.mMotorMap;
+    output->engine_map_max = vehicle.mMotorMapMax;
+    output->traction_control_level = vehicle.mTC;
+    output->traction_control_max = vehicle.mTCMax;
+    output->traction_control_slip = vehicle.mTCSlip;
+    output->traction_control_slip_max = vehicle.mTCSlipMax;
+    output->traction_control_cut = vehicle.mTCCut;
+    output->traction_control_cut_max = vehicle.mTCCutMax;
+    output->anti_lock_brakes_level = vehicle.mABS;
+    output->anti_lock_brakes_max = vehicle.mABSMax;
+    output->brake_migration = vehicle.mMigration;
+    output->brake_migration_max = vehicle.mMigrationMax;
+    output->front_anti_roll_bar = vehicle.mFrontAntiSway;
+    output->front_anti_roll_bar_max = vehicle.mFrontAntiSwayMax;
+    output->rear_anti_roll_bar = vehicle.mRearAntiSway;
+    output->rear_anti_roll_bar_max = vehicle.mRearAntiSwayMax;
+    output->speed_limiter_active = vehicle.mSpeedLimiterActive ? 1u : 0u;
+    output->headlights_on = vehicle.mHeadlights ? 1u : 0u;
+    output->wiper_state = vehicle.mWiperState;
+    // The charge is published twice and the two fields do not share a scale:
+    // the fraction is documented as [0..1] while the state of charge has been
+    // seen as a percentage. Read whichever one the car fills and normalise it.
+    const double state_of_charge = static_cast<double>(vehicle.mSoC);
+    const double charge_percent = state_of_charge > 0.0
+        ? (state_of_charge > 1.5 ? state_of_charge : state_of_charge * 100.0)
+        : vehicle.mBatteryChargeFraction * 100.0;
+    output->battery_charge_percent = std::clamp(charge_percent, 0.0, 100.0);
+    output->hybrid_regen_kw = static_cast<double>(vehicle.mRegen);
+    output->hybrid_motor_temperature_c = vehicle.mElectricBoostMotorTemperature;
+    output->hybrid_motor_rpm = vehicle.mElectricBoostMotorRPM;
+    output->hybrid_motor_state = vehicle.mElectricBoostMotorState;
     // The cockpit wheel follows the physical controller input. Filtered steering
     // can include the vehicle steering ratio and over-rotate the overlay.
     output->steering = vehicle.mUnfilteredSteering;

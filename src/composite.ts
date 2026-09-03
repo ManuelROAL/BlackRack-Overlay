@@ -61,7 +61,7 @@ interface TelemetryBatch {
 const overlayIds: OverlayId[] = [
   "delta", "timing", "stinthistory", "driving", "liftcoast", "tires", "damage", "standings",
   "relative", "fuel", "pitstop", "flags", "rejoin", "trackmap",
-  "forecast", "conditions"
+  "forecast", "conditions", "dashboard"
 ];
 // Projected into every overlay on top of its own allowlist: an overlay has to
 // know what the active simulator can report before it decides what to draw.
@@ -128,13 +128,23 @@ const telemetryFields: Record<OverlayId, readonly (keyof TelemetryFrame)[]> = {
     "wind_relative_direction_degrees",
     "player_grip_percent", "track_rubber_percent", "track_grip_state", "cloud_coverage", "current_humidity_percent",
     "weather_forecast"
+  ],
+  dashboard: [
+    "car_electronics_available", "engine_map", "engine_map_max",
+    "traction_control_level", "traction_control_max", "traction_control_slip",
+    "traction_control_slip_max", "traction_control_cut", "traction_control_cut_max",
+    "anti_lock_brakes_level", "anti_lock_brakes_max", "brake_bias_percent",
+    "brake_migration", "brake_migration_max", "front_anti_roll_bar",
+    "rear_anti_roll_bar", "speed_limiter_active", "headlights_on", "wiper_state",
+    "hybrid_available", "battery_charge_percent", "hybrid_regen_kw",
+    "hybrid_motor_state", "hybrid_motor_temperature_c"
   ]
 };
 const overlayTitleKeys: Record<OverlayId, import("./i18n").TranslationKey> = {
   delta: "card.delta", timing: "card.timing", stinthistory: "card.stintHistory", driving: "card.driving", liftcoast: "card.liftcoast", tires: "card.tires",
   damage: "card.damage", standings: "card.standings", relative: "card.relative", fuel: "card.fuel",
   pitstop: "card.pitstop", flags: "card.flags", rejoin: "card.rejoin", trackmap: "card.trackmap",
-  forecast: "card.forecast", conditions: "card.conditions"
+  forecast: "card.forecast", conditions: "card.conditions", dashboard: "card.dashboard"
 };
 const overlayTitle = (overlay: OverlayId): string => t(overlayTitleKeys[overlay]).toLocaleUpperCase(getLocale());
 

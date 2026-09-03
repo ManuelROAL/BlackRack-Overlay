@@ -679,6 +679,25 @@
           <div id="conditions-options" class="standings-columns" aria-label="Valores visibles de condiciones" data-i18n-aria-label="settings.conditionsAria"></div>
         </section>
 
+        <article class="overlay-option" data-overlay-card="dashboard" data-overlay-category="car">
+          <div class="overlay-icon">⚙</div>
+          <div class="overlay-copy">
+            <strong data-i18n="card.dashboard">Dashboard</strong>
+            <span data-i18n="card.dashboardSub">Mapa de motor, TC, ABS, reparto, migración, barras y batería híbrida.</span>
+          </div>
+          <label class="switch">
+            <input type="checkbox" data-overlay="dashboard" aria-label="Mostrar Dashboard" />
+            <span></span>
+          </label>
+        </article>
+        <section class="standings-settings-section" data-settings-for="dashboard" hidden>
+          <header class="settings-section-heading">
+            <span data-i18n="settings.dashboard">CONFIGURACIÓN DEL DASHBOARD</span>
+            <strong data-i18n="settings.visible">Elementos visibles</strong>
+          </header>
+          <div id="dashboard-options" class="standings-columns" aria-label="Valores visibles del dashboard" data-i18n-aria-label="settings.dashboardAria"></div>
+        </section>
+
       </section>
 
       <section class="configuration-export overlay-bulk-reset" data-view-section="overlays" aria-label="Restablecer todos los overlays" data-i18n-aria-label="reset.allAria">
@@ -739,6 +758,7 @@
             <div data-browser-overlay="trackmap"><code></code><button type="button" data-i18n="browser.copy">COPIAR</button></div>
             <div data-browser-overlay="forecast"><code></code><button type="button" data-i18n="browser.copy">COPIAR</button></div>
             <div data-browser-overlay="conditions"><code></code><button type="button" data-i18n="browser.copy">COPIAR</button></div>
+            <div data-browser-overlay="dashboard"><code></code><button type="button" data-i18n="browser.copy">COPIAR</button></div>
           </div>
         </div>
       </details>

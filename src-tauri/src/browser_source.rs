@@ -27,7 +27,7 @@ const ALLOWED_ORIGINS: [&str; 2] = ["http://127.0.0.1:47636", "http://localhost:
 const MAX_SUBSCRIBERS: usize = 32;
 const MAX_REQUEST_HEAD_BYTES: usize = 16 * 1024;
 const HTML_SECURITY_POLICY: &str = "default-src 'self'; connect-src 'self' ws://localhost:6398 ws://127.0.0.1:6398; img-src 'self' data:; style-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'self'; object-src 'none'";
-const BROWSER_OVERLAYS: [(&str, &str); 16] = [
+const BROWSER_OVERLAYS: [(&str, &str); 17] = [
     ("standings", "standings.html"),
     ("relative", "relative.html"),
     ("fuel", "fuel.html"),
@@ -44,6 +44,7 @@ const BROWSER_OVERLAYS: [(&str, &str); 16] = [
     ("trackmap", "trackmap.html"),
     ("forecast", "forecast.html"),
     ("conditions", "conditions.html"),
+    ("dashboard", "dashboard.html"),
 ];
 const ALL_OVERLAY_DEMANDS: u32 = (1 << BROWSER_OVERLAYS.len()) - 1;
 
@@ -537,7 +538,7 @@ fn serve_request(stream: &mut TcpStream, request_path: &str, app: &AppHandle) {
             .unwrap_or_else(|| serde_json::json!({}));
         let json = serde_json::to_string(&settings).unwrap_or_else(|_| "{}".into());
         let script = format!(
-            "(()=>{{const p={json},q=new URLSearchParams(location.search).get('lang'),valid=l=>typeof l==='string'&&Array.isArray(p.supportedLocales)&&p.supportedLocales.includes(l);if(valid(q))document.documentElement.dataset.localeOverride=q;else if(valid(p.locale))localStorage.setItem('blackrack-overlay.locale.v1',p.locale);if(p.standings)localStorage.setItem('blackrack-overlay.standings.v1',JSON.stringify(p.standings));if(p.relative)localStorage.setItem('blackrack-overlay.relative.v1',JSON.stringify(p.relative));if(p.driving)localStorage.setItem('blackrack-overlay.driving.v1',JSON.stringify(p.driving));if(p.delta)localStorage.setItem('blackrack-overlay.delta.v1',JSON.stringify(p.delta));if(p.timing)localStorage.setItem('blackrack-overlay.timing.v1',JSON.stringify(p.timing));if(p.trackMap)localStorage.setItem('blackrack-overlay.track-map-settings.v1',JSON.stringify(p.trackMap));if(p.transparency)localStorage.setItem('blackrack-overlay.background-transparency.v1',JSON.stringify(p.transparency));if(p.fontSize)localStorage.setItem('blackrack-overlay.font-size.v1',JSON.stringify(p.fontSize));if(p.fuel)localStorage.setItem('blackrack-overlay.fuel-strategy.v1',JSON.stringify(p.fuel));if(p.tires)localStorage.setItem('blackrack-overlay.tires.v1',JSON.stringify(p.tires));if(p.conditions)localStorage.setItem('blackrack-overlay.conditions.v1',JSON.stringify(p.conditions));document.documentElement.dataset.browserSource='true';}})();"
+            "(()=>{{const p={json},q=new URLSearchParams(location.search).get('lang'),valid=l=>typeof l==='string'&&Array.isArray(p.supportedLocales)&&p.supportedLocales.includes(l);if(valid(q))document.documentElement.dataset.localeOverride=q;else if(valid(p.locale))localStorage.setItem('blackrack-overlay.locale.v1',p.locale);if(p.standings)localStorage.setItem('blackrack-overlay.standings.v1',JSON.stringify(p.standings));if(p.relative)localStorage.setItem('blackrack-overlay.relative.v1',JSON.stringify(p.relative));if(p.driving)localStorage.setItem('blackrack-overlay.driving.v1',JSON.stringify(p.driving));if(p.delta)localStorage.setItem('blackrack-overlay.delta.v1',JSON.stringify(p.delta));if(p.timing)localStorage.setItem('blackrack-overlay.timing.v1',JSON.stringify(p.timing));if(p.trackMap)localStorage.setItem('blackrack-overlay.track-map-settings.v1',JSON.stringify(p.trackMap));if(p.transparency)localStorage.setItem('blackrack-overlay.background-transparency.v1',JSON.stringify(p.transparency));if(p.fontSize)localStorage.setItem('blackrack-overlay.font-size.v1',JSON.stringify(p.fontSize));if(p.fuel)localStorage.setItem('blackrack-overlay.fuel-strategy.v1',JSON.stringify(p.fuel));if(p.tires)localStorage.setItem('blackrack-overlay.tires.v1',JSON.stringify(p.tires));if(p.conditions)localStorage.setItem('blackrack-overlay.conditions.v1',JSON.stringify(p.conditions));if(p.dashboard)localStorage.setItem('blackrack-overlay.dashboard.v1',JSON.stringify(p.dashboard));document.documentElement.dataset.browserSource='true';}})();"
         );
         write_response(
             stream,

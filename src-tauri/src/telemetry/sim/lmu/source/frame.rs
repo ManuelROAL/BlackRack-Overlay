@@ -712,6 +712,44 @@ impl TelemetrySource for LmuTelemetrySource {
             track_limits_steps_per_penalty: snapshot.track_limits_steps_per_penalty,
             tc_active,
             abs_active,
+            // Every published maximum sits at zero until the car is on track
+            // with its own setup loaded, and that is also what a source without
+            // electronics reports, so the maxima are the availability signal.
+            car_electronics_available: snapshot.engine_map_max > 0
+                || snapshot.traction_control_max > 0
+                || snapshot.anti_lock_brakes_max > 0
+                || snapshot.brake_migration_max > 0
+                || snapshot.front_anti_roll_bar_max > 0
+                || snapshot.rear_anti_roll_bar_max > 0,
+            engine_map: snapshot.engine_map,
+            engine_map_max: snapshot.engine_map_max,
+            traction_control_level: snapshot.traction_control_level,
+            traction_control_max: snapshot.traction_control_max,
+            traction_control_slip: snapshot.traction_control_slip,
+            traction_control_slip_max: snapshot.traction_control_slip_max,
+            traction_control_cut: snapshot.traction_control_cut,
+            traction_control_cut_max: snapshot.traction_control_cut_max,
+            anti_lock_brakes_level: snapshot.anti_lock_brakes_level,
+            anti_lock_brakes_max: snapshot.anti_lock_brakes_max,
+            brake_migration: snapshot.brake_migration,
+            brake_migration_max: snapshot.brake_migration_max,
+            front_anti_roll_bar: snapshot.front_anti_roll_bar,
+            front_anti_roll_bar_max: snapshot.front_anti_roll_bar_max,
+            rear_anti_roll_bar: snapshot.rear_anti_roll_bar,
+            rear_anti_roll_bar_max: snapshot.rear_anti_roll_bar_max,
+            speed_limiter_active: snapshot.speed_limiter_active != 0,
+            headlights_on: snapshot.headlights_on != 0,
+            wiper_state: snapshot.wiper_state,
+            // A GT or LMP2 car reports an unavailable motor and no charge, so
+            // the panel can drop the whole hybrid block instead of drawing an
+            // empty battery the driver would read as a flat one.
+            hybrid_available: snapshot.hybrid_motor_state != 0
+                || snapshot.battery_charge_percent > 0.0,
+            battery_charge_percent: snapshot.battery_charge_percent.clamp(0.0, 100.0),
+            hybrid_regen_kw: snapshot.hybrid_regen_kw,
+            hybrid_motor_state: snapshot.hybrid_motor_state.min(3),
+            hybrid_motor_temperature_c: snapshot.hybrid_motor_temperature_c,
+            hybrid_motor_rpm: snapshot.hybrid_motor_rpm.max(0.0),
             lift_and_coast_progress: snapshot.lift_and_coast_progress.min(u8::MAX as u32) as u8,
             steering_angle_degrees,
             force_feedback,

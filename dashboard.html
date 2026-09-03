@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title data-i18n="title.dashboard">Dashboard</title>
+  </head>
+  <body class="dashboard-body">
+    <main class="dashboard-shell" data-tauri-drag-region>
+      <section class="dashboard-grid" data-dashboard-section="electronics" data-tauri-drag-region>
+        <div class="dashboard-cell" data-dashboard-part="map"><span data-i18n="dashboard.mapShort">MAPA</span><b data-dashboard-value="map">--</b></div>
+        <div class="dashboard-cell" data-dashboard-part="tc"><span data-i18n="dashboard.tcShort">TC</span><b data-dashboard-value="tc">--</b></div>
+        <div class="dashboard-cell" data-dashboard-part="tcslip"><span data-i18n="dashboard.tcSlipShort">TC SLIP</span><b data-dashboard-value="tcslip">--</b></div>
+        <div class="dashboard-cell" data-dashboard-part="tccut"><span data-i18n="dashboard.tcCutShort">TC CUT</span><b data-dashboard-value="tccut">--</b></div>
+        <div class="dashboard-cell" data-dashboard-part="abs"><span data-i18n="dashboard.absShort">ABS</span><b data-dashboard-value="abs">--</b></div>
+        <div class="dashboard-cell" data-dashboard-part="bias"><span data-i18n="dashboard.biasShort">REPARTO</span><b data-dashboard-value="bias">--</b></div>
+        <div class="dashboard-cell" data-dashboard-part="migration"><span data-i18n="dashboard.migrationShort">MIGR.</span><b data-dashboard-value="migration">--</b></div>
+        <div class="dashboard-cell" data-dashboard-part="arb"><span data-i18n="dashboard.arbShort">BARRAS</span><b data-dashboard-value="arb">--</b></div>
+      </section>
+      <section class="dashboard-hybrid" data-dashboard-section="hybrid" data-tauri-drag-region hidden>
+        <div class="dashboard-battery" data-dashboard-part="battery">
+          <div class="dashboard-battery-head">
+            <span data-i18n="dashboard.batteryShort">BATERÍA</span>
+            <b data-dashboard-value="battery">--%</b>
+          </div>
+          <div class="dashboard-battery-track">
+            <i id="dashboard-battery-fill"></i>
+          </div>
+        </div>
+        <div class="dashboard-hybrid-values">
+          <div class="dashboard-cell" data-dashboard-part="regen"><span data-i18n="dashboard.regenShort">REGEN</span><b data-dashboard-value="regen">--</b></div>
+          <div class="dashboard-cell" data-dashboard-part="motor"><span data-i18n="dashboard.motorShort">MOTOR</span><b data-dashboard-value="motor">--</b></div>
+        </div>
+        <p id="dashboard-motor-state" class="dashboard-motor-state" data-state="inactive" data-i18n="dashboard.stateInactive">INACTIVO</p>
+      </section>
+      <section class="dashboard-status" data-dashboard-section="status" data-dashboard-part="status" data-tauri-drag-region hidden>
+        <span id="dashboard-limiter" data-state="off" data-i18n="dashboard.limiterShort">LIM</span>
+        <span id="dashboard-headlights" data-state="off" data-i18n="dashboard.headlightsShort">LUCES</span>
+        <span id="dashboard-wipers" data-state="off" data-i18n="dashboard.wipersShort">LIMPIA</span>
+      </section>
+      <p id="dashboard-empty" class="dashboard-empty" data-i18n="dashboard.waiting">SIN DATOS DEL COCHE</p>
+    </main>
+    <script type="module" src="/src/dashboard.ts"></script>
+  </body>
+</html>

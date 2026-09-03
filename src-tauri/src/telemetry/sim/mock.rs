@@ -28,6 +28,7 @@ const DESCRIPTOR: SourceDescriptor = SourceDescriptor {
         track_limits: true,
         pit_service_estimate: true,
         lift_and_coast: true,
+        car_electronics: true,
         session_splits: true,
     },
     official_geometry: None,
@@ -275,6 +276,38 @@ impl TelemetrySource for MockTelemetrySource {
             } else {
                 0
             },
+            car_electronics_available: true,
+            engine_map: 4 + (elapsed as u8 / 30) % 3,
+            engine_map_max: 9,
+            traction_control_level: 3,
+            traction_control_max: 11,
+            traction_control_slip: 5,
+            traction_control_slip_max: 11,
+            traction_control_cut: 4,
+            traction_control_cut_max: 11,
+            anti_lock_brakes_level: 2,
+            anti_lock_brakes_max: 11,
+            brake_migration: 3,
+            brake_migration_max: 6,
+            front_anti_roll_bar: 5,
+            front_anti_roll_bar_max: 11,
+            rear_anti_roll_bar: 4,
+            rear_anti_roll_bar_max: 11,
+            speed_limiter_active: false,
+            headlights_on: true,
+            wiper_state: 0,
+            hybrid_available: true,
+            battery_charge_percent: 50.0 + (elapsed * 0.9).sin() * 42.0,
+            hybrid_regen_kw: if brake > 0.2 { brake * 145.0 } else { 0.0 },
+            hybrid_motor_state: if brake > 0.2 {
+                3
+            } else if throttle > 0.5 {
+                2
+            } else {
+                1
+            },
+            hybrid_motor_temperature_c: 62.0 + (elapsed * 0.4).sin() * 6.0,
+            hybrid_motor_rpm: throttle * 21_000.0,
             steering_angle_degrees: (elapsed * 1.35).sin() * 230.0,
             force_feedback: (elapsed * 4.2).sin() * 0.82,
             fuel_liters,

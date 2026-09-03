@@ -167,6 +167,7 @@ export interface SourceCapabilities {
   official_track_map: boolean;
   pit_service_estimate: boolean;
   lift_and_coast: boolean;
+  car_electronics: boolean;
   session_splits: boolean;
 }
 
@@ -224,6 +225,33 @@ export interface TelemetryFrame {
   track_limits_steps_per_penalty: number;
   tc_active: boolean;
   abs_active: boolean;
+  car_electronics_available: boolean;
+  engine_map: number;
+  engine_map_max: number;
+  traction_control_level: number;
+  traction_control_max: number;
+  traction_control_slip: number;
+  traction_control_slip_max: number;
+  traction_control_cut: number;
+  traction_control_cut_max: number;
+  anti_lock_brakes_level: number;
+  anti_lock_brakes_max: number;
+  brake_migration: number;
+  brake_migration_max: number;
+  front_anti_roll_bar: number;
+  front_anti_roll_bar_max: number;
+  rear_anti_roll_bar: number;
+  rear_anti_roll_bar_max: number;
+  speed_limiter_active: boolean;
+  headlights_on: boolean;
+  wiper_state: number;
+  hybrid_available: boolean;
+  battery_charge_percent: number;
+  hybrid_regen_kw: number;
+  /** 0 unavailable, 1 inactive, 2 propulsion, 3 regeneration. */
+  hybrid_motor_state: number;
+  hybrid_motor_temperature_c: number;
+  hybrid_motor_rpm: number;
   lift_and_coast_progress: number;
   steering_angle_degrees: number;
   force_feedback: number;

@@ -1,5 +1,6 @@
 import type { CompositeLayout } from "./composite-layout";
 import type { ConditionsSettings } from "./conditions-settings";
+import type { DashboardSettings } from "./dashboard-settings";
 import type { DeltaSettings } from "./delta-settings";
 import type { DrivingSettings } from "./driving-settings";
 import type { FuelSettings } from "./fuel-settings";
@@ -44,6 +45,12 @@ export interface OverlayProfileData {
   fuel: FuelSettings;
   tires: TiresSettings;
   conditions: ConditionsSettings;
+  /**
+   * Optional so the profiles a user already stored survive this overlay being
+   * added: a saved profile written before Dashboard existed stays usable and
+   * simply falls back to the default configuration.
+   */
+  dashboard?: DashboardSettings;
 }
 
 export interface OverlayProfile {

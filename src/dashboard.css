@@ -1,0 +1,222 @@
+@import "./fonts.css";
+@import "./styles.css";
+
+body.dashboard-body {
+  min-width: 240px;
+  min-height: 96px;
+  padding: 6px;
+}
+
+.dashboard-shell {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  width: 100%;
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255 / 10%);
+  border-radius: 8px;
+  background: linear-gradient(
+    145deg,
+    rgb(12 16 22 / var(--overlay-background-opacity)),
+    rgb(5 8 12 / var(--overlay-background-opacity))
+  );
+  box-shadow: 0 8px 20px rgb(0 0 0 / 35%);
+  color: #dce3ea;
+  font-family: "Roboto Condensed", sans-serif;
+  font-variant-numeric: tabular-nums;
+  user-select: none;
+}
+
+.dashboard-shell::before {
+  position: absolute;
+  z-index: 2;
+  inset: 0 auto auto 0;
+  width: 2px;
+  height: 100%;
+  background: #d8ff3e;
+  content: "";
+  opacity: 0.82;
+}
+
+/* Every hidden element here is a flex or grid box, and an author display wins
+   over the user-agent rule behind the hidden attribute. */
+.dashboard-shell [hidden] {
+  display: none;
+}
+
+.dashboard-grid {
+  display: flex;
+  flex-wrap: wrap;
+  padding: 4px 6px 4px 8px;
+  gap: 0;
+}
+
+/* Fixed-width tracks rather than growing ones: a wrapped last row keeps the
+   column widths of the row above instead of stretching two values across the
+   whole panel. */
+.dashboard-cell {
+  display: flex;
+  flex: 0 0 calc(100% / var(--dashboard-columns, 4));
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  min-width: 0;
+  padding: 2px 3px;
+}
+
+.dashboard-cell span {
+  color: #84909d;
+  font-size: calc(8px * var(--overlay-font-scale, 1));
+  font-weight: 800;
+  letter-spacing: .08em;
+  white-space: nowrap;
+}
+
+.dashboard-cell b {
+  color: #e7edf3;
+  font-size: calc(14px * var(--overlay-font-scale, 1));
+  font-weight: 900;
+  line-height: 1.05;
+  white-space: nowrap;
+}
+
+/* A value the driver changed a moment ago is the one worth finding again, so it
+   stays highlighted for a beat instead of blending back into the row. */
+.dashboard-cell[data-changed="true"] b {
+  color: #d8ff3e;
+}
+
+.dashboard-hybrid {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px 5px 9px;
+  border-top: 1px solid rgb(255 255 255 / 9%);
+}
+
+.dashboard-battery {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.dashboard-battery-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.dashboard-battery-head span {
+  color: #84909d;
+  font-size: calc(8px * var(--overlay-font-scale, 1));
+  font-weight: 800;
+  letter-spacing: .08em;
+  white-space: nowrap;
+}
+
+.dashboard-battery-head b {
+  color: #e7edf3;
+  font-size: calc(14px * var(--overlay-font-scale, 1));
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.dashboard-battery-track {
+  position: relative;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: rgb(255 255 255 / 10%);
+}
+
+#dashboard-battery-fill {
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: 3px;
+  background: #d8ff3e;
+}
+
+.dashboard-battery[data-level="medium"] #dashboard-battery-fill { background: #ffb84d; }
+.dashboard-battery[data-level="low"] #dashboard-battery-fill { background: #ff6b5e; }
+
+.dashboard-hybrid-values {
+  display: flex;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.dashboard-hybrid-values .dashboard-cell {
+  flex: 0 0 auto;
+  min-width: 46px;
+}
+
+.dashboard-motor-state {
+  margin: 0;
+  padding: 3px 6px;
+  border: 1px solid rgb(255 255 255 / 12%);
+  border-radius: 4px;
+  color: #7f8997;
+  font-size: calc(9px * var(--overlay-font-scale, 1));
+  font-weight: 900;
+  letter-spacing: .08em;
+  white-space: nowrap;
+}
+
+.dashboard-motor-state[data-state="propulsion"] {
+  border-color: rgb(216 255 62 / 45%);
+  color: #d8ff3e;
+}
+
+.dashboard-motor-state[data-state="regeneration"] {
+  border-color: rgb(111 168 220 / 45%);
+  color: #6fa8dc;
+}
+
+.dashboard-status {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 4px 8px 4px 9px;
+  border-top: 1px solid rgb(255 255 255 / 9%);
+}
+
+.dashboard-status span {
+  flex: 1 1 0;
+  padding: 2px 0;
+  border-radius: 3px;
+  background: rgb(255 255 255 / 5%);
+  color: #58636e;
+  font-size: calc(9px * var(--overlay-font-scale, 1));
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.dashboard-status span[data-state="on"] {
+  background: rgb(216 255 62 / 16%);
+  color: #d8ff3e;
+}
+
+.dashboard-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0 9px;
+  color: #687481;
+  font-size: calc(10px * var(--overlay-font-scale, 1));
+  font-weight: 900;
+  letter-spacing: .1em;
+  text-align: center;
+}
+
+.click-through .dashboard-shell {
+  border-color: transparent;
+}

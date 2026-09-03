@@ -21,7 +21,7 @@ use tauri::{
 };
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 
-const OVERLAY_LABELS: [&str; 16] = [
+const OVERLAY_LABELS: [&str; 17] = [
     "delta",
     "timing",
     "stinthistory",
@@ -38,6 +38,7 @@ const OVERLAY_LABELS: [&str; 16] = [
     "trackmap",
     "forecast",
     "conditions",
+    "dashboard",
 ];
 
 const TRANSPARENT_BACKGROUND: Color = Color(0, 0, 0, 0);
@@ -1178,6 +1179,7 @@ fn default_overlay_geometry(label: &str) -> (f64, f64, f64, f64) {
         "trackmap" => (1460.0, 70.0, 436.0, 436.0),
         "forecast" => (1020.0, 530.0, 366.0, 112.0),
         "conditions" => (1020.0, 410.0, 390.0, 90.0),
+        "dashboard" => (588.0, 520.0, 300.0, 124.0),
         _ => (20.0, 20.0, 360.0, 180.0),
     }
 }

@@ -98,6 +98,14 @@ import {
   type ConditionsSettings
 } from "./conditions-settings";
 import {
+  DASHBOARD_OPTIONS,
+  DASHBOARD_SETTINGS_KEY,
+  defaultDashboardSettings,
+  normalizeDashboardSettings,
+  readDashboardSettings,
+  type DashboardSettings
+} from "./dashboard-settings";
+import {
   DEFAULT_OVERLAY_FONT_SIZE,
   DEFAULT_OVERLAY_TRANSPARENCY,
   effectiveOverlayFontSize,
@@ -235,7 +243,7 @@ interface BrowserSourceStatus {
 
 interface OverlayConfigurationExport {
   format: "blackrack-overlay-configuration";
-  schemaVersion: 17;
+  schemaVersion: 18;
   exportedAt: string;
   ui: { locale: Locale };
   profiles: OverlayProfile[];
@@ -261,6 +269,7 @@ interface OverlayConfigurationExport {
     fuel: FuelSettings;
     tires: TiresSettings;
     conditions: ConditionsSettings;
+    dashboard: DashboardSettings;
     performanceProfile: PerformanceProfile;
     spectatorMode: boolean;
     teamMode: boolean;
@@ -431,10 +440,10 @@ if (localeSelect) {
   });
 }
 
-const CURRENT_CONFIGURATION_SCHEMA = 17;
+const CURRENT_CONFIGURATION_SCHEMA = 18;
 const CURRENT_CONFIGURATION_FORMAT = "blackrack-overlay-configuration";
 const LEGACY_CONFIGURATION_FORMAT = "lmu-overlay-configuration";
-const overlayIds: OverlayId[] = ["delta", "timing", "stinthistory", "driving", "liftcoast", "tires", "damage", "standings", "relative", "fuel", "pitstop", "flags", "rejoin", "trackmap", "forecast", "conditions"];
+const overlayIds: OverlayId[] = ["delta", "timing", "stinthistory", "driving", "liftcoast", "tires", "damage", "standings", "relative", "fuel", "pitstop", "flags", "rejoin", "trackmap", "forecast", "conditions", "dashboard"];
 const storageKey = "blackrack-overlay.visible-windows.v1";
 
 const defaultVisibility = (): Record<OverlayId, boolean> => Object.fromEntries(
@@ -556,6 +565,7 @@ let trackMapSettings: TrackMapSettings = readTrackMapSettings();
 let fuelSettings: FuelSettings = readFuelSettings();
 let tiresSettings: TiresSettings = readTiresSettings();
 let conditionsSettings: ConditionsSettings = readConditionsSettings();
+let dashboardSettings: DashboardSettings = readDashboardSettings();
 const overlayTransparency = readOverlayTransparency();
 let overlayTransparencyScope: OverlayTransparencyScope = readOverlayTransparencyScope();
 const overlayFontSize = readOverlayFontSize();
@@ -593,6 +603,7 @@ const syncBrowserSourcePreferences = (): void => {
       fuel: fuelSettings,
       tires: tiresSettings,
       conditions: conditionsSettings,
+      dashboard: dashboardSettings,
       transparency: effectiveOverlayTransparency(overlayTransparency, overlayTransparencyScope),
       fontSize: effectiveOverlayFontSize(overlayFontSize, overlayFontSizeScope),
       locale: getLocale(),
@@ -808,6 +819,12 @@ const persistTiresSettings = (): void => {
 const persistConditionsSettings = (): void => {
   localStorage.setItem(CONDITIONS_SETTINGS_KEY, JSON.stringify(conditionsSettings));
   void emit("conditions://settings", conditionsSettings);
+  syncBrowserSourcePreferences();
+};
+
+const persistDashboardSettings = (): void => {
+  localStorage.setItem(DASHBOARD_SETTINGS_KEY, JSON.stringify(dashboardSettings));
+  void emit("dashboard://settings", dashboardSettings);
   syncBrowserSourcePreferences();
 };
 
@@ -1143,6 +1160,10 @@ const applyOverlayConfigurationDefaults = (id: OverlayId, events: Promise<unknow
     conditionsSettings = defaultConditionsSettings();
     localStorage.setItem(CONDITIONS_SETTINGS_KEY, JSON.stringify(conditionsSettings));
     events.push(emit("conditions://settings", conditionsSettings));
+  } else if (id === "dashboard") {
+    dashboardSettings = defaultDashboardSettings();
+    localStorage.setItem(DASHBOARD_SETTINGS_KEY, JSON.stringify(dashboardSettings));
+    events.push(emit("dashboard://settings", dashboardSettings));
   }
 };
 
@@ -1207,7 +1228,8 @@ const captureProfileData = (previous?: OverlayProfileData): OverlayProfileData =
     trackMap: trackMapSettings,
     fuel: fuelSettings,
     tires: tiresSettings,
-    conditions: conditionsSettings
+    conditions: conditionsSettings,
+    dashboard: dashboardSettings
   };
 };
 
@@ -1230,7 +1252,8 @@ const defaultProfileData = (layout: CompositeLayout): OverlayProfileData => ({
   trackMap: defaultTrackMapSettings(),
   fuel: defaultFuelSettings(),
   tires: defaultTiresSettings(),
-  conditions: defaultConditionsSettings()
+  conditions: defaultConditionsSettings(),
+  dashboard: defaultDashboardSettings()
 });
 
 let activeMode: OverlayMode = modeFromFlags(spectatorMode, teamMode);
@@ -1306,6 +1329,7 @@ const applyProfileData = async (data: OverlayProfileData): Promise<void> => {
     fuelSettings = data.fuel;
     tiresSettings = data.tires;
     conditionsSettings = data.conditions;
+    dashboardSettings = data.dashboard ?? defaultDashboardSettings();
     overlayTransparencyScope = data.transparency.scope;
     overlayFontSizeScope = data.fontSize.scope;
     for (const id of overlayIds) {
@@ -1322,6 +1346,7 @@ const applyProfileData = async (data: OverlayProfileData): Promise<void> => {
     localStorage.setItem(FUEL_SETTINGS_KEY, JSON.stringify(fuelSettings));
     localStorage.setItem(TIRES_SETTINGS_KEY, JSON.stringify(tiresSettings));
     localStorage.setItem(CONDITIONS_SETTINGS_KEY, JSON.stringify(conditionsSettings));
+    localStorage.setItem(DASHBOARD_SETTINGS_KEY, JSON.stringify(dashboardSettings));
     localStorage.setItem(OVERLAY_TRANSPARENCY_KEY, JSON.stringify(overlayTransparency));
     localStorage.setItem(OVERLAY_TRANSPARENCY_SCOPE_KEY, JSON.stringify(overlayTransparencyScope));
     localStorage.setItem(OVERLAY_FONT_SIZE_KEY, JSON.stringify(overlayFontSize));
@@ -1341,7 +1366,8 @@ const applyProfileData = async (data: OverlayProfileData): Promise<void> => {
       emit("trackmap://settings", trackMapSettings),
       emit("fuel://settings", fuelSettings),
       emit("tires://settings", tiresSettings),
-      emit("conditions://settings", conditionsSettings)
+      emit("conditions://settings", conditionsSettings),
+      emit("dashboard://settings", dashboardSettings)
     ];
     for (const id of overlayIds) {
       events.push(emit("overlay://background-transparency", {
@@ -1891,6 +1917,7 @@ const parseOverlayConfiguration = (
   const fuel = configurationObject(overlays?.fuel);
   const tires = configurationObject(overlays?.tires);
   const conditions = configurationObject(overlays?.conditions);
+  const dashboard = configurationObject(overlays?.dashboard);
   const importedProfiles = root?.profiles;
   const importedBindings = root?.modeBindings;
   const importedPerformanceProfile = overlays?.performanceProfile;
@@ -1924,7 +1951,8 @@ const parseOverlayConfiguration = (
     || (numericSchemaVersion >= 6 && !trackMap)
     || (numericSchemaVersion >= 12 && !fuel)
     || (numericSchemaVersion >= 15 && !tires)
-    || (numericSchemaVersion >= 16 && !conditions)) {
+    || (numericSchemaVersion >= 16 && !conditions)
+    || (numericSchemaVersion >= 18 && !dashboard)) {
     throw new Error(t("config.incompatible"));
   }
   if (transparencyScope.mode !== "global" && transparencyScope.mode !== "individual") {
@@ -2069,6 +2097,12 @@ const parseOverlayConfiguration = (
   if (!normalizedConditions) {
     throw new Error(t("config.invalidConditions"));
   }
+  const normalizedDashboard = dashboard
+    ? normalizeDashboardSettings(dashboard)
+    : defaultDashboardSettings();
+  if (!normalizedDashboard) {
+    throw new Error(t("config.invalidDashboard"));
+  }
   const fallbackVisibility = defaultVisibility();
   for (const id of overlayIds) {
     if (visibility[id] === undefined) visibility[id] = fallbackVisibility[id];
@@ -2159,6 +2193,7 @@ const parseOverlayConfiguration = (
       fuel: normalizedFuel as unknown as FuelSettings,
       tires: normalizedTires as unknown as TiresSettings,
       conditions: normalizedConditions,
+      dashboard: normalizedDashboard,
       performanceProfile: isPerformanceProfile(importedPerformanceProfile)
         ? importedPerformanceProfile
         : DEFAULT_PERFORMANCE_PROFILE,
@@ -2179,7 +2214,8 @@ const parseOverlayConfiguration = (
     trackMap: result.overlays.trackMap,
     fuel: result.overlays.fuel,
     tires: result.overlays.tires,
-    conditions: result.overlays.conditions
+    conditions: result.overlays.conditions,
+    dashboard: result.overlays.dashboard
   };
   // Documents written before schema 17 carry a single configuration; it becomes
   // the one profile every mode starts bound to.
@@ -2226,6 +2262,7 @@ const applyImportedConfiguration = (configuration: OverlayConfigurationExport): 
     [FUEL_SETTINGS_KEY, configuration.overlays.fuel],
     [TIRES_SETTINGS_KEY, configuration.overlays.tires],
     [CONDITIONS_SETTINGS_KEY, configuration.overlays.conditions],
+    [DASHBOARD_SETTINGS_KEY, configuration.overlays.dashboard],
     [PERFORMANCE_PROFILE_KEY, configuration.overlays.performanceProfile],
     [SPECTATOR_MODE_KEY, configuration.overlays.spectatorMode && !configuration.overlays.teamMode],
     [TEAM_MODE_KEY, configuration.overlays.teamMode],
@@ -2289,6 +2326,7 @@ exportConfigurationButton?.addEventListener("click", () => {
         fuel: fuelSettings,
         tires: tiresSettings,
         conditions: conditionsSettings,
+        dashboard: dashboardSettings,
         performanceProfile,
         spectatorMode,
         teamMode
@@ -2579,6 +2617,17 @@ for (const option of CONDITIONS_OPTIONS) {
       visible: { ...conditionsSettings.visible, [option.id]: checked }
     };
     persistConditionsSettings();
+  });
+}
+
+const dashboardOptions = document.getElementById("dashboard-options");
+for (const option of DASHBOARD_OPTIONS) {
+  appendToggle(dashboardOptions, t(option.labelKey), dashboardSettings.visible[option.id], (checked) => {
+    dashboardSettings = {
+      ...dashboardSettings,
+      visible: { ...dashboardSettings.visible, [option.id]: checked }
+    };
+    persistDashboardSettings();
   });
 }
 
@@ -2936,7 +2985,8 @@ const overlayCapability: Partial<Record<OverlayId, keyof SourceCapabilities>> = 
   damage: "damage_detail",
   forecast: "weather_forecast",
   liftcoast: "lift_and_coast",
-  pitstop: "pit_service_estimate"
+  pitstop: "pit_service_estimate",
+  dashboard: "car_electronics"
 };
 
 let unsupportedOverlays = "";

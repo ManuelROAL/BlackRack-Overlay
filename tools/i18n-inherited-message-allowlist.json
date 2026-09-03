@@ -20,5 +20,9 @@
   { "key": "rejoin.reason", "reason": "Rejoin is the stable warning kind." },
   { "key": "standings.split", "reason": "Split is established motorsport notation." },
   { "key": "relative.aria", "reason": "Relative is the overlay product name." },
-  { "key": "fuel.full", "reason": "Compact full-power state is established notation." }
+  { "key": "fuel.full", "reason": "Compact full-power state is established notation." },
+  { "key": "title.dashboard", "reason": "Dashboard is the overlay product name." },
+  { "key": "dashboard.tcShort", "reason": "TC is the abbreviation printed on the car." },
+  { "key": "dashboard.absShort", "reason": "ABS is the abbreviation printed on the car." },
+  { "key": "dashboard.regenShort", "reason": "Regen is established hybrid notation in both locales." }
 ]

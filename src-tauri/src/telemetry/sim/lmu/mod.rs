@@ -45,6 +45,7 @@ pub(super) const DESCRIPTOR: SourceDescriptor = SourceDescriptor {
         official_track_map: true,
         pit_service_estimate: true,
         lift_and_coast: true,
+        car_electronics: true,
         session_splits: true,
     },
     official_geometry: Some(trackmap::official_geometry),

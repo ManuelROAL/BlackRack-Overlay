@@ -287,6 +287,7 @@ struct PerformanceMonitor {
     emitted_rejoin: u64,
     emitted_forecast: u64,
     emitted_conditions: u64,
+    emitted_dashboard: u64,
     max_standings_rows: usize,
 }
 
@@ -324,6 +325,7 @@ impl PerformanceMonitor {
             emitted_rejoin: 0,
             emitted_forecast: 0,
             emitted_conditions: 0,
+            emitted_dashboard: 0,
             max_standings_rows: 0,
         }
     }
@@ -372,6 +374,7 @@ impl PerformanceMonitor {
                 "rejoin": self.emitted_rejoin,
                 "forecast": self.emitted_forecast,
                 "conditions": self.emitted_conditions,
+                "dashboard": self.emitted_dashboard,
             },
             "max_standings_rows": self.max_standings_rows,
         }));
@@ -635,6 +638,38 @@ pub struct TelemetryFrame {
     track_limits_steps_per_penalty: u32,
     tc_active: bool,
     abs_active: bool,
+    /// Whether the source publishes the driver-selectable electronics below.
+    /// Their neutral value is a real setting, so an unavailable source cannot
+    /// be told apart from a car on map 0 without this.
+    car_electronics_available: bool,
+    engine_map: u8,
+    engine_map_max: u8,
+    traction_control_level: u8,
+    traction_control_max: u8,
+    traction_control_slip: u8,
+    traction_control_slip_max: u8,
+    traction_control_cut: u8,
+    traction_control_cut_max: u8,
+    anti_lock_brakes_level: u8,
+    anti_lock_brakes_max: u8,
+    brake_migration: u8,
+    brake_migration_max: u8,
+    front_anti_roll_bar: u8,
+    front_anti_roll_bar_max: u8,
+    rear_anti_roll_bar: u8,
+    rear_anti_roll_bar_max: u8,
+    speed_limiter_active: bool,
+    headlights_on: bool,
+    wiper_state: u8,
+    /// Whether the car carries an electric boost system at all. Hypercars do;
+    /// the GT and LMP2 classes sharing the grid do not.
+    hybrid_available: bool,
+    battery_charge_percent: f64,
+    hybrid_regen_kw: f64,
+    /// 0 unavailable, 1 inactive, 2 propulsion, 3 regeneration.
+    hybrid_motor_state: u8,
+    hybrid_motor_temperature_c: f64,
+    hybrid_motor_rpm: f64,
     lift_and_coast_progress: u8,
     steering_angle_degrees: f64,
     force_feedback: f64,
@@ -898,6 +933,32 @@ impl TelemetryFrame {
             track_limits_steps_per_penalty: 0,
             tc_active: false,
             abs_active: false,
+            car_electronics_available: false,
+            engine_map: 0,
+            engine_map_max: 0,
+            traction_control_level: 0,
+            traction_control_max: 0,
+            traction_control_slip: 0,
+            traction_control_slip_max: 0,
+            traction_control_cut: 0,
+            traction_control_cut_max: 0,
+            anti_lock_brakes_level: 0,
+            anti_lock_brakes_max: 0,
+            brake_migration: 0,
+            brake_migration_max: 0,
+            front_anti_roll_bar: 0,
+            front_anti_roll_bar_max: 0,
+            rear_anti_roll_bar: 0,
+            rear_anti_roll_bar_max: 0,
+            speed_limiter_active: false,
+            headlights_on: false,
+            wiper_state: 0,
+            hybrid_available: false,
+            battery_charge_percent: 0.0,
+            hybrid_regen_kw: 0.0,
+            hybrid_motor_state: 0,
+            hybrid_motor_temperature_c: 0.0,
+            hybrid_motor_rpm: 0.0,
             lift_and_coast_progress: 0,
             steering_angle_degrees: 0.0,
             force_feedback: 0.0,
@@ -1169,6 +1230,7 @@ pub fn spawn_source(app: AppHandle) {
             let weather_due = cycle_due(cycle, WEATHER_CYCLES);
             let emit_forecast = weather_due && super::overlay_is_active(&app, "forecast");
             let emit_conditions = secondary_due && super::overlay_is_active(&app, "conditions");
+            let emit_dashboard = secondary_due && super::overlay_is_active(&app, "dashboard");
             let emit_fuel = driving_due && super::overlay_is_active(&app, "fuel");
             // An active warning follows the fast cadence so its response never
             // depends on a separate timer landing between repaint cycles.
@@ -1201,8 +1263,9 @@ pub fn spawn_source(app: AppHandle) {
                 ("rejoin", emit_rejoin),
                 ("forecast", emit_forecast),
                 ("conditions", emit_conditions),
+                ("dashboard", emit_dashboard),
             ];
-            let mut base_targets = [""; 13];
+            let mut base_targets = [""; 14];
             let mut base_target_count = 0;
             for (label, should_emit) in base_emissions {
                 if should_emit {
@@ -1224,6 +1287,7 @@ pub fn spawn_source(app: AppHandle) {
                 performance.emitted_rejoin += u64::from(emit_rejoin);
                 performance.emitted_forecast += u64::from(emit_forecast);
                 performance.emitted_conditions += u64::from(emit_conditions);
+                performance.emitted_dashboard += u64::from(emit_dashboard);
             }
             if cycle_due(cycle, CONTROL_CYCLES) {
                 let _ = app.emit_to("control", "telemetry://frame", &frame);
