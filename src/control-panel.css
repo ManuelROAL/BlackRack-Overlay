@@ -136,6 +136,14 @@ select {
   box-shadow: 0 16px 32px rgb(0 0 0 / 50%);
 }
 
+/* Without this, the unconditional `display: grid` above outranks the
+   browser's own `[hidden]` rule (higher-specificity author style beats a
+   same-property user-agent one regardless of the attribute), so toggling
+   `hidden` from script would stop having any visible effect. */
+.simulator-picker-menu[hidden] {
+  display: none;
+}
+
 .simulator-picker-option {
   padding: 8px 10px;
   border: 0;
