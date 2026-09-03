@@ -90,6 +90,14 @@ const revLevel = (fraction: number): string =>
   fraction >= 0.97 ? "limit" : fraction >= 0.9 ? "high" : "normal";
 
 /**
+ * Half a blink period. Read from the clock on each telemetry update rather than
+ * kept on a timer of its own: the state still changes only when a frame
+ * arrives, so the host keeps repainting from data, and the rate stays the same
+ * across performance profiles even though their cadences differ.
+ */
+const LIMITER_BLINK_MS = 450;
+
+/**
  * A field the car or the session cannot answer is dropped rather than drawn as
  * a dash: on a strip this short an empty slot costs as much room as a real
  * reading. A maximum of zero means the system is absent and a maximum of one
@@ -104,8 +112,6 @@ const available = (id: DashboardFieldId, frame: TelemetryFrame): boolean => {
       return frame.car_electronics_available && frame.traction_control_slip_max > 0;
     case "tccut":
       return frame.car_electronics_available && frame.traction_control_cut_max > 0;
-    // The chip is the warning itself, so it exists only while the limiter does.
-    case "limiter": return frame.speed_limiter_active;
     case "abs": return frame.car_electronics_available && frame.anti_lock_brakes_max > 0;
     case "battery": return frame.hybrid_available;
     case "energy": return frame.virtual_energy_active;
@@ -178,12 +184,22 @@ const render = (frame: TelemetryFrame): void => {
 
   let rowFields = 0;
   for (const { id } of DASHBOARD_FIELDS) {
+    // The limiter warning has no readout of its own; it lights something that
+    // is already on screen, so there is no element to toggle here.
+    const element = fields[id];
+    if (!element) continue;
     const shown = live && settings.visible[id] && available(id, frame);
-    toggle(fields[id], shown);
-    if (shown && id !== "gear" && id !== "revs" && id !== "limiter") rowFields += 1;
+    toggle(element, shown);
+    if (shown && id !== "gear" && id !== "revs") rowFields += 1;
   }
   const gearShown = live && settings.visible.gear;
   const revsShown = live && settings.visible.revs;
+
+  const limiterEngaged = live && settings.visible.limiter && frame.speed_limiter_active;
+  const lit = limiterEngaged
+    && Math.floor(performance.now() / LIMITER_BLINK_MS) % 2 === 0;
+  setState(gear, "limiter", lit && gearShown ? "on" : "off");
+  setState(shell, "limiter", lit && !gearShown ? "on" : "off");
   toggle(row, rowFields > 0);
   toggle(readout, rowFields > 0 || revsShown);
   toggle(empty, !gearShown && rowFields === 0 && !revsShown);
@@ -193,9 +209,7 @@ const render = (frame: TelemetryFrame): void => {
 const applySettings = (next: DashboardSettings): void => {
   settings = next;
   for (const { id } of DASHBOARD_FIELDS) {
-    // The limiter chip is driven by the car, not by the preference alone, so it
-    // waits for the next frame rather than flashing on when it is enabled.
-    toggle(fields[id], id !== "limiter" && settings.visible[id]);
+    if (fields[id]) toggle(fields[id], settings.visible[id]);
   }
   synchronizeOverlaySize();
 };

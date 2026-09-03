@@ -26,10 +26,17 @@ One pill-shaped strip, not a cluster:
 - Everything else is a uniform label-over-value pair in a single row. Class
   position carries the accent colour, since it is the one value read as a
   standing rather than as a measurement.
-- The pit limiter is the one exception to that uniformity: an amber chip at the
-  right end of the strip, present only while the limiter is engaged. It is a
-  warning, not a readout, so it is loud and it costs no room the rest of the
-  time.
+- The pit limiter adds nothing to the strip. It blinks something already on
+  screen — the gear ring in amber, or the shell's border and background when the
+  strip is configured without the gear, so the warning never depends on which
+  readouts the driver chose. Blinking colour rather than adding a badge also
+  means the strip cannot change width while it is engaged.
+- That blink is driven from the telemetry loop, reading the clock on each frame
+  and flipping a data attribute every 450 ms. It is never a CSS animation: the
+  shared `composite-embed` safeguard disables those precisely so the native host
+  repaints from data instead of at the monitor refresh rate, which is also why
+  Rejoin's pulse only runs on its standalone page. Reading the clock rather than
+  counting frames keeps the rate identical across performance profiles.
 
 ## Visible fields and the cap
 
@@ -40,10 +47,10 @@ it is short, so the cap is what protects it: the driver chooses what matters for
 this car and this session instead of accumulating every field the game
 publishes.
 
-- A field marked `counts: false` draws only while its own state is active, so
-  it takes no room on the strip the rest of the time and is not charged against
-  the cap. The pit limiter is the only one. Adding another means arguing that it
-  is a warning rather than a readout.
+- A field marked `counts: false` has no readout of its own and takes no room on
+  the strip, so it is not charged against the cap and the control panel never
+  locks it when the cap is full. The pit limiter is the only one. Adding another
+  means arguing that it is a warning rather than a readout.
 - The three traction-control trims are separate fields, because a car can expose
   any combination of them: the level (`mTC`), the slip target (`mTCSlip`) and
   the cut (`mTCCut`). Each is gated on its own maximum, so a car without one
@@ -112,8 +119,10 @@ publishes.
 
 Check a Hypercar and an LMP2 in the same session: the battery, the engine map
 and ABS must appear for one and be absent for the other, and the strip must
-shorten accordingly. Confirm the limiter chip appears entering and leaving the
-pits and never counts against the cap, and that each traction-control trim
+shorten accordingly. Confirm the limiter blink starts and stops entering and
+leaving the pits, falls back to the shell with the gear turned off, never
+counts against the cap and stays reachable in the control panel with the cap
+full, and that each traction-control trim
 appears only on a car that publishes a maximum for it. Confirm the cap disables
 the remaining toggles at eight and releases them when one is turned off, that
 the delta and lap times fill in with the Delta and Timing overlays closed, the

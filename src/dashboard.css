@@ -130,19 +130,26 @@ body.dashboard-body {
 #dashboard-delta[data-trend="improving"] { color: #8fe04f; }
 #dashboard-delta[data-trend="worsening"] { color: #f05252; }
 
-/* A warning, not a readout: it is absent while the limiter is off and loud
-   enough to catch the eye the moment it engages. */
-.dash-limiter {
-  flex: 0 0 auto;
-  margin: 0;
-  padding: 5px 9px;
-  border-radius: 14px;
-  background: #ffb84d;
-  color: #12161c;
-  font-size: calc(12px * var(--overlay-font-scale, 1));
-  font-weight: 900;
-  letter-spacing: .1em;
-  white-space: nowrap;
+/* The pit-limiter warning blinks something already on screen instead of adding
+   a badge, so it costs no room and cannot change the width of the strip. It
+   must come after the rev states, which it overrides while it is lit. The blink
+   itself is driven from the telemetry loop, never by a CSS animation: the
+   native host has to repaint from data, not at the monitor refresh rate. */
+.dash-gear[data-limiter="on"] {
+  border-color: #ffb84d;
+  background: rgb(255 184 77 / 22%);
+  color: #ffb84d;
+}
+
+/* Fallback for a strip configured without the gear: the warning can never
+   depend on which readouts the driver happens to have chosen. */
+.dashboard-shell[data-limiter="on"] {
+  border-color: #ffb84d;
+  background: linear-gradient(
+    145deg,
+    rgb(62 46 20 / var(--overlay-background-opacity)),
+    rgb(38 27 10 / var(--overlay-background-opacity))
+  );
 }
 
 .dash-empty {
