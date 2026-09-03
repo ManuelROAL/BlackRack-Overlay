@@ -1,17 +1,18 @@
 //! Everything specific to Le Mans Ultimate.
 //!
-//! `install` is always compiled because the control panel reports whether the
-//! telemetry plugin is present even in builds made without the shared-memory
-//! SDK. The rest needs the SDK header and the `bridge.cpp` symbols, so it is
-//! gated the same way `build.rs` gates the native bridge.
+//! All of it needs the SDK header and the `bridge.cpp` symbols, so the module
+//! is gated the same way `build.rs` gates the native bridge. A build without
+//! the SDK cannot read this simulator at all, so it has nothing to report
+//! about the plugin either.
 
 use std::path::Path;
 
 use super::TelemetrySource;
 #[cfg(all(target_os = "windows", lmu_sdk))]
-use super::{SourceCapabilities, SourceDescriptor};
+use super::{SourceCapabilities, SourceDependency, SourceDescriptor};
 
-pub(crate) mod install;
+#[cfg(all(target_os = "windows", lmu_sdk))]
+mod install;
 
 #[cfg(all(target_os = "windows", lmu_sdk))]
 mod driver_ranks;
@@ -47,7 +48,25 @@ pub(super) const DESCRIPTOR: SourceDescriptor = SourceDescriptor {
         session_splits: true,
     },
     official_geometry: Some(trackmap::official_geometry),
+    dependency: Some(plugin_dependency),
 };
+
+/// The shared-memory plugin the game loads; without it the bridge reads an
+/// empty mapping no matter how the app is built.
+#[cfg(all(target_os = "windows", lmu_sdk))]
+fn plugin_dependency() -> SourceDependency {
+    match install::telemetry_plugin() {
+        Some(path) => SourceDependency {
+            available: true,
+            detail: Some(path.display().to_string()),
+        },
+        // Nothing was found, so name what was looked for instead.
+        None => SourceDependency {
+            available: false,
+            detail: Some(install::TELEMETRY_PLUGIN.replace('/', "\\")),
+        },
+    }
+}
 
 #[cfg(all(target_os = "windows", lmu_sdk))]
 pub(super) fn try_new(app_data: &Path) -> Option<Box<dyn TelemetrySource>> {

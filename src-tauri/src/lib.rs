@@ -718,12 +718,6 @@ struct OverlayPlacementSeed {
     height: f64,
 }
 
-#[derive(Serialize)]
-struct LmuDependencyStatus {
-    telemetry_plugin_available: bool,
-    telemetry_plugin_path: Option<String>,
-}
-
 fn sorted_monitors(app: &AppHandle) -> Result<Vec<tauri::Monitor>, String> {
     let mut monitors = app
         .available_monitors()
@@ -1449,13 +1443,9 @@ fn set_timing_settings(window: WebviewWindow, settings: telemetry::TimingSetting
 }
 
 #[tauri::command]
-fn get_lmu_dependency_status(window: WebviewWindow) -> Result<LmuDependencyStatus, String> {
+fn get_simulator_status(window: WebviewWindow) -> Result<telemetry::SimulatorStatus, String> {
     require_control_window(&window)?;
-    let plugin = telemetry::lmu_telemetry_plugin();
-    Ok(LmuDependencyStatus {
-        telemetry_plugin_available: plugin.is_some(),
-        telemetry_plugin_path: plugin.map(|path| path.display().to_string()),
-    })
+    Ok(telemetry::simulator_status())
 }
 
 #[tauri::command]
@@ -1982,7 +1972,7 @@ pub fn run() {
             set_overlay_view_settings,
             set_delta_settings,
             set_timing_settings,
-            get_lmu_dependency_status,
+            get_simulator_status,
             open_support_page,
             get_shortcut_settings,
             set_shortcut,

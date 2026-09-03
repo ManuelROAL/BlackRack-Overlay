@@ -26,6 +26,18 @@ pub(crate) mod mock;
 /// itself is owned by the telemetry loop.
 pub(crate) type OfficialGeometryFetcher = fn() -> Result<OfficialTrackMapGeometry, String>;
 
+/// Checks whether the simulator's telemetry dependency — a plugin, an SDK or
+/// a service — is in place. Runs on the command thread, so like the geometry
+/// fetcher it is a function rather than a source method.
+pub(crate) type DependencyProbe = fn() -> SourceDependency;
+
+#[derive(Clone, Serialize)]
+pub(crate) struct SourceDependency {
+    pub(crate) available: bool,
+    /// Where the dependency was found, or where it was expected.
+    pub(crate) detail: Option<String>,
+}
+
 /// What the simulator behind a source can ever report.
 ///
 /// This is not the same question as the per-session flags already carried by
@@ -90,6 +102,8 @@ pub(crate) struct SourceDescriptor {
     pub(crate) display_name: &'static str,
     pub(crate) capabilities: SourceCapabilities,
     pub(crate) official_geometry: Option<OfficialGeometryFetcher>,
+    /// Absent when the simulator has nothing installable to check.
+    pub(crate) dependency: Option<DependencyProbe>,
 }
 
 pub(crate) trait TelemetrySource: Send + 'static {
@@ -110,6 +124,29 @@ pub(crate) fn detect(app_data: &Path) -> Box<dyn TelemetrySource> {
 
 pub(crate) fn active() -> Option<SourceDescriptor> {
     ACTIVE.get().copied()
+}
+
+/// What the control panel reports about the simulator behind the overlays.
+#[derive(Serialize)]
+pub(crate) struct SimulatorStatus {
+    id: &'static str,
+    display_name: &'static str,
+    dependency: Option<SourceDependency>,
+}
+
+pub(crate) fn status() -> SimulatorStatus {
+    let Some(descriptor) = active() else {
+        return SimulatorStatus {
+            id: "none",
+            display_name: "",
+            dependency: None,
+        };
+    };
+    SimulatorStatus {
+        id: descriptor.id,
+        display_name: descriptor.display_name,
+        dependency: descriptor.dependency.map(|probe| probe()),
+    }
 }
 
 pub(super) fn active_official_geometry() -> Option<OfficialGeometryFetcher> {

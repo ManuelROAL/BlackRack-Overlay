@@ -186,9 +186,11 @@ interface TelemetryLoggingStatus {
   active_file: string | null;
 }
 
-interface LmuDependencyStatus {
-  telemetry_plugin_available: boolean;
-  telemetry_plugin_path: string | null;
+interface SimulatorStatus {
+  id: string;
+  display_name: string;
+  /** Absent when the simulator has nothing installable to check. */
+  dependency: { available: boolean; detail: string | null } | null;
 }
 
 interface ShortcutBindingStatus {
@@ -255,7 +257,10 @@ interface OverlayConfigurationExport {
 
 type ShortcutAction = "interaction_mode" | "show_panel";
 
-let lmuDependencyStatus: LmuDependencyStatus | null = null;
+let simulatorStatus: SimulatorStatus | null = null;
+
+/** Names the simulator the overlays are reading, for copy that has to say it. */
+const activeSimulatorName = (): string => simulatorStatus?.display_name || t("simulator.unknown");
 
 applyTranslations();
 
@@ -942,9 +947,10 @@ const renderOverlayGuide = (id: OverlayId): void => {
   const tip = document.getElementById("overlay-guide-tip");
   if (icon) icon.textContent = entry.icon;
   if (title) title.textContent = t(entry.title);
-  if (purpose) purpose.textContent = t(entry.purpose);
-  if (reading) reading.textContent = t(entry.reading);
-  if (tip) tip.textContent = t(entry.tip);
+  const simulator = activeSimulatorName();
+  if (purpose) purpose.textContent = t(entry.purpose, { simulator });
+  if (reading) reading.textContent = t(entry.reading, { simulator });
+  if (tip) tip.textContent = t(entry.tip, { simulator });
   overlayGuideNavigation?.querySelectorAll<HTMLButtonElement>("button[data-guide-overlay]").forEach((button) => {
     const selected = button.dataset.guideOverlay === id;
     button.classList.toggle("active", selected);
@@ -2839,7 +2845,7 @@ const renderSourceCapabilities = (frame: TelemetryFrame): void => {
     const input = inputFor(id);
     const supported = !unsupported.includes(id);
     card?.toggleAttribute("data-unsupported", !supported);
-    if (card) card.title = supported ? "" : t("card.unsupported", { simulator: frame.source_name });
+    if (card) card.title = supported ? "" : t("card.unsupported", { simulator: activeSimulatorName() });
     if (input) input.disabled = !supported;
   }
 };
@@ -2850,16 +2856,17 @@ const renderConnection = (frame: TelemetryFrame): void => {
   if (!status || !label) return;
   status.title = "";
 
+  const simulator = activeSimulatorName();
   if (!frame.connected) {
-    const pluginMissing = lmuDependencyStatus?.telemetry_plugin_available === false;
-    status.dataset.state = pluginMissing ? "error" : "offline";
-    label.textContent = t(pluginMissing ? "status.plugin" : "status.waiting");
-    if (pluginMissing) {
-      status.title = t("status.pluginTitle");
+    const dependencyMissing = simulatorStatus?.dependency?.available === false;
+    status.dataset.state = dependencyMissing ? "error" : "offline";
+    label.textContent = t(dependencyMissing ? "status.plugin" : "status.waiting", { simulator });
+    if (dependencyMissing) {
+      status.title = t("status.pluginTitle", { dependency: simulatorStatus?.dependency?.detail ?? "" });
     }
   } else if (!frame.player_active) {
     status.dataset.state = "standby";
-    label.textContent = t("status.noCar");
+    label.textContent = t("status.noCar", { simulator });
   } else {
     status.dataset.state = "live";
     label.textContent = t("status.active");
@@ -2900,6 +2907,6 @@ void invoke<ShortcutSettingsStatus>("get_shortcut_settings")
 void invoke<InteractionMode>("get_interaction_mode")
   .then(renderInteractionMode)
   .catch(reportInitializationError("interaction mode"));
-void invoke<LmuDependencyStatus>("get_lmu_dependency_status").then((status) => {
-  lmuDependencyStatus = status;
-}).catch(reportInitializationError("LMU dependency status"));
+void invoke<SimulatorStatus>("get_simulator_status").then((status) => {
+  simulatorStatus = status;
+}).catch(reportInitializationError("simulator status"));

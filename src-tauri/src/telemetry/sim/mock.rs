@@ -31,6 +31,7 @@ const DESCRIPTOR: SourceDescriptor = SourceDescriptor {
         session_splits: true,
     },
     official_geometry: None,
+    dependency: None,
 };
 
 pub struct MockTelemetrySource {

@@ -3,7 +3,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 const GAME_RELATIVE_PATH: &str = "steamapps/common/Le Mans Ultimate";
-const TELEMETRY_PLUGIN: &str = "Plugins/LMU_SharedMemoryMapPlugin64.dll";
+pub(super) const TELEMETRY_PLUGIN: &str = "Plugins/LMU_SharedMemoryMapPlugin64.dll";
 const MAX_STEAM_LIBRARIES: usize = 32;
 
 /// Discovery is a read-only probe: the paths below are only stat-ed to report
