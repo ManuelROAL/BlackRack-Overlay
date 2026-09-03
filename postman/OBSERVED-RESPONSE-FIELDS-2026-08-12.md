@@ -153,6 +153,13 @@ weatherForecast { nodes { Humidity, RainChance, Sky, Temperature,
                           WindDirection, WindSpeed } }
 ```
 
+`teamInfo.driverNames` no es un array de cadenas: cada nombre llega como su
+búfer C de tamaño fijo, un array de códigos de carácter con relleno de ceros
+(`[77, 97, 110, ...]` para `Manuel...`). Un tipo estricto lo rechaza y, como
+serde falla la respuesta entera, un solo nombre ilegible tira todo el payload:
+daño aero, menú de pit e identidad de equipo incluidos. `teamName` y
+`vehicleName`, en cambio, sí son cadenas normales.
+
 Claves observadas dentro de `pitStopTimes.times`:
 
 ```text

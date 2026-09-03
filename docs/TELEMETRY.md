@@ -118,11 +118,29 @@ weather polls only for Forecast or Conditions. Disconnecting LMU disables all th
 - `/rest/strategy/pitstop-estimate`: 1 Hz for authoritative service estimates.
 - `/rest/garage/getPlayerGarageData`: 0.2 Hz for the active steering-wheel range
   in `VM_STEER_LOCK`; shared memory can report the nominal vehicle range instead.
-- `/rest/garage/UIScreen/RepairAndRefuel`: 1 Hz for aero and per-wheel suspension
-  wearables, assigned fuel ratio and the absolute fuel/virtual-energy load selected
-  in the official pit menu. The latest successful wearable response remains
-  latched across transient request failures until disconnect or session change;
-  strategy menu values expire independently when the response becomes stale.
+- `/rest/garage/UIScreen/TireManagement`: every 30 s for
+  `optimalCompoundConditions`, the compounds the player's car carries and their
+  optimal temperatures. The list order is what `mCompoundType` indexes, so it
+  resolves both the compound letter and the temperature scale for a car that
+  does not carry the full soft/medium/hard/wet ladder — an LMP2 running Medium
+  and Wet indexes them 0 and 1, which the fixed ladder reads as Soft and Medium.
+  It describes the player's car only; rivals keep the generic ladder.
+- `/rest/garage/getVehicleCondition`: 5 Hz for per-wheel suspension damage. At
+  ~259 B it is the primary suspension source, fast enough to show an impact as it
+  happens and far less exposed to the request timeout than the ~11 KB response
+  below.
+- `/rest/garage/UIScreen/RepairAndRefuel`: 1 Hz for aero wearables, assigned fuel
+  ratio and the absolute fuel/virtual-energy load selected in the official pit
+  menu. Its `wearables.suspension` is the fallback when the light endpoint above
+  is unavailable, so suspension survives an outage of either one. The latest
+  successful wearable response remains latched across transient request failures
+  until disconnect or session change; strategy menu values expire independently
+  when the response becomes stale.
+
+Every REST fetch failure is recorded in the session diagnostics log: one
+`rest_failed` line naming the stage that broke (`request`, `status` or `decode`),
+a `rest_still_failing` repeat at most every 30 s while the outage lasts, and a
+`rest_recovered` line with the failure count when the endpoint answers again.
 - `/rest/profile/getAuthSessionTicket`: only when RaceOS authentication needs a
   new token.
 

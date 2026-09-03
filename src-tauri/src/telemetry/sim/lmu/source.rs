@@ -13,7 +13,7 @@ use super::super::{SourceDescriptor, TelemetrySource};
 use super::driver_ranks::DriverRankResolver;
 use super::event_split::{DriverRankSettings, SessionSplitResolver};
 use super::rest::{
-    normalized_driver_identity, normalized_name, LocalRestResolver, RestVehicleDamage,
+    normalized_driver_identity, normalized_name, LocalRestResolver, RestCompoundCondition,
 };
 use crate::telemetry::consumption_profile::{ConsumptionProfiler, ProfileEstimate};
 use crate::telemetry::fuel_strategy::{
@@ -43,26 +43,23 @@ const DRIVER_RANK_QUALIFY_WEIGHT: f64 = 0.176_470_588_235_294;
 const DRIVER_RANK_LOG_SCHEMA_VERSION: u32 = 2;
 const DRIVER_RANK_FORMULA_VERSION: &str = "pairwise-elo-v2";
 
-fn suspension_damage_by_wheel_percent(
-    damage: Option<RestVehicleDamage>,
-    detached: [u8; 4],
-) -> [f64; 4] {
+fn suspension_damage_by_wheel_percent(damage: Option<[f64; 4]>, detached: [u8; 4]) -> [f64; 4] {
     std::array::from_fn(|index| {
         damage
-            .map(|value| (value.suspension[index] * 100.0).clamp(0.0, 100.0))
+            .map(|value| (value[index] * 100.0).clamp(0.0, 100.0))
             .unwrap_or_else(|| if detached[index] != 0 { 100.0 } else { -1.0 })
     })
 }
 
-fn suspension_damage_percent(damage: Option<RestVehicleDamage>, detached: [u8; 4]) -> f64 {
+fn suspension_damage_percent(damage: Option<[f64; 4]>, detached: [u8; 4]) -> f64 {
     damage
-        .map(|value| value.suspension.into_iter().fold(0.0_f64, f64::max) * 100.0)
+        .map(|value| value.into_iter().fold(0.0_f64, f64::max) * 100.0)
         .unwrap_or_else(|| if detached.contains(&1) { 100.0 } else { -1.0 })
         .clamp(-1.0, 100.0)
 }
 
 fn rear_wing_detached(
-    _damage: Option<RestVehicleDamage>,
+    _aero_damage: Option<f64>,
     _part_detached: bool,
     _rear_center_severity: u8,
 ) -> bool {

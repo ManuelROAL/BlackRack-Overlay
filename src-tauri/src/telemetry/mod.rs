@@ -697,6 +697,9 @@ pub struct TelemetryFrame {
     tire_life_model: Option<TireLifeModel>,
     player_tire_flat_spot_percent: [f64; 4],
     player_tire_compounds: [String; 4],
+    /// Optimal tyre temperature the simulator publishes for the compound on
+    /// each wheel, or -1 when it is unknown.
+    player_tire_optimal_temperature_c: [f64; 4],
     player_tire_flat: [bool; 4],
     player_tire_detached: [bool; 4],
     player_stint: u32,
@@ -957,6 +960,7 @@ impl TelemetryFrame {
             tire_life_model: None,
             player_tire_flat_spot_percent: [0.0; 4],
             player_tire_compounds: std::array::from_fn(|_| String::new()),
+            player_tire_optimal_temperature_c: [-1.0; 4],
             player_tire_flat: [false; 4],
             player_tire_detached: [false; 4],
             player_stint: 0,

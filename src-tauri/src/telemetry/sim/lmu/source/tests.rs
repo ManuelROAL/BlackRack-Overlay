@@ -5,7 +5,7 @@ use super::{
     PlayerLapTimeHistory, TireWearTracker,
 };
 use crate::telemetry::sim::lmu::event_split::DriverRankSettings;
-use crate::telemetry::sim::lmu::rest::{RestStanding, RestVehicleDamage};
+use crate::telemetry::sim::lmu::rest::{RestCompoundCondition, RestStanding};
 use crate::telemetry::StandingEntry;
 use std::collections::{HashMap, HashSet};
 
@@ -268,10 +268,7 @@ fn tire_life_uses_clean_lap_wear_and_the_limiting_wheel() {
 
 #[test]
 fn suspension_damage_keeps_each_wheel_independent() {
-    let damage = RestVehicleDamage {
-        aero: 0.0,
-        suspension: [0.02, 0.18, 0.51, 1.4],
-    };
+    let damage = [0.02, 0.18, 0.51, 1.4];
 
     assert_eq!(
         suspension_damage_by_wheel_percent(Some(damage), [0, 1, 0, 0]),
@@ -288,12 +285,7 @@ fn suspension_damage_keeps_each_wheel_independent() {
 
 #[test]
 fn rear_wing_loss_is_not_inferred_from_aggregate_damage() {
-    let severe_aero_damage = RestVehicleDamage {
-        aero: 2.016,
-        suspension: [0.0; 4],
-    };
-
-    assert!(!rear_wing_detached(Some(severe_aero_damage), true, 2));
+    assert!(!rear_wing_detached(Some(2.016), true, 2));
     assert!(!rear_wing_detached(None, true, 2));
 }
 use std::ffi::c_char;
@@ -413,10 +405,60 @@ fn team_mode_resolves_registered_team_independently_of_focus() {
 #[test]
 fn maps_each_wheel_compound_and_deduplicates_the_summary() {
     assert_eq!(
-        LmuTelemetrySource::tire_compounds(&[0, 1, 2, 3]),
+        LmuTelemetrySource::tire_compounds(&[0, 1, 2, 3], &[]),
         ["S", "M", "H", "W"]
     );
-    assert_eq!(LmuTelemetrySource::tire_compound(&[1, 2, 1, 2]), "M/H");
+    assert_eq!(LmuTelemetrySource::tire_compound(&[1, 2, 1, 2], &[]), "M/H");
+}
+
+/// An LMP2 carrying only Medium and Wet indexes them 0 and 1, which the fixed
+/// ladder reads as Soft and Medium.
+#[test]
+fn the_garage_compound_list_overrides_the_fixed_ladder() {
+    let conditions = [
+        RestCompoundCondition {
+            compound_type: "Medium".into(),
+            optimal_temperature: 89.0,
+        },
+        RestCompoundCondition {
+            compound_type: "Wet".into(),
+            optimal_temperature: 52.0,
+        },
+    ];
+
+    assert_eq!(
+        LmuTelemetrySource::tire_compounds(&[0, 0, 0, 0], &conditions),
+        ["M", "M", "M", "M"]
+    );
+    assert_eq!(
+        LmuTelemetrySource::tire_optimal_temperatures(&[0, 0, 1, 1], &conditions),
+        [89.0, 89.0, 52.0, 52.0]
+    );
+    // A compound the list does not describe stays unknown instead of borrowing
+    // a neighbour's optimum.
+    assert_eq!(
+        LmuTelemetrySource::tire_optimal_temperatures(&[2, 2, 2, 2], &conditions),
+        [-1.0; 4]
+    );
+    assert_eq!(
+        LmuTelemetrySource::tire_optimal_temperatures(&[0; 4], &[]),
+        [-1.0; 4]
+    );
+}
+
+/// TinyPedal-style names such as "LMP2 - Medium" must resolve by the compound
+/// word, not by the class prefix.
+#[test]
+fn compound_letters_come_from_the_last_word_of_the_type() {
+    let conditions = [RestCompoundCondition {
+        compound_type: "LMP2 - Hard".into(),
+        optimal_temperature: 100.0,
+    }];
+
+    assert_eq!(
+        LmuTelemetrySource::tire_compounds(&[0; 4], &conditions),
+        ["H", "H", "H", "H"]
+    );
 }
 
 #[test]

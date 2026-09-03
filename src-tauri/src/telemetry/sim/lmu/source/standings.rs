@@ -334,7 +334,10 @@ impl LmuTelemetrySource {
                 pit_stop_lap,
                 pit_stop_time_seconds,
                 tire_compound: identity.tire_compound.clone(),
-                tire_compounds: Self::tire_compounds(&entry.wheel_compounds),
+                // The garage compound list describes the player's car only, so
+                // rivals keep the generic ladder rather than borrowing a set
+                // that belongs to another class.
+                tire_compounds: Self::tire_compounds(&entry.wheel_compounds, &[]),
                 flag: entry.flag,
                 causing_yellow: yellow_culprits.contains(&entry.vehicle_id),
                 has_fastest_lap: fastest_lap > 0.0

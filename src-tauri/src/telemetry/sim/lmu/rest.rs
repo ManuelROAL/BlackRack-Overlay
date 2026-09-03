@@ -41,6 +41,11 @@ const STANDINGS_INTERVAL: Duration = Duration::from_secs(1);
 const HISTORY_INTERVAL: Duration = Duration::from_secs(5);
 #[cfg(not(test))]
 const SUPPLEMENT_INTERVAL: Duration = Duration::from_secs(1);
+/// Suspension damage rides its own tick because `getVehicleCondition` is ~259 B
+/// against the ~11 KB of `RepairAndRefuel`, so it can be polled fast enough to
+/// show an impact as it happens without multiplying the heavy request.
+#[cfg(not(test))]
+const CONDITION_INTERVAL: Duration = Duration::from_millis(200);
 const STANDINGS_MAX_AGE: Duration = Duration::from_secs(1);
 const FOCUS_MAX_AGE: Duration = Duration::from_secs(3);
 const SUPPLEMENT_MAX_AGE: Duration = Duration::from_secs(3);
@@ -51,6 +56,16 @@ const GARAGE_INTERVAL: Duration = Duration::from_secs(5);
 const WEATHER_INTERVAL: Duration = Duration::from_secs(1);
 #[cfg(not(test))]
 const REQUEST_TIMEOUT: Duration = Duration::from_millis(400);
+/// The compounds a car carries and their optimal temperatures do not change
+/// within a session, so this ~8 KB response is refreshed rarely and only to
+/// catch a car that was not loaded yet when the session began.
+#[cfg(not(test))]
+const TIRE_COMPOUND_INTERVAL: Duration = Duration::from_secs(30);
+/// A failing endpoint reports once when it breaks and once when it recovers;
+/// in between it repeats at this cadence so a long outage stays visible in the
+/// diagnostics log without a 5 Hz poll flooding it.
+#[cfg(not(test))]
+const FAILURE_REPORT_INTERVAL: Duration = Duration::from_secs(30);
 
 #[derive(Clone, Debug, Default, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
@@ -124,9 +139,42 @@ struct RestGarageSetting {
 }
 
 #[derive(Clone, Copy, Debug, Default)]
-pub(super) struct RestVehicleDamage {
-    pub aero: f64,
-    pub suspension: [f64; 4],
+struct RestVehicleDamage {
+    aero: f64,
+    suspension: [f64; 4],
+}
+
+/// `getVehicleCondition` carries the same per-corner suspension values as the
+/// `wearables` of `RepairAndRefuel` in a fraction of the payload, so it is the
+/// primary source for suspension and the heavy response only a fallback.
+#[derive(Clone, Debug, Default, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+struct RestVehicleCondition {
+    suspension_damage: [f64; 4],
+}
+
+#[derive(Clone, Debug, Default, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+struct RestTireManagement {
+    optimal_compound_conditions: RestOptimalCompoundConditions,
+}
+
+#[derive(Clone, Debug, Default, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+struct RestOptimalCompoundConditions {
+    compounds: Vec<RestCompoundCondition>,
+}
+
+/// The compounds the current car actually carries, in the order shared memory
+/// indexes them with `mCompoundType`. A car with only Medium and Wet indexes
+/// them 0 and 1, so the fixed soft/medium/hard/wet ladder mislabels both and
+/// judges them against invented optimal temperatures.
+#[derive(Clone, Debug, Default, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub(super) struct RestCompoundCondition {
+    #[serde(rename = "type")]
+    pub compound_type: String,
+    pub optimal_temperature: f64,
 }
 
 #[derive(Clone, Debug, Default, Deserialize)]
@@ -142,9 +190,49 @@ struct RestRepairAndRefuel {
 #[derive(Clone, Debug, Default, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 struct RestTeamInfo {
+    #[serde(deserialize_with = "deserialize_driver_names")]
     driver_names: Vec<String>,
     team_name: String,
     vehicle_name: String,
+}
+
+/// LMU does not serialise a driver name as a string: it dumps the raw
+/// fixed-size C buffer, an array of character codes with NUL padding. A plain
+/// `Vec<String>` rejects that, and because serde fails the whole response, one
+/// unreadable name used to cost the entire `RepairAndRefuel` payload — aero
+/// damage, pit menu and team identity included.
+#[derive(Clone, Debug, Deserialize)]
+#[serde(untagged)]
+enum RestDriverName {
+    Text(String),
+    Buffer(Vec<u32>),
+}
+
+impl RestDriverName {
+    fn into_name(self) -> String {
+        match self {
+            Self::Text(text) => text.trim().to_owned(),
+            Self::Buffer(codes) => {
+                let bytes: Vec<u8> = codes
+                    .into_iter()
+                    .take_while(|code| *code != 0)
+                    .filter_map(|code| u8::try_from(code).ok())
+                    .collect();
+                String::from_utf8_lossy(&bytes).trim().to_owned()
+            }
+        }
+    }
+}
+
+fn deserialize_driver_names<'de, D>(deserializer: D) -> Result<Vec<String>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    Ok(Vec::<RestDriverName>::deserialize(deserializer)?
+        .into_iter()
+        .map(RestDriverName::into_name)
+        .filter(|name| !name.is_empty())
+        .collect())
 }
 
 #[derive(Clone, Debug, Default, Deserialize)]
@@ -262,6 +350,8 @@ pub(super) struct RestWeatherMetric {
 #[derive(Default)]
 struct SupplementUpdate {
     pit_stop: Option<RestPitStopEstimate>,
+    suspension_condition: Option<[f64; 4]>,
+    compound_conditions: Option<Vec<RestCompoundCondition>>,
     vehicle_damage: Option<RestVehicleDamage>,
     fuel_ratio_assigned: Option<f64>,
     pit_refill_targets: Option<RestPitRefillTargets>,
@@ -288,6 +378,8 @@ pub(super) struct LocalRestResolver {
     history_by_name: HashMap<String, Vec<RestStandingHistory>>,
     standings_received_at: Option<Instant>,
     pit_stop: RestPitStopEstimate,
+    suspension_condition: Option<[f64; 4]>,
+    compound_conditions: Vec<RestCompoundCondition>,
     vehicle_damage: Option<RestVehicleDamage>,
     session_max_time_seconds: f64,
     steering_range_degrees: Option<f64>,
@@ -313,6 +405,7 @@ impl LocalRestResolver {
             let Some(client) = http_client() else {
                 return;
             };
+            let mut health = RestHealth::default();
             let mut history_received_at: Option<Instant> = None;
             loop {
                 if standings_demand.load(Ordering::Relaxed) & STANDINGS_DEMAND == 0 {
@@ -320,11 +413,14 @@ impl LocalRestResolver {
                     continue;
                 }
                 let started = Instant::now();
-                if let Ok(standings) = fetch_json(&client, "/rest/watch/standings") {
+                if let Some(standings) =
+                    fetch_tracked(&client, "/rest/watch/standings", &mut health)
+                {
                     let history = if history_received_at
                         .is_none_or(|received| received.elapsed() >= HISTORY_INTERVAL)
                     {
-                        let response = fetch_json(&client, "/rest/watch/standings/history").ok();
+                        let response =
+                            fetch_tracked(&client, "/rest/watch/standings/history", &mut health);
                         if response.is_some() {
                             history_received_at = Some(Instant::now());
                         }
@@ -349,22 +445,51 @@ impl LocalRestResolver {
             let Some(client) = http_client() else {
                 return;
             };
+            let mut health = RestHealth::default();
             let mut garage_received_at: Option<Instant> = None;
+            let mut compounds_received_at: Option<Instant> = None;
+            let mut heavy_polled_at: Option<Instant> = None;
             loop {
                 if supplement_demand.load(Ordering::Relaxed) & SUPPLEMENT_DEMAND == 0 {
                     thread::sleep(Duration::from_secs(1));
                     continue;
                 }
                 let started = Instant::now();
+                let suspension_condition = fetch_tracked::<RestVehicleCondition>(
+                    &client,
+                    "/rest/garage/getVehicleCondition",
+                    &mut health,
+                )
+                .map(|response| response.suspension_damage);
+
+                // Everything below this point keeps the 1 Hz cadence; only the
+                // suspension tick above runs at CONDITION_INTERVAL.
+                let heavy_due =
+                    heavy_polled_at.is_none_or(|polled| polled.elapsed() >= SUPPLEMENT_INTERVAL);
+                if !heavy_due {
+                    if supplement_sender
+                        .send(SupplementUpdate {
+                            suspension_condition,
+                            ..Default::default()
+                        })
+                        .is_err()
+                    {
+                        break;
+                    }
+                    sleep_remaining(started, CONDITION_INTERVAL);
+                    continue;
+                }
+                heavy_polled_at = Some(Instant::now());
+
                 let steering_range_degrees = if garage_received_at
                     .is_none_or(|received| received.elapsed() >= GARAGE_INTERVAL)
                 {
-                    let range =
-                        fetch_json::<RestGarageData>(&client, "/rest/garage/getPlayerGarageData")
-                            .ok()
-                            .and_then(|response| {
-                                steering_range(&response.steering_lock.string_value)
-                            });
+                    let range = fetch_tracked::<RestGarageData>(
+                        &client,
+                        "/rest/garage/getPlayerGarageData",
+                        &mut health,
+                    )
+                    .and_then(|response| steering_range(&response.steering_lock.string_value));
                     if range.is_some() {
                         garage_received_at = Some(Instant::now());
                     }
@@ -372,20 +497,43 @@ impl LocalRestResolver {
                 } else {
                     None
                 };
-                let repair_and_refuel = fetch_json::<RestRepairAndRefuel>(
+                let compound_conditions = if compounds_received_at
+                    .is_none_or(|received| received.elapsed() >= TIRE_COMPOUND_INTERVAL)
+                {
+                    let compounds = fetch_tracked::<RestTireManagement>(
+                        &client,
+                        "/rest/garage/UIScreen/TireManagement",
+                        &mut health,
+                    )
+                    .map(|response| response.optimal_compound_conditions.compounds)
+                    .filter(|compounds| !compounds.is_empty());
+                    if compounds.is_some() {
+                        compounds_received_at = Some(Instant::now());
+                    }
+                    compounds
+                } else {
+                    None
+                };
+                let repair_and_refuel = fetch_tracked::<RestRepairAndRefuel>(
                     &client,
                     "/rest/garage/UIScreen/RepairAndRefuel",
-                )
-                .ok();
+                    &mut health,
+                );
                 let session_info: Option<RestSessionInfo> =
-                    fetch_json(&client, "/rest/watch/sessionInfo").ok();
+                    fetch_tracked(&client, "/rest/watch/sessionInfo", &mut health);
                 let team_info = repair_and_refuel.as_ref().and_then(|response| {
                     session_info.as_ref().and_then(|session| {
                         team_info_for_player(&response.team_info, &session.player_name)
                     })
                 });
                 let update = SupplementUpdate {
-                    pit_stop: fetch_json(&client, "/rest/strategy/pitstop-estimate").ok(),
+                    pit_stop: fetch_tracked(
+                        &client,
+                        "/rest/strategy/pitstop-estimate",
+                        &mut health,
+                    ),
+                    suspension_condition,
+                    compound_conditions,
                     vehicle_damage: repair_and_refuel
                         .as_ref()
                         .map(|response| RestVehicleDamage {
@@ -403,7 +551,7 @@ impl LocalRestResolver {
                 if supplement_sender.send(update).is_err() {
                     break;
                 }
-                sleep_remaining(started, SUPPLEMENT_INTERVAL);
+                sleep_remaining(started, CONDITION_INTERVAL);
             }
         });
 
@@ -415,6 +563,7 @@ impl LocalRestResolver {
             let Some(client) = http_client() else {
                 return;
             };
+            let mut health = RestHealth::default();
             loop {
                 if weather_demand.load(Ordering::Relaxed) & WEATHER_DEMAND == 0 {
                     thread::sleep(Duration::from_secs(1));
@@ -429,9 +578,10 @@ impl LocalRestResolver {
                     continue;
                 }
                 let started = Instant::now();
-                if let Ok(weather_sessions) = fetch_json::<HashMap<String, RestWeatherSession>>(
+                if let Some(weather_sessions) = fetch_tracked::<HashMap<String, RestWeatherSession>>(
                     &client,
                     "/rest/sessions/weather",
+                    &mut health,
                 ) {
                     if let Some(weather) = weather_sessions.get(&session) {
                         if weather_sender.send((session, weather.clone())).is_err() {
@@ -530,6 +680,12 @@ impl LocalRestResolver {
                 self.pit_stop = pit_stop;
                 received = true;
             }
+            if let Some(suspension_condition) = update.suspension_condition {
+                self.suspension_condition = Some(suspension_condition);
+            }
+            if let Some(compound_conditions) = update.compound_conditions {
+                self.compound_conditions = compound_conditions;
+            }
             if let Some(vehicle_damage) = update.vehicle_damage {
                 self.vehicle_damage = Some(vehicle_damage);
             }
@@ -559,6 +715,8 @@ impl LocalRestResolver {
             }
         }
         if !connected {
+            self.suspension_condition = None;
+            self.compound_conditions.clear();
             self.vehicle_damage = None;
         }
     }
@@ -630,6 +788,8 @@ impl LocalRestResolver {
         self.team_driver_names.clear();
         self.team_name.clear();
         self.team_vehicle_name.clear();
+        self.suspension_condition = None;
+        self.compound_conditions.clear();
         self.vehicle_damage = None;
         self.weather_nodes = RestWeatherSession::default();
         self.weather_received_at = None;
@@ -735,8 +895,22 @@ impl LocalRestResolver {
         is_fresh(self.supplement_received_at, SUPPLEMENT_MAX_AGE).then_some(&self.pit_stop)
     }
 
-    pub(super) fn vehicle_damage(&self) -> Option<RestVehicleDamage> {
-        self.vehicle_damage
+    /// The car's compounds in `mCompoundType` index order, empty until the
+    /// garage screen answers.
+    pub(super) fn compound_conditions(&self) -> &[RestCompoundCondition] {
+        &self.compound_conditions
+    }
+
+    pub(super) fn aero_damage(&self) -> Option<f64> {
+        self.vehicle_damage.map(|damage| damage.aero)
+    }
+
+    /// Prefers the light `getVehicleCondition` reading and falls back to the
+    /// `RepairAndRefuel` wearables, so suspension survives an outage of either
+    /// endpoint instead of silently reading as an undamaged car.
+    pub(super) fn suspension_damage(&self) -> Option<[f64; 4]> {
+        self.suspension_condition
+            .or_else(|| self.vehicle_damage.map(|damage| damage.suspension))
     }
 
     pub(super) fn session_max_time_seconds(&self) -> f64 {
@@ -847,16 +1021,89 @@ fn http_client() -> Option<Client> {
         .ok()
 }
 
+/// Tracks whether an endpoint is currently answering, so a failure is reported
+/// once when it starts and once when it ends instead of either flooding the log
+/// or, as before, disappearing into a discarded `Result`.
 #[cfg(not(test))]
-fn fetch_json<T: DeserializeOwned>(client: &Client, path: &str) -> Result<T, ()> {
-    client
+#[derive(Default)]
+struct RestHealth {
+    failing: HashMap<&'static str, EndpointFailure>,
+}
+
+#[cfg(not(test))]
+struct EndpointFailure {
+    consecutive: u32,
+    last_reported: Instant,
+}
+
+#[cfg(not(test))]
+impl RestHealth {
+    fn record_success(&mut self, path: &'static str) {
+        if let Some(failure) = self.failing.remove(path) {
+            crate::startup_log::record(format!(
+                "rest_recovered path={path} after_failures={}",
+                failure.consecutive
+            ));
+        }
+    }
+
+    fn record_failure(&mut self, path: &'static str, error: &str) {
+        match self.failing.get_mut(path) {
+            Some(failure) => {
+                failure.consecutive = failure.consecutive.saturating_add(1);
+                if failure.last_reported.elapsed() >= FAILURE_REPORT_INTERVAL {
+                    failure.last_reported = Instant::now();
+                    crate::startup_log::record(format!(
+                        "rest_still_failing path={path} consecutive={} error={error}",
+                        failure.consecutive
+                    ));
+                }
+            }
+            None => {
+                self.failing.insert(
+                    path,
+                    EndpointFailure {
+                        consecutive: 1,
+                        last_reported: Instant::now(),
+                    },
+                );
+                crate::startup_log::record(format!("rest_failed path={path} error={error}"));
+            }
+        }
+    }
+}
+
+#[cfg(not(test))]
+fn fetch_tracked<T: DeserializeOwned>(
+    client: &Client,
+    path: &'static str,
+    health: &mut RestHealth,
+) -> Option<T> {
+    match fetch_json(client, path) {
+        Ok(value) => {
+            health.record_success(path);
+            Some(value)
+        }
+        Err(error) => {
+            health.record_failure(path, &error);
+            None
+        }
+    }
+}
+
+/// The error string names the stage that failed, because a request that times
+/// out and a response whose shape stopped matching need very different fixes.
+#[cfg(not(test))]
+fn fetch_json<T: DeserializeOwned>(client: &Client, path: &str) -> Result<T, String> {
+    let response = client
         .get(format!("{LOCAL_API}{path}"))
         .send()
-        .map_err(|_| ())?
+        .map_err(|error| format!("request: {error}"))?
         .error_for_status()
-        .map_err(|_| ())?
+        .map_err(|error| format!("status: {error}"))?;
+    response
         .json::<T>()
-        .map_err(|_| ())
+        .map_err(|error| format!("decode: {error}"))
 }
 
 #[cfg(not(test))]
@@ -914,7 +1161,8 @@ mod tests {
         fuel_ratio_assigned, normalized_driver_identity, normalized_name, pit_refill_targets,
         rest_demand, steering_range, team_info_for_player, LocalRestResolver, RestGarageData,
         RestPitStopEstimate, RestRepairAndRefuel, RestSessionInfo, RestStanding,
-        RestStandingHistory, RestTeamInfo, RestVehicleDamage, RestWeatherSession,
+        RestStandingHistory, RestTeamInfo, RestTireManagement, RestVehicleCondition,
+        RestVehicleDamage, RestWeatherSession,
     };
     use std::collections::HashMap;
 
@@ -1009,6 +1257,52 @@ mod tests {
     }
 
     #[test]
+    fn parses_the_cars_compounds_and_their_optimal_temperatures() {
+        let response: RestTireManagement = serde_json::from_str(
+            r#"{"optimalCompoundConditions":{"compounds":[{"optimalTemperature":89.0,"type":"Medium"},{"optimalTemperature":52.0,"type":"Wet"}]},"pitMenu":{"pitMenu":[]}}"#,
+        )
+        .unwrap();
+
+        let compounds = response.optimal_compound_conditions.compounds;
+        assert_eq!(compounds.len(), 2);
+        assert_eq!(compounds[0].compound_type, "Medium");
+        assert_eq!(compounds[0].optimal_temperature, 89.0);
+        assert_eq!(compounds[1].compound_type, "Wet");
+        assert_eq!(compounds[1].optimal_temperature, 52.0);
+    }
+
+    #[test]
+    fn parses_suspension_from_the_light_vehicle_condition_endpoint() {
+        let response: RestVehicleCondition = serde_json::from_str(
+            r#"{"brakeCondition":[0.99,0.99,0.99,0.99],"suspensionDamage":[0.088,0.0,0.0,0.0],"vehicleDamage":0.1146}"#,
+        )
+        .unwrap();
+        assert_eq!(response.suspension_damage, [0.088, 0.0, 0.0, 0.0]);
+    }
+
+    /// The live response that exposed this: a driver name arrives as its raw
+    /// 32-byte C buffer, and rejecting it used to discard the whole payload.
+    #[test]
+    fn driver_names_arriving_as_character_buffers_do_not_sink_the_response() {
+        let response: RestRepairAndRefuel = serde_json::from_str(
+            r#"{"teamInfo":{"driverNames":[[77,97,110,117,101,108,32,82,111,100,0,0,0,0]],"teamName":"Lucus Racing Team Green","vehicleName":"Oreca 07"},"wearables":{"body":{"aero":0.234},"suspension":[0.0,0.0,0.0,0.158]}}"#,
+        )
+        .unwrap();
+
+        assert_eq!(response.team_info.driver_names, ["Manuel Rod"]);
+        assert!((response.wearables.body.aero - 0.234).abs() < f64::EPSILON);
+        assert_eq!(response.wearables.suspension, [0.0, 0.0, 0.0, 0.158]);
+    }
+
+    #[test]
+    fn driver_names_are_still_accepted_as_plain_strings() {
+        let response: RestTeamInfo =
+            serde_json::from_str(r#"{"driverNames":["Manuel Rod",""],"teamName":"Lucus"}"#)
+                .unwrap();
+        assert_eq!(response.driver_names, ["Manuel Rod"]);
+    }
+
+    #[test]
     fn vehicle_damage_is_latched_until_disconnect_or_session_reset() {
         let mut resolver = LocalRestResolver::empty();
         resolver.vehicle_damage = Some(RestVehicleDamage {
@@ -1017,14 +1311,33 @@ mod tests {
         });
 
         resolver.refresh(true, false, true, false, "RACE");
-        assert_eq!(resolver.vehicle_damage().unwrap().aero, 0.28);
+        assert_eq!(resolver.aero_damage(), Some(0.28));
 
         resolver.refresh(false, false, false, false, "");
-        assert!(resolver.vehicle_damage().is_none());
+        assert!(resolver.aero_damage().is_none());
+        assert!(resolver.suspension_damage().is_none());
 
         resolver.vehicle_damage = Some(RestVehicleDamage::default());
         resolver.reset_session_history();
-        assert!(resolver.vehicle_damage().is_none());
+        assert!(resolver.aero_damage().is_none());
+    }
+
+    #[test]
+    fn suspension_prefers_the_condition_endpoint_and_falls_back_to_the_wearables() {
+        let mut resolver = LocalRestResolver::empty();
+        resolver.vehicle_damage = Some(RestVehicleDamage {
+            aero: 0.11,
+            suspension: [0.2, 0.0, 0.0, 0.0],
+        });
+        assert_eq!(resolver.suspension_damage(), Some([0.2, 0.0, 0.0, 0.0]));
+
+        resolver.suspension_condition = Some([0.088, 0.0, 0.0, 0.0]);
+        assert_eq!(resolver.suspension_damage(), Some([0.088, 0.0, 0.0, 0.0]));
+
+        // A stint whose only live source is the light endpoint still reports.
+        resolver.vehicle_damage = None;
+        assert_eq!(resolver.suspension_damage(), Some([0.088, 0.0, 0.0, 0.0]));
+        assert!(resolver.aero_damage().is_none());
     }
 
     #[test]

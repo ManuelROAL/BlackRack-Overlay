@@ -358,6 +358,7 @@ impl TelemetrySource for MockTelemetrySource {
             }),
             player_tire_flat_spot_percent: [0.08, 0.0, 0.15, 0.03],
             player_tire_compounds: ["M".into(), "M".into(), "M".into(), "M".into()],
+            player_tire_optimal_temperature_c: [89.0; 4],
             player_tire_flat: [false; 4],
             player_tire_detached: [false; 4],
             player_stint: 2,

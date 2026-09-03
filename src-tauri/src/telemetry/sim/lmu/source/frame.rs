@@ -233,7 +233,9 @@ impl TelemetrySource for LmuTelemetrySource {
         let (steering_angle_degrees, force_feedback) =
             Self::steering_and_force(&snapshot, self.local_rest.steering_range_degrees());
         let rest_pit_stop = self.local_rest.pit_stop().cloned();
-        let rest_vehicle_damage = self.local_rest.vehicle_damage();
+        let rest_aero_damage = self.local_rest.aero_damage();
+        let rest_suspension_damage = self.local_rest.suspension_damage();
+        let rest_compound_conditions = self.local_rest.compound_conditions().to_vec();
         let session_split = self.session_split.value().clone();
         let profile_estimate: ProfileEstimate = self.consumption_profiler.observe(
             &vehicle_name,
@@ -769,16 +771,16 @@ impl TelemetrySource for LmuTelemetrySource {
             relative_model: Default::default(),
             player_tire_remaining_percent: snapshot.player_tire_remaining_percent,
             player_damage_percent: snapshot.player_damage_percent.clamp(0.0, 100.0),
-            player_aero_damage_percent: rest_vehicle_damage
-                .map(|damage| damage.aero * 100.0)
+            player_aero_damage_percent: rest_aero_damage
+                .map(|aero| aero * 100.0)
                 .unwrap_or(-1.0)
                 .clamp(-1.0, 100.0),
             player_suspension_damage_percent: suspension_damage_percent(
-                rest_vehicle_damage,
+                rest_suspension_damage,
                 snapshot.player_tire_detached,
             ),
             player_suspension_damage_by_wheel_percent: suspension_damage_by_wheel_percent(
-                rest_vehicle_damage,
+                rest_suspension_damage,
                 snapshot.player_tire_detached,
             ),
             player_body_damage_percent: snapshot
@@ -794,7 +796,7 @@ impl TelemetrySource for LmuTelemetrySource {
             player_engine_water_temperature_c: snapshot.player_engine_water_temperature_c,
             player_part_detached: snapshot.player_part_detached != 0,
             player_rear_wing_detached: rear_wing_detached(
-                rest_vehicle_damage,
+                rest_aero_damage,
                 snapshot.player_part_detached != 0,
                 snapshot.player_damage_severity[4],
             ),
@@ -805,7 +807,14 @@ impl TelemetrySource for LmuTelemetrySource {
             player_tire_remaining_by_wheel_percent: snapshot.player_tire_remaining_by_wheel_percent,
             tire_life_model,
             player_tire_flat_spot_percent,
-            player_tire_compounds: Self::tire_compounds(&snapshot.player_tire_compounds),
+            player_tire_compounds: Self::tire_compounds(
+                &snapshot.player_tire_compounds,
+                &rest_compound_conditions,
+            ),
+            player_tire_optimal_temperature_c: Self::tire_optimal_temperatures(
+                &snapshot.player_tire_compounds,
+                &rest_compound_conditions,
+            ),
             player_tire_flat: snapshot.player_tire_flat.map(|value| value != 0),
             player_tire_detached: snapshot.player_tire_detached.map(|value| value != 0),
             player_stint: snapshot

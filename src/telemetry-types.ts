@@ -289,6 +289,7 @@ export interface TelemetryFrame {
   tire_life_model: TireLifeModel | null;
   player_tire_flat_spot_percent: [number, number, number, number];
   player_tire_compounds: [string, string, string, string];
+  player_tire_optimal_temperature_c: [number, number, number, number];
   player_tire_flat: [boolean, boolean, boolean, boolean];
   player_tire_detached: [boolean, boolean, boolean, boolean];
   player_stint: number;

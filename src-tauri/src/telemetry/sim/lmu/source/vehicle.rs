@@ -124,38 +124,66 @@ impl LmuTelemetrySource {
             .to_owned()
     }
 
-    pub(super) fn tire_compound(wheel_types: &[u8; 4]) -> String {
-        let letters: Vec<&str> = wheel_types
-            .iter()
-            .map(|&compound| match compound {
-                0 => "S",
-                1 => "M",
-                2 => "H",
-                3 => "W",
-                _ => "?",
-            })
-            .collect();
-        let mut unique: Vec<&str> = Vec::new();
-        for letter in letters {
+    /// `mCompoundType` indexes the compounds the car actually carries, so the
+    /// garage list resolves it exactly. The soft/medium/hard/wet ladder below is
+    /// only the fallback for a car whose list has not arrived: it mislabels
+    /// every car that does not carry all four, such as an LMP2 running Medium
+    /// and Wet, where index 0 is Medium rather than Soft.
+    fn compound_letter(compound: u8, conditions: &[RestCompoundCondition]) -> String {
+        if let Some(condition) = conditions.get(compound as usize) {
+            if let Some(letter) = condition
+                .compound_type
+                .split(|character: char| !character.is_alphabetic())
+                .rfind(|word| !word.is_empty())
+                .and_then(|word| word.chars().next())
+            {
+                return letter.to_ascii_uppercase().to_string();
+            }
+        }
+        match compound {
+            0 => "S",
+            1 => "M",
+            2 => "H",
+            3 => "W",
+            _ => "?",
+        }
+        .to_owned()
+    }
+
+    /// The optimal temperature the game publishes for the compound on each
+    /// wheel, or -1 while the garage list is missing.
+    pub(super) fn tire_optimal_temperatures(
+        wheel_types: &[u8; 4],
+        conditions: &[RestCompoundCondition],
+    ) -> [f64; 4] {
+        std::array::from_fn(|index| {
+            conditions
+                .get(wheel_types[index] as usize)
+                .map(|condition| condition.optimal_temperature)
+                .filter(|optimal| optimal.is_finite() && *optimal > 0.0)
+                .unwrap_or(-1.0)
+        })
+    }
+
+    pub(super) fn tire_compound(
+        wheel_types: &[u8; 4],
+        conditions: &[RestCompoundCondition],
+    ) -> String {
+        let mut unique: Vec<String> = Vec::new();
+        for &compound in wheel_types {
+            let letter = Self::compound_letter(compound, conditions);
             if !unique.contains(&letter) {
                 unique.push(letter);
             }
         }
-        if unique.len() == 1 {
-            unique[0].to_string()
-        } else {
-            unique.join("/")
-        }
+        unique.join("/")
     }
 
-    pub(super) fn tire_compounds(wheel_types: &[u8; 4]) -> [String; 4] {
-        std::array::from_fn(|index| match wheel_types[index] {
-            0 => "S".into(),
-            1 => "M".into(),
-            2 => "H".into(),
-            3 => "W".into(),
-            _ => "?".into(),
-        })
+    pub(super) fn tire_compounds(
+        wheel_types: &[u8; 4],
+        conditions: &[RestCompoundCondition],
+    ) -> [String; 4] {
+        std::array::from_fn(|index| Self::compound_letter(wheel_types[index], conditions))
     }
 
     pub(super) fn ensure_vehicle_identity(&mut self, entry: &LmuStandingEntry) {
@@ -171,7 +199,7 @@ impl LmuTelemetrySource {
         let vehicle_filename = Self::string_from_chars(&entry.vehicle_filename);
         let vehicle_model = Self::string_from_chars(&entry.vehicle_model);
         let raw_team_name = Self::string_from_chars(&entry.team_name);
-        let tire_compound = Self::tire_compound(&entry.wheel_compounds);
+        let tire_compound = Self::tire_compound(&entry.wheel_compounds, &[]);
         let identity = VehicleIdentity {
             driver_name_raw: entry.driver_name,
             vehicle_class_raw: entry.vehicle_class,

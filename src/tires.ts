@@ -77,6 +77,7 @@ const render = (frame: TelemetryFrame): void => {
     const detached = frame.player_tire_detached[index];
     const flat = frame.player_tire_flat[index] && !detached;
     const rawCompound = frame.player_tire_compounds[index] ?? "";
+    const optimalTemperature = frame.player_tire_optimal_temperature_c?.[index] ?? -1;
 
     setText(temperatures[index], readable(temperature, 1, "°"));
     setText(brakeTemperatures[index], readable(brakeTemperature, 0, "°"));
@@ -89,14 +90,22 @@ const render = (frame: TelemetryFrame): void => {
     setStyleProperty(
       wheels[index],
       "--tire-color",
-      detached ? "#ff244f" : flat ? "#ff8a2b" : tireTemperatureColor(Math.round(temperature), rawCompound)
+      detached
+        ? "#ff244f"
+        : flat
+        ? "#ff8a2b"
+        : tireTemperatureColor(Math.round(temperature), optimalTemperature, rawCompound)
     );
     for (let zoneIndex = 0; zoneIndex < 3; zoneIndex += 1) {
       const zoneColor = detached
         ? "#ff244f"
         : flat
         ? "#ff8a2b"
-        : tireTemperatureColor(Math.round(zoneTemperatures[zoneIndex]), rawCompound);
+        : tireTemperatureColor(
+            Math.round(zoneTemperatures[zoneIndex]),
+            optimalTemperature,
+            rawCompound
+          );
       setStyleProperty(wheels[index], `--tire-zone-${zoneIndex}`, zoneColor);
     }
     setStyleProperty(wheels[index], "--brake-color", brakeTemperatureColor(Math.round(brakeTemperature)));
@@ -168,6 +177,7 @@ const previewFrame = {
   player_tire_flat_spot_percent: [0.08, 0, 0.15, 0.03],
   player_suspension_damage_by_wheel_percent: [2, 18, 4, 0],
   player_tire_compounds: ["M", "M", "M", "M"],
+  player_tire_optimal_temperature_c: [89, 89, 89, 89],
   player_tire_flat: [false, false, false, false],
   player_tire_detached: [false, false, false, false],
   player_aero_damage_percent: 18,
