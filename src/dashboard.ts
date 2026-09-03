@@ -141,9 +141,43 @@ const decayHighlights = (): void => {
   }
 };
 
+/**
+ * Which selectable systems this car actually carries. A maximum of zero means
+ * the system is absent and a maximum of one means there is nothing to select:
+ * an LMP2 reports both for ABS, brake migration and the engine map, and a cell
+ * frozen at 0 or at 1/1 reads as a setting the driver could still change.
+ * Brake bias is the exception — every car has one, and it has no maximum.
+ */
+let availability: Record<ElectronicsId, boolean> = {
+  map: false, tc: false, tcslip: false, tccut: false,
+  abs: false, bias: false, migration: false, arb: false
+};
+let availabilitySignature = "";
+
+const readAvailability = (frame: TelemetryFrame): Record<ElectronicsId, boolean> => ({
+  map: frame.engine_map_max > 1,
+  tc: frame.traction_control_max > 0,
+  tcslip: frame.traction_control_slip_max > 0,
+  tccut: frame.traction_control_cut_max > 0,
+  abs: frame.anti_lock_brakes_max > 0,
+  bias: true,
+  migration: frame.brake_migration_max > 0,
+  arb: frame.front_anti_roll_bar_max > 0 || frame.rear_anti_roll_bar_max > 0
+});
+
+const shows = (id: ElectronicsId): boolean => settings.visible[id] && availability[id];
+
+const applyPartVisibility = (): void => {
+  for (const { id } of DASHBOARD_OPTIONS) {
+    toggle(parts[id], ELECTRONICS.includes(id as ElectronicsId)
+      ? shows(id as ElectronicsId)
+      : settings.visible[id]);
+  }
+};
+
 const applySettings = (next: DashboardSettings): void => {
   settings = next;
-  for (const { id } of DASHBOARD_OPTIONS) toggle(parts[id], settings.visible[id]);
+  applyPartVisibility();
 };
 
 applySettings(settings);
@@ -156,6 +190,11 @@ const level = (value: number, max: number): string =>
 
 const rounded = (value: number, digits = 0, suffix = ""): string =>
   Number.isFinite(value) && value >= 0 ? `${value.toFixed(digits)}${suffix}` : UNKNOWN;
+
+/// For a value zero can only mean "not learned yet": no car burns nothing per
+/// lap, and a range of zero laps would mean the tank is already empty.
+const learned = (value: number, digits: number): string =>
+  Number.isFinite(value) && value > 0 ? value.toFixed(digits) : UNKNOWN;
 
 const KPA_TO_PSI = 0.1450377;
 
@@ -250,7 +289,7 @@ const renderSession = (frame: TelemetryFrame): void => {
 
 const renderFuel = (frame: TelemetryFrame): void => {
   setText(litres, rounded(frame.fuel_liters, 1));
-  setText(average, rounded(frame.fuel_per_lap, 2));
+  setText(average, learned(frame.fuel_per_lap, 2));
   toggle(energyCell, frame.virtual_energy_active);
   setText(energy, rounded(frame.virtual_energy_percent, 0, "%"));
   // Virtual energy runs out before the tank on LMU's hybrid classes, so the
@@ -260,7 +299,7 @@ const renderFuel = (frame: TelemetryFrame): void => {
   const remaining = frame.virtual_energy_active && energyLaps > 0
     ? Math.min(fuelLaps, energyLaps)
     : fuelLaps;
-  setText(range, rounded(remaining, 1));
+  setText(range, learned(remaining, 1));
 };
 
 const render = (frame: TelemetryFrame): void => {
@@ -288,6 +327,13 @@ const render = (frame: TelemetryFrame): void => {
   }
 
   if (electronicsAvailable) {
+    const next = readAvailability(frame);
+    const signature = ELECTRONICS.map((id) => next[id] ? "1" : "0").join("");
+    if (signature !== availabilitySignature) {
+      availabilitySignature = signature;
+      availability = next;
+      applyPartVisibility();
+    }
     publish("map", level(frame.engine_map, frame.engine_map_max));
     publish("tc", level(frame.traction_control_level, frame.traction_control_max));
     publish("tcslip", level(frame.traction_control_slip, frame.traction_control_slip_max));
@@ -314,8 +360,7 @@ const render = (frame: TelemetryFrame): void => {
   const visible = (id: DashboardOptionId): boolean => live && settings.visible[id];
   const topVisible = visible("status") || visible("delta") || visible("session");
   const mainVisible = visible("tires") || visible("core") || visible("laptimes");
-  const electronicsVisible = electronicsAvailable
-    && ELECTRONICS.some((id) => settings.visible[id]);
+  const electronicsVisible = electronicsAvailable && ELECTRONICS.some(shows);
   const hybridVisible = hybridAvailable && HYBRID.some((id) => settings.visible[id]);
   const bottomVisible = electronicsVisible || visible("fuel");
   toggle(bandTop, topVisible);
@@ -345,7 +390,9 @@ const previewFrame = {
   brake_migration: 3,
   brake_migration_max: 6,
   front_anti_roll_bar: 5,
+  front_anti_roll_bar_max: 11,
   rear_anti_roll_bar: 4,
+  rear_anti_roll_bar_max: 11,
   speed_limiter_active: false,
   headlights_on: true,
   wiper_state: 0,

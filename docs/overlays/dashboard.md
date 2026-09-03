@@ -47,6 +47,16 @@ nothing inside it is visible:
   from the values: a neutral setting and an absent one are both zero, so only a
   non-zero maximum proves the car publishes the system. Every maximum stays at
   zero until the car is on track with its setup loaded.
+- Each cell is then gated on its own maximum, not just on the block's. A maximum
+  of zero means the car has no such system and a maximum of one means there is
+  nothing to select, so both hide the cell: an LMP2 reports them for ABS, brake
+  migration and the engine map, and drawing a permanent `0` or `1/1` reads as a
+  setting the driver could still change. Brake bias is the exception — every car
+  has one and it has no maximum, so it is always shown. The block reflows as
+  systems appear, so a car whose maxima arrive late simply gains its cells.
+- Consumption per lap and the remaining range show `--` until they are learned.
+  Zero is not a reading there: no car burns nothing per lap, and a range of zero
+  laps would mean the tank is already empty.
 - Tyre pressure is `mPressure` in kPa, rendered in psi. Tyre and brake
   temperature reuse the same colour ranges as the Damage and tyres overlay, so a
   corner reads identically in both panels.
