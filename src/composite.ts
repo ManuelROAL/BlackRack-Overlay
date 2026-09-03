@@ -333,27 +333,34 @@ const applyPlacement = (panel: HTMLElement, placement: OverlayPlacement): void =
   panel.style.height = `${placement.height}px`;
 };
 
+const minimumPanelWidth = (overlay: OverlayId): number => overlay === "damage" ? 90 : 120;
+
+/**
+ * El suelo de tamaño mantiene el panel agarrable mientras el usuario lo
+ * redimensiona, así que solo se aplica ahí. Restaurar una escala guardada no
+ * vuelve a aplicarlo: el diseño que informa el iframe cambia con el contenido
+ * (el standings vacío mide MINIMUM_PANEL_HEIGHT de alto) y evaluar el suelo
+ * contra ese tamaño transitorio subía la escala elegida y la persistía en cada
+ * arranque.
+ */
+const MINIMUM_PANEL_HEIGHT = 32;
+const MINIMUM_PANEL_SCALE = 0.1;
+
 const fitPlacementToMonitor = (placement: OverlayPlacement): OverlayPlacement => {
-  const minimumWidth = placement.overlay === "damage" ? 90 : 120;
   const designSize = designSizes.get(placement.overlay);
-  let width = Math.max(minimumWidth, placement.width);
-  let height = Math.max(72, placement.height);
+  let width = Math.max(minimumPanelWidth(placement.overlay), placement.width);
+  let height = Math.max(MINIMUM_PANEL_HEIGHT, placement.height);
   let fittedScale = placement.scale;
   if (designSize) {
     const requestedScale = fittedScale ?? Math.min(
       width / designSize.width,
       height / designSize.height
     );
-    const minimumScale = Math.max(
-      minimumWidth / designSize.width,
-      72 / designSize.height,
-      0.1
-    );
     const maximumScale = Math.min(
       monitorViewport.width / designSize.width,
       monitorViewport.height / designSize.height
     );
-    fittedScale = Math.min(maximumScale, Math.max(minimumScale, requestedScale));
+    fittedScale = Math.min(maximumScale, Math.max(MINIMUM_PANEL_SCALE, requestedScale));
     width = designSize.width * fittedScale;
     height = designSize.height * fittedScale;
   } else {
@@ -411,9 +418,9 @@ const bindPointerMove = (
               ? widthScale
               : heightScale;
             const minimumScale = Math.max(
-              (overlay === "damage" ? 90 : 120) / designSize.width,
-              72 / designSize.height,
-              0.1
+              minimumPanelWidth(overlay) / designSize.width,
+              MINIMUM_PANEL_HEIGHT / designSize.height,
+              MINIMUM_PANEL_SCALE
             );
             const maximumScale = Math.max(minimumScale, Math.min(
               (monitorViewport.width - initial.x) / designSize.width,

@@ -70,6 +70,12 @@ telemetry semantics and file ownership live under `docs/overlays/`; use
   changes the reported design size, preserve the user's explicitly persisted
   visual scale while updating host geometry. Do not infer that scale again from
   transient iframe dimensions during startup.
+- The minimum panel size (120 px wide, 90 px for damage, 32 px tall) is enforced
+  while the user resizes, against the design size shown at that moment. Restoring
+  a persisted scale only clamps it to the monitor, never to that floor: an
+  overlay whose design shrinks with its content —the empty standings reports its
+  72 px minimum— would otherwise have the stored scale raised and saved
+  again on every launch, and would reappear oversized once the roster arrived.
 - Automatically hide overlays when LMU is not foreground, the player is inactive,
   the game is not realtime, the player is in the garage or the session has ended.
   Spectator and team modes permit non-realtime viewing. Spectator mode treats the
