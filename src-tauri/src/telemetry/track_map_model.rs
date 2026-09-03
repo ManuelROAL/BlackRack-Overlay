@@ -728,7 +728,7 @@ mod tests {
     #[test]
     fn learns_scoring_sector_boundaries_from_vehicle_crossings() {
         let mut state = TrackMapModelState::default();
-        let mut frame = TelemetryFrame::waiting_for_lmu(true);
+        let mut frame = TelemetryFrame::waiting_for_simulator(true);
         frame.track_length_meters = 5_000.0;
         frame.track_map_vehicles = vec![sector_vehicle(1, 990.0)];
         state.update_sector_boundaries(&frame);

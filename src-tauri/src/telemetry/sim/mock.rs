@@ -1,11 +1,19 @@
 use std::time::Instant;
 
+use super::{SourceDescriptor, TelemetrySource};
 use crate::telemetry::fuel_strategy::{
     calculate_resource_strategy, calculate_stint_targets, FuelStrategies, ResourceStrategyInput,
 };
 use crate::telemetry::{
-    FlagWarning, RejoinWarning, StandingEntry, TelemetryDemand, TelemetryFrame, TelemetrySource,
-    TireLifeModel, TrackMapVehicle, WeatherForecastModel, WeatherForecastNode,
+    FlagWarning, RejoinWarning, StandingEntry, TelemetryDemand, TelemetryFrame, TireLifeModel,
+    TrackMapVehicle, WeatherForecastModel, WeatherForecastNode,
+};
+
+/// Stands in for a simulator in builds made without any SDK, so the overlays
+/// and the control panel stay developable without a game running.
+const DESCRIPTOR: SourceDescriptor = SourceDescriptor {
+    id: "mock",
+    official_geometry: None,
 };
 
 pub struct MockTelemetrySource {
@@ -21,6 +29,10 @@ impl MockTelemetrySource {
 }
 
 impl TelemetrySource for MockTelemetrySource {
+    fn descriptor(&self) -> SourceDescriptor {
+        DESCRIPTOR
+    }
+
     fn next_frame(&mut self, demand: TelemetryDemand) -> TelemetryFrame {
         let TelemetryDemand {
             include_standings,
@@ -127,7 +139,7 @@ impl TelemetrySource for MockTelemetrySource {
         };
 
         let mut frame = TelemetryFrame {
-            source: "mock",
+            source: DESCRIPTOR.id,
             performance_profile: "smooth",
             connected: true,
             spectator_mode: false,
@@ -383,6 +395,8 @@ impl TelemetrySource for MockTelemetrySource {
             current_lap_seconds,
             current_sector1_seconds: 0.0,
             current_sector2_seconds: 0.0,
+            player_best_sector_ends: [0.0; 3],
+            session_best_sector_ends: [0.0; 3],
             last_lap_seconds: 215.0,
             last_lap_valid: true,
             best_lap_seconds: 208.412,
@@ -462,6 +476,7 @@ impl TelemetrySource for MockTelemetrySource {
                     relative_behind_seconds: 207.816,
                     best_lap_seconds: 208.114,
                     last_lap_seconds: 209.021,
+                    last_lap_valid: true,
                     average_lap_seconds: 209.334,
                     virtual_energy_active: true,
                     virtual_energy_percent: 68.2,
@@ -514,6 +529,7 @@ impl TelemetrySource for MockTelemetrySource {
                     relative_behind_seconds: 0.0,
                     best_lap_seconds: 208.662,
                     last_lap_seconds: 209.418,
+                    last_lap_valid: true,
                     average_lap_seconds: 209.507,
                     virtual_energy_active: true,
                     virtual_energy_percent: virtual_energy_percent,
@@ -566,6 +582,7 @@ impl TelemetrySource for MockTelemetrySource {
                     relative_behind_seconds: 3.547,
                     best_lap_seconds: 209.107,
                     last_lap_seconds: 211.844,
+                    last_lap_valid: true,
                     average_lap_seconds: 210.202,
                     virtual_energy_active: true,
                     virtual_energy_percent: 43.1,

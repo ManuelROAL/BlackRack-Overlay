@@ -2148,7 +2148,7 @@ mod tests {
     }
 
     fn active_frame() -> TelemetryFrame {
-        let mut frame = TelemetryFrame::waiting_for_lmu(true);
+        let mut frame = TelemetryFrame::waiting_for_simulator(true);
         frame.player_active = true;
         frame.game_phase = 5;
         frame.player_lap_valid = true;

@@ -37,11 +37,6 @@ pub(crate) use strategy_log::{
 pub(crate) use track_geometry::{track_map_geometry, TrackMapGeometry};
 pub(crate) use track_map_model::{migrate_legacy_track_map_learning, LearnedTrackPoint};
 
-#[cfg(all(target_os = "windows", lmu_sdk))]
-use sim::lmu::LmuTelemetrySource;
-#[cfg(not(all(target_os = "windows", lmu_sdk)))]
-use sim::mock::MockTelemetrySource;
-
 static LOGGING_ENABLED: AtomicBool = AtomicBool::new(false);
 static LOGGING_GENERATION: AtomicU64 = AtomicU64::new(0);
 static LOGGING_DIRECTORY: OnceLock<PathBuf> = OnceLock::new();
@@ -826,10 +821,6 @@ struct TelemetryDemand {
     include_rest_weather: bool,
 }
 
-trait TelemetrySource: Send + 'static {
-    fn next_frame(&mut self, demand: TelemetryDemand) -> TelemetryFrame;
-}
-
 impl TelemetryFrame {
     pub(crate) fn should_hide_overlays(&self, app_has_focus: bool) -> bool {
         !self.connected
@@ -840,9 +831,9 @@ impl TelemetryFrame {
             || (!self.game_in_foreground && !app_has_focus)
     }
 
-    fn waiting_for_lmu(connected: bool) -> Self {
+    fn waiting_for_simulator(connected: bool) -> Self {
         Self {
-            source: "lmu",
+            source: sim::active().map_or("none", |descriptor| descriptor.id),
             performance_profile: "smooth",
             connected,
             spectator_mode: false,
@@ -1017,12 +1008,7 @@ pub fn spawn_source(app: AppHandle) {
         let mut track_map_model = track_map_model::TrackMapModelState::default();
         let mut delta_engine = delta_records::DeltaEngine::new(app_data_directory.clone());
         let mut cycle: u64 = 0;
-        #[cfg(all(target_os = "windows", lmu_sdk))]
-        let mut source = LmuTelemetrySource::with_profile_directory(Some(
-            app_data_directory.join("consumption-profiles"),
-        ));
-        #[cfg(not(all(target_os = "windows", lmu_sdk)))]
-        let mut source = MockTelemetrySource::new();
+        let mut source = sim::detect(&app_data_directory);
 
         loop {
             if app.get_webview_window("control").is_none() {
@@ -1283,7 +1269,7 @@ mod tests {
 
     #[test]
     fn overlay_visibility_tracks_focus_garage_and_session_state() {
-        let mut frame = TelemetryFrame::waiting_for_lmu(true);
+        let mut frame = TelemetryFrame::waiting_for_simulator(true);
         assert!(frame.should_hide_overlays(false));
 
         frame.player_active = true;
@@ -1359,7 +1345,7 @@ mod tests {
         set_telemetry_logging(true).unwrap();
 
         let mut logger = AnalysisLogger::new();
-        let mut frame = TelemetryFrame::waiting_for_lmu(true);
+        let mut frame = TelemetryFrame::waiting_for_simulator(true);
         frame.player_active = true;
         frame.lap_number = 7;
         frame.virtual_energy_raw = 0.625;

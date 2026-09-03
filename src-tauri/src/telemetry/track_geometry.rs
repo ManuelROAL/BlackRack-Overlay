@@ -1,10 +1,9 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, OnceLock};
-use std::time::Duration;
 
 #[derive(Clone, Copy, Debug, Deserialize)]
-struct RawTrackMapPoint {
+pub(super) struct RawTrackMapPoint {
     #[serde(rename = "type")]
     kind: i32,
     x: f64,
@@ -57,7 +56,9 @@ pub(super) fn cached_official_track_map_geometry(
     })
 }
 
-fn decode_geometry(points: Vec<RawTrackMapPoint>) -> Result<OfficialTrackMapGeometry, String> {
+pub(super) fn decode_geometry(
+    points: Vec<RawTrackMapPoint>,
+) -> Result<OfficialTrackMapGeometry, String> {
     let collect = |kind| {
         points
             .iter()
@@ -194,29 +195,13 @@ pub(crate) fn track_map_geometry(cache_key: &str) -> Result<TrackMapGeometry, St
     }
 }
 
-#[cfg(all(target_os = "windows", lmu_sdk))]
+/// The official outline comes from whichever simulator is driving the loop.
+/// A source that cannot provide one leaves the learned map as the only option.
 fn fetch_geometry() -> Result<OfficialTrackMapGeometry, String> {
-    let client = reqwest::blocking::Client::builder()
-        .connect_timeout(Duration::from_millis(400))
-        .timeout(Duration::from_millis(800))
-        .build()
-        .map_err(|error| {
-            crate::startup_log::command_error("track_geometry_client_failed", error)
-        })?;
-    let points = client
-        .get("http://127.0.0.1:6397/rest/watch/trackmap")
-        .send()
-        .and_then(reqwest::blocking::Response::error_for_status)
-        .map_err(|error| crate::startup_log::command_error("track_geometry_request_failed", error))?
-        .json::<Vec<RawTrackMapPoint>>()
-        .map_err(|error| crate::startup_log::command_error("track_geometry_malformed", error))?;
-    decode_geometry(points)
-}
-
-#[cfg(not(all(target_os = "windows", lmu_sdk)))]
-fn fetch_geometry() -> Result<OfficialTrackMapGeometry, String> {
-    let _ = Duration::ZERO;
-    Err("track_geometry_unsupported".into())
+    match super::sim::active_official_geometry() {
+        Some(fetch) => fetch(),
+        None => Err("track_geometry_unsupported".into()),
+    }
 }
 
 #[cfg(test)]

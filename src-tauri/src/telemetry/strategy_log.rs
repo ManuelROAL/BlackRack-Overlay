@@ -422,7 +422,7 @@ mod tests {
 
     #[test]
     fn completed_lap_row_contains_consumption_and_wear() {
-        let mut frame = TelemetryFrame::waiting_for_lmu(true);
+        let mut frame = TelemetryFrame::waiting_for_simulator(true);
         frame.connected = true;
         frame.player_active = true;
         frame.track_name = "Spa".into();
@@ -449,7 +449,7 @@ mod tests {
 
     #[test]
     fn completed_lap_row_applies_negative_official_time_confirmation() {
-        let mut frame = TelemetryFrame::waiting_for_lmu(true);
+        let mut frame = TelemetryFrame::waiting_for_simulator(true);
         frame.track_name = "Spa".into();
         frame.player_vehicle_name = "Hypercar".into();
         frame.game_phase = 5;
@@ -466,7 +466,7 @@ mod tests {
 
     #[test]
     fn session_rotation_detects_type_identity_and_time_reset() {
-        let mut frame = TelemetryFrame::waiting_for_lmu(true);
+        let mut frame = TelemetryFrame::waiting_for_simulator(true);
         frame.track_name = "Le Mans".into();
         frame.player_vehicle_name = "LMGT3".into();
         frame.session_type = 10;

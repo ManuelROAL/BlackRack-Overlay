@@ -3,6 +3,10 @@
 use super::*;
 
 impl TelemetrySource for LmuTelemetrySource {
+    fn descriptor(&self) -> SourceDescriptor {
+        super::super::DESCRIPTOR
+    }
+
     fn next_frame(&mut self, demand: TelemetryDemand) -> TelemetryFrame {
         let TelemetryDemand {
             include_standings,
@@ -70,7 +74,7 @@ impl TelemetrySource for LmuTelemetrySource {
             self.last_valid_snapshot_at = None;
             self.player_lap_distance.reset();
             self.player_lap_times.reset();
-            return TelemetryFrame::waiting_for_lmu(false);
+            return TelemetryFrame::waiting_for_simulator(false);
         }
 
         let session_started = Instant::now();
@@ -119,7 +123,7 @@ impl TelemetrySource for LmuTelemetrySource {
             self.tire_wear_tracker.reset();
             self.player_lap_distance.reset();
             self.player_lap_times.reset();
-            let mut frame = TelemetryFrame::waiting_for_lmu(true);
+            let mut frame = TelemetryFrame::waiting_for_simulator(true);
             frame.standings = standings;
             return frame;
         }
@@ -645,7 +649,7 @@ impl TelemetrySource for LmuTelemetrySource {
         let track_rubber_percent = Self::track_rubber_percent(&snapshot);
         let track_grip_state = Self::track_surface_state(snapshot.track_wetness_percent);
         let frame = TelemetryFrame {
-            source: "lmu",
+            source: super::super::DESCRIPTOR.id,
             performance_profile: "smooth",
             connected: true,
             spectator_mode: crate::telemetry::observer_mode(),

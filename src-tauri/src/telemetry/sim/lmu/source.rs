@@ -9,6 +9,7 @@ use std::collections::{HashMap, HashSet, VecDeque};
 use std::ffi::{c_char, c_int};
 use std::time::{Duration, Instant};
 
+use super::super::{SourceDescriptor, TelemetrySource};
 use super::driver_ranks::DriverRankResolver;
 use super::event_split::{DriverRankSettings, SessionSplitResolver};
 use super::rest::{
@@ -20,8 +21,8 @@ use crate::telemetry::fuel_strategy::{
     ResourceStrategyInput,
 };
 use crate::telemetry::{
-    FlagWarning, RejoinWarning, StandingEntry, TelemetryDemand, TelemetryFrame, TelemetrySource,
-    TireLifeModel, TrackMapVehicle,
+    FlagWarning, RejoinWarning, StandingEntry, TelemetryDemand, TelemetryFrame, TireLifeModel,
+    TrackMapVehicle,
 };
 
 mod driver_rank;

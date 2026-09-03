@@ -1,11 +1,15 @@
 use std::{env, fs, path::PathBuf};
 
 fn find_lmu_sdk() -> Option<PathBuf> {
+    // An explicit override is authoritative: pointing it at a directory
+    // without the header is how a build without the SDK — and therefore on
+    // the mock source — is produced on a machine that has the game.
     if let Some(path) = env::var_os("LMU_SHARED_MEMORY_SDK") {
         let candidate = PathBuf::from(path);
-        if candidate.join("SharedMemoryInterface.hpp").is_file() {
-            return Some(candidate);
-        }
+        return candidate
+            .join("SharedMemoryInterface.hpp")
+            .is_file()
+            .then_some(candidate);
     }
 
     let relative = PathBuf::from(

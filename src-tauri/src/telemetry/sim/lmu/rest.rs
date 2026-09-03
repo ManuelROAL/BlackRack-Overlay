@@ -1,3 +1,4 @@
+use crate::telemetry::WeatherForecastNode;
 #[cfg(not(test))]
 use reqwest::blocking::Client;
 #[cfg(not(test))]
@@ -12,7 +13,6 @@ use std::sync::{Arc, Mutex};
 #[cfg(not(test))]
 use std::thread;
 use std::time::{Duration, Instant};
-use crate::telemetry::WeatherForecastNode;
 
 const STANDINGS_DEMAND: u8 = 1 << 0;
 const SUPPLEMENT_DEMAND: u8 = 1 << 1;
