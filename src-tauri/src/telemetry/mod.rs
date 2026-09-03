@@ -575,6 +575,8 @@ pub struct TrackMapVehicle {
 #[derive(Clone, Serialize)]
 pub struct TelemetryFrame {
     source: &'static str,
+    source_name: &'static str,
+    capabilities: sim::SourceCapabilities,
     performance_profile: &'static str,
     connected: bool,
     #[serde(skip)]
@@ -834,6 +836,10 @@ impl TelemetryFrame {
     fn waiting_for_simulator(connected: bool) -> Self {
         Self {
             source: sim::active().map_or("none", |descriptor| descriptor.id),
+            source_name: sim::active().map_or("", |descriptor| descriptor.display_name),
+            capabilities: sim::active().map_or(sim::SourceCapabilities::NONE, |descriptor| {
+                descriptor.capabilities
+            }),
             performance_profile: "smooth",
             connected,
             spectator_mode: false,

@@ -1,6 +1,6 @@
 use std::time::Instant;
 
-use super::{SourceDescriptor, TelemetrySource};
+use super::{SourceCapabilities, SourceDescriptor, TelemetrySource};
 use crate::telemetry::fuel_strategy::{
     calculate_resource_strategy, calculate_stint_targets, FuelStrategies, ResourceStrategyInput,
 };
@@ -13,6 +13,23 @@ use crate::telemetry::{
 /// and the control panel stay developable without a game running.
 const DESCRIPTOR: SourceDescriptor = SourceDescriptor {
     id: "mock",
+    display_name: "Simulated telemetry",
+    capabilities: SourceCapabilities {
+        official_track_map: false,
+        virtual_energy: true,
+        opponent_fuel: true,
+        opponent_tires: true,
+        damage_detail: true,
+        tire_temperatures: true,
+        brake_temperatures: true,
+        weather_forecast: true,
+        track_grip: true,
+        driver_ranks: true,
+        track_limits: true,
+        pit_service_estimate: true,
+        lift_and_coast: true,
+        session_splits: true,
+    },
     official_geometry: None,
 };
 
@@ -140,6 +157,8 @@ impl TelemetrySource for MockTelemetrySource {
 
         let mut frame = TelemetryFrame {
             source: DESCRIPTOR.id,
+            source_name: DESCRIPTOR.display_name,
+            capabilities: DESCRIPTOR.capabilities,
             performance_profile: "smooth",
             connected: true,
             spectator_mode: false,

@@ -7,9 +7,9 @@
 
 use std::path::Path;
 
-#[cfg(all(target_os = "windows", lmu_sdk))]
-use super::SourceDescriptor;
 use super::TelemetrySource;
+#[cfg(all(target_os = "windows", lmu_sdk))]
+use super::{SourceCapabilities, SourceDescriptor};
 
 pub(crate) mod install;
 
@@ -29,6 +29,23 @@ mod trackmap;
 #[cfg(all(target_os = "windows", lmu_sdk))]
 pub(super) const DESCRIPTOR: SourceDescriptor = SourceDescriptor {
     id: "lmu",
+    display_name: "Le Mans Ultimate",
+    capabilities: SourceCapabilities {
+        virtual_energy: true,
+        opponent_fuel: true,
+        opponent_tires: true,
+        damage_detail: true,
+        tire_temperatures: true,
+        brake_temperatures: true,
+        weather_forecast: true,
+        track_grip: true,
+        driver_ranks: true,
+        track_limits: true,
+        official_track_map: true,
+        pit_service_estimate: true,
+        lift_and_coast: true,
+        session_splits: true,
+    },
     official_geometry: Some(trackmap::official_geometry),
 };
 

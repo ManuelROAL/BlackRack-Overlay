@@ -650,6 +650,8 @@ impl TelemetrySource for LmuTelemetrySource {
         let track_grip_state = Self::track_surface_state(snapshot.track_wetness_percent);
         let frame = TelemetryFrame {
             source: super::super::DESCRIPTOR.id,
+            source_name: super::super::DESCRIPTOR.display_name,
+            capabilities: super::super::DESCRIPTOR.capabilities,
             performance_profile: "smooth",
             connected: true,
             spectator_mode: crate::telemetry::observer_mode(),

@@ -147,8 +147,33 @@ export interface StintHistoryViewModel {
   entries: StintHistoryEntryView[];
 }
 
+/**
+ * What the active simulator can ever report, as opposed to what this session
+ * happens to contain. Per-session availability keeps living in the frame's own
+ * flags and `-1` sentinels; these say whether an overlay is worth offering at
+ * all for the simulator that is running.
+ */
+export interface SourceCapabilities {
+  virtual_energy: boolean;
+  opponent_fuel: boolean;
+  opponent_tires: boolean;
+  damage_detail: boolean;
+  tire_temperatures: boolean;
+  brake_temperatures: boolean;
+  weather_forecast: boolean;
+  track_grip: boolean;
+  driver_ranks: boolean;
+  track_limits: boolean;
+  official_track_map: boolean;
+  pit_service_estimate: boolean;
+  lift_and_coast: boolean;
+  session_splits: boolean;
+}
+
 export interface TelemetryFrame {
   source: string;
+  source_name: string;
+  capabilities: SourceCapabilities;
   performance_profile: "smooth" | "balanced" | "efficiency";
   connected: boolean;
   player_active: boolean;

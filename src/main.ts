@@ -18,7 +18,7 @@ import {
   type Locale,
   type TranslationKey
 } from "./i18n";
-import type { InteractionMode, TelemetryFrame } from "./telemetry-types";
+import type { InteractionMode, SourceCapabilities, TelemetryFrame } from "./telemetry-types";
 import {
   DRIVER_NAME_FORMATS,
   isDriverNameFormat,
@@ -2812,6 +2812,38 @@ const restoreWindows = async (): Promise<void> => {
   for (const state of states) setCardState(state.label, state.visible);
 };
 
+/**
+ * Overlays whose whole reason to exist is one capability. Everything else
+ * degrades inside the overlay: an empty column means this session has no such
+ * data, while a missing capability means the simulator never will.
+ */
+const overlayCapability: Partial<Record<OverlayId, keyof SourceCapabilities>> = {
+  damage: "damage_detail",
+  forecast: "weather_forecast",
+  liftcoast: "lift_and_coast",
+  pitstop: "pit_service_estimate"
+};
+
+let unsupportedOverlays = "";
+
+const renderSourceCapabilities = (frame: TelemetryFrame): void => {
+  const capabilities = frame.capabilities;
+  if (!capabilities) return;
+  const entries = Object.entries(overlayCapability) as [OverlayId, keyof SourceCapabilities][];
+  const unsupported = entries.filter(([, capability]) => !capabilities[capability]).map(([id]) => id);
+  const signature = `${frame.source}:${unsupported.join(",")}`;
+  if (signature === unsupportedOverlays) return;
+  unsupportedOverlays = signature;
+  for (const [id] of entries) {
+    const card = document.querySelector<HTMLElement>(`[data-overlay-card="${id}"]`);
+    const input = inputFor(id);
+    const supported = !unsupported.includes(id);
+    card?.toggleAttribute("data-unsupported", !supported);
+    if (card) card.title = supported ? "" : t("card.unsupported", { simulator: frame.source_name });
+    if (input) input.disabled = !supported;
+  }
+};
+
 const renderConnection = (frame: TelemetryFrame): void => {
   const status = document.getElementById("game-status");
   const label = status?.querySelector("span");
@@ -2834,7 +2866,10 @@ const renderConnection = (frame: TelemetryFrame): void => {
   }
 };
 
-void listen<TelemetryFrame>("telemetry://frame", ({ payload }) => renderConnection(payload))
+void listen<TelemetryFrame>("telemetry://frame", ({ payload }) => {
+  renderConnection(payload);
+  renderSourceCapabilities(payload);
+})
   .catch(reportInitializationError("telemetry listener"));
 const renderInteractionMode = (mode: InteractionMode): void => {
   const status = document.getElementById("interaction-status");

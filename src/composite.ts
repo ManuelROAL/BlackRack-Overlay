@@ -63,6 +63,10 @@ const overlayIds: OverlayId[] = [
   "relative", "fuel", "pitstop", "flags", "rejoin", "trackmap",
   "forecast", "conditions"
 ];
+// Projected into every overlay on top of its own allowlist: an overlay has to
+// know what the active simulator can report before it decides what to draw.
+const sharedTelemetryFields: readonly (keyof TelemetryFrame)[] = ["capabilities"];
+
 const telemetryFields: Record<OverlayId, readonly (keyof TelemetryFrame)[]> = {
   delta: ["delta_model"],
   timing: ["timing_model"],
@@ -316,6 +320,7 @@ const projectTelemetryFrame = (overlay: OverlayId, frame: TelemetryFrame): Telem
   }
   const target = projected as unknown as Record<string, unknown>;
   const source = frame as unknown as Record<string, unknown>;
+  for (const field of sharedTelemetryFields) target[field] = source[field];
   for (const field of telemetryFields[overlay]) target[field] = source[field];
   return projected;
 };

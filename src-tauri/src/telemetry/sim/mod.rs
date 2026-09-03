@@ -9,6 +9,7 @@
 //! descriptor, then adding it to the candidate chain in `detect`. Nothing in
 //! `telemetry` outside this module should need to change.
 
+use serde::Serialize;
 use std::path::Path;
 use std::sync::OnceLock;
 
@@ -25,10 +26,69 @@ pub(crate) mod mock;
 /// itself is owned by the telemetry loop.
 pub(crate) type OfficialGeometryFetcher = fn() -> Result<OfficialTrackMapGeometry, String>;
 
+/// What the simulator behind a source can ever report.
+///
+/// This is not the same question as the per-session flags already carried by
+/// the frame — `virtual_energy_active`, `rest_weather_available` and the `-1`
+/// sentinels say what exists *right now*. Capabilities say what could ever
+/// exist, so the control panel can retire an overlay a simulator will never
+/// feed instead of offering one that stays empty.
+#[derive(Clone, Copy, Serialize)]
+pub struct SourceCapabilities {
+    /// Energy budget alongside fuel, as LMU's hybrid classes use.
+    pub(crate) virtual_energy: bool,
+    /// Fuel and energy state for cars other than the player's.
+    pub(crate) opponent_fuel: bool,
+    /// Tyre compound and wear for cars other than the player's.
+    pub(crate) opponent_tires: bool,
+    /// Per-part damage percentages rather than a repair time.
+    pub(crate) damage_detail: bool,
+    pub(crate) tire_temperatures: bool,
+    pub(crate) brake_temperatures: bool,
+    pub(crate) weather_forecast: bool,
+    /// Track grip and rubbering state.
+    pub(crate) track_grip: bool,
+    /// Driver and safety ratings for the roster.
+    pub(crate) driver_ranks: bool,
+    /// Track-limit counters and the penalty threshold.
+    pub(crate) track_limits: bool,
+    /// An authoritative track outline, as opposed to one learned from laps.
+    pub(crate) official_track_map: bool,
+    /// The simulator's own estimate for the next pit stop.
+    pub(crate) pit_service_estimate: bool,
+    /// Lift and coast guidance from the car.
+    pub(crate) lift_and_coast: bool,
+    /// Multi-split events, where the field is divided across sessions.
+    pub(crate) session_splits: bool,
+}
+
+impl SourceCapabilities {
+    /// Everything off. A new source turns on only what it can actually fill.
+    pub(crate) const NONE: Self = Self {
+        virtual_energy: false,
+        opponent_fuel: false,
+        opponent_tires: false,
+        damage_detail: false,
+        tire_temperatures: false,
+        brake_temperatures: false,
+        weather_forecast: false,
+        track_grip: false,
+        driver_ranks: false,
+        track_limits: false,
+        official_track_map: false,
+        pit_service_estimate: false,
+        lift_and_coast: false,
+        session_splits: false,
+    };
+}
+
 /// Identity and static abilities of the simulator behind a source.
 #[derive(Clone, Copy)]
 pub(crate) struct SourceDescriptor {
     pub(crate) id: &'static str,
+    /// Shown to the user; the id is for logic, this is for copy.
+    pub(crate) display_name: &'static str,
+    pub(crate) capabilities: SourceCapabilities,
     pub(crate) official_geometry: Option<OfficialGeometryFetcher>,
 }
 
