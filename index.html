@@ -17,7 +17,13 @@
           </div>
         </div>
         <div class="control-header-status">
-          <select id="simulator-preference-select" class="simulator-header-select" aria-label="Simulador" data-i18n-aria-label="simulator.aria"></select>
+          <div class="simulator-picker">
+            <button id="simulator-picker-trigger" type="button" class="simulator-picker-trigger" aria-haspopup="listbox" aria-expanded="false" aria-label="Simulador" data-i18n-aria-label="simulator.aria">
+              <span id="simulator-picker-label"></span>
+              <em></em>
+            </button>
+            <div id="simulator-picker-menu" class="simulator-picker-menu" role="listbox" aria-label="Opciones de simulador" data-i18n-aria-label="simulator.aria" hidden></div>
+          </div>
           <div id="game-status" class="game-status" data-state="offline">
             <i></i><span data-i18n="status.waiting">ESPERANDO</span>
           </div>

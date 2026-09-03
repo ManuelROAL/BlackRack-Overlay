@@ -277,36 +277,83 @@ const activeSimulatorName = (): string => simulatorStatus?.display_name || t("si
 applyTranslations();
 
 let simulatorPreference = readSimulatorPreference();
-const simulatorPreferenceSelect = document.getElementById("simulator-preference-select") as HTMLSelectElement | null;
+const simulatorPickerTrigger = document.getElementById("simulator-picker-trigger") as HTMLButtonElement | null;
+const simulatorPickerLabel = document.getElementById("simulator-picker-label");
+const simulatorPickerMenu = document.getElementById("simulator-picker-menu");
+if (simulatorPickerLabel) {
+  simulatorPickerLabel.textContent = simulatorPreference === "auto" ? t("simulator.auto") : t("simulator.unknown");
+}
+
+const closeSimulatorPicker = (): void => {
+  if (simulatorPickerMenu) simulatorPickerMenu.hidden = true;
+  simulatorPickerTrigger?.setAttribute("aria-expanded", "false");
+};
+
+simulatorPickerTrigger?.addEventListener("click", () => {
+  if (!simulatorPickerMenu) return;
+  const opening = simulatorPickerMenu.hidden;
+  simulatorPickerMenu.hidden = !opening;
+  simulatorPickerTrigger.setAttribute("aria-expanded", String(opening));
+});
+
+document.addEventListener("click", (event) => {
+  if (!simulatorPickerMenu || simulatorPickerMenu.hidden) return;
+  const target = event.target as Node;
+  if (simulatorPickerTrigger?.contains(target) || simulatorPickerMenu.contains(target)) return;
+  closeSimulatorPicker();
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") closeSimulatorPicker();
+});
 
 /**
- * Fills the header select once the simulator options are known. Their labels
+ * Fills the header picker once the simulator options are known. Their labels
  * come from the backend rather than the catalog, the same way
  * `activeSimulatorName` does, so no simulator name lives in visible copy.
  */
 const applySimulatorPreferenceOptions = (options: SimulatorOption[]): void => {
-  const select = simulatorPreferenceSelect;
-  if (!select || select.options.length > 0) return;
+  const label = simulatorPickerLabel;
+  const menu = simulatorPickerMenu;
+  if (!label || !menu || menu.childElementCount > 0) return;
 
-  select.add(new Option(t("simulator.auto"), "auto"));
-  for (const option of options) select.add(new Option(option.display_name, option.id));
-  select.value = simulatorPreference;
+  const entries = [{ id: "auto", display_name: t("simulator.auto") }, ...options];
+  const optionButtons: HTMLButtonElement[] = [];
 
-  select.addEventListener("change", () => {
-    const next = select.value;
-    if (next === simulatorPreference) return;
-    const previous = simulatorPreference;
-    simulatorPreference = next;
-    select.disabled = true;
-    void invoke("set_simulator_preference", { simulator: next }).then(() => {
-      saveSimulatorPreference(next);
-    }).catch(() => {
-      simulatorPreference = previous;
-      select.value = previous;
-    }).finally(() => {
-      select.disabled = false;
+  const highlightSimulatorPreference = (): void => {
+    label.textContent =
+      entries.find((entry) => entry.id === simulatorPreference)?.display_name ?? t("simulator.auto");
+    for (const button of optionButtons) {
+      const selected = button.dataset.simulatorPreference === simulatorPreference;
+      button.classList.toggle("active", selected);
+      button.setAttribute("aria-selected", String(selected));
+    }
+  };
+
+  for (const entry of entries) {
+    const option = document.createElement("button");
+    option.type = "button";
+    option.setAttribute("role", "option");
+    option.className = "simulator-picker-option";
+    option.dataset.simulatorPreference = entry.id;
+    option.textContent = entry.display_name;
+    option.addEventListener("click", () => {
+      closeSimulatorPicker();
+      if (entry.id === simulatorPreference) return;
+      const previous = simulatorPreference;
+      simulatorPreference = entry.id;
+      highlightSimulatorPreference();
+      void invoke("set_simulator_preference", { simulator: entry.id }).then(() => {
+        saveSimulatorPreference(entry.id);
+      }).catch(() => {
+        simulatorPreference = previous;
+        highlightSimulatorPreference();
+      });
     });
-  });
+    optionButtons.push(option);
+    menu.append(option);
+  }
+  highlightSimulatorPreference();
 };
 
 void invoke("set_simulator_preference", { simulator: simulatorPreference })

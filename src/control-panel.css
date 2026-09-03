@@ -81,7 +81,14 @@ select {
   gap: 10px;
 }
 
-.simulator-header-select {
+.simulator-picker {
+  position: relative;
+}
+
+.simulator-picker-trigger {
+  display: flex;
+  align-items: center;
+  gap: 7px;
   min-height: 30px;
   padding: 0 10px;
   border: 1px solid rgb(255 255 255 / 12%);
@@ -89,14 +96,66 @@ select {
   color: #dce2e7;
   background: rgb(255 255 255 / 5%);
   cursor: pointer;
+  font: inherit;
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.08em;
   outline: none;
 }
 
-.simulator-header-select:focus {
-  border-color: rgb(216 255 62 / 55%);
+.simulator-picker-trigger:hover,
+.simulator-picker-trigger[aria-expanded="true"] {
+  border-color: rgb(216 255 62 / 45%);
+}
+
+.simulator-picker-trigger em {
+  color: #7c8894;
+  font-size: 9px;
+  font-style: normal;
+}
+
+.simulator-picker-trigger em::before {
+  content: "\25BE";
+}
+
+.simulator-picker-trigger[aria-expanded="true"] em {
+  color: #d8ff3e;
+}
+
+.simulator-picker-menu {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 6px);
+  left: 0;
+  display: grid;
+  min-width: 160px;
+  padding: 4px;
+  border: 1px solid rgb(255 255 255 / 12%);
+  border-radius: 8px;
+  background: #10151d;
+  box-shadow: 0 16px 32px rgb(0 0 0 / 50%);
+}
+
+.simulator-picker-option {
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 5px;
+  color: #d9dfe4;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: left;
+}
+
+.simulator-picker-option:hover {
+  background: rgb(255 255 255 / 6%);
+}
+
+.simulator-picker-option.active {
+  color: #10140c;
+  background: #d8ff3e;
 }
 
 .game-status {
