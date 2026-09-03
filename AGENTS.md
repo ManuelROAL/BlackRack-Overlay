@@ -2,10 +2,13 @@
 
 ## Project
 
-BlackRack Overlay is a Windows-first desktop telemetry overlay for Le Mans Ultimate.
+BlackRack Overlay is a Windows-first desktop telemetry overlay for sim racing.
 The current release line is `0.5.x`. It uses Tauri 2, Rust, TypeScript, Vite and
-plain HTML/CSS without a frontend framework. Live telemetry uses the official LMU
-shared-memory SDK on Windows; builds without the SDK use the mock source.
+plain HTML/CSS without a frontend framework. Le Mans Ultimate is read through its
+official shared-memory SDK and is complete; iRacing is read through its own
+memory-mapped interface and is being landed one overlay at a time. The active
+simulator is chosen at runtime, and a build with neither uses the mock source.
+See `docs/SIMULATORS.md`.
 
 ## Reading workflow
 

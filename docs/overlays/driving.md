@@ -23,6 +23,15 @@
   visual range only while the REST value is unavailable. Do not use
   `mFilteredSteering`, which can include vehicle steering processing.
 
+### Per simulator
+
+This is the first overlay iRacing feeds. Its values map directly: `Speed` in
+m/s, `Gear`, `RPM` against the session's published `DriverCarRedLine`,
+`Throttle`, `Brake`, `SteeringWheelAngle` in radians and
+`SteeringWheelPctTorque` for the FFB bar. `BrakeABSactive` drives the ABS marks.
+It publishes no traction-control state, so the TC marks never appear there;
+inferring them from pedals and slip is exactly what the rule above forbids.
+
 ## Layout and configuration
 
 - Keep one continuous compact dark surface with thin internal separators and a

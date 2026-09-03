@@ -33,8 +33,15 @@ in `docs/overlays/` and should not be duplicated here.
   `telemetry/sim`, not by `#[cfg]` at the point of use. A simulator's SDK may
   still be a compile-time gate inside its own module, but nothing outside
   `sim/<id>/` names a simulator.
+- Selection is continuous, not a startup decision. The app is normally launched
+  before the game, and closing one simulator to open another must not need a
+  restart, so a disconnected source re-probes the candidates every two seconds
+  and adopts the first one that reports itself available. A connected source is
+  never displaced.
 - A source declares what it can *ever* report as capabilities on its
-  descriptor, and the frame carries them. That is a different question from
+  descriptor, and the frame carries them. A source still being built out turns
+  a capability on only once it fills the frame fields behind it, so a partial
+  simulator advertises less rather than more. That is a different question from
   the per-session availability the frame already expressed through
   `virtual_energy_active`, `rest_weather_available` and the `-1` sentinels;
   neither replaces the other. The control panel retires an overlay a
@@ -45,8 +52,9 @@ in `docs/overlays/` and should not be duplicated here.
 - Visible copy names the active simulator through a parameter. Overlay window
   titles carry no simulator prefix at all, because the app is meant to serve
   more than one.
-- Settings, profiles and the exported configuration stay global for now. They
-  are namespaced per simulator when a second one lands, not before.
+- Settings, profiles and the exported configuration are still global. With a
+  second simulator in the tree the migration is now owed; it is tracked with the
+  other open items in `docs/SIMULATORS.md`.
 
 ## Host and configuration
 

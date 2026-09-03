@@ -2874,6 +2874,9 @@ const renderConnection = (frame: TelemetryFrame): void => {
 };
 
 void listen<TelemetryFrame>("telemetry://frame", ({ payload }) => {
+  // The active simulator is chosen at runtime, so the panel follows the frame
+  // instead of the answer it got once at startup.
+  if (simulatorStatus && payload.source !== simulatorStatus.id) refreshSimulatorStatus();
   renderConnection(payload);
   renderSourceCapabilities(payload);
 })
@@ -2907,6 +2910,9 @@ void invoke<ShortcutSettingsStatus>("get_shortcut_settings")
 void invoke<InteractionMode>("get_interaction_mode")
   .then(renderInteractionMode)
   .catch(reportInitializationError("interaction mode"));
-void invoke<SimulatorStatus>("get_simulator_status").then((status) => {
-  simulatorStatus = status;
-}).catch(reportInitializationError("simulator status"));
+const refreshSimulatorStatus = (): void => {
+  void invoke<SimulatorStatus>("get_simulator_status").then((status) => {
+    simulatorStatus = status;
+  }).catch(reportInitializationError("simulator status"));
+};
+refreshSimulatorStatus();

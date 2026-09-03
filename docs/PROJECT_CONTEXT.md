@@ -52,7 +52,10 @@ on their runtime or source code.
    reliable or only exposed there (standings supplement, weather and strategy).
 3. RaceControl/RaceOS client endpoints, authenticated with LMU's local session
    ticket, for DR/SR profiles and the online-event split.
-4. Mock telemetry when the Windows SDK is unavailable at compile time.
+4. iRacing's memory-mapped telemetry interface, read directly and needing
+   nothing at build time. It currently feeds the Driving overlay; the remaining
+   areas are tracked in `docs/SIMULATORS.md`.
+5. Mock telemetry when no simulator is available.
 
 All optional REST/network integrations must degrade gracefully. Losing them may
 remove enrichment such as DR/SR or split data, but must not stop the overlays.

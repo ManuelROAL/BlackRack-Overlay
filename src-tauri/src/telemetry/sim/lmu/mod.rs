@@ -68,6 +68,13 @@ fn plugin_dependency() -> SourceDependency {
     }
 }
 
+/// The bridge symbols exist, so this simulator can be read whenever it is
+/// running; the source itself reports whether it currently is.
+#[cfg(all(target_os = "windows", lmu_sdk))]
+pub(super) fn available() -> bool {
+    true
+}
+
 #[cfg(all(target_os = "windows", lmu_sdk))]
 pub(super) fn try_new(app_data: &Path) -> Option<Box<dyn TelemetrySource>> {
     Some(Box::new(
@@ -79,6 +86,11 @@ pub(super) fn try_new(app_data: &Path) -> Option<Box<dyn TelemetrySource>> {
 
 /// Built without the shared-memory SDK, so the bridge symbols do not exist and
 /// this simulator cannot be read at all.
+#[cfg(not(all(target_os = "windows", lmu_sdk)))]
+pub(super) fn available() -> bool {
+    false
+}
+
 #[cfg(not(all(target_os = "windows", lmu_sdk)))]
 pub(super) fn try_new(_app_data: &Path) -> Option<Box<dyn TelemetrySource>> {
     None

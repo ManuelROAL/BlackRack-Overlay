@@ -5,17 +5,19 @@
 //! modules outside `sim` stay simulator agnostic: they only see the frame, the
 //! demand and the contract below.
 //!
-//! Adding a simulator means writing `sim::<id>` with a `try_new` probe and a
-//! descriptor, then adding it to the candidate chain in `detect`. Nothing in
-//! `telemetry` outside this module should need to change.
+//! Adding a simulator means writing `sim::<id>` with an `available` probe, a
+//! `try_new` constructor and a descriptor, then adding it to `CANDIDATES`.
+//! Nothing in `telemetry` outside this module should need to change.
 
 use serde::Serialize;
-use std::path::Path;
-use std::sync::OnceLock;
+use std::path::{Path, PathBuf};
+use std::sync::RwLock;
+use std::time::{Duration, Instant};
 
 use super::track_geometry::OfficialTrackMapGeometry;
 use super::{TelemetryDemand, TelemetryFrame};
 
+pub(crate) mod iracing;
 pub(crate) mod lmu;
 pub(crate) mod mock;
 
@@ -111,19 +113,108 @@ pub(crate) trait TelemetrySource: Send + 'static {
     fn next_frame(&mut self, demand: TelemetryDemand) -> TelemetryFrame;
 }
 
-static ACTIVE: OnceLock<SourceDescriptor> = OnceLock::new();
+/// One simulator the app can read, with the probe that says whether it can be
+/// read right now. Order is priority.
+struct Candidate {
+    id: &'static str,
+    available: fn() -> bool,
+    try_new: fn(&Path) -> Option<Box<dyn TelemetrySource>>,
+}
 
-/// Picks the first simulator whose telemetry can be read in this build. The
-/// mock is the last resort so a build made without any SDK still renders.
+const CANDIDATES: [Candidate; 2] = [
+    Candidate {
+        id: "iracing",
+        available: iracing::available,
+        try_new: iracing::try_new,
+    },
+    Candidate {
+        id: "lmu",
+        available: lmu::available,
+        try_new: lmu::try_new,
+    },
+];
+
+/// How often a disconnected source looks for a simulator that is running.
+const PROBE_INTERVAL: Duration = Duration::from_secs(2);
+
+static ACTIVE: RwLock<Option<SourceDescriptor>> = RwLock::new(None);
+
+fn set_active(descriptor: SourceDescriptor) {
+    if let Ok(mut active) = ACTIVE.write() {
+        *active = Some(descriptor);
+    }
+}
+
+/// Follows whichever simulator is running instead of deciding once at startup:
+/// the app is normally launched before the game, and closing one simulator to
+/// open another must not need a restart.
+struct SelectedSource {
+    app_data: PathBuf,
+    active: Box<dyn TelemetrySource>,
+    on_mock: bool,
+    probe_at: Instant,
+}
+
+impl SelectedSource {
+    /// Adopts the highest-priority simulator that is available now. Keeping the
+    /// current source when nothing is available is what leaves a waiting
+    /// simulator reporting itself instead of falling back to the mock.
+    fn reselect(&mut self) {
+        let current = self.active.descriptor().id;
+        let Some(candidate) = CANDIDATES.iter().find(|candidate| (candidate.available)()) else {
+            return;
+        };
+        if candidate.id == current {
+            return;
+        }
+        let Some(source) = (candidate.try_new)(&self.app_data) else {
+            return;
+        };
+        set_active(source.descriptor());
+        self.active = source;
+        self.on_mock = false;
+    }
+}
+
+impl TelemetrySource for SelectedSource {
+    fn descriptor(&self) -> SourceDescriptor {
+        self.active.descriptor()
+    }
+
+    fn next_frame(&mut self, demand: TelemetryDemand) -> TelemetryFrame {
+        let frame = self.active.next_frame(demand);
+        // A connected source is the right one by definition. The mock always
+        // reports connected, so it is the one case that keeps probing.
+        if (self.on_mock || !frame.connected) && Instant::now() >= self.probe_at {
+            self.probe_at = Instant::now() + PROBE_INTERVAL;
+            self.reselect();
+        }
+        frame
+    }
+}
+
+/// Picks the first simulator whose telemetry can be read, and keeps looking
+/// while none is connected. The mock is the last resort so a build made without
+/// any simulator still renders.
 pub(crate) fn detect(app_data: &Path) -> Box<dyn TelemetrySource> {
-    let source = lmu::try_new(app_data)
+    let selected = CANDIDATES
+        .iter()
+        .filter(|candidate| (candidate.available)())
+        .find_map(|candidate| (candidate.try_new)(app_data));
+    let on_mock = selected.is_none();
+    let active = selected
         .unwrap_or_else(|| Box::new(mock::MockTelemetrySource::new()) as Box<dyn TelemetrySource>);
-    let _ = ACTIVE.set(source.descriptor());
-    source
+    set_active(active.descriptor());
+    Box::new(SelectedSource {
+        app_data: app_data.to_path_buf(),
+        active,
+        on_mock,
+        probe_at: Instant::now() + PROBE_INTERVAL,
+    })
 }
 
 pub(crate) fn active() -> Option<SourceDescriptor> {
-    ACTIVE.get().copied()
+    ACTIVE.read().ok().and_then(|active| *active)
 }
 
 /// What the control panel reports about the simulator behind the overlays.
@@ -150,7 +241,5 @@ pub(crate) fn status() -> SimulatorStatus {
 }
 
 pub(super) fn active_official_geometry() -> Option<OfficialGeometryFetcher> {
-    ACTIVE
-        .get()
-        .and_then(|descriptor| descriptor.official_geometry)
+    active().and_then(|descriptor| descriptor.official_geometry)
 }

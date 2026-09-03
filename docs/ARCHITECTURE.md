@@ -46,8 +46,10 @@ Tauri events    analysis JSONL/strategy CSV    browser-source SSE
 - `src-tauri/src/telemetry/mod.rs`
   - Defines `TelemetryFrame`, `StandingEntry` and the warnings, and stays
     simulator agnostic: the source contract lives in `telemetry/sim`.
-  - Asks `sim::detect` for the source once at startup, so the registry is
-    settled before the control panel asks which simulator is active.
+  - Asks `sim::detect` for the source at startup. What it gets back follows
+    whichever simulator is running, so the active one can change while the app
+    is up; the control panel refreshes its answer when the frame reports a
+    different source.
   - Owns the 50 Hz scheduler, per-overlay emission rates and payload grouping.
     Standings/Relative share one batch when due, Track Map uses its stripped batch,
     and the remaining active overlays share the base-frame batch.
@@ -81,8 +83,16 @@ Tauri events    analysis JSONL/strategy CSV    browser-source SSE
   - Read the official track outline and locate the telemetry plugin. Both are
     reached through the descriptor, never from the agnostic modules.
 - `src-tauri/src/telemetry/sim/mod.rs`
-  - Holds `TelemetrySource`, `SourceDescriptor`, `SourceCapabilities` and the
-    `detect` chain that picks a simulator. See `docs/SIMULATORS.md`.
+  - Holds `TelemetrySource`, `SourceDescriptor`, `SourceCapabilities`, the
+    `CANDIDATES` table and the source that keeps following the running
+    simulator. See `docs/SIMULATORS.md`.
+- `sim/iracing/irsdk.rs`, `sim/iracing/yaml.rs`, `sim/iracing/session.rs`
+  - Read the simulator's memory-mapped telemetry, parse its session string and
+    expose the track, car and schedule taken from it. No SDK is needed at build
+    time, so the module compiles on every Windows build.
+- `sim/iracing/source.rs`, `sim/iracing/foreground.rs`
+  - Assemble the frame and answer whether the simulator owns the foreground
+    window, which its telemetry does not report.
 - `browser_source.rs`
   - Optional localhost-only HTTP/SSE server at `127.0.0.1:47636`.
   - Serves OBS pages through Tauri's embedded `frontendDist` asset resolver; it

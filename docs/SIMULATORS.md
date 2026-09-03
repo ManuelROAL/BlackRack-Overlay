@@ -5,19 +5,20 @@ knows a simulator exists lives under `src-tauri/src/telemetry/sim/<id>/`; every
 other module — the frame, the 50 Hz loop, the domain models and the whole
 frontend — is simulator agnostic and must stay that way.
 
-Le Mans Ultimate is the only simulator implemented. This document is the contract
-a second one has to satisfy.
+Le Mans Ultimate is complete. iRacing is being built out one overlay at a time
+and today feeds Driving; what it does and does not fill is recorded below.
 
 ## The contract
 
-`src-tauri/src/telemetry/sim/mod.rs` owns four things:
+`src-tauri/src/telemetry/sim/mod.rs` owns five things:
 
 | Item | Purpose |
 | --- | --- |
 | `TelemetrySource` | `descriptor()` plus `next_frame(demand)`, called from the loop thread |
 | `SourceDescriptor` | id, display name, capabilities, and two optional function pointers |
 | `SourceCapabilities` | what the simulator can *ever* report |
-| `detect(app_data)` | tries each simulator in order and falls back to the mock |
+| `CANDIDATES` | the simulators, in priority order, each with an `available` probe and a `try_new` |
+| `detect(app_data)` | builds the source that follows whichever candidate is running |
 
 The descriptor carries function pointers rather than source methods for the two
 things the app asks for outside the loop thread:
@@ -30,6 +31,25 @@ things the app asks for outside the loop thread:
 A source that has neither leaves both `None`; `track_geometry.rs` then falls back
 to the outline learned from laps, and the panel simply does not report a
 dependency.
+
+## Choosing the simulator
+
+`detect` returns a source that keeps looking. It builds the first candidate whose
+`available` probe answers yes, falling back to the mock, and then on every cycle
+where the frame comes back disconnected — or where the mock is active, since it
+is always "connected" — it re-probes at most once every two seconds and swaps in
+the first available candidate whose id differs from the current one.
+
+That is what makes launching the app before the game work, and what lets one
+simulator be closed and another opened without a restart. A connected source is
+never displaced, and when nothing is available the current source is kept, so a
+waiting simulator keeps reporting itself instead of falling back to the mock.
+
+An `available` probe must be cheap and must answer about *this machine, right
+now*: iRacing opens its memory mapping, which only exists while it runs; LMU
+answers whether the build has the SDK, because its bridge cannot be asked more
+cheaply than that. Consequently LMU is the last candidate: a build that has its
+SDK is always "available", so anything below it would never be reached.
 
 ## Capabilities are not availability
 
@@ -49,16 +69,19 @@ degrades inside its own renderer.
 
 ## Adding a simulator
 
-1. Create `src-tauri/src/telemetry/sim/<id>/mod.rs` with a `DESCRIPTOR` and a
-   `try_new(app_data) -> Option<Box<dyn TelemetrySource>>` probe returning `None`
-   when the simulator cannot be read in this build or on this machine.
+1. Create `src-tauri/src/telemetry/sim/<id>/mod.rs` with a `DESCRIPTOR`, an
+   `available() -> bool` probe and a
+   `try_new(app_data) -> Option<Box<dyn TelemetrySource>>` returning `None` when
+   the simulator cannot be read in this build or on this machine.
 2. Implement `TelemetrySource` for it. Fill the frame with the semantics the
    agnostic modules already expect; leave what the simulator does not report at
    the sentinel values the frame documents, and turn the matching capability off.
 3. Declare the capability set honestly. A capability that is on but never filled
    is worse than one that is off: the panel will offer an overlay that stays empty.
-4. Add the module to `sim/mod.rs` and the probe to the `detect` chain, ahead of
-   the mock. Order is priority.
+   A simulator that is landing one overlay at a time turns each capability on in
+   the change that fills the fields behind it, not before.
+4. Add the module to `sim/mod.rs` and an entry to `CANDIDATES`. Order is
+   priority, and a candidate whose `available` cannot fail goes last.
 5. Reuse the domain: `delta_records`, `fuel_strategy`, `standings_models`,
    `track_map_model`, `track_geometry`, `consumption_profile` and `strategy_log`
    are shared and must not gain a simulator-specific branch.
@@ -66,6 +89,43 @@ degrades inside its own renderer.
    pattern in `build.rs`: one detection function, one `rustc-check-cfg`, one
    `rustc-cfg`, and gate only the module that needs the symbols.
 7. Update this document and `docs/ARCHITECTURE.md`.
+
+## iRacing
+
+The simulator publishes a memory-mapped file that only exists while it runs:
+a header, a table describing every telemetry variable, a small ring of value
+buffers and a YAML session string. Nothing is needed at build time, so
+`sim/iracing/` compiles on every Windows build and `available()` is simply
+whether that mapping opens.
+
+- `irsdk.rs` maps the file and reads it by documented byte offsets rather than a
+  `#[repr(C)]` mirror, bounds every read against the region size, and adopts a
+  value buffer only when its tick did not advance during the copy.
+- `yaml.rs` parses the restricted dialect the session string uses — block maps,
+  block sequences of maps and plain scalars — without a dependency.
+- `session.rs` reparses at most once a second and only when the generation
+  changes, because the string is large and is republished as results change.
+- `foreground.rs` answers whether the simulator owns the foreground window,
+  which the telemetry does not report and the overlay host needs.
+
+What it fills today is the session and car state the host uses to decide what to
+show, plus the Driving values: speed, gear, RPM against the published redline,
+throttle, brake, ABS, steering angle and wheel torque. Traction control has no
+published state, so its indicator stays off rather than being inferred.
+
+Everything else in the frame is still at its documented sentinel and every
+capability is off, which is what keeps the control panel from offering an
+overlay that would stay empty. Landing an area means filling its fields, turning
+its capability on in the same change, and recording it here. The known shape of
+the remaining work:
+
+| Area | Source in the simulator |
+| --- | --- |
+| Standings, Relative, Track Map | the `CarIdx*` arrays joined to the roster in the session string; no world coordinates for other cars, so the outline has to be learned from the player's own position |
+| Fuel | `FuelLevel` tracked across laps; there is no energy budget, so `virtual_energy_*` stays inactive |
+| Tyres | the per-corner wear and carcass temperature variables |
+| Conditions | `AirTemp`, `TrackTempCrew`, `Precipitation`, `TrackWetness`, `Skies`, wind |
+| Damage, Forecast, Lift and coast, Pit stop | not published; these four stay capability-gated off permanently |
 
 ## The guardrail
 
@@ -83,11 +143,15 @@ are lifted from LMU's own interface and the name records where they came from.
 ## What is not prepared yet
 
 - **Settings are global.** Overlay preferences, profiles and the exported
-  configuration document are not namespaced per simulator, so switching would
-  carry one simulator's layout into another. The migration is a per-simulator
-  prefix on the `localStorage` keys in `src/main.ts` plus a `simulator` field in
-  the configuration document with a `schemaVersion` bump; do it when the second
-  simulator lands, not before.
+  configuration document are not namespaced per simulator, so switching now
+  carries one simulator's layout into the other. The migration is a
+  per-simulator prefix on the `localStorage` keys in `src/main.ts` plus a
+  `simulator` field in the configuration document with a `schemaVersion` bump.
+  A second simulator exists, so this is owed rather than hypothetical.
+- **Learned data is keyed by track and car, not by simulator.** The delta
+  records, the learned track outline and the consumption profiles share one
+  store. Two simulators are unlikely to agree on a track name, so today they
+  simply learn separate entries; a collision would mix them.
 - **Renderers do not read capabilities.** Only the control-panel catalog does.
   An overlay that should show fewer columns for a given simulator still has to
   learn that itself.
