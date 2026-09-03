@@ -61,11 +61,6 @@ const REQUEST_TIMEOUT: Duration = Duration::from_millis(400);
 /// catch a car that was not loaded yet when the session began.
 #[cfg(not(test))]
 const TIRE_COMPOUND_INTERVAL: Duration = Duration::from_secs(30);
-/// A failing endpoint reports once when it breaks and once when it recovers;
-/// in between it repeats at this cadence so a long outage stays visible in the
-/// diagnostics log without a 5 Hz poll flooding it.
-#[cfg(not(test))]
-const FAILURE_REPORT_INTERVAL: Duration = Duration::from_secs(30);
 
 #[derive(Clone, Debug, Default, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
@@ -405,7 +400,6 @@ impl LocalRestResolver {
             let Some(client) = http_client() else {
                 return;
             };
-            let mut health = RestHealth::default();
             let mut history_received_at: Option<Instant> = None;
             loop {
                 if standings_demand.load(Ordering::Relaxed) & STANDINGS_DEMAND == 0 {
@@ -413,14 +407,11 @@ impl LocalRestResolver {
                     continue;
                 }
                 let started = Instant::now();
-                if let Some(standings) =
-                    fetch_tracked(&client, "/rest/watch/standings", &mut health)
-                {
+                if let Some(standings) = fetch_tracked(&client, "/rest/watch/standings") {
                     let history = if history_received_at
                         .is_none_or(|received| received.elapsed() >= HISTORY_INTERVAL)
                     {
-                        let response =
-                            fetch_tracked(&client, "/rest/watch/standings/history", &mut health);
+                        let response = fetch_tracked(&client, "/rest/watch/standings/history");
                         if response.is_some() {
                             history_received_at = Some(Instant::now());
                         }
@@ -445,7 +436,6 @@ impl LocalRestResolver {
             let Some(client) = http_client() else {
                 return;
             };
-            let mut health = RestHealth::default();
             let mut garage_received_at: Option<Instant> = None;
             let mut compounds_received_at: Option<Instant> = None;
             let mut heavy_polled_at: Option<Instant> = None;
@@ -458,7 +448,6 @@ impl LocalRestResolver {
                 let suspension_condition = fetch_tracked::<RestVehicleCondition>(
                     &client,
                     "/rest/garage/getVehicleCondition",
-                    &mut health,
                 )
                 .map(|response| response.suspension_damage);
 
@@ -487,7 +476,6 @@ impl LocalRestResolver {
                     let range = fetch_tracked::<RestGarageData>(
                         &client,
                         "/rest/garage/getPlayerGarageData",
-                        &mut health,
                     )
                     .and_then(|response| steering_range(&response.steering_lock.string_value));
                     if range.is_some() {
@@ -503,7 +491,6 @@ impl LocalRestResolver {
                     let compounds = fetch_tracked::<RestTireManagement>(
                         &client,
                         "/rest/garage/UIScreen/TireManagement",
-                        &mut health,
                     )
                     .map(|response| response.optimal_compound_conditions.compounds)
                     .filter(|compounds| !compounds.is_empty());
@@ -517,21 +504,16 @@ impl LocalRestResolver {
                 let repair_and_refuel = fetch_tracked::<RestRepairAndRefuel>(
                     &client,
                     "/rest/garage/UIScreen/RepairAndRefuel",
-                    &mut health,
                 );
                 let session_info: Option<RestSessionInfo> =
-                    fetch_tracked(&client, "/rest/watch/sessionInfo", &mut health);
+                    fetch_tracked(&client, "/rest/watch/sessionInfo");
                 let team_info = repair_and_refuel.as_ref().and_then(|response| {
                     session_info.as_ref().and_then(|session| {
                         team_info_for_player(&response.team_info, &session.player_name)
                     })
                 });
                 let update = SupplementUpdate {
-                    pit_stop: fetch_tracked(
-                        &client,
-                        "/rest/strategy/pitstop-estimate",
-                        &mut health,
-                    ),
+                    pit_stop: fetch_tracked(&client, "/rest/strategy/pitstop-estimate"),
                     suspension_condition,
                     compound_conditions,
                     vehicle_damage: repair_and_refuel
@@ -563,7 +545,6 @@ impl LocalRestResolver {
             let Some(client) = http_client() else {
                 return;
             };
-            let mut health = RestHealth::default();
             loop {
                 if weather_demand.load(Ordering::Relaxed) & WEATHER_DEMAND == 0 {
                     thread::sleep(Duration::from_secs(1));
@@ -581,7 +562,6 @@ impl LocalRestResolver {
                 if let Some(weather_sessions) = fetch_tracked::<HashMap<String, RestWeatherSession>>(
                     &client,
                     "/rest/sessions/weather",
-                    &mut health,
                 ) {
                     if let Some(weather) = weather_sessions.get(&session) {
                         if weather_sender.send((session, weather.clone())).is_err() {
@@ -1021,71 +1001,17 @@ fn http_client() -> Option<Client> {
         .ok()
 }
 
-/// Tracks whether an endpoint is currently answering, so a failure is reported
-/// once when it starts and once when it ends instead of either flooding the log
-/// or, as before, disappearing into a discarded `Result`.
+/// Reports the outcome of a local REST fetch, so a failure surfaces in the
+/// diagnostics log instead of disappearing into a discarded `Result`.
 #[cfg(not(test))]
-#[derive(Default)]
-struct RestHealth {
-    failing: HashMap<&'static str, EndpointFailure>,
-}
-
-#[cfg(not(test))]
-struct EndpointFailure {
-    consecutive: u32,
-    last_reported: Instant,
-}
-
-#[cfg(not(test))]
-impl RestHealth {
-    fn record_success(&mut self, path: &'static str) {
-        if let Some(failure) = self.failing.remove(path) {
-            crate::startup_log::record(format!(
-                "rest_recovered path={path} after_failures={}",
-                failure.consecutive
-            ));
-        }
-    }
-
-    fn record_failure(&mut self, path: &'static str, error: &str) {
-        match self.failing.get_mut(path) {
-            Some(failure) => {
-                failure.consecutive = failure.consecutive.saturating_add(1);
-                if failure.last_reported.elapsed() >= FAILURE_REPORT_INTERVAL {
-                    failure.last_reported = Instant::now();
-                    crate::startup_log::record(format!(
-                        "rest_still_failing path={path} consecutive={} error={error}",
-                        failure.consecutive
-                    ));
-                }
-            }
-            None => {
-                self.failing.insert(
-                    path,
-                    EndpointFailure {
-                        consecutive: 1,
-                        last_reported: Instant::now(),
-                    },
-                );
-                crate::startup_log::record(format!("rest_failed path={path} error={error}"));
-            }
-        }
-    }
-}
-
-#[cfg(not(test))]
-fn fetch_tracked<T: DeserializeOwned>(
-    client: &Client,
-    path: &'static str,
-    health: &mut RestHealth,
-) -> Option<T> {
+fn fetch_tracked<T: DeserializeOwned>(client: &Client, path: &'static str) -> Option<T> {
     match fetch_json(client, path) {
         Ok(value) => {
-            health.record_success(path);
+            crate::startup_log::record_request_success(path);
             Some(value)
         }
         Err(error) => {
-            health.record_failure(path, &error);
+            crate::startup_log::record_request_failure(path, &error);
             None
         }
     }

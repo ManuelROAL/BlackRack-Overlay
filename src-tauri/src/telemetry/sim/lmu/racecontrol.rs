@@ -14,6 +14,11 @@ struct CachedAccessToken {
 
 static ACCESS_TOKEN: OnceLock<Mutex<Option<CachedAccessToken>>> = OnceLock::new();
 
+/// Endpoint name the diagnostics log uses for the two requests below. They are
+/// reported as one step because either failing leaves the caller without a
+/// token, and the error code says which half broke.
+const AUTH_ENDPOINT: &str = "raceos/authenticate";
+
 pub(super) fn authenticate(client: &Client) -> Result<String, String> {
     let cache = ACCESS_TOKEN.get_or_init(|| Mutex::new(None));
     let mut cached = cache
@@ -25,6 +30,23 @@ pub(super) fn authenticate(client: &Client) -> Result<String, String> {
         }
     }
 
+    match request_access_token(client) {
+        Ok(access_token) => {
+            crate::startup_log::record_request_success(AUTH_ENDPOINT);
+            *cached = Some(CachedAccessToken {
+                value: access_token.clone(),
+                expires_at: Instant::now() + ACCESS_TOKEN_CACHE_DURATION,
+            });
+            Ok(access_token)
+        }
+        Err(error) => {
+            crate::startup_log::record_request_failure(AUTH_ENDPOINT, &error);
+            Err(error)
+        }
+    }
+}
+
+fn request_access_token(client: &Client) -> Result<String, String> {
     let ticket_response = client
         .get(LOCAL_AUTH_URL)
         .send()
@@ -62,15 +84,10 @@ pub(super) fn authenticate(client: &Client) -> Result<String, String> {
     let auth_json = auth_response
         .json::<Value>()
         .map_err(|_| "racecontrol_auth_invalid_json".to_owned())?;
-    let access_token = auth_json
+    auth_json
         .get("accessToken")
         .and_then(Value::as_str)
         .filter(|token| !token.is_empty())
         .map(str::to_owned)
-        .ok_or_else(|| "racecontrol_access_token_missing".to_owned())?;
-    *cached = Some(CachedAccessToken {
-        value: access_token.clone(),
-        expires_at: Instant::now() + ACCESS_TOKEN_CACHE_DURATION,
-    });
-    Ok(access_token)
+        .ok_or_else(|| "racecontrol_access_token_missing".to_owned())
 }

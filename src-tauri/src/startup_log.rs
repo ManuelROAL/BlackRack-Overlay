@@ -1,14 +1,79 @@
 use std::backtrace::Backtrace;
+use std::collections::HashMap;
 use std::fs::{self, File, OpenOptions};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, OnceLock};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 static LOG_FILE: OnceLock<Mutex<File>> = OnceLock::new();
 const LOG_DIRECTORY_NAME: &str = "diagnostics";
 const MAX_SESSION_LOGS: usize = 20;
 const REDACTED: &str = "[redacted]";
+/// A failing endpoint reports once when it breaks and once when it recovers; in
+/// between it repeats at this cadence, so a request polled several times a
+/// second cannot flood the log during an outage.
+const FAILURE_REPORT_INTERVAL: Duration = Duration::from_secs(30);
+
+static FAILING_REQUESTS: OnceLock<Mutex<HashMap<&'static str, EndpointFailure>>> = OnceLock::new();
+
+struct EndpointFailure {
+    consecutive: u32,
+    last_reported: Instant,
+}
+
+fn failing_requests() -> &'static Mutex<HashMap<&'static str, EndpointFailure>> {
+    FAILING_REQUESTS.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+/// Records that a request succeeded, reporting the recovery if the endpoint was
+/// known to be failing. Silent otherwise: only transitions are worth a line.
+pub(crate) fn record_request_success(endpoint: &'static str) {
+    let removed = failing_requests()
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .remove(endpoint);
+    if let Some(failure) = removed {
+        record(format!(
+            "request_recovered endpoint={endpoint} after_failures={}",
+            failure.consecutive
+        ));
+    }
+}
+
+/// Records that a request failed. The detail is redacted the way panics and
+/// frontend errors are, because these endpoints carry bearer tokens and session
+/// tickets that must never reach the log.
+pub(crate) fn record_request_failure(endpoint: &'static str, error: &str) {
+    let error = sanitize(error, 1_000);
+    let mut failing = failing_requests()
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    match failing.get_mut(endpoint) {
+        Some(failure) => {
+            failure.consecutive = failure.consecutive.saturating_add(1);
+            if failure.last_reported.elapsed() >= FAILURE_REPORT_INTERVAL {
+                failure.last_reported = Instant::now();
+                let consecutive = failure.consecutive;
+                drop(failing);
+                record(format!(
+                    "request_still_failing endpoint={endpoint} consecutive={consecutive} error={error}"
+                ));
+            }
+        }
+        None => {
+            failing.insert(
+                endpoint,
+                EndpointFailure {
+                    consecutive: 1,
+                    last_reported: Instant::now(),
+                },
+            );
+            drop(failing);
+            record(format!("request_failed endpoint={endpoint} error={error}"));
+        }
+    }
+}
 
 fn timestamp_millis() -> u128 {
     SystemTime::now()
@@ -318,6 +383,36 @@ mod tests {
         ] {
             assert_eq!(sanitize(message, 1_000), message);
         }
+    }
+
+    #[test]
+    fn repeated_failures_collapse_and_a_success_clears_the_endpoint() {
+        let endpoint = "test/endpoint-collapse";
+        super::record_request_failure(endpoint, "decode: broken");
+        super::record_request_failure(endpoint, "decode: broken");
+        super::record_request_failure(endpoint, "decode: broken");
+
+        {
+            let failing = super::failing_requests().lock().unwrap();
+            let failure = failing
+                .get(endpoint)
+                .expect("endpoint marcado como fallido");
+            // Three failures, one reported: the rest wait for the interval.
+            assert_eq!(failure.consecutive, 3);
+        }
+
+        super::record_request_success(endpoint);
+        assert!(!super::failing_requests()
+            .lock()
+            .unwrap()
+            .contains_key(endpoint));
+
+        // A success on a healthy endpoint stays silent instead of re-reporting.
+        super::record_request_success(endpoint);
+        assert!(!super::failing_requests()
+            .lock()
+            .unwrap()
+            .contains_key(endpoint));
     }
 
     #[test]

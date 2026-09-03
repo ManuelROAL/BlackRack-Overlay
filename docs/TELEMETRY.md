@@ -137,10 +137,6 @@ weather polls only for Forecast or Conditions. Disconnecting LMU disables all th
   until disconnect or session change; strategy menu values expire independently
   when the response becomes stale.
 
-Every REST fetch failure is recorded in the session diagnostics log: one
-`rest_failed` line naming the stage that broke (`request`, `status` or `decode`),
-a `rest_still_failing` repeat at most every 30 s while the outage lasts, and a
-`rest_recovered` line with the failure count when the endpoint answers again.
 - `/rest/profile/getAuthSessionTicket`: only when RaceOS authentication needs a
   new token.
 
@@ -155,6 +151,30 @@ Observed endpoint details are stored under `postman/`:
 
 These are observed client endpoints, not guaranteed public APIs. Parse responses
 selectively and fail gracefully.
+
+## Request failure diagnostics
+
+Every HTTP request the backend makes — the local REST endpoints above and the
+RaceOS calls below — reports its outcome to the session diagnostics log through
+`startup_log::record_request_failure` and `record_request_success`. Only
+transitions are written, so a poll running several times a second cannot flood
+the file:
+
+- `request_failed endpoint=… error=…` the first time an endpoint stops
+  answering. For local REST the error names the stage that broke — `request`
+  (connection or timeout), `status` (HTTP error) or `decode` (the response no
+  longer matches the parsed shape); RaceOS reports its own stable error code.
+- `request_still_failing endpoint=… consecutive=N error=…` at most every 30 s
+  while the outage lasts.
+- `request_recovered endpoint=… after_failures=N` when it answers again.
+
+Failure detail is redacted the same way panics and frontend errors are, because
+the RaceOS requests carry bearer tokens and session tickets. `trackmap` keeps
+its own `track_geometry_*` lines from before this mechanism existed.
+
+A silent failure here is expensive: LMU dropped the whole `RepairAndRefuel`
+payload on every poll for one unparsable field, and with the error discarded the
+overlay simply showed an undamaged car.
 
 ## RaceOS authentication and event split
 

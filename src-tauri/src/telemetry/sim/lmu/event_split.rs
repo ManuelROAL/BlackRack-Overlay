@@ -9,6 +9,9 @@ use std::time::{Duration, Instant, SystemTime};
 
 const RACECONTROL_EVENT_OVERVIEW_URL: &str = "https://raceos.gg/api/v1/event/overview";
 const RACECONTROL_MY_SPLIT_URL: &str = "https://raceos.gg/api/v1/event/my-split/daily";
+/// Endpoint names the diagnostics log reports these two requests under.
+const OVERVIEW_ENDPOINT: &str = "raceos/event-overview";
+const MY_SPLIT_ENDPOINT: &str = "raceos/my-split";
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(5);
 const RETRY_INTERVAL: Duration = Duration::from_secs(10);
 const TRACE_CHUNK_BYTES: u64 = 2 * 1024 * 1024;
@@ -175,18 +178,26 @@ fn fetch_session_split(current: SessionSplit) -> Result<SessionSplit, String> {
         .header("Game-Authorization", format!("Bearer {access_token}"))
         .json(&event_overview_request(&event_id))
         .send()
-        .map_err(|_| "racecontrol_event_overview_unavailable".to_owned())?;
+        .map_err(|_| {
+            let error = "racecontrol_event_overview_unavailable".to_owned();
+            crate::startup_log::record_request_failure(OVERVIEW_ENDPOINT, &error);
+            error
+        })?;
     if !split_response.status().is_success() {
         let error = format!(
             "racecontrol_event_overview_http_{}",
             split_response.status().as_u16()
         );
+        crate::startup_log::record_request_failure(OVERVIEW_ENDPOINT, &error);
         return fetch_direct_split(&client, &access_token, &event_id, cached)
             .map_err(|direct_error| format!("{error}__{direct_error}"));
     }
-    let split_json = split_response
-        .json::<Value>()
-        .map_err(|_| "racecontrol_event_overview_invalid_json".to_owned())?;
+    let split_json = split_response.json::<Value>().map_err(|_| {
+        let error = "racecontrol_event_overview_invalid_json".to_owned();
+        crate::startup_log::record_request_failure(OVERVIEW_ENDPOINT, &error);
+        error
+    })?;
+    crate::startup_log::record_request_success(OVERVIEW_ENDPOINT);
     let mut split = parse_event_split(&split_json, &event_id);
     if split.number == 0 {
         split.number = cached.number;
@@ -207,20 +218,28 @@ fn fetch_direct_split(
         .get(format!("{RACECONTROL_MY_SPLIT_URL}/{event_id}"))
         .header("Game-Authorization", format!("Bearer {access_token}"))
         .send()
-        .map_err(|_| "racecontrol_my_split_unavailable".to_owned())?;
+        .map_err(|_| {
+            let error = "racecontrol_my_split_unavailable".to_owned();
+            crate::startup_log::record_request_failure(MY_SPLIT_ENDPOINT, &error);
+            error
+        })?;
     if !response.status().is_success() {
+        let error = format!("racecontrol_my_split_http_{}", response.status().as_u16());
+        crate::startup_log::record_request_failure(MY_SPLIT_ENDPOINT, &error);
+        // A cached split still stands, so the caller is not failed over a
+        // refresh that could not happen.
         return if fallback.number > 0 || fallback.count > 0 {
             Ok(fallback)
         } else {
-            Err(format!(
-                "racecontrol_my_split_http_{}",
-                response.status().as_u16()
-            ))
+            Err(error)
         };
     }
-    let json = response
-        .json::<Value>()
-        .map_err(|_| "racecontrol_my_split_invalid_json".to_owned())?;
+    let json = response.json::<Value>().map_err(|_| {
+        let error = "racecontrol_my_split_invalid_json".to_owned();
+        crate::startup_log::record_request_failure(MY_SPLIT_ENDPOINT, &error);
+        error
+    })?;
+    crate::startup_log::record_request_success(MY_SPLIT_ENDPOINT);
     let direct = parse_event_split(&json, event_id);
     if direct.number > 0 {
         fallback.number = direct.number;

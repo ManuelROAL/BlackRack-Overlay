@@ -6,6 +6,9 @@ use std::time::{Duration, Instant};
 
 const RACECONTROL_PLAYERS_URL: &str = "https://raceos.gg/api/v1/players";
 const RACECONTROL_PLAYER_URL: &str = "https://raceos.gg/api/v1/player";
+/// Endpoint names the diagnostics log reports these two requests under.
+const PLAYERS_ENDPOINT: &str = "raceos/players";
+const PLAYER_ENDPOINT: &str = "raceos/player";
 const RETRY_INTERVAL: Duration = Duration::from_secs(10);
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(5);
 
@@ -309,46 +312,81 @@ fn fetch_driver_ranks(
         .build()
         .map_err(|_| "http_client_initialization_failed".to_owned())?;
 
+    // Authentication reports itself under its own endpoint, so a missing token
+    // is not also blamed on the roster request.
     let access_token = super::racecontrol::authenticate(&client)?;
 
-    let profiles_response = client
-        .post(RACECONTROL_PLAYERS_URL)
-        .header("Game-Authorization", format!("Bearer {access_token}"))
-        .json(&serde_json::json!({ "usernames": driver_names }))
-        .send()
-        .map_err(|_| "racecontrol_players_unavailable".to_owned())?;
-    if !profiles_response.status().is_success() {
-        return Err(format!(
-            "racecontrol_players_http_{}",
-            profiles_response.status().as_u16()
-        ));
-    }
-    let profiles_json = profiles_response
-        .json::<Value>()
-        .map_err(|_| "racecontrol_players_invalid_json".to_owned())?;
+    let profiles_json = match fetch_player_profiles(&client, &access_token, driver_names) {
+        Ok(profiles_json) => {
+            crate::startup_log::record_request_success(PLAYERS_ENDPOINT);
+            profiles_json
+        }
+        Err(error) => {
+            crate::startup_log::record_request_failure(PLAYERS_ENDPOINT, &error);
+            return Err(error);
+        }
+    };
     let mut profiles = collect_profiles(&profiles_json)?;
 
     // The roster endpoint can omit the continuous ELO even though the
     // authenticated profile still exposes it. Keep this enrichment optional so
     // a player-profile failure cannot discard a valid roster response.
     let mut authenticated_player_elo = None;
-    if let Ok(response) = client
-        .get(RACECONTROL_PLAYER_URL)
-        .header("Game-Authorization", format!("Bearer {access_token}"))
-        .send()
-    {
-        if response.status().is_success() {
-            if let Ok(profile) = response.json::<Value>() {
-                let authenticated = collect_authenticated_profile(&profile);
-                authenticated_player_elo = authenticated
-                    .values()
-                    .find_map(|ranks| (ranks.driver_elo >= 0.0).then_some(ranks.driver_elo));
-                profiles.extend(authenticated);
-            }
+    match fetch_authenticated_profile(&client, &access_token) {
+        Ok(profile) => {
+            crate::startup_log::record_request_success(PLAYER_ENDPOINT);
+            let authenticated = collect_authenticated_profile(&profile);
+            authenticated_player_elo = authenticated
+                .values()
+                .find_map(|ranks| (ranks.driver_elo >= 0.0).then_some(ranks.driver_elo));
+            profiles.extend(authenticated);
         }
+        Err(error) => crate::startup_log::record_request_failure(PLAYER_ENDPOINT, &error),
     }
 
     Ok((profiles, authenticated_player_elo))
+}
+
+fn fetch_player_profiles(
+    client: &reqwest::blocking::Client,
+    access_token: &str,
+    driver_names: &[String],
+) -> Result<Value, String> {
+    let response = client
+        .post(RACECONTROL_PLAYERS_URL)
+        .header("Game-Authorization", format!("Bearer {access_token}"))
+        .json(&serde_json::json!({ "usernames": driver_names }))
+        .send()
+        .map_err(|_| "racecontrol_players_unavailable".to_owned())?;
+    if !response.status().is_success() {
+        return Err(format!(
+            "racecontrol_players_http_{}",
+            response.status().as_u16()
+        ));
+    }
+    response
+        .json::<Value>()
+        .map_err(|_| "racecontrol_players_invalid_json".to_owned())
+}
+
+fn fetch_authenticated_profile(
+    client: &reqwest::blocking::Client,
+    access_token: &str,
+) -> Result<Value, String> {
+    let response = client
+        .get(RACECONTROL_PLAYER_URL)
+        .header("Game-Authorization", format!("Bearer {access_token}"))
+        .send()
+        .map_err(|_| "racecontrol_player_unavailable".to_owned())?;
+    if !response.status().is_success() {
+        return Err(format!(
+            "racecontrol_player_http_{}",
+            response.status().as_u16()
+        ));
+    }
+    response
+        .json::<Value>()
+        .map_err(|_| "racecontrol_player_invalid_json".to_owned())
 }
 
 fn collect_authenticated_profile(value: &Value) -> HashMap<String, DriverRanks> {
