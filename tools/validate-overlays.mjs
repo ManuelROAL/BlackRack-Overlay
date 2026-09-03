@@ -166,6 +166,35 @@ if (compositeOverlayIds === null) {
   compareRoster("composite overlayIds", compositeOverlayIds, { ordered: true });
 }
 compareRoster("composite telemetryFields", [...projections.keys()]);
+
+// The layout module keeps its own roster to validate a stored placement set.
+// An overlay missing from it makes readCompositeLayout report a layout that has
+// no placement for that panel, and the host then throws out of its own
+// synchronize loop, so every panel disappears rather than just the new one.
+const layoutFile = "src/composite-layout.ts";
+const layoutSource = ts.createSourceFile(
+  layoutFile,
+  read(layoutFile),
+  ts.ScriptTarget.Latest,
+  true,
+  ts.ScriptKind.TS
+);
+let layoutOverlayIds = null;
+const visitLayout = (node) => {
+  if (ts.isVariableDeclaration(node)
+    && ts.isIdentifier(node.name)
+    && node.name.text === "overlayIds"
+    && node.initializer
+    && ts.isArrayLiteralExpression(node.initializer)) {
+    layoutOverlayIds = node.initializer.elements
+      .filter(ts.isStringLiteral)
+      .map((element) => element.text);
+  }
+  ts.forEachChild(node, visitLayout);
+};
+visitLayout(layoutSource);
+if (layoutOverlayIds === null) fail("composite-layout: overlayIds was not found");
+else compareRoster("composite-layout overlayIds", layoutOverlayIds);
 compareRoster("lib.rs OVERLAY_LABELS", rustArrayEntries(sources.lib, "OVERLAY_LABELS", false), {
   ordered: true
 });

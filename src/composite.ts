@@ -10,6 +10,7 @@ import {
   ensureCompositeLayout,
   readCompositeLayout,
   saveOverlayPlacement,
+  type CompositeLayout,
   type OverlayPlacement
 } from "./composite-layout";
 import type { OverlayId } from "./overlay-appearance";
@@ -523,8 +524,19 @@ const createPanel = (overlay: OverlayId, placement: OverlayPlacement): void => {
 const synchronizePanels = async (): Promise<void> => {
   const layout = readCompositeLayout() ?? await ensureCompositeLayout();
   let normalized = false;
+  // A stored layout written before an overlay existed has no placement for it.
+  // Seeding the missing one here keeps a single new overlay from throwing out
+  // of this loop and leaving the whole host without panels.
+  let seeded: CompositeLayout | null = null;
   for (const overlay of overlayIds) {
-    const placement = layout[overlay];
+    let placement = layout[overlay];
+    if (!placement) {
+      seeded ??= await ensureCompositeLayout();
+      placement = seeded[overlay];
+      if (!placement) continue;
+      layout[overlay] = placement;
+      normalized = true;
+    }
     const fitted = fitPlacementToMonitor(placement);
     normalized ||= fitted.x !== placement.x || fitted.y !== placement.y
       || fitted.width !== placement.width || fitted.height !== placement.height
