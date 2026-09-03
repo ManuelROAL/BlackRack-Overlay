@@ -14,6 +14,12 @@ const OVERVIEW_ENDPOINT: &str = "raceos/event-overview";
 const MY_SPLIT_ENDPOINT: &str = "raceos/my-split";
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(5);
 const RETRY_INTERVAL: Duration = Duration::from_secs(10);
+/// An attempt that leaves the split unresolved doubles the wait, up to this
+/// ceiling: RaceOS answering 500 for a stale event ID would otherwise be asked
+/// twice every ten seconds for the rest of the session. The first retry keeps
+/// the normal interval, so a single failed request still costs nothing.
+const MAX_RETRY_INTERVAL: Duration = Duration::from_secs(5 * 60);
+const MAX_BACKOFF_STEPS: u32 = 5;
 const TRACE_CHUNK_BYTES: u64 = 2 * 1024 * 1024;
 const EVENT_MARKER: &str = "server for online event ";
 
@@ -53,10 +59,19 @@ impl Default for DriverRankSettings {
     }
 }
 
+/// One resolution attempt. The event ID travels with the outcome because the
+/// resolver backs off per event and only the worker reads it from the trace.
+struct SplitAttempt {
+    event_id: String,
+    result: Result<SessionSplit, String>,
+}
+
 pub(super) struct SessionSplitResolver {
     current: SessionSplit,
-    receiver: Option<Receiver<Result<SessionSplit, String>>>,
+    receiver: Option<Receiver<SplitAttempt>>,
     last_attempt: Option<Instant>,
+    last_event_id: String,
+    failures: u32,
 }
 
 impl SessionSplitResolver {
@@ -65,6 +80,8 @@ impl SessionSplitResolver {
             current: SessionSplit::default(),
             receiver: None,
             last_attempt: None,
+            last_event_id: String::new(),
+            failures: 0,
         }
     }
 
@@ -80,9 +97,10 @@ impl SessionSplitResolver {
         }
 
         let now = Instant::now();
+        let interval = self.retry_interval();
         if self
             .last_attempt
-            .is_some_and(|attempt| now.duration_since(attempt) < RETRY_INTERVAL)
+            .is_some_and(|attempt| now.duration_since(attempt) < interval)
         {
             return;
         }
@@ -92,8 +110,39 @@ impl SessionSplitResolver {
         self.receiver = Some(receiver);
         let current = self.current.clone();
         thread::spawn(move || {
-            let _ = sender.send(fetch_session_split(current));
+            let event_id = latest_online_event_id().unwrap_or_default();
+            let result = fetch_session_split(current, &event_id);
+            let _ = sender.send(SplitAttempt { event_id, result });
         });
+    }
+
+    /// The normal interval until RaceOS starts leaving the split unresolved,
+    /// then twice as long per further failure until the ceiling.
+    fn retry_interval(&self) -> Duration {
+        let steps = self.failures.saturating_sub(1).min(MAX_BACKOFF_STEPS);
+        RETRY_INTERVAL
+            .saturating_mul(1u32 << steps)
+            .min(MAX_RETRY_INTERVAL)
+    }
+
+    /// Counts how the attempt went for the backoff above. Only an event that
+    /// RaceOS refuses to resolve counts as a failure: being out of an online
+    /// event is the idle case, and a new event ID starts the count over because
+    /// the previous failures said nothing about this one.
+    fn note_attempt(&mut self, attempt: &SplitAttempt) {
+        if attempt.event_id != self.last_event_id {
+            self.last_event_id = attempt.event_id.clone();
+            self.failures = 0;
+        }
+        let settled = attempt
+            .result
+            .as_ref()
+            .is_ok_and(|split| split.is_settled());
+        if attempt.event_id.is_empty() || settled {
+            self.failures = 0;
+        } else {
+            self.failures = self.failures.saturating_add(1);
+        }
     }
 
     pub(super) fn value(&self) -> &SessionSplit {
@@ -104,12 +153,13 @@ impl SessionSplitResolver {
         let Some(receiver) = self.receiver.as_ref() else {
             return;
         };
-        let Ok(result) = receiver.try_recv() else {
+        let Ok(attempt) = receiver.try_recv() else {
             return;
         };
         self.receiver = None;
+        self.note_attempt(&attempt);
 
-        match result {
+        match attempt.result {
             Ok(split) => {
                 if split != self.current {
                     crate::telemetry::queue_analysis_event(serde_json::json!({
@@ -144,23 +194,24 @@ impl SessionSplit {
         self.profiles
             .get(&super::driver_ranks::normalized_name(driver_name))
     }
+
+    /// Both halves of the split are known and the roster has been read, which is
+    /// exactly the state that lets the resolver stop asking RaceOS.
+    fn is_settled(&self) -> bool {
+        self.number > 0 && self.count > 0 && self.profiles_checked
+    }
 }
 
-fn fetch_session_split(current: SessionSplit) -> Result<SessionSplit, String> {
-    let event_id = latest_online_event_id().unwrap_or_default();
+fn fetch_session_split(current: SessionSplit, event_id: &str) -> Result<SessionSplit, String> {
     if event_id.is_empty() {
         return Ok(SessionSplit::default());
     }
-    if current.event_id.eq_ignore_ascii_case(&event_id)
-        && current.number > 0
-        && current.count > 0
-        && current.profiles_checked
-    {
+    if current.event_id.eq_ignore_ascii_case(event_id) && current.is_settled() {
         return Ok(current);
     }
 
-    let cached = cached_event_split(&event_id).unwrap_or_else(|| SessionSplit {
-        event_id: event_id.clone(),
+    let cached = cached_event_split(event_id).unwrap_or_else(|| SessionSplit {
+        event_id: event_id.to_owned(),
         ..SessionSplit::default()
     });
 
@@ -176,7 +227,7 @@ fn fetch_session_split(current: SessionSplit) -> Result<SessionSplit, String> {
     let split_response = client
         .post(RACECONTROL_EVENT_OVERVIEW_URL)
         .header("Game-Authorization", format!("Bearer {access_token}"))
-        .json(&event_overview_request(&event_id))
+        .json(&event_overview_request(event_id))
         .send()
         .map_err(|_| {
             let error = "racecontrol_event_overview_unavailable".to_owned();
@@ -189,7 +240,7 @@ fn fetch_session_split(current: SessionSplit) -> Result<SessionSplit, String> {
             split_response.status().as_u16()
         );
         crate::startup_log::record_request_failure(OVERVIEW_ENDPOINT, &error);
-        return fetch_direct_split(&client, &access_token, &event_id, cached)
+        return fetch_direct_split(&client, &access_token, event_id, cached)
             .map_err(|direct_error| format!("{error}__{direct_error}"));
     }
     let split_json = split_response.json::<Value>().map_err(|_| {
@@ -198,14 +249,14 @@ fn fetch_session_split(current: SessionSplit) -> Result<SessionSplit, String> {
         error
     })?;
     crate::startup_log::record_request_success(OVERVIEW_ENDPOINT);
-    let mut split = parse_event_split(&split_json, &event_id);
+    let mut split = parse_event_split(&split_json, event_id);
     if split.number == 0 {
         split.number = cached.number;
     }
     if split.count == 0 {
         split.count = cached.count;
     }
-    fetch_direct_split(&client, &access_token, &event_id, split)
+    fetch_direct_split(&client, &access_token, event_id, split)
 }
 
 fn fetch_direct_split(
@@ -623,8 +674,29 @@ fn is_guid(value: &str) -> bool {
 mod tests {
     use super::{
         event_id_from_text, event_overview_request, parse_cached_event_split, parse_event_profiles,
-        parse_event_split, DriverRankSettings, SessionSplit, SessionSplitResolver,
+        parse_event_split, DriverRankSettings, SessionSplit, SessionSplitResolver, SplitAttempt,
+        MAX_RETRY_INTERVAL, RETRY_INTERVAL,
     };
+
+    fn failed_attempt(event_id: &str) -> SplitAttempt {
+        SplitAttempt {
+            event_id: event_id.into(),
+            result: Err("racecontrol_my_split_http_500".into()),
+        }
+    }
+
+    fn settled_attempt(event_id: &str) -> SplitAttempt {
+        SplitAttempt {
+            event_id: event_id.into(),
+            result: Ok(SessionSplit {
+                number: 2,
+                count: 8,
+                event_id: event_id.into(),
+                profiles_checked: true,
+                ..SessionSplit::default()
+            }),
+        }
+    }
 
     #[test]
     fn resolved_split_is_rechecked_for_a_new_event() {
@@ -657,6 +729,83 @@ mod tests {
         resolver.refresh();
 
         assert!(resolver.receiver.is_some());
+    }
+
+    #[test]
+    fn repeated_failures_stretch_the_retry_interval() {
+        let mut resolver = SessionSplitResolver::discover();
+        assert_eq!(resolver.retry_interval(), RETRY_INTERVAL);
+
+        resolver.note_attempt(&failed_attempt("event-id"));
+        assert_eq!(resolver.retry_interval(), RETRY_INTERVAL);
+
+        resolver.note_attempt(&failed_attempt("event-id"));
+        assert_eq!(resolver.retry_interval(), RETRY_INTERVAL * 2);
+
+        for _ in 0..20 {
+            resolver.note_attempt(&failed_attempt("event-id"));
+        }
+        assert_eq!(resolver.retry_interval(), MAX_RETRY_INTERVAL);
+    }
+
+    #[test]
+    fn a_resolved_split_returns_to_the_normal_interval() {
+        let mut resolver = SessionSplitResolver::discover();
+        for _ in 0..5 {
+            resolver.note_attempt(&failed_attempt("event-id"));
+        }
+        assert!(resolver.retry_interval() > RETRY_INTERVAL);
+
+        resolver.note_attempt(&settled_attempt("event-id"));
+
+        assert_eq!(resolver.retry_interval(), RETRY_INTERVAL);
+    }
+
+    #[test]
+    fn a_new_event_starts_the_backoff_over() {
+        let mut resolver = SessionSplitResolver::discover();
+        for _ in 0..5 {
+            resolver.note_attempt(&failed_attempt("stale-event-id"));
+        }
+        assert!(resolver.retry_interval() > RETRY_INTERVAL);
+
+        resolver.note_attempt(&failed_attempt("fresh-event-id"));
+
+        assert_eq!(resolver.retry_interval(), RETRY_INTERVAL);
+    }
+
+    #[test]
+    fn no_online_event_is_not_a_failure() {
+        let mut resolver = SessionSplitResolver::discover();
+        for _ in 0..5 {
+            resolver.note_attempt(&failed_attempt("event-id"));
+        }
+
+        resolver.note_attempt(&SplitAttempt {
+            event_id: String::new(),
+            result: Ok(SessionSplit::default()),
+        });
+
+        assert_eq!(resolver.retry_interval(), RETRY_INTERVAL);
+    }
+
+    #[test]
+    fn an_unresolved_answer_counts_as_a_failure() {
+        let mut resolver = SessionSplitResolver::discover();
+
+        for _ in 0..2 {
+            resolver.note_attempt(&SplitAttempt {
+                event_id: "event-id".into(),
+                result: Ok(SessionSplit {
+                    number: 2,
+                    count: 8,
+                    event_id: "event-id".into(),
+                    ..SessionSplit::default()
+                }),
+            });
+        }
+
+        assert_eq!(resolver.retry_interval(), RETRY_INTERVAL * 2);
     }
 
     #[test]

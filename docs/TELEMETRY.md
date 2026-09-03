@@ -195,6 +195,13 @@ route, then LMU `lmu.cs.registeredEvents` local storage. Stop only when current
 split and total count are known. A lightweight trace check may trigger a new
 request only after the event ID changes.
 
+An attempt that leaves the split unresolved for a known event ID doubles the
+retry interval, from ten seconds up to five minutes; the first retry keeps the
+normal interval, so one failed request costs nothing. A resolved split or a new
+event ID resets it, and being outside an online event is not a failure. RaceOS
+answering `500` for a stale event ID must never become a poll that runs at full
+cadence for the rest of the session.
+
 Profile refreshes run asynchronously. During practice, request new identities as
 they appear. During qualifying/race, an empty, failed or partial startup response
 must leave unresolved identities retryable; do not mark the roster refresh
