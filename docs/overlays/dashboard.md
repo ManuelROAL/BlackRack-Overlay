@@ -21,8 +21,13 @@ One pill-shaped strip, not a cluster:
 
 - The gear sits in a ring on the left. The ring carries the lime accent, because
   a pill has no straight edge for the shared left-edge bar.
-- The rev lights run above the readouts as twelve dots, green through amber to
-  red as the limit approaches; the gear ring follows the same three states.
+- The rev lights are the same shift lights as Trailing + Pedal, through the
+  shared `src/rpm-leds.ts`: twelve positions filling symmetrically from both
+  ends between 84% and 96% of `max_rpm`, coloured by position — two green, two
+  yellow, then the four reds in the middle — flashing cyan at the critical band
+  and magenta over the rev limit. Only the shape differs, since this panel draws
+  round dots rather than bar segments. The gear ring follows the same two
+  thresholds.
 - Everything else is a uniform label-over-value pair in a single row. Class
   position carries the accent colour, since it is the one value read as a
   standing rather than as a measurement.

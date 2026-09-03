@@ -46,6 +46,10 @@ inferring them from pedals and slip is exactly what the rule above forbids.
   edges toward the centre. Each side advances from two green through two yellow
   to two red segments, placing the four red segments in the centre. At 96% all
   segments flash cyan; at 99.99% they flash magenta. It is disabled by default.
+  The thresholds, the symmetric fill and the colour band of each position live
+  in `src/rpm-leds.ts`, shared with Dashboard's strip: two panels disagreeing
+  about when to shift is worse than either being slightly wrong. Change the
+  reading there, not here.
 - Represent the in-game steering angle with the rotating white centre arc; do
   not add a separate numeric angle readout.
 - Keep the trace free of a title and color legend. The established pedal-line and

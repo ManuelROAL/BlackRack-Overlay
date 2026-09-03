@@ -17,15 +17,13 @@ import {
   listenRuntimeEvent,
   listenTelemetry
 } from "./runtime-events";
+import { rpmLedIsActive, rpmLedState } from "./rpm-leds";
 
 const BASE_HEIGHT = 120;
 const RPM_LEDS_HEIGHT = 14;
 const TELEMETRY_RATE_HZ = 50;
 const HISTORY_SECONDS = 5;
 const HISTORY_SIZE = TELEMETRY_RATE_HZ * HISTORY_SECONDS;
-const RPM_LED_START = 0.84;
-const RPM_LED_CRITICAL = 0.96;
-const RPM_LED_OVER_REV = 0.9999;
 const history = {
   throttle: [] as number[],
   brake: [] as number[],
@@ -109,21 +107,11 @@ const setSteering = (angle: number): void => {
 
 const setRpmLeds = (rpm: number, maxRpm: number): void => {
   if (!settings.showRpmLeds) return;
-  const ratio = Number.isFinite(rpm) && Number.isFinite(maxRpm) && maxRpm > 0
-    ? Math.max(0, Math.min(1, rpm / maxRpm))
-    : 0;
-  const critical = ratio >= RPM_LED_CRITICAL;
-  const warningVisible = !critical || Math.floor(performance.now() / 125) % 2 === 0;
-  const pairCount = Math.ceil(rpmLeds.length / 2);
-  const activePairs = critical
-    ? pairCount
-    : Math.ceil(Math.max(0, ratio - RPM_LED_START)
-      / (RPM_LED_CRITICAL - RPM_LED_START) * pairCount);
+  const state = rpmLedState(rpm, maxRpm, rpmLeds.length);
   rpmLeds.forEach((led, index) => {
-    const distanceFromEdge = Math.min(index, rpmLeds.length - 1 - index);
-    led.classList.toggle("active", warningVisible && distanceFromEdge < activePairs);
-    led.classList.toggle("critical", warningVisible && critical);
-    led.classList.toggle("over-rev", warningVisible && ratio >= RPM_LED_OVER_REV);
+    led.classList.toggle("active", rpmLedIsActive(index, rpmLeds.length, state));
+    led.classList.toggle("critical", state.visible && state.critical);
+    led.classList.toggle("over-rev", state.visible && state.overRev);
   });
 };
 

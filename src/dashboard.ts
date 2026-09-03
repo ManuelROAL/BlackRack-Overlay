@@ -6,6 +6,13 @@ import { bindOverlayTransparency } from "./overlay-appearance";
 import { createOverlayPerformanceTracker } from "./overlay-performance";
 import { isTauriRuntime, listenRuntimeEvent, listenTelemetry } from "./runtime-events";
 import {
+  RPM_LED_CRITICAL,
+  RPM_LED_START,
+  rpmLedBand,
+  rpmLedIsActive,
+  rpmLedState
+} from "./rpm-leds";
+import {
   DASHBOARD_FIELDS,
   readDashboardSettings,
   type DashboardFieldId,
@@ -34,6 +41,8 @@ const lights: HTMLElement[] = [];
 for (let index = 0; index < REV_LIGHTS; index += 1) {
   const light = document.createElement("i");
   light.dataset.lit = "false";
+  // The band is fixed by the position on the strip, so it is written once.
+  light.dataset.band = rpmLedBand(index, REV_LIGHTS);
   revs.append(light);
   lights.push(light);
 }
@@ -86,8 +95,9 @@ const clock = (seconds: number): string => {
 const gearLabel = (current: number): string =>
   current < 0 ? "R" : current === 0 ? "N" : String(current);
 
-const revLevel = (fraction: number): string =>
-  fraction >= 0.97 ? "limit" : fraction >= 0.9 ? "high" : "normal";
+/** The gear ring follows the same two thresholds the shift lights use. */
+const revLevel = (ratio: number): string =>
+  ratio >= RPM_LED_CRITICAL ? "limit" : ratio >= RPM_LED_START ? "high" : "normal";
 
 /**
  * Half a blink period. Read from the clock on each telemetry update rather than
@@ -123,14 +133,14 @@ const available = (id: DashboardFieldId, frame: TelemetryFrame): boolean => {
 
 const renderValues = (frame: TelemetryFrame): void => {
   setText(gear, gearLabel(frame.gear));
-  const fraction = frame.max_rpm > 0 ? Math.max(0, frame.rpm / frame.max_rpm) : 0;
-  const lit = Math.min(REV_LIGHTS, Math.round(fraction * REV_LIGHTS));
+  const revState = rpmLedState(frame.rpm, frame.max_rpm, REV_LIGHTS);
   for (let index = 0; index < REV_LIGHTS; index += 1) {
-    setState(lights[index], "lit", index < lit ? "true" : "false");
+    const light = lights[index];
+    setState(light, "lit", rpmLedIsActive(index, REV_LIGHTS, revState) ? "true" : "false");
+    setState(light, "critical", revState.visible && revState.critical ? "true" : "false");
+    setState(light, "overRev", revState.visible && revState.overRev ? "true" : "false");
   }
-  const rev = revLevel(fraction);
-  setState(gear, "rev", rev);
-  setState(revs, "rev", rev);
+  setState(gear, "rev", revLevel(revState.ratio));
 
   setText(value("speed"), String(Math.max(0, Math.round(frame.speed_kph))));
   setText(value("rpm"), String(Math.max(0, Math.round(frame.rpm))));
@@ -220,7 +230,7 @@ const previewFrame = {
   player_active: true,
   gear: 6,
   speed_kph: 255,
-  rpm: 6309,
+  rpm: 8464,
   max_rpm: 9200,
   player_position: 12,
   player_class_position: 12,
