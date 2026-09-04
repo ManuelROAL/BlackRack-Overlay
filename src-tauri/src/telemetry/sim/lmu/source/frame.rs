@@ -49,6 +49,7 @@ impl TelemetrySource for LmuTelemetrySource {
         let rest_started = Instant::now();
         self.local_rest.refresh(
             snapshot.connected != 0,
+            snapshot.player_active != 0,
             include_rest_standings,
             include_rest_supplement,
             include_rest_weather,

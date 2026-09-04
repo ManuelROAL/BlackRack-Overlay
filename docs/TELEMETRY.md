@@ -107,6 +107,12 @@ Standings, Relative, spectator identity or DR logging; the bundled supplement
 polls only for consumers of session, strategy, steering, damage or pit data; and
 weather polls only for Forecast or Conditions. Disconnecting LMU disables all three.
 
+The supplement worker carries a second condition: the player must have a
+vehicle, which shared memory reports as `player_active`. Being connected is not
+enough, because the plugin reports that from the main menu, where no car exists
+and every `/rest/garage/` endpoint is being asked about one that is not there.
+That is not a tidiness rule — see the warning below.
+
 - `/rest/watch/sessionInfo`: 1 Hz for the official configured session `maxTime`.
 - `/rest/sessions/weather`: 1 Hz for the three five-slot session forecasts;
   BlackRack selects PRACTICE, QUALIFY or RACE according to shared-memory session
@@ -125,17 +131,23 @@ weather polls only for Forecast or Conditions. Disconnecting LMU disables all th
   does not carry the full soft/medium/hard/wet ladder — an LMP2 running Medium
   and Wet indexes them 0 and 1, which the fixed ladder reads as Soft and Medium.
   It describes the player's car only; rivals keep the generic ladder.
-- `/rest/garage/getVehicleCondition`: 5 Hz for per-wheel suspension damage. At
-  ~259 B it is the primary suspension source, fast enough to show an impact as it
-  happens and far less exposed to the request timeout than the ~11 KB response
-  below.
-- `/rest/garage/UIScreen/RepairAndRefuel`: 1 Hz for aero wearables, assigned fuel
-  ratio and the absolute fuel/virtual-energy load selected in the official pit
-  menu. Its `wearables.suspension` is the fallback when the light endpoint above
-  is unavailable, so suspension survives an outage of either one. The latest
-  successful wearable response remains latched across transient request failures
-  until disconnect or session change; strategy menu values expire independently
-  when the response becomes stale.
+- `/rest/garage/UIScreen/RepairAndRefuel`: 1 Hz for aero wearables, per-wheel
+  suspension damage, assigned fuel ratio and the absolute fuel/virtual-energy
+  load selected in the official pit menu. The latest successful wearable
+  response remains latched across transient request failures until disconnect or
+  session change; strategy menu values expire independently when the response
+  becomes stale.
+
+**`/rest/garage/getVehicleCondition` must not be requested.** 0.7.6 polled it at
+5 Hz because its ~259 B carry the same per-corner suspension as the ~11 KB
+response above, and it closed the game. Two traces from one user show the same
+sequence twice: LMU idle at the main menu, the overlay starts, and within a
+second the supplement worker's first burst goes out. Its siblings answered a
+404 in a millisecond each — the HTTP server was healthy — while
+`getVehicleCondition` never answered at all, and the process was gone by the
+next two requests. It is not a screen route that can be absent like
+`UIScreen/*`; it is routed, and with no vehicle loaded it goes looking for one.
+Suspension comes from the wearables instead, which is what 0.7.5 did.
 
 - `/rest/profile/getAuthSessionTicket`: only when RaceOS authentication needs a
   new token.

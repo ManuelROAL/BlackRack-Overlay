@@ -18,15 +18,21 @@ const STANDINGS_DEMAND: u8 = 1 << 0;
 const SUPPLEMENT_DEMAND: u8 = 1 << 1;
 const WEATHER_DEMAND: u8 = 1 << 2;
 
+/// `connected` only says the game is running with its plugin loaded, which is
+/// already true at the main menu. The supplement worker additionally needs the
+/// player to have a car, because every endpoint it polls lives under
+/// `/rest/garage/` and answers about a vehicle: with none loaded LMU either
+/// 404s them or, in the case that took the game down, never answers at all.
 fn rest_demand(
     connected: bool,
+    player_has_vehicle: bool,
     standings_requested: bool,
     supplement_requested: bool,
     weather_requested: bool,
 ) -> u8 {
     if connected {
         (u8::from(standings_requested) * STANDINGS_DEMAND)
-            | (u8::from(supplement_requested) * SUPPLEMENT_DEMAND)
+            | (u8::from(supplement_requested && player_has_vehicle) * SUPPLEMENT_DEMAND)
             | (u8::from(weather_requested) * WEATHER_DEMAND)
     } else {
         0
@@ -41,11 +47,6 @@ const STANDINGS_INTERVAL: Duration = Duration::from_secs(1);
 const HISTORY_INTERVAL: Duration = Duration::from_secs(5);
 #[cfg(not(test))]
 const SUPPLEMENT_INTERVAL: Duration = Duration::from_secs(1);
-/// Suspension damage rides its own tick because `getVehicleCondition` is ~259 B
-/// against the ~11 KB of `RepairAndRefuel`, so it can be polled fast enough to
-/// show an impact as it happens without multiplying the heavy request.
-#[cfg(not(test))]
-const CONDITION_INTERVAL: Duration = Duration::from_millis(200);
 const STANDINGS_MAX_AGE: Duration = Duration::from_secs(1);
 const FOCUS_MAX_AGE: Duration = Duration::from_secs(3);
 const SUPPLEMENT_MAX_AGE: Duration = Duration::from_secs(3);
@@ -137,15 +138,6 @@ struct RestGarageSetting {
 struct RestVehicleDamage {
     aero: f64,
     suspension: [f64; 4],
-}
-
-/// `getVehicleCondition` carries the same per-corner suspension values as the
-/// `wearables` of `RepairAndRefuel` in a fraction of the payload, so it is the
-/// primary source for suspension and the heavy response only a fallback.
-#[derive(Clone, Debug, Default, Deserialize)]
-#[serde(default, rename_all = "camelCase")]
-struct RestVehicleCondition {
-    suspension_damage: [f64; 4],
 }
 
 #[derive(Clone, Debug, Default, Deserialize)]
@@ -345,7 +337,6 @@ pub(super) struct RestWeatherMetric {
 #[derive(Default)]
 struct SupplementUpdate {
     pit_stop: Option<RestPitStopEstimate>,
-    suspension_condition: Option<[f64; 4]>,
     compound_conditions: Option<Vec<RestCompoundCondition>>,
     vehicle_damage: Option<RestVehicleDamage>,
     fuel_ratio_assigned: Option<f64>,
@@ -373,7 +364,6 @@ pub(super) struct LocalRestResolver {
     history_by_name: HashMap<String, Vec<RestStandingHistory>>,
     standings_received_at: Option<Instant>,
     pit_stop: RestPitStopEstimate,
-    suspension_condition: Option<[f64; 4]>,
     compound_conditions: Vec<RestCompoundCondition>,
     vehicle_damage: Option<RestVehicleDamage>,
     session_max_time_seconds: f64,
@@ -438,38 +428,12 @@ impl LocalRestResolver {
             };
             let mut garage_received_at: Option<Instant> = None;
             let mut compounds_received_at: Option<Instant> = None;
-            let mut heavy_polled_at: Option<Instant> = None;
             loop {
                 if supplement_demand.load(Ordering::Relaxed) & SUPPLEMENT_DEMAND == 0 {
                     thread::sleep(Duration::from_secs(1));
                     continue;
                 }
                 let started = Instant::now();
-                let suspension_condition = fetch_tracked::<RestVehicleCondition>(
-                    &client,
-                    "/rest/garage/getVehicleCondition",
-                )
-                .map(|response| response.suspension_damage);
-
-                // Everything below this point keeps the 1 Hz cadence; only the
-                // suspension tick above runs at CONDITION_INTERVAL.
-                let heavy_due =
-                    heavy_polled_at.is_none_or(|polled| polled.elapsed() >= SUPPLEMENT_INTERVAL);
-                if !heavy_due {
-                    if supplement_sender
-                        .send(SupplementUpdate {
-                            suspension_condition,
-                            ..Default::default()
-                        })
-                        .is_err()
-                    {
-                        break;
-                    }
-                    sleep_remaining(started, CONDITION_INTERVAL);
-                    continue;
-                }
-                heavy_polled_at = Some(Instant::now());
-
                 let steering_range_degrees = if garage_received_at
                     .is_none_or(|received| received.elapsed() >= GARAGE_INTERVAL)
                 {
@@ -514,7 +478,6 @@ impl LocalRestResolver {
                 });
                 let update = SupplementUpdate {
                     pit_stop: fetch_tracked(&client, "/rest/strategy/pitstop-estimate"),
-                    suspension_condition,
                     compound_conditions,
                     vehicle_damage: repair_and_refuel
                         .as_ref()
@@ -533,7 +496,7 @@ impl LocalRestResolver {
                 if supplement_sender.send(update).is_err() {
                     break;
                 }
-                sleep_remaining(started, CONDITION_INTERVAL);
+                sleep_remaining(started, SUPPLEMENT_INTERVAL);
             }
         });
 
@@ -593,6 +556,7 @@ impl LocalRestResolver {
     pub(super) fn refresh(
         &mut self,
         connected: bool,
+        player_has_vehicle: bool,
         standings_requested: bool,
         supplement_requested: bool,
         weather_requested: bool,
@@ -600,6 +564,7 @@ impl LocalRestResolver {
     ) {
         let demand = rest_demand(
             connected,
+            player_has_vehicle,
             standings_requested,
             supplement_requested,
             weather_requested,
@@ -660,9 +625,6 @@ impl LocalRestResolver {
                 self.pit_stop = pit_stop;
                 received = true;
             }
-            if let Some(suspension_condition) = update.suspension_condition {
-                self.suspension_condition = Some(suspension_condition);
-            }
             if let Some(compound_conditions) = update.compound_conditions {
                 self.compound_conditions = compound_conditions;
             }
@@ -695,7 +657,6 @@ impl LocalRestResolver {
             }
         }
         if !connected {
-            self.suspension_condition = None;
             self.compound_conditions.clear();
             self.vehicle_damage = None;
         }
@@ -768,7 +729,6 @@ impl LocalRestResolver {
         self.team_driver_names.clear();
         self.team_name.clear();
         self.team_vehicle_name.clear();
-        self.suspension_condition = None;
         self.compound_conditions.clear();
         self.vehicle_damage = None;
         self.weather_nodes = RestWeatherSession::default();
@@ -885,12 +845,11 @@ impl LocalRestResolver {
         self.vehicle_damage.map(|damage| damage.aero)
     }
 
-    /// Prefers the light `getVehicleCondition` reading and falls back to the
-    /// `RepairAndRefuel` wearables, so suspension survives an outage of either
-    /// endpoint instead of silently reading as an undamaged car.
+    /// Read from the `RepairAndRefuel` wearables. `getVehicleCondition` carries
+    /// the same per-corner values in a fraction of the payload, but asking for
+    /// it is what crashed the game — see the endpoint list in TELEMETRY.md.
     pub(super) fn suspension_damage(&self) -> Option<[f64; 4]> {
-        self.suspension_condition
-            .or_else(|| self.vehicle_damage.map(|damage| damage.suspension))
+        self.vehicle_damage.map(|damage| damage.suspension)
     }
 
     pub(super) fn session_max_time_seconds(&self) -> f64 {
@@ -1087,17 +1046,34 @@ mod tests {
         fuel_ratio_assigned, normalized_driver_identity, normalized_name, pit_refill_targets,
         rest_demand, steering_range, team_info_for_player, LocalRestResolver, RestGarageData,
         RestPitStopEstimate, RestRepairAndRefuel, RestSessionInfo, RestStanding,
-        RestStandingHistory, RestTeamInfo, RestTireManagement, RestVehicleCondition,
-        RestVehicleDamage, RestWeatherSession,
+        RestStandingHistory, RestTeamInfo, RestTireManagement, RestVehicleDamage,
+        RestWeatherSession, STANDINGS_DEMAND, SUPPLEMENT_DEMAND, WEATHER_DEMAND,
     };
     use std::collections::HashMap;
 
     #[test]
     fn rest_workers_follow_independent_connected_demands() {
-        assert_eq!(rest_demand(false, true, true, true), 0);
-        assert_eq!(rest_demand(true, false, false, false), 0);
-        assert_eq!(rest_demand(true, true, false, false).count_ones(), 1);
-        assert_eq!(rest_demand(true, false, true, true).count_ones(), 2);
+        assert_eq!(rest_demand(false, true, true, true, true), 0);
+        assert_eq!(rest_demand(true, true, false, false, false), 0);
+        assert_eq!(rest_demand(true, true, true, false, false).count_ones(), 1);
+        assert_eq!(rest_demand(true, true, false, true, true).count_ones(), 2);
+    }
+
+    /// Every endpoint the supplement worker polls lives under `/rest/garage/`
+    /// and asks LMU about a vehicle. At the main menu there is none, and asking
+    /// anyway is what closed the game, so being connected is not enough.
+    #[test]
+    fn the_supplement_worker_waits_for_the_player_to_have_a_vehicle() {
+        let without_vehicle = rest_demand(true, false, true, true, true);
+        let with_vehicle = rest_demand(true, true, true, true, true);
+        assert_eq!(without_vehicle & SUPPLEMENT_DEMAND, 0);
+        assert_ne!(with_vehicle & SUPPLEMENT_DEMAND, 0);
+        // Standings and weather answer about the session, not the car, so they
+        // keep polling in the menus.
+        assert_eq!(
+            without_vehicle & (STANDINGS_DEMAND | WEATHER_DEMAND),
+            with_vehicle & (STANDINGS_DEMAND | WEATHER_DEMAND)
+        );
     }
 
     #[test]
@@ -1197,15 +1173,6 @@ mod tests {
         assert_eq!(compounds[1].optimal_temperature, 52.0);
     }
 
-    #[test]
-    fn parses_suspension_from_the_light_vehicle_condition_endpoint() {
-        let response: RestVehicleCondition = serde_json::from_str(
-            r#"{"brakeCondition":[0.99,0.99,0.99,0.99],"suspensionDamage":[0.088,0.0,0.0,0.0],"vehicleDamage":0.1146}"#,
-        )
-        .unwrap();
-        assert_eq!(response.suspension_damage, [0.088, 0.0, 0.0, 0.0]);
-    }
-
     /// The live response that exposed this: a driver name arrives as its raw
     /// 32-byte C buffer, and rejecting it used to discard the whole payload.
     #[test]
@@ -1236,10 +1203,10 @@ mod tests {
             suspension: [0.2, 0.79, 0.4, 0.6],
         });
 
-        resolver.refresh(true, false, true, false, "RACE");
+        resolver.refresh(true, true, false, true, false, "RACE");
         assert_eq!(resolver.aero_damage(), Some(0.28));
 
-        resolver.refresh(false, false, false, false, "");
+        resolver.refresh(false, false, false, false, false, "");
         assert!(resolver.aero_damage().is_none());
         assert!(resolver.suspension_damage().is_none());
 
@@ -1248,21 +1215,20 @@ mod tests {
         assert!(resolver.aero_damage().is_none());
     }
 
+    /// Both halves of the damage reading come from the one `RepairAndRefuel`
+    /// response, so they appear and disappear together.
     #[test]
-    fn suspension_prefers_the_condition_endpoint_and_falls_back_to_the_wearables() {
+    fn suspension_and_aero_damage_both_come_from_the_wearables() {
         let mut resolver = LocalRestResolver::empty();
         resolver.vehicle_damage = Some(RestVehicleDamage {
             aero: 0.11,
             suspension: [0.2, 0.0, 0.0, 0.0],
         });
         assert_eq!(resolver.suspension_damage(), Some([0.2, 0.0, 0.0, 0.0]));
+        assert_eq!(resolver.aero_damage(), Some(0.11));
 
-        resolver.suspension_condition = Some([0.088, 0.0, 0.0, 0.0]);
-        assert_eq!(resolver.suspension_damage(), Some([0.088, 0.0, 0.0, 0.0]));
-
-        // A stint whose only live source is the light endpoint still reports.
         resolver.vehicle_damage = None;
-        assert_eq!(resolver.suspension_damage(), Some([0.088, 0.0, 0.0, 0.0]));
+        assert!(resolver.suspension_damage().is_none());
         assert!(resolver.aero_damage().is_none());
     }
 
