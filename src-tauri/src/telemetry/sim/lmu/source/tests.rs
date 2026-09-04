@@ -405,10 +405,86 @@ fn team_mode_resolves_registered_team_independently_of_focus() {
 #[test]
 fn maps_each_wheel_compound_and_deduplicates_the_summary() {
     assert_eq!(
-        LmuTelemetrySource::tire_compounds(&[0, 1, 2, 3], &[]),
+        LmuTelemetrySource::tire_compounds(&[0, 1, 2, 3], ("", ""), &[]),
         ["S", "M", "H", "W"]
     );
-    assert_eq!(LmuTelemetrySource::tire_compound(&[1, 2, 1, 2], &[]), "M/H");
+    assert_eq!(
+        LmuTelemetrySource::tire_compound(&[1, 2, 1, 2], ("", ""), &[]),
+        "M/H"
+    );
+}
+
+/// The compound the game names on each axle is the answer, whatever
+/// `mCompoundType` indexes: a medium reported as index 3 used to come out as a
+/// wet, and a medium that the garage list indexes as its wet entry with it.
+#[test]
+fn the_names_the_game_publishes_decide_the_compound() {
+    assert_eq!(
+        LmuTelemetrySource::tire_compounds(&[3, 3, 3, 3], ("Medium", "Medium"), &[]),
+        ["M", "M", "M", "M"]
+    );
+
+    let conditions = [RestCompoundCondition {
+        compound_type: "Wet".into(),
+        optimal_temperature: 52.0,
+    }];
+    assert_eq!(
+        LmuTelemetrySource::tire_compounds(&[0; 4], ("Medium", "Medium"), &conditions),
+        ["M", "M", "M", "M"]
+    );
+    // With no compound of that name in the list, the optimum stays unknown
+    // instead of judging a medium against the wet window.
+    assert_eq!(
+        LmuTelemetrySource::tire_optimal_temperatures(&[0; 4], ("Medium", "Medium"), &conditions),
+        [-1.0; 4]
+    );
+}
+
+/// A name that spells out no compound, such as a bare class name, leaves the
+/// garage list in charge instead of turning its initial into a compound.
+#[test]
+fn a_name_without_a_compound_leaves_the_garage_list_in_charge() {
+    let conditions = [RestCompoundCondition {
+        compound_type: "Medium".into(),
+        optimal_temperature: 89.0,
+    }];
+
+    assert_eq!(
+        LmuTelemetrySource::tire_compounds(&[0; 4], ("GTE", "GTE"), &conditions),
+        ["M", "M", "M", "M"]
+    );
+    assert_eq!(
+        LmuTelemetrySource::tire_optimal_temperatures(&[0; 4], ("GTE", "GTE"), &conditions),
+        [89.0; 4]
+    );
+}
+
+/// Each axle is named on its own, and shared memory orders the wheels front
+/// left, front right, rear left, rear right.
+#[test]
+fn front_and_rear_axles_keep_their_own_compound() {
+    assert_eq!(
+        LmuTelemetrySource::tire_compounds(&[0; 4], ("Soft", "Medium"), &[]),
+        ["S", "S", "M", "M"]
+    );
+    assert_eq!(
+        LmuTelemetrySource::tire_compound(&[0; 4], ("Soft", "Medium"), &[]),
+        "S/M"
+    );
+}
+
+/// A wet name wins over the dry ladder, so an intermediate or a `Medium Wet`
+/// is never reported as a medium slick.
+#[test]
+fn wet_names_are_read_before_the_dry_ladder() {
+    assert_eq!(
+        LmuTelemetrySource::tire_compounds(&[1; 4], ("Medium Wet", "Medium Wet"), &[]),
+        ["W", "W", "W", "W"]
+    );
+    assert_eq!(
+        LmuTelemetrySource::tire_compounds(&[1; 4], ("Intermediate", "Intermediate"), &[]),
+        ["I", "I", "I", "I"]
+    );
 }
 
 /// An LMP2 carrying only Medium and Wet indexes them 0 and 1, which the fixed
@@ -427,21 +503,21 @@ fn the_garage_compound_list_overrides_the_fixed_ladder() {
     ];
 
     assert_eq!(
-        LmuTelemetrySource::tire_compounds(&[0, 0, 0, 0], &conditions),
+        LmuTelemetrySource::tire_compounds(&[0, 0, 0, 0], ("", ""), &conditions),
         ["M", "M", "M", "M"]
     );
     assert_eq!(
-        LmuTelemetrySource::tire_optimal_temperatures(&[0, 0, 1, 1], &conditions),
+        LmuTelemetrySource::tire_optimal_temperatures(&[0, 0, 1, 1], ("", ""), &conditions),
         [89.0, 89.0, 52.0, 52.0]
     );
     // A compound the list does not describe stays unknown instead of borrowing
     // a neighbour's optimum.
     assert_eq!(
-        LmuTelemetrySource::tire_optimal_temperatures(&[2, 2, 2, 2], &conditions),
+        LmuTelemetrySource::tire_optimal_temperatures(&[2, 2, 2, 2], ("", ""), &conditions),
         [-1.0; 4]
     );
     assert_eq!(
-        LmuTelemetrySource::tire_optimal_temperatures(&[0; 4], &[]),
+        LmuTelemetrySource::tire_optimal_temperatures(&[0; 4], ("", ""), &[]),
         [-1.0; 4]
     );
 }
@@ -456,7 +532,7 @@ fn compound_letters_come_from_the_last_word_of_the_type() {
     }];
 
     assert_eq!(
-        LmuTelemetrySource::tire_compounds(&[0; 4], &conditions),
+        LmuTelemetrySource::tire_compounds(&[0; 4], ("", ""), &conditions),
         ["H", "H", "H", "H"]
     );
 }

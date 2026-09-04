@@ -237,6 +237,14 @@ impl TelemetrySource for LmuTelemetrySource {
         let rest_aero_damage = self.local_rest.aero_damage();
         let rest_suspension_damage = self.local_rest.suspension_damage();
         let rest_compound_conditions = self.local_rest.compound_conditions().to_vec();
+        // The compound bolted on each axle comes named in the player's own
+        // telemetry entry, which beats indexing the garage list by hand.
+        let (player_front_compound, player_rear_compound) = snapshot
+            .standings
+            .iter()
+            .find(|entry| entry.is_player != 0)
+            .map(Self::axle_compound_names)
+            .unwrap_or_default();
         let session_split = self.session_split.value().clone();
         let profile_estimate: ProfileEstimate = self.consumption_profiler.observe(
             &vehicle_name,
@@ -851,10 +859,12 @@ impl TelemetrySource for LmuTelemetrySource {
             player_tire_flat_spot_percent,
             player_tire_compounds: Self::tire_compounds(
                 &snapshot.player_tire_compounds,
+                (&player_front_compound, &player_rear_compound),
                 &rest_compound_conditions,
             ),
             player_tire_optimal_temperature_c: Self::tire_optimal_temperatures(
                 &snapshot.player_tire_compounds,
+                (&player_front_compound, &player_rear_compound),
                 &rest_compound_conditions,
             ),
             player_tire_flat: snapshot.player_tire_flat.map(|value| value != 0),

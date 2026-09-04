@@ -126,11 +126,14 @@ That is not a tidiness rule — see the warning below.
   in `VM_STEER_LOCK`; shared memory can report the nominal vehicle range instead.
 - `/rest/garage/UIScreen/TireManagement`: every 30 s for
   `optimalCompoundConditions`, the compounds the player's car carries and their
-  optimal temperatures. The list order is what `mCompoundType` indexes, so it
-  resolves both the compound letter and the temperature scale for a car that
-  does not carry the full soft/medium/hard/wet ladder — an LMP2 running Medium
-  and Wet indexes them 0 and 1, which the fixed ladder reads as Soft and Medium.
-  It describes the player's car only; rivals keep the generic ladder.
+  optimal temperatures. The compound itself comes from `mFrontTireCompoundName`
+  and `mRearTireCompoundName`, the names the game gives the tyres actually
+  bolted on each axle, because `mCompoundType` is only an index into the car's
+  list and an index that does not line up with this one reports a medium as a
+  wet. The list then supplies the temperature window for the compound it names,
+  and covers the letter only for a car whose axle names say nothing. It
+  describes the player's car only; rivals read their own axle names, and fall
+  back to the fixed soft/medium/hard/wet ladder.
 - `/rest/garage/UIScreen/RepairAndRefuel`: 1 Hz for aero wearables, per-wheel
   suspension damage, assigned fuel ratio and the absolute fuel/virtual-energy
   load selected in the official pit menu. The latest successful wearable

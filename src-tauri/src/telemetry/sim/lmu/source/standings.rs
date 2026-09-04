@@ -120,6 +120,7 @@ impl LmuTelemetrySource {
                 .get(&entry.vehicle_id)
                 .expect("identidad de vehículo inicializada");
             let vehicle_class = identity.vehicle_class.clone();
+            let (rival_front_compound, rival_rear_compound) = Self::axle_compound_names(entry);
             let rest = self
                 .local_rest
                 .standing(entry.vehicle_id, &identity.driver_name)
@@ -335,9 +336,13 @@ impl LmuTelemetrySource {
                 pit_stop_time_seconds,
                 tire_compound: identity.tire_compound.clone(),
                 // The garage compound list describes the player's car only, so
-                // rivals keep the generic ladder rather than borrowing a set
+                // rivals read their own axle names rather than borrowing a set
                 // that belongs to another class.
-                tire_compounds: Self::tire_compounds(&entry.wheel_compounds, &[]),
+                tire_compounds: Self::tire_compounds(
+                    &entry.wheel_compounds,
+                    (&rival_front_compound, &rival_rear_compound),
+                    &[],
+                ),
                 flag: entry.flag,
                 causing_yellow: yellow_culprits.contains(&entry.vehicle_id),
                 has_fastest_lap: fastest_lap > 0.0
