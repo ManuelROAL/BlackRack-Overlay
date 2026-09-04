@@ -58,15 +58,11 @@ fn suspension_damage_percent(damage: Option<[f64; 4]>, detached: [u8; 4]) -> f64
         .clamp(-1.0, 100.0)
 }
 
-fn rear_wing_detached(
-    _aero_damage: Option<f64>,
-    _part_detached: bool,
-    _rear_center_severity: u8,
-) -> bool {
-    // LMU's shared-memory flag covers every detachable body part, while REST
-    // aero wear is an aggregate that can exceed 200% with the wing attached.
-    // Neither source identifies the rear wing reliably.
-    false
+fn rear_wing_detached(body_part_detached: bool) -> bool {
+    // LMU's `mDetached` covers detachable body parts only — wheels carry their
+    // own per-corner flag — and on these cars that part is the rear wing. It is
+    // the same signal the game blinks red in its own HUD.
+    body_part_detached
 }
 
 fn fuel_energy_ratio(fuel_consumption: f64, energy_consumption: f64) -> f64 {
@@ -296,7 +292,7 @@ struct LmuSnapshot {
     player_tire_slip_ratio: [f64; 4],
     player_tire_sliding_fraction: [f64; 4],
     player_engine_overheating: u8,
-    player_part_detached: u32,
+    player_body_part_detached: u32,
     player_tire_compounds: [u8; 4],
     player_tire_flat: [u8; 4],
     player_tire_detached: [u8; 4],
@@ -414,7 +410,7 @@ impl Default for LmuSnapshot {
             player_tire_slip_ratio: [0.0; 4],
             player_tire_sliding_fraction: [0.0; 4],
             player_engine_overheating: 0,
-            player_part_detached: 0,
+            player_body_part_detached: 0,
             player_tire_compounds: [0; 4],
             player_tire_flat: [0; 4],
             player_tire_detached: [0; 4],

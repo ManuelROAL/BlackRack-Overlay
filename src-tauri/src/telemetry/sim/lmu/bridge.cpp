@@ -138,7 +138,7 @@ struct LmuSnapshot {
     double player_tire_slip_ratio[4];
     double player_tire_sliding_fraction[4];
     uint8_t player_engine_overheating;
-    uint32_t player_part_detached;
+    uint32_t player_body_part_detached;
     uint8_t player_tire_compounds[4];
     uint8_t player_tire_flat[4];
     uint8_t player_tire_detached[4];
@@ -447,7 +447,10 @@ extern "C" int lmu_read_snapshot(LmuSnapshot* output, int32_t spectator_vehicle_
                 std::memcpy(output->player_damage_severity, vehicle_telemetry->mDentSeverity,
                             sizeof(output->player_damage_severity));
                 output->player_engine_overheating = vehicle_telemetry->mOverheating ? 1u : 0u;
-                output->player_part_detached = vehicle_telemetry->mDetached ? 1u : 0u;
+                // mDetached solo cubre piezas de carrocería, nunca ruedas. En LMU
+                // esa pieza es el alerón trasero, y es la señal que el propio
+                // juego enciende en rojo parpadeante.
+                output->player_body_part_detached = vehicle_telemetry->mDetached ? 1u : 0u;
             }
 
             unsigned int dent_total = 0;
@@ -470,8 +473,6 @@ extern "C" int lmu_read_snapshot(LmuSnapshot* output, int32_t spectator_vehicle_
                 0.0, 100.0);
             if (destination.is_player) {
                 output->player_damage_percent = destination.damage_percent;
-                output->player_part_detached =
-                    vehicle_telemetry->mDetached || wheel_detached ? 1u : 0u;
             }
         }
         if (source.mPlace == 1) {

@@ -77,7 +77,14 @@ const render = (frame: TelemetryFrame): void => {
     const detached = frame.player_tire_detached[index];
     const flat = frame.player_tire_flat[index] && !detached;
     const rawCompound = frame.player_tire_compounds[index] ?? "";
-    const optimalTemperature = frame.player_tire_optimal_temperature_c?.[index] ?? -1;
+    // The wheel body follows its own bands, so its glow and text cannot
+    // disagree with the rubber drawn underneath them. The printed number stays
+    // the carcass-and-inner composite the MFD shows.
+    const bandTemperature = zoneTemperatures.every(
+      (value) => Number.isFinite(value) && value >= 0
+    )
+      ? zoneTemperatures.reduce((total, value) => total + value, 0) / zoneTemperatures.length
+      : temperature;
 
     setText(temperatures[index], readable(temperature, 1, "°"));
     setText(brakeTemperatures[index], readable(brakeTemperature, 0, "°"));
@@ -94,18 +101,14 @@ const render = (frame: TelemetryFrame): void => {
         ? "#ff244f"
         : flat
         ? "#ff8a2b"
-        : tireTemperatureColor(Math.round(temperature), optimalTemperature, rawCompound)
+        : tireTemperatureColor(Math.round(bandTemperature))
     );
     for (let zoneIndex = 0; zoneIndex < 3; zoneIndex += 1) {
       const zoneColor = detached
         ? "#ff244f"
         : flat
         ? "#ff8a2b"
-        : tireTemperatureColor(
-            Math.round(zoneTemperatures[zoneIndex]),
-            optimalTemperature,
-            rawCompound
-          );
+        : tireTemperatureColor(Math.round(zoneTemperatures[zoneIndex]));
       setStyleProperty(wheels[index], `--tire-zone-${zoneIndex}`, zoneColor);
     }
     setStyleProperty(wheels[index], "--brake-color", brakeTemperatureColor(Math.round(brakeTemperature)));
@@ -113,6 +116,10 @@ const render = (frame: TelemetryFrame): void => {
     wheels[index].classList.toggle("flat", flat);
     wheels[index].classList.toggle("detached", detached);
     const compound = shortCompound(rawCompound);
+    // The optimum LMU publishes for the fitted compound stays out of the colour,
+    // which follows the game's own fixed scale, but it is the number that says
+    // where this rubber wants to be, so the tooltip carries it.
+    const optimalTemperature = frame.player_tire_optimal_temperature_c?.[index] ?? -1;
     const compoundLabel = compound === "–" ? t("tires.unknown") : compound;
 
     const title = flat || detached
@@ -120,7 +127,8 @@ const render = (frame: TelemetryFrame): void => {
       : t("tires.tooltip", {
           tire: readable(temperature, 1, " °C"), brake: readable(brakeTemperature, 0, " °C"),
           remaining: readable(remaining, 1, "%"), flat: readable(flatSpot, 2, "%"),
-          suspension: readable(suspension, 0, "%"), compound: compoundLabel
+          suspension: readable(suspension, 0, "%"), compound: compoundLabel,
+          optimal: readable(optimalTemperature, 0, " °C")
         });
     if (wheels[index].title !== title) wheels[index].title = title;
   }

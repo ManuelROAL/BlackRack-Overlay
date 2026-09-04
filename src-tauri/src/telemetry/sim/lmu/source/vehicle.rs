@@ -187,33 +187,23 @@ impl LmuTelemetrySource {
         })
     }
 
-    /// Telemetry names the compound bolted on each axle, so a name that spells
-    /// out a compound decides the letter. `mCompoundType` is only an index into
-    /// the car's compound list, and an index the garage list does not line up
-    /// with turns a medium into a wet, so it comes second: the garage list, then
-    /// whatever initial the name offers, then the fixed soft/medium/hard/wet
-    /// ladder for a car with no list and no name.
-    fn compound_letter(compound: u8, name: &str, conditions: &[RestCompoundCondition]) -> String {
+    /// `mCompoundType` is a fixed enum, not an index into anything: 0 soft, 1
+    /// medium, 2 hard, 3 wet, as the LMU SDK declares it and as a car running
+    /// mediums confirms by reporting 1 while the garage list holds two entries.
+    /// Reading it as an index into that list is what turned those mediums into
+    /// wets. The name telemetry gives the compound on each axle still comes
+    /// first, because it survives a compound the enum has no value for.
+    fn compound_letter(compound: u8, name: &str) -> String {
         if let Some(letter) = Self::known_compound_letter(name) {
             return letter;
         }
-        if let Some(letter) = conditions
-            .get(compound as usize)
-            .and_then(|condition| Self::compound_letter_from_name(&condition.compound_type))
-        {
-            return letter;
-        }
-        if let Some(letter) = Self::compound_letter_from_name(name) {
-            return letter;
-        }
         match compound {
-            0 => "S",
-            1 => "M",
-            2 => "H",
-            3 => "W",
-            _ => "?",
+            0 => "S".to_owned(),
+            1 => "M".to_owned(),
+            2 => "H".to_owned(),
+            3 => "W".to_owned(),
+            _ => Self::compound_letter_from_name(name).unwrap_or_else(|| "?".to_owned()),
         }
-        .to_owned()
     }
 
     /// Shared memory orders the wheels front left, front right, rear left and
@@ -235,38 +225,34 @@ impl LmuTelemetrySource {
     }
 
     /// The optimal temperature the game publishes for the compound on each
-    /// wheel, or -1 while the garage list is missing. The list is matched by
-    /// compound instead of trusted by index, so a wheel the list does not
-    /// describe stays unknown rather than being scored against another tyre.
+    /// wheel, or -1 while the garage list is missing. The list is searched by
+    /// compound: its order is the car's own and has nothing to do with
+    /// `mCompoundType`, so a wheel whose compound the list does not describe
+    /// stays unknown rather than being scored against another tyre.
     pub(super) fn tire_optimal_temperatures(
         wheel_types: &[u8; 4],
         names: (&str, &str),
         conditions: &[RestCompoundCondition],
     ) -> [f64; 4] {
-        let letters = Self::tire_compounds(wheel_types, names, conditions);
+        let letters = Self::tire_compounds(wheel_types, names);
         std::array::from_fn(|index| {
             let letter = letters[index].as_str();
-            let describes = |condition: &&RestCompoundCondition| {
-                Self::compound_letter_from_name(&condition.compound_type).as_deref() == Some(letter)
-            };
             conditions
-                .get(wheel_types[index] as usize)
-                .filter(describes)
-                .or_else(|| conditions.iter().find(describes))
+                .iter()
+                .find(|condition| {
+                    Self::compound_letter_from_name(&condition.compound_type).as_deref()
+                        == Some(letter)
+                })
                 .map(|condition| condition.optimal_temperature)
                 .filter(|optimal| optimal.is_finite() && *optimal > 0.0)
                 .unwrap_or(-1.0)
         })
     }
 
-    pub(super) fn tire_compound(
-        wheel_types: &[u8; 4],
-        names: (&str, &str),
-        conditions: &[RestCompoundCondition],
-    ) -> String {
+    pub(super) fn tire_compound(wheel_types: &[u8; 4], names: (&str, &str)) -> String {
         let mut unique: Vec<String> = Vec::new();
         for (wheel, &compound) in wheel_types.iter().enumerate() {
-            let letter = Self::compound_letter(compound, Self::axle_name(names, wheel), conditions);
+            let letter = Self::compound_letter(compound, Self::axle_name(names, wheel));
             if !unique.contains(&letter) {
                 unique.push(letter);
             }
@@ -274,17 +260,9 @@ impl LmuTelemetrySource {
         unique.join("/")
     }
 
-    pub(super) fn tire_compounds(
-        wheel_types: &[u8; 4],
-        names: (&str, &str),
-        conditions: &[RestCompoundCondition],
-    ) -> [String; 4] {
+    pub(super) fn tire_compounds(wheel_types: &[u8; 4], names: (&str, &str)) -> [String; 4] {
         std::array::from_fn(|index| {
-            Self::compound_letter(
-                wheel_types[index],
-                Self::axle_name(names, index),
-                conditions,
-            )
+            Self::compound_letter(wheel_types[index], Self::axle_name(names, index))
         })
     }
 
@@ -302,11 +280,8 @@ impl LmuTelemetrySource {
         let vehicle_model = Self::string_from_chars(&entry.vehicle_model);
         let raw_team_name = Self::string_from_chars(&entry.team_name);
         let (front_compound, rear_compound) = Self::axle_compound_names(entry);
-        let tire_compound = Self::tire_compound(
-            &entry.wheel_compounds,
-            (&front_compound, &rear_compound),
-            &[],
-        );
+        let tire_compound =
+            Self::tire_compound(&entry.wheel_compounds, (&front_compound, &rear_compound));
         let identity = VehicleIdentity {
             driver_name_raw: entry.driver_name,
             vehicle_class_raw: entry.vehicle_class,

@@ -341,7 +341,6 @@ impl LmuTelemetrySource {
                 tire_compounds: Self::tire_compounds(
                     &entry.wheel_compounds,
                     (&rival_front_compound, &rival_rear_compound),
-                    &[],
                 ),
                 flag: entry.flag,
                 causing_yellow: yellow_culprits.contains(&entry.vehicle_id),

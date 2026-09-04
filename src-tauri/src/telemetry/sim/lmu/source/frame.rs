@@ -844,12 +844,9 @@ impl TelemetrySource for LmuTelemetrySource {
             player_engine_overheating: snapshot.player_engine_overheating != 0,
             player_engine_oil_temperature_c: snapshot.player_engine_oil_temperature_c,
             player_engine_water_temperature_c: snapshot.player_engine_water_temperature_c,
-            player_part_detached: snapshot.player_part_detached != 0,
-            player_rear_wing_detached: rear_wing_detached(
-                rest_aero_damage,
-                snapshot.player_part_detached != 0,
-                snapshot.player_damage_severity[4],
-            ),
+            player_part_detached: snapshot.player_body_part_detached != 0
+                || snapshot.player_tire_detached.contains(&1),
+            player_rear_wing_detached: rear_wing_detached(snapshot.player_body_part_detached != 0),
             player_tire_temperature_c: snapshot.player_tire_temperature_c,
             player_tire_temperature_by_zone_c: snapshot.player_tire_temperature_by_zone_c,
             player_brake_temperature_c: snapshot.player_brake_temperature_c,
@@ -860,7 +857,6 @@ impl TelemetrySource for LmuTelemetrySource {
             player_tire_compounds: Self::tire_compounds(
                 &snapshot.player_tire_compounds,
                 (&player_front_compound, &player_rear_compound),
-                &rest_compound_conditions,
             ),
             player_tire_optimal_temperature_c: Self::tire_optimal_temperatures(
                 &snapshot.player_tire_compounds,

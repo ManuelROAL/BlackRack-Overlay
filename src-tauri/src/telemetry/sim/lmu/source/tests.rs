@@ -284,9 +284,9 @@ fn suspension_damage_keeps_each_wheel_independent() {
 }
 
 #[test]
-fn rear_wing_loss_is_not_inferred_from_aggregate_damage() {
-    assert!(!rear_wing_detached(Some(2.016), true, 2));
-    assert!(!rear_wing_detached(None, true, 2));
+fn rear_wing_loss_follows_the_detached_body_part_flag() {
+    assert!(rear_wing_detached(true));
+    assert!(!rear_wing_detached(false));
 }
 use std::ffi::c_char;
 use std::time::{Duration, Instant};
@@ -405,57 +405,22 @@ fn team_mode_resolves_registered_team_independently_of_focus() {
 #[test]
 fn maps_each_wheel_compound_and_deduplicates_the_summary() {
     assert_eq!(
-        LmuTelemetrySource::tire_compounds(&[0, 1, 2, 3], ("", ""), &[]),
+        LmuTelemetrySource::tire_compounds(&[0, 1, 2, 3], ("", "")),
         ["S", "M", "H", "W"]
     );
     assert_eq!(
-        LmuTelemetrySource::tire_compound(&[1, 2, 1, 2], ("", ""), &[]),
+        LmuTelemetrySource::tire_compound(&[1, 2, 1, 2], ("", "")),
         "M/H"
     );
 }
 
-/// The compound the game names on each axle is the answer, whatever
-/// `mCompoundType` indexes: a medium reported as index 3 used to come out as a
-/// wet, and a medium that the garage list indexes as its wet entry with it.
+/// The compound the game names on each axle answers before anything else, so a
+/// car whose axle names read Medium keeps its mediums.
 #[test]
 fn the_names_the_game_publishes_decide_the_compound() {
     assert_eq!(
-        LmuTelemetrySource::tire_compounds(&[3, 3, 3, 3], ("Medium", "Medium"), &[]),
+        LmuTelemetrySource::tire_compounds(&[3, 3, 3, 3], ("Medium", "Medium")),
         ["M", "M", "M", "M"]
-    );
-
-    let conditions = [RestCompoundCondition {
-        compound_type: "Wet".into(),
-        optimal_temperature: 52.0,
-    }];
-    assert_eq!(
-        LmuTelemetrySource::tire_compounds(&[0; 4], ("Medium", "Medium"), &conditions),
-        ["M", "M", "M", "M"]
-    );
-    // With no compound of that name in the list, the optimum stays unknown
-    // instead of judging a medium against the wet window.
-    assert_eq!(
-        LmuTelemetrySource::tire_optimal_temperatures(&[0; 4], ("Medium", "Medium"), &conditions),
-        [-1.0; 4]
-    );
-}
-
-/// A name that spells out no compound, such as a bare class name, leaves the
-/// garage list in charge instead of turning its initial into a compound.
-#[test]
-fn a_name_without_a_compound_leaves_the_garage_list_in_charge() {
-    let conditions = [RestCompoundCondition {
-        compound_type: "Medium".into(),
-        optimal_temperature: 89.0,
-    }];
-
-    assert_eq!(
-        LmuTelemetrySource::tire_compounds(&[0; 4], ("GTE", "GTE"), &conditions),
-        ["M", "M", "M", "M"]
-    );
-    assert_eq!(
-        LmuTelemetrySource::tire_optimal_temperatures(&[0; 4], ("GTE", "GTE"), &conditions),
-        [89.0; 4]
     );
 }
 
@@ -464,33 +429,44 @@ fn a_name_without_a_compound_leaves_the_garage_list_in_charge() {
 #[test]
 fn front_and_rear_axles_keep_their_own_compound() {
     assert_eq!(
-        LmuTelemetrySource::tire_compounds(&[0; 4], ("Soft", "Medium"), &[]),
+        LmuTelemetrySource::tire_compounds(&[0; 4], ("Soft", "Medium")),
         ["S", "S", "M", "M"]
     );
     assert_eq!(
-        LmuTelemetrySource::tire_compound(&[0; 4], ("Soft", "Medium"), &[]),
+        LmuTelemetrySource::tire_compound(&[0; 4], ("Soft", "Medium")),
         "S/M"
     );
 }
 
-/// A wet name wins over the dry ladder, so an intermediate or a `Medium Wet`
-/// is never reported as a medium slick.
+/// A wet name wins over the dry ladder, so an intermediate or a `Medium Wet` is
+/// never reported as a medium slick.
 #[test]
 fn wet_names_are_read_before_the_dry_ladder() {
     assert_eq!(
-        LmuTelemetrySource::tire_compounds(&[1; 4], ("Medium Wet", "Medium Wet"), &[]),
+        LmuTelemetrySource::tire_compounds(&[1; 4], ("Medium Wet", "Medium Wet")),
         ["W", "W", "W", "W"]
     );
     assert_eq!(
-        LmuTelemetrySource::tire_compounds(&[1; 4], ("Intermediate", "Intermediate"), &[]),
+        LmuTelemetrySource::tire_compounds(&[1; 4], ("Intermediate", "Intermediate")),
         ["I", "I", "I", "I"]
     );
 }
 
-/// An LMP2 carrying only Medium and Wet indexes them 0 and 1, which the fixed
-/// ladder reads as Soft and Medium.
+/// A name that spells out no compound, such as a bare class name, leaves the
+/// enum in charge.
 #[test]
-fn the_garage_compound_list_overrides_the_fixed_ladder() {
+fn a_name_without_a_compound_leaves_the_enum_in_charge() {
+    assert_eq!(
+        LmuTelemetrySource::tire_compounds(&[1; 4], ("GTE", "GTE")),
+        ["M", "M", "M", "M"]
+    );
+}
+
+/// `mCompoundType` is the SDK's soft/medium/hard/wet enum, not an index into the
+/// garage list. An LMP2 carrying only Medium and Wet still reports 1 for its
+/// mediums, and reading that as the list's second entry called them wets.
+#[test]
+fn the_compound_enum_is_not_an_index_into_the_garage_list() {
     let conditions = [
         RestCompoundCondition {
             compound_type: "Medium".into(),
@@ -503,37 +479,41 @@ fn the_garage_compound_list_overrides_the_fixed_ladder() {
     ];
 
     assert_eq!(
-        LmuTelemetrySource::tire_compounds(&[0, 0, 0, 0], ("", ""), &conditions),
+        LmuTelemetrySource::tire_compounds(&[1; 4], ("", "")),
         ["M", "M", "M", "M"]
     );
     assert_eq!(
-        LmuTelemetrySource::tire_optimal_temperatures(&[0, 0, 1, 1], ("", ""), &conditions),
+        LmuTelemetrySource::tire_optimal_temperatures(&[1, 1, 3, 3], ("", ""), &conditions),
         [89.0, 89.0, 52.0, 52.0]
     );
-    // A compound the list does not describe stays unknown instead of borrowing
-    // a neighbour's optimum.
+    // A compound the list does not describe stays unknown instead of borrowing a
+    // neighbour's optimum.
     assert_eq!(
-        LmuTelemetrySource::tire_optimal_temperatures(&[2, 2, 2, 2], ("", ""), &conditions),
+        LmuTelemetrySource::tire_optimal_temperatures(&[2; 4], ("", ""), &conditions),
         [-1.0; 4]
     );
     assert_eq!(
-        LmuTelemetrySource::tire_optimal_temperatures(&[0; 4], ("", ""), &[]),
+        LmuTelemetrySource::tire_optimal_temperatures(&[1; 4], ("", ""), &[]),
         [-1.0; 4]
     );
 }
 
-/// TinyPedal-style names such as "LMP2 - Medium" must resolve by the compound
-/// word, not by the class prefix.
+/// Names such as "LMP2 - Hard" resolve by the compound word rather than the
+/// class prefix, on the axle name and on the garage list alike.
 #[test]
-fn compound_letters_come_from_the_last_word_of_the_type() {
+fn compound_words_are_read_past_a_class_prefix() {
     let conditions = [RestCompoundCondition {
         compound_type: "LMP2 - Hard".into(),
         optimal_temperature: 100.0,
     }];
 
     assert_eq!(
-        LmuTelemetrySource::tire_compounds(&[0; 4], ("", ""), &conditions),
+        LmuTelemetrySource::tire_compounds(&[2; 4], ("LMP2 - Hard", "LMP2 - Hard")),
         ["H", "H", "H", "H"]
+    );
+    assert_eq!(
+        LmuTelemetrySource::tire_optimal_temperatures(&[2; 4], ("", ""), &conditions),
+        [100.0; 4]
     );
 }
 
@@ -2083,3 +2063,5 @@ fn session_over_keeps_one_crossing_until_the_player_finishes() {
     assert_eq!(LmuTelemetrySource::laps_remaining(&snapshot, 120.0), 0.0);
     assert_eq!(LmuTelemetrySource::total_laps_estimated(&snapshot), 37.0);
 }
+
+

@@ -1,35 +1,37 @@
-/// Last resort when the simulator has not published the car's own compound
-/// list: a guess by initial, which only holds for a car carrying the full
-/// soft/medium/hard/wet ladder.
-const assumedOptimalTemperature = (compound: string): number => {
-  const initial = compound.trim().charAt(0).toUpperCase();
-  if (initial === "W" || initial === "I") return 50;
-  if (initial === "S") return 80;
-  if (initial === "H") return 100;
-  return 90;
+/// dox paints the tread bands on a fixed ramp - blue at 40, green at 90, yellow
+/// at 130 and red at 170 - and every state captured beside a read of shared
+/// memory says the game paints its own HUD the same way. A rear tread at 200
+/// after a slide is red on all three, a front at 46 is cyan, blankets at 62 are
+/// green. Wets settle it: at 18 degrees the game and dox both paint blue, so the
+/// scale does not move onto the compound's own window - a wet is simply judged
+/// cold until it warms, and the optimum LMU publishes per compound does not
+/// enter the colour.
+const tireRamp: [number, string][] = [
+  [40, "#1e90ff"],
+  [90, "#00ff00"],
+  [130, "#ffff00"],
+  [170, "#ff0000"]
+];
+
+const channel = (color: string, offset: number): number =>
+  parseInt(color.slice(offset, offset + 2), 16);
+
+const mix = (from: string, to: string, factor: number): string => {
+  const weight = Math.max(0, Math.min(1, factor));
+  const blended = [1, 3, 5].map((offset) =>
+    Math.round(channel(from, offset) + (channel(to, offset) - channel(from, offset)) * weight)
+      .toString(16)
+      .padStart(2, "0")
+  );
+  return `#${blended.join("")}`;
 };
 
-/// `optimal` is the temperature the simulator reports for the compound actually
-/// fitted, and -1 when it is unknown.
-export const optimalTireTemperature = (optimal: number, compound: string): number =>
-  Number.isFinite(optimal) && optimal > 0 ? optimal : assumedOptimalTemperature(compound);
-
-export const tireTemperatureColor = (
-  temperature: number,
-  optimal: number,
-  compound: string
-): string => {
+export const tireTemperatureColor = (temperature: number): string => {
   if (!Number.isFinite(temperature) || temperature < 0) return "#687481";
-  const reference = optimalTireTemperature(optimal, compound);
-  if (temperature < reference - 30) return "#5268e9";
-  if (temperature < reference - 20) return "#4b91ff";
-  if (temperature < reference - 10) return "#4dcff5";
-  if (temperature < reference) return "#55c8be";
-  if (temperature < reference + 10) return "#55d89a";
-  if (temperature < reference + 20) return "#8fe04f";
-  if (temperature < reference + 30) return "#efdb3d";
-  if (temperature < reference + 40) return "#f58a35";
-  return "#f05252";
+  const step = tireRamp.findIndex(([limit], index) => index > 0 && temperature <= limit);
+  const [from, fromColor] = tireRamp[step > 0 ? step - 1 : tireRamp.length - 2];
+  const [to, toColor] = tireRamp[step > 0 ? step : tireRamp.length - 1];
+  return mix(fromColor, toColor, (temperature - from) / (to - from));
 };
 
 export const brakeTemperatureColor = (temperature: number): string => {

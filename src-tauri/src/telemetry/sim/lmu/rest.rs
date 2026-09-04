@@ -152,10 +152,11 @@ struct RestOptimalCompoundConditions {
     compounds: Vec<RestCompoundCondition>,
 }
 
-/// The compounds the current car actually carries, in the order shared memory
-/// indexes them with `mCompoundType`. A car with only Medium and Wet indexes
-/// them 0 and 1, so the fixed soft/medium/hard/wet ladder mislabels both and
-/// judges them against invented optimal temperatures.
+/// The compounds the current car actually carries and the optimal temperature
+/// of each. The order is the car's own and has nothing to do with
+/// `mCompoundType`, which is a fixed soft/medium/hard/wet enum: an LMP2
+/// carrying only Medium and Wet reports 1 for its mediums, and indexing this
+/// list with that 1 lands on the Wet entry. It is searched by compound.
 #[derive(Clone, Debug, Default, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 pub(super) struct RestCompoundCondition {

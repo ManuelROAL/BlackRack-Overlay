@@ -89,17 +89,16 @@ body.tires-body {
   white-space: nowrap;
 }
 
-.wheel-temperature {
-  color: var(--tire-color);
-}
-.wheel-wear {
+/* The readings stay white and let the tyre and the brake disc carry the
+   colour. Two heatmaps competing on one wheel read as noise, and a number is
+   easier to find when its colour never moves. */
+.wheel-temperature,
+.wheel-wear,
+.wheel-brake-temperature {
   color: #f1f4f7;
 }
 .wheel-flatspot {
   color: #8d98a4;
-}
-.wheel-brake-temperature {
-  color: var(--brake-color);
 }
 .wheel-data > [hidden] {
   display: none;
@@ -255,6 +254,12 @@ body.tires-body {
 .aero-wing[data-state="detached"] {
   stroke: #ff244f;
   filter: drop-shadow(0 0 3px rgb(255 36 79 / 72%));
+  animation: aero-wing-alert-blink 720ms linear infinite;
+}
+
+@keyframes aero-wing-alert-blink {
+  0%, 46% { opacity: 1; }
+  47%, 100% { opacity: .18; }
 }
 
 .engine-stack {

@@ -128,12 +128,14 @@ That is not a tidiness rule — see the warning below.
   `optimalCompoundConditions`, the compounds the player's car carries and their
   optimal temperatures. The compound itself comes from `mFrontTireCompoundName`
   and `mRearTireCompoundName`, the names the game gives the tyres actually
-  bolted on each axle, because `mCompoundType` is only an index into the car's
-  list and an index that does not line up with this one reports a medium as a
-  wet. The list then supplies the temperature window for the compound it names,
-  and covers the letter only for a car whose axle names say nothing. It
-  describes the player's car only; rivals read their own axle names, and fall
-  back to the fixed soft/medium/hard/wet ladder.
+  bolted on each axle, with `mCompoundType` behind them as the fixed enum it is
+  (0 soft, 1 medium, 2 hard, 3 wet). That list is never indexed by it: its order
+  is the car's own, so an LMP2 carrying only Medium and Wet reports 1 for its
+  mediums and indexing the list with that 1 used to report them as wets. The
+  list is searched by compound instead, and supplies the temperature window for
+  the compound it names, which no longer feeds the tyre colour: that follows the
+  game's own fixed scale. It describes the player's car only; rivals read their
+  own axle names and the same enum.
 - `/rest/garage/UIScreen/RepairAndRefuel`: 1 Hz for aero wearables, per-wheel
   suspension damage, assigned fuel ratio and the absolute fuel/virtual-energy
   load selected in the official pit menu. The latest successful wearable
