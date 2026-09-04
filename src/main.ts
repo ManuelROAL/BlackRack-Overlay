@@ -1082,12 +1082,18 @@ const renderOverlayGuide = (id: OverlayId): void => {
   const title = document.getElementById("overlay-guide-overlay-title");
   const purpose = document.getElementById("overlay-guide-purpose");
   const reading = document.getElementById("overlay-guide-reading");
+  const warnings = document.getElementById("overlay-guide-warnings");
+  const warningsSection = document.getElementById("overlay-guide-warnings-section");
   const tip = document.getElementById("overlay-guide-tip");
   if (icon) icon.textContent = entry.icon;
   if (title) title.textContent = t(entry.title);
   const simulator = activeSimulatorName();
   if (purpose) purpose.textContent = t(entry.purpose, { simulator });
   if (reading) reading.textContent = t(entry.reading, { simulator });
+  // Only some overlays have cues that appear on their own; the rest never show
+  // this section rather than showing an empty one.
+  warningsSection?.toggleAttribute("hidden", !entry.warnings);
+  if (warnings && entry.warnings) warnings.textContent = t(entry.warnings, { simulator });
   if (tip) tip.textContent = t(entry.tip, { simulator });
   overlayGuideNavigation?.querySelectorAll<HTMLButtonElement>("button[data-guide-overlay]").forEach((button) => {
     const selected = button.dataset.guideOverlay === id;

@@ -2167,6 +2167,12 @@ select {
   gap: 6px;
 }
 
+/* An author display wins over the user-agent rule behind the hidden attribute,
+   and the warnings section is only present for some overlays. */
+.overlay-guide-content section[hidden] {
+  display: none;
+}
+
 .overlay-guide-content h2,
 .overlay-guide-content p {
   margin: 0;

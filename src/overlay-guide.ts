@@ -7,6 +7,12 @@ export interface OverlayGuideEntry {
   purpose: TranslationKey;
   reading: TranslationKey;
   tip: TranslationKey;
+  /**
+   * An overlay whose cues appear only while something is happening needs them
+   * explained where the driver will not meet them by accident. Optional: the
+   * section is left out entirely for the overlays that only ever show readouts.
+   */
+  warnings?: TranslationKey;
 }
 
 export const OVERLAY_GUIDE: Record<OverlayId, OverlayGuideEntry> = {
@@ -127,6 +133,7 @@ export const OVERLAY_GUIDE: Record<OverlayId, OverlayGuideEntry> = {
     title: "card.dashboard",
     purpose: "guide.dashboard.purpose",
     reading: "guide.dashboard.reading",
+    warnings: "guide.dashboard.warnings",
     tip: "guide.dashboard.tip"
   }
 };
