@@ -128,6 +128,9 @@ const render = (frame: TelemetryFrame): void => {
 
 const previewFrame = {
   rest_weather_available: true,
+  ambient_temperature_c: 19.4,
+  cloud_coverage: 1,
+  rain_percent: 10,
   weather_forecast: {
     available: true,
     session: "RACE",

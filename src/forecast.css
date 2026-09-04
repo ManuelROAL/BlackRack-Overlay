@@ -56,6 +56,7 @@ body.forecast-body {
 .forecast-strip {
   display: flex;
   gap: 4px;
+  justify-content: center;
   padding: 6px 8px 7px;
   min-height: 0;
 }

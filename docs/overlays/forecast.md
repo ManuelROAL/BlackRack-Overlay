@@ -37,6 +37,8 @@
 - Use a 366 × 112 px base surface with all five forecast slots visible.
 - Column count is dynamic (5 down to 1 future nodes plus NOW); the overlay reports its design width
   so the host follows the content while preserving the user's visual scale.
+- Centre the strip so a lone `NOW` column sits in the middle of the panel's
+  minimum width instead of hugging its left edge.
 - Expand each visible forecast column with the text-size surface so translated
   labels remain isolated from adjacent slots.
 - Forecast `sky` maps directly to the game's condition SVG (0..10) via
