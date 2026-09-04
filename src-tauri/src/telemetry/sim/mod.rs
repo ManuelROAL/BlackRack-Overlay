@@ -163,9 +163,26 @@ const PROBE_INTERVAL: Duration = Duration::from_secs(2);
 
 static ACTIVE: RwLock<Option<SourceDescriptor>> = RwLock::new(None);
 
+/// Adopts a source and records the change.
+///
+/// Only a transition is written, because the selection paths re-adopt the
+/// simulator they already had. That leaves the log with one line per genuine
+/// switch — which is what says whether the overlays were reading the simulator
+/// the user believes they were, a question a report of "the overlays went
+/// empty" cannot otherwise answer.
 fn set_active(descriptor: SourceDescriptor) {
-    if let Ok(mut active) = ACTIVE.write() {
-        *active = Some(descriptor);
+    let Ok(mut active) = ACTIVE.write() else {
+        return;
+    };
+    let previous = active.map(|current| current.id);
+    *active = Some(descriptor);
+    drop(active);
+    if previous != Some(descriptor.id) {
+        crate::startup_log::record(format!(
+            "telemetry source {} -> {}",
+            previous.unwrap_or("none"),
+            descriptor.id
+        ));
     }
 }
 
@@ -245,6 +262,17 @@ fn allowed_candidates() -> impl Iterator<Item = &'static Candidate> {
         .map(|(_, candidate)| candidate)
 }
 
+/// The simulator automatic selection adopts right now: the highest-priority
+/// allowed candidate that is available.
+///
+/// Every automatic path shares this one function rather than walking the
+/// candidates itself, because walking `CANDIDATES` directly is how a simulator
+/// this build does not ship reaches the overlays through a path that never
+/// shows it in the picker.
+fn available_candidate() -> Option<&'static Candidate> {
+    allowed_candidates().find(|candidate| (candidate.available)())
+}
+
 /// What the control panel reports about the simulator behind the overlays.
 #[derive(Serialize)]
 pub(crate) struct SimulatorStatus {
@@ -295,7 +323,7 @@ impl SelectedSource {
     /// waiting simulator reporting itself instead of falling back to mock.
     fn reselect(&mut self) {
         let current = self.active.descriptor().id;
-        let Some(candidate) = allowed_candidates().find(|candidate| (candidate.available)()) else {
+        let Some(candidate) = available_candidate() else {
             return;
         };
         if candidate.id == current {
@@ -318,12 +346,12 @@ impl SelectedSource {
             // look available yet, so it reports "waiting for it" instead of
             // falling through to fabricated mock data.
             Some(index) => (CANDIDATES[index].try_new)(&self.app_data),
-            // Back to auto: let the normal priority order decide, the same
-            // way `detect` and the gentle `reselect` do.
-            None => CANDIDATES
-                .iter()
-                .find(|candidate| (candidate.available)())
-                .and_then(|candidate| (candidate.try_new)(&self.app_data)),
+            // Back to auto: let the normal priority order decide, through the
+            // same `available_candidate` the gentle `reselect` uses. This
+            // branch is not the rare one it reads as — the control panel sends
+            // its stored preference on every launch, so auto is reselected each
+            // time the app starts.
+            None => available_candidate().and_then(|candidate| (candidate.try_new)(&self.app_data)),
         };
         let source = source.unwrap_or_else(|| {
             Box::new(mock::MockTelemetrySource::new()) as Box<dyn TelemetrySource>
@@ -406,5 +434,25 @@ mod tests {
     #[test]
     fn every_build_offers_at_least_one_simulator() {
         assert!(!options().is_empty());
+    }
+
+    /// The picker is not the only way to reach a simulator: automatic selection
+    /// adopts one on its own, and it runs on every launch, as soon as the
+    /// control panel sends its stored preference. So the pool it draws from has
+    /// to hold exactly what the build offers, or a simulator deliberately kept
+    /// out of the picker would still end up feeding the overlays.
+    ///
+    /// This pins the pool, not the walk over it. What keeps every automatic
+    /// path on the pool is that they all go through `available_candidate`;
+    /// proving that needs a candidate whose availability the test can force,
+    /// which the fixed `CANDIDATES` array does not allow today.
+    #[test]
+    fn automatic_selection_draws_only_from_the_simulators_this_build_offers() {
+        assert_eq!(super::preference(), "auto", "the default is auto selection");
+        let offered: Vec<&str> = options().iter().map(|option| option.id).collect();
+        let pool: Vec<&str> = super::allowed_candidates()
+            .map(|candidate| candidate.id)
+            .collect();
+        assert_eq!(pool, offered);
     }
 }

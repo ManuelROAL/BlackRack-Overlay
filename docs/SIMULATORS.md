@@ -51,6 +51,18 @@ answers whether the build has the SDK, because its bridge cannot be asked more
 cheaply than that. Consequently LMU is the last candidate: a build that has its
 SDK is always "available", so anything below it would never be reached.
 
+Every automatic path — the first pick, the two-second re-probe and the return to
+auto — draws from `available_candidate`, the single function that answers which
+simulator selection adopts right now. Walking `CANDIDATES` directly instead is
+how a simulator this build does not ship reaches the overlays through a path
+that never shows it in the picker.
+
+Each genuine switch is written to the session diagnostics log as
+`telemetry source <previous> -> <next>`, with `none` as the first previous. Only
+transitions appear, because the selection paths re-adopt the source they already
+had. It is the one record of which simulator the overlays were actually reading,
+which is what a report of "the overlays went empty" needs to be answerable.
+
 `try_new` is a different question from `available` and must not assume it was
 already checked: it answers whether this build can ever construct the source at
 all (wrong OS, no SDK), not whether the simulator is running. Both LMU's and
