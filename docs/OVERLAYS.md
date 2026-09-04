@@ -95,7 +95,8 @@ telemetry semantics and file ownership live under `docs/overlays/`; use
 - Present general settings as labelled full-width blocks that each open with the
   shared section heading: Display (the monitor, then transparency and text size
   paired on one row, each with its own general-value slider), Mode (the
-  follow modes with the configuration profiles and their per-mode bindings),
+  follow modes with the configuration profiles, their per-mode bindings and the
+  per-session bindings that only game mode shows),
   Performance, Application (interface language and the global shortcuts) and
   Backup. Keep the controls inside a block consistently aligned, preserve
   readable secondary copy and stack fields on narrow windows instead of leaving

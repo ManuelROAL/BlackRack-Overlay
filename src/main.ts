@@ -163,22 +163,30 @@ import {
 import {
   createProfileId,
   isOverlayMode,
+  isSessionKind,
   MAX_OVERLAY_PROFILES,
   MAX_PROFILE_NAME_LENGTH,
   modeFromFlags,
   normalizeBindings,
   normalizeProfiles,
+  normalizeSessionBindings,
   OVERLAY_MODES,
   OVERLAY_PROFILES_KEY,
   PROFILE_BINDINGS_KEY,
   readProfileState,
+  resolveProfileId,
   sanitizeProfileName,
   saveProfileState,
+  SESSION_BINDINGS_KEY,
+  SESSION_KINDS,
+  sessionKindFromType,
   type OverlayMode,
   type OverlayProfile,
   type OverlayProfileData,
   type ProfileBindings,
-  type ProfileState
+  type ProfileState,
+  type SessionBindings,
+  type SessionKind
 } from "./overlay-profiles";
 import { OVERLAY_GUIDE, OVERLAY_GUIDE_ORDER } from "./overlay-guide";
 
@@ -246,11 +254,12 @@ interface BrowserSourceStatus {
 
 interface OverlayConfigurationExport {
   format: "blackrack-overlay-configuration";
-  schemaVersion: 18;
+  schemaVersion: 19;
   exportedAt: string;
   ui: { locale: Locale };
   profiles: OverlayProfile[];
   modeBindings: ProfileBindings;
+  sessionBindings: SessionBindings;
   overlays: {
     visibility: Record<OverlayId, boolean>;
     transparency: {
@@ -443,7 +452,7 @@ if (localeSelect) {
   });
 }
 
-const CURRENT_CONFIGURATION_SCHEMA = 18;
+const CURRENT_CONFIGURATION_SCHEMA = 19;
 const CURRENT_CONFIGURATION_FORMAT = "blackrack-overlay-configuration";
 const LEGACY_CONFIGURATION_FORMAT = "lmu-overlay-configuration";
 const overlayIds: OverlayId[] = ["delta", "timing", "stinthistory", "driving", "liftcoast", "tires", "damage", "standings", "relative", "fuel", "pitstop", "flags", "rejoin", "trackmap", "forecast", "conditions", "dashboard"];
@@ -1269,12 +1278,27 @@ let profileState: ProfileState = readProfileState(t("profiles.defaultName"))
     };
     const state: ProfileState = {
       profiles: [profile],
-      bindings: { game: profile.id, spectator: profile.id, team: profile.id }
+      bindings: { game: profile.id, spectator: profile.id, team: profile.id },
+      sessionBindings: { practice: null, qualifying: null, race: null }
     };
     saveProfileState(state);
     return state;
   })();
-let activeProfileId = profileState.bindings[activeMode];
+
+/**
+ * The live session kind, kept in `sessionStorage` because applying a profile
+ * reloads the panel: without it the reloaded panel would resolve back to the
+ * game binding, the next frame would switch again and the two would loop. It is
+ * deliberately not persisted beyond the window, so a fresh start waits for
+ * telemetry instead of trusting a session that ended.
+ */
+const ACTIVE_SESSION_KIND_KEY = "blackrack-overlay.active-session-kind";
+const readActiveSessionKind = (): SessionKind | null => {
+  const stored = sessionStorage.getItem(ACTIVE_SESSION_KIND_KEY);
+  return isSessionKind(stored) ? stored : null;
+};
+let activeSessionKind: SessionKind | null = readActiveSessionKind();
+let activeProfileId = resolveProfileId(profileState, activeMode, activeSessionKind);
 let applyingProfile = false;
 let profileSnapshotTimer = 0;
 
@@ -1403,15 +1427,26 @@ const profileBindingSelects = new Map<OverlayMode, HTMLSelectElement>(
   })
 );
 const modeButtons = [...document.querySelectorAll<HTMLButtonElement>("[data-overlay-mode]")];
+const sessionBindingSelects = new Map<SessionKind, HTMLSelectElement>(
+  SESSION_KINDS.flatMap((kind) => {
+    const select = document.querySelector<HTMLSelectElement>(`select[data-profile-session-binding="${kind}"]`);
+    return select ? [[kind, select] as [SessionKind, HTMLSelectElement]] : [];
+  })
+);
+const sessionBindingsSection = document.getElementById("overlay-profile-session-bindings");
 
 const modeLabel = (mode: OverlayMode): string =>
   t(mode === "spectator" ? "follow.spectator" : mode === "team" ? "follow.team" : "follow.game");
+
+const sessionKindLabel = (kind: SessionKind): string =>
+  t(kind === "race" ? "session.race" : kind === "qualifying" ? "session.qualifying" : "session.practice");
 
 const setProfileControlsBusy = (busy: boolean): void => {
   if (createProfileButton) {
     createProfileButton.disabled = busy || profileState.profiles.length >= MAX_OVERLAY_PROFILES;
   }
   for (const select of profileBindingSelects.values()) select.disabled = busy;
+  for (const select of sessionBindingSelects.values()) select.disabled = busy;
   for (const button of modeButtons) button.disabled = busy;
   for (const button of profileListElement?.querySelectorAll("button") ?? []) button.disabled = busy;
 };
@@ -1422,6 +1457,9 @@ const renderModeSelection = (): void => {
     button.classList.toggle("active", selected);
     button.setAttribute("aria-pressed", String(selected));
   }
+  // Only the driver's own weekend changes shape with the session, so the
+  // per-session bindings exist while game mode is selected and nowhere else.
+  sessionBindingsSection?.toggleAttribute("hidden", activeMode !== "game");
 };
 
 const addProfile = (name: string, data: OverlayProfileData): void => {
@@ -1435,15 +1473,26 @@ const addProfile = (name: string, data: OverlayProfileData): void => {
   renderProfiles();
 };
 
+const profileOptions = (): HTMLOptionElement[] =>
+  profileState.profiles.map((profile) => {
+    const option = document.createElement("option");
+    option.value = profile.id;
+    option.textContent = profile.name;
+    return option;
+  });
+
 const renderProfiles = (): void => {
   for (const [mode, select] of profileBindingSelects) {
-    select.replaceChildren(...profileState.profiles.map((profile) => {
-      const option = document.createElement("option");
-      option.value = profile.id;
-      option.textContent = profile.name;
-      return option;
-    }));
+    select.replaceChildren(...profileOptions());
     select.value = profileState.bindings[mode];
+  }
+  for (const [kind, select] of sessionBindingSelects) {
+    // The empty value is the default: the session keeps following game mode.
+    const follow = document.createElement("option");
+    follow.value = "";
+    follow.textContent = t("profiles.followGame");
+    select.replaceChildren(follow, ...profileOptions());
+    select.value = profileState.sessionBindings[kind] ?? "";
   }
   if (profileListElement) {
     profileListElement.replaceChildren(...profileState.profiles.map((profile) => {
@@ -1466,11 +1515,16 @@ const renderProfiles = (): void => {
 
       const meta = document.createElement("span");
       meta.className = "overlay-profile-meta";
-      const boundModes = OVERLAY_MODES.filter((mode) => profileState.bindings[mode] === profile.id);
+      const boundTo = [
+        ...OVERLAY_MODES.filter((mode) => profileState.bindings[mode] === profile.id).map(modeLabel),
+        ...SESSION_KINDS
+          .filter((kind) => profileState.sessionBindings[kind] === profile.id)
+          .map(sessionKindLabel)
+      ];
       meta.textContent = profile.id === activeProfileId
         ? t("profiles.active")
-        : boundModes.length > 0
-          ? t("profiles.usedBy", { modes: boundModes.map(modeLabel).join(", ") })
+        : boundTo.length > 0
+          ? t("profiles.usedBy", { modes: boundTo.join(", ") })
           : "";
 
       const actions = document.createElement("div");
@@ -1481,7 +1535,7 @@ const renderProfiles = (): void => {
         use.type = "button";
         use.textContent = t("profiles.use");
         use.setAttribute("aria-label", t("profiles.useAria", { name: profile.name }));
-        use.addEventListener("click", () => void bindAndActivate(activeMode, profile.id));
+        use.addEventListener("click", () => void useProfile(profile.id));
         actions.append(use);
       }
 
@@ -1517,6 +1571,39 @@ const renderProfiles = (): void => {
   setProfileControlsBusy(false);
 };
 
+/**
+ * Brings the panel to whatever mode and session now resolve to. Every binding
+ * edit, mode change and session change ends here, so the resolution rule lives
+ * in one place. A switch already in flight ends in a reload, so a second one
+ * is dropped rather than raced.
+ */
+let switchingProfile = false;
+
+const applyResolvedProfile = async (): Promise<void> => {
+  // Rendering during a switch would re-enable the controls it disabled.
+  if (switchingProfile) return;
+  const nextId = resolveProfileId(profileState, activeMode, activeSessionKind);
+  if (nextId === activeProfileId) {
+    renderProfiles();
+    return;
+  }
+  // Pending edits belong to the profile being left, including when the session
+  // itself made the switch and no button was pressed.
+  flushProfileSnapshot();
+  activeProfileId = nextId;
+  const profile = activeProfile();
+  renderProfiles();
+  if (!profile) return;
+  switchingProfile = true;
+  setProfileControlsBusy(true);
+  if (profileStatus) profileStatus.textContent = t("profiles.applying");
+  try {
+    await applyProfileData(profile.data);
+  } finally {
+    switchingProfile = false;
+  }
+};
+
 const deleteProfile = async (id: string): Promise<void> => {
   const profile = profileState.profiles.find((candidate) => candidate.id === id);
   if (!profile || profileState.profiles.length <= 1) return;
@@ -1527,38 +1614,40 @@ const deleteProfile = async (id: string): Promise<void> => {
     mode,
     profileState.bindings[mode] === id ? null : profileState.bindings[mode]
   ]));
-  profileState = { profiles: remaining, bindings: normalizeBindings(requested, remaining) };
+  profileState = {
+    profiles: remaining,
+    bindings: normalizeBindings(requested, remaining),
+    // A session bound to the deleted profile goes back to following game mode.
+    sessionBindings: normalizeSessionBindings(profileState.sessionBindings, remaining)
+  };
   saveProfileState(profileState);
-  if (activeProfileId !== id) {
-    renderProfiles();
-    return;
-  }
-  activeProfileId = profileState.bindings[activeMode];
-  const next = activeProfile();
-  renderProfiles();
-  if (!next) return;
-  setProfileControlsBusy(true);
-  if (profileStatus) profileStatus.textContent = t("profiles.applying");
-  await applyProfileData(next.data);
+  await applyResolvedProfile();
 };
 
-const bindAndActivate = async (mode: OverlayMode, profileId: string): Promise<void> => {
+const bindMode = async (mode: OverlayMode, profileId: string): Promise<void> => {
   if (!profileState.profiles.some(({ id }) => id === profileId)) return;
-  flushProfileSnapshot();
   profileState.bindings = { ...profileState.bindings, [mode]: profileId };
   saveProfileState(profileState);
-  if (mode !== activeMode || profileId === activeProfileId) {
-    renderProfiles();
-    return;
-  }
-  activeProfileId = profileId;
-  const profile = activeProfile();
-  renderProfiles();
-  if (!profile) return;
-  setProfileControlsBusy(true);
-  if (profileStatus) profileStatus.textContent = t("profiles.applying");
-  await applyProfileData(profile.data);
+  await applyResolvedProfile();
 };
+
+const bindSession = async (kind: SessionKind, profileId: string | null): Promise<void> => {
+  if (profileId !== null && !profileState.profiles.some(({ id }) => id === profileId)) return;
+  profileState.sessionBindings = { ...profileState.sessionBindings, [kind]: profileId };
+  saveProfileState(profileState);
+  await applyResolvedProfile();
+};
+
+/**
+ * "Use" rewrites whichever binding is deciding right now: the session one only
+ * when it already overrides game mode, so a profile chosen during a session
+ * that still follows the mode does not silently stop following it.
+ */
+const useProfile = (profileId: string): Promise<void> =>
+  activeMode === "game" && activeSessionKind !== null
+    && profileState.sessionBindings[activeSessionKind] !== null
+    ? bindSession(activeSessionKind, profileId)
+    : bindMode(activeMode, profileId);
 
 const selectOverlayMode = async (mode: OverlayMode): Promise<void> => {
   if (mode === activeMode) return;
@@ -1582,20 +1671,27 @@ const selectOverlayMode = async (mode: OverlayMode): Promise<void> => {
   saveTeamMode(teamMode);
   activeMode = mode;
   renderModeSelection();
-  const nextProfileId = profileState.bindings[mode];
-  if (nextProfileId === activeProfileId) {
+  if (resolveProfileId(profileState, activeMode, activeSessionKind) === activeProfileId) {
     renderProfiles();
     if (profileStatus) profileStatus.textContent = "";
     return;
   }
-  activeProfileId = nextProfileId;
-  const profile = activeProfile();
-  if (!profile) {
-    renderProfiles();
-    return;
-  }
-  if (profileStatus) profileStatus.textContent = t("profiles.applying");
-  await applyProfileData(profile.data);
+  await applyResolvedProfile();
+};
+
+/**
+ * The panel already follows the frame for connection state, so the session kind
+ * rides along. A frame from a disconnected source carries a stale session, so
+ * the last known kind is kept instead of dragging the panel back to practice.
+ */
+const trackSessionKind = (frame: TelemetryFrame): void => {
+  if (!frame.connected) return;
+  const kind = sessionKindFromType(frame.session_type);
+  if (kind === activeSessionKind) return;
+  activeSessionKind = kind;
+  sessionStorage.setItem(ACTIVE_SESSION_KIND_KEY, kind);
+  if (activeMode !== "game") return;
+  void applyResolvedProfile().catch(() => undefined);
 };
 
 for (const button of modeButtons) {
@@ -1607,7 +1703,13 @@ for (const button of modeButtons) {
 
 for (const [mode, select] of profileBindingSelects) {
   select.addEventListener("change", () => {
-    void bindAndActivate(mode, select.value);
+    void bindMode(mode, select.value);
+  });
+}
+
+for (const [kind, select] of sessionBindingSelects) {
+  select.addEventListener("change", () => {
+    void bindSession(kind, select.value === "" ? null : select.value);
   });
 }
 
@@ -1923,6 +2025,7 @@ const parseOverlayConfiguration = (
   const dashboard = configurationObject(overlays?.dashboard);
   const importedProfiles = root?.profiles;
   const importedBindings = root?.modeBindings;
+  const importedSessionBindings = root?.sessionBindings;
   const importedPerformanceProfile = overlays?.performanceProfile;
   const importedSpectatorMode = overlays?.spectatorMode;
   const importedTeamMode = overlays?.teamMode;
@@ -2151,6 +2254,7 @@ const parseOverlayConfiguration = (
     ...normalized,
     profiles: [],
     modeBindings: { game: "", spectator: "", team: "" },
+    sessionBindings: { practice: null, qualifying: null, race: null },
     format: CURRENT_CONFIGURATION_FORMAT,
     schemaVersion: CURRENT_CONFIGURATION_SCHEMA,
     ui: { locale: isLocale(ui?.locale) ? ui.locale : getLocale() },
@@ -2227,13 +2331,19 @@ const parseOverlayConfiguration = (
     profiles.push({ id: createProfileId(), name: t("profiles.defaultName"), data: activeData });
   }
   const modeBindings = normalizeBindings(importedBindings, profiles);
+  // Documents written before schema 19 bind no session, so every kind follows
+  // the imported game mode exactly as it did when the document was written.
+  const sessionBindings = normalizeSessionBindings(importedSessionBindings, profiles);
   // The overlays block is the validated configuration the panel will run, so the
-  // profile bound to the imported mode has to carry exactly that.
-  const boundProfile = profiles.find(({ id }) => id === modeBindings[
-    modeFromFlags(result.overlays.spectatorMode, result.overlays.teamMode)
-  ]);
+  // profile the imported bindings resolve to has to carry exactly that. The live
+  // session takes part because the panel will resolve with it after the reload.
+  const boundProfile = profiles.find(({ id }) => id === resolveProfileId(
+    { profiles, bindings: modeBindings, sessionBindings },
+    modeFromFlags(result.overlays.spectatorMode, result.overlays.teamMode),
+    activeSessionKind
+  ));
   if (boundProfile) boundProfile.data = activeData;
-  return { ...result, profiles, modeBindings };
+  return { ...result, profiles, modeBindings, sessionBindings };
 };
 
 const normalizeImportedMonitor = async (
@@ -2270,7 +2380,8 @@ const applyImportedConfiguration = (configuration: OverlayConfigurationExport): 
     [SPECTATOR_MODE_KEY, configuration.overlays.spectatorMode && !configuration.overlays.teamMode],
     [TEAM_MODE_KEY, configuration.overlays.teamMode],
     [OVERLAY_PROFILES_KEY, configuration.profiles],
-    [PROFILE_BINDINGS_KEY, configuration.modeBindings]
+    [PROFILE_BINDINGS_KEY, configuration.modeBindings],
+    [SESSION_BINDINGS_KEY, configuration.sessionBindings]
   ];
   const previous = entries.map(([key]) => [key, localStorage.getItem(key)] as const);
   const previousLocale = localStorage.getItem(LOCALE_STORAGE_KEY);
@@ -2308,6 +2419,7 @@ exportConfigurationButton?.addEventListener("click", () => {
       ui: { locale: getLocale() },
       profiles: profileState.profiles,
       modeBindings: profileState.bindings,
+      sessionBindings: profileState.sessionBindings,
       overlays: {
         visibility: { ...preferences },
         transparency: {
@@ -3073,6 +3185,7 @@ void listen<TelemetryFrame>("telemetry://frame", ({ payload }) => {
   if (simulatorStatus && payload.source !== simulatorStatus.id) refreshSimulatorStatus();
   renderConnection(payload);
   renderSourceCapabilities(payload);
+  trackSessionKind(payload);
 })
   .catch(reportInitializationError("telemetry listener"));
 const renderInteractionMode = (mode: InteractionMode): void => {

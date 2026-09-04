@@ -216,8 +216,18 @@ blocking HTTP calls into `next_frame()`.
   per-overlay settings; monitor, performance profile, locale, shortcuts and the
   browser source stay global. The live keys above remain authoritative for the
   active profile, which is refreshed from them on a short debounce and flushed
-  before switching mode, profile or exporting. Configuration schema 17 exports
-  both, and a document below that version becomes one profile bound to every mode.
+  before switching mode, session, profile or exporting. Configuration schema 17
+  exports both, and a document below that version becomes one profile bound to
+  every mode.
+- Per-session bindings: WebView `localStorage` under
+  `blackrack-overlay.session-bindings.v1`, one optional profile id for practice
+  (warmup included), qualifying and race. They apply in game mode only; `null`
+  keeps a session kind on the game binding, which is also what an unknown
+  session resolves to. The panel classifies the session from the telemetry
+  frame it already receives and keeps the live kind in `sessionStorage`, so the
+  reload that applies a profile does not resolve back and switch again.
+  Configuration schema 19 exports them; a document below that version imports
+  with no session bound.
 - Spectator mode: WebView `localStorage`; configuration schema 10 exports it and
   reapplies it to the telemetry source when the control panel starts.
 - Overlay visual scale: composite-layout `localStorage`; configuration schema 11

@@ -83,6 +83,12 @@ in `docs/overlays/` and should not be duplicated here.
   coordinates in both states.
 - Overlay configuration is grouped into named profiles, and game, spectator and
   team mode each bind to one of them. Selecting a mode applies the bound profile.
+  Game mode subdivides by session kind — practice with warmup, qualifying and
+  race — because only the driver's own weekend changes shape between free
+  running, a timed lap and the race; spectating and team duty follow one car with
+  one configuration. A session kind is bound only when the user asks for it and
+  otherwise follows game mode, so the per-mode behavior is unchanged by default
+  and the panel never has to guess before telemetry arrives.
   A profile owns only overlay-facing state: visibility, layout, transparency,
   text size and per-overlay settings. Monitor, performance profile, locale,
   shortcuts and the browser source stay global, so changing mode never moves the

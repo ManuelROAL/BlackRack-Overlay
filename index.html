@@ -152,7 +152,7 @@
         <div class="overlay-profiles-section">
           <div class="overlay-profiles-heading">
             <span data-i18n="profiles.heading">PERFILES</span>
-            <strong data-i18n="profiles.title">Una configuración de overlays por modo</strong>
+            <strong data-i18n="profiles.title">Una configuración de overlays por modo y tipo de sesión</strong>
             <small data-i18n="profiles.sub">Cada perfil guarda visibilidad, posición, tamaño, transparencia y ajustes de los overlays. Los cambios se guardan en el perfil activo.</small>
           </div>
           <ul id="overlay-profile-list" class="overlay-profile-list"></ul>
@@ -172,6 +172,23 @@
               <span data-i18n="profiles.bindingTeam">PERFIL EN MODO EQUIPO</span>
               <select data-profile-binding="team" aria-label="Perfil del modo equipo" data-i18n-aria-label="profiles.bindingTeamAria"></select>
             </label>
+          </div>
+          <div id="overlay-profile-session-bindings" class="overlay-profile-session" hidden>
+            <small data-i18n="profiles.sessionSub">En modo juego cada tipo de sesión puede usar su propio perfil; el warmup cuenta como práctica.</small>
+            <div class="overlay-profile-bindings">
+              <label class="select-field">
+                <span data-i18n="profiles.bindingPractice">PERFIL EN PRÁCTICA</span>
+                <select data-profile-session-binding="practice" aria-label="Perfil de las sesiones de práctica" data-i18n-aria-label="profiles.bindingPracticeAria"></select>
+              </label>
+              <label class="select-field">
+                <span data-i18n="profiles.bindingQualifying">PERFIL EN CLASIFICACIÓN</span>
+                <select data-profile-session-binding="qualifying" aria-label="Perfil de las sesiones de clasificación" data-i18n-aria-label="profiles.bindingQualifyingAria"></select>
+              </label>
+              <label class="select-field">
+                <span data-i18n="profiles.bindingRace">PERFIL EN CARRERA</span>
+                <select data-profile-session-binding="race" aria-label="Perfil de las sesiones de carrera" data-i18n-aria-label="profiles.bindingRaceAria"></select>
+              </label>
+            </div>
           </div>
           <p id="overlay-profile-status" aria-live="polite"></p>
         </div>

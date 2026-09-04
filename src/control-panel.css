@@ -669,6 +669,23 @@ select {
   min-width: 0;
 }
 
+/* The session bindings only exist while game mode is selected, so the grid has
+   to yield to the hidden attribute the panel toggles. */
+.overlay-profile-session {
+  display: grid;
+  gap: 8px;
+}
+
+.overlay-profile-session[hidden] {
+  display: none;
+}
+
+.overlay-profile-session > small {
+  color: #a6b3c0;
+  font-size: 12px;
+  line-height: 1.3;
+}
+
 .overlay-profiles-section > p {
   margin: 0;
   letter-spacing: .05em;

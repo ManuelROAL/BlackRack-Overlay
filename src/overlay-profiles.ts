@@ -10,6 +10,7 @@ import type {
   OverlayTransparencyScope
 } from "./overlay-appearance";
 import type { RelativeSettings } from "./relative-settings";
+import { isQualifyingSession, isRaceSession } from "./session-phase";
 import type { StandingsSettings } from "./standings-settings";
 import type { TimingSettings } from "./timing-settings";
 import type { TiresSettings } from "./tires-settings";
@@ -17,15 +18,31 @@ import type { TrackMapSettings } from "./trackmap-settings";
 
 export const OVERLAY_PROFILES_KEY = "blackrack-overlay.profiles.v1";
 export const PROFILE_BINDINGS_KEY = "blackrack-overlay.profile-bindings.v1";
+export const SESSION_BINDINGS_KEY = "blackrack-overlay.session-bindings.v1";
 
 export const OVERLAY_MODES = ["game", "spectator", "team"] as const;
 export type OverlayMode = (typeof OVERLAY_MODES)[number];
+
+/**
+ * Only game mode splits by session: spectating and team duty follow one car
+ * with one configuration, while a driver's own weekend does change shape
+ * between free running, a timed lap and the race. Warmup counts as practice
+ * because it is free running on the race setup, not a timed session.
+ */
+export const SESSION_KINDS = ["practice", "qualifying", "race"] as const;
+export type SessionKind = (typeof SESSION_KINDS)[number];
 
 export const MAX_OVERLAY_PROFILES = 10;
 export const MAX_PROFILE_NAME_LENGTH = 40;
 
 export const isOverlayMode = (value: unknown): value is OverlayMode =>
   typeof value === "string" && (OVERLAY_MODES as readonly string[]).includes(value);
+
+export const isSessionKind = (value: unknown): value is SessionKind =>
+  typeof value === "string" && (SESSION_KINDS as readonly string[]).includes(value);
+
+export const sessionKindFromType = (sessionType: number): SessionKind =>
+  isRaceSession(sessionType) ? "race" : isQualifyingSession(sessionType) ? "qualifying" : "practice";
 
 /**
  * Overlay state a profile owns. Monitor, performance profile, locale, shortcuts
@@ -61,9 +78,13 @@ export interface OverlayProfile {
 
 export type ProfileBindings = Record<OverlayMode, string>;
 
+/** `null` keeps the session kind on whatever game mode is bound to. */
+export type SessionBindings = Record<SessionKind, string | null>;
+
 export interface ProfileState {
   profiles: OverlayProfile[];
   bindings: ProfileBindings;
+  sessionBindings: SessionBindings;
 }
 
 export const createProfileId = (): string =>
@@ -88,9 +109,9 @@ const PROFILE_DATA_FIELDS = [
 const isProfileData = (value: Record<string, unknown>): boolean =>
   PROFILE_DATA_FIELDS.every((field) => plainObject(value[field]) !== null);
 
-/**
- * Accepts a stored or imported profile list, dropping entries that cannot be
- * used instead of rejecting the whole document.
+/**
+ * Accepts a stored or imported profile list, dropping entries that cannot be
+ * used instead of rejecting the whole document.
  */
 export const normalizeProfiles = (
   value: unknown,
@@ -132,6 +153,36 @@ export const normalizeBindings = (
   })) as ProfileBindings;
 };
 
+/**
+ * A session kind may stay unbound, so an id that no longer exists falls back to
+ * following game mode instead of to the first profile.
+ */
+export const normalizeSessionBindings = (
+  value: unknown,
+  profiles: readonly OverlayProfile[]
+): SessionBindings => {
+  const available = new Set(profiles.map(({ id }) => id));
+  const source = plainObject(value) ?? {};
+  return Object.fromEntries(SESSION_KINDS.map((kind) => {
+    const candidate = source[kind];
+    return [kind, typeof candidate === "string" && available.has(candidate) ? candidate : null];
+  })) as SessionBindings;
+};
+
+/**
+ * The single answer to "which profile is live". Outside game mode the session
+ * does not participate, and an unknown session — no telemetry yet — keeps the
+ * game binding rather than guessing a kind.
+ */
+export const resolveProfileId = (
+  state: ProfileState,
+  mode: OverlayMode,
+  session: SessionKind | null
+): string => {
+  if (mode !== "game" || session === null) return state.bindings[mode];
+  return state.sessionBindings[session] ?? state.bindings.game;
+};
+
 export const readProfileState = (fallbackName: string): ProfileState | null => {
   try {
     const profiles = normalizeProfiles(
@@ -144,6 +195,10 @@ export const readProfileState = (fallbackName: string): ProfileState | null => {
       bindings: normalizeBindings(
         JSON.parse(localStorage.getItem(PROFILE_BINDINGS_KEY) ?? "null"),
         profiles
+      ),
+      sessionBindings: normalizeSessionBindings(
+        JSON.parse(localStorage.getItem(SESSION_BINDINGS_KEY) ?? "null"),
+        profiles
       )
     };
   } catch {
@@ -154,6 +209,7 @@ export const readProfileState = (fallbackName: string): ProfileState | null => {
 export const saveProfileState = (state: ProfileState): void => {
   localStorage.setItem(OVERLAY_PROFILES_KEY, JSON.stringify(state.profiles));
   localStorage.setItem(PROFILE_BINDINGS_KEY, JSON.stringify(state.bindings));
+  localStorage.setItem(SESSION_BINDINGS_KEY, JSON.stringify(state.sessionBindings));
 };
 
 export const modeFromFlags = (spectator: boolean, team: boolean): OverlayMode =>

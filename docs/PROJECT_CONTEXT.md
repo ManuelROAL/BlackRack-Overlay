@@ -34,7 +34,9 @@ on their runtime or source code.
 - Optional telemetry/performance analysis logging.
 - Optional per-lap strategy CSV with consumption, tyre wear and track conditions.
 - Named overlay configuration profiles, with one bound to each of game,
-  spectator and team mode and applied when the mode is selected.
+  spectator and team mode and applied when the mode is selected. In game mode
+  practice, qualifying and race can each take their own profile, applied when the
+  session changes.
 - Spectator mode keeps overlays attached to the car currently watched between driving stints.
 - Team mode keeps overlays attached to the player's registered team car regardless of the spectator camera.
 - Compact tyre/damage schematic plus an independent detailed damage overlay.

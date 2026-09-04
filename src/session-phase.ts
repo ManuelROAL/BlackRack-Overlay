@@ -7,3 +7,6 @@ export const isRaceSession = (sessionType: number): boolean =>
 
 export const isPracticeSession = (sessionType: number): boolean =>
   sessionType >= 0 && sessionType <= 4;
+
+export const isQualifyingSession = (sessionType: number): boolean =>
+  sessionType >= 5 && sessionType <= 8;
