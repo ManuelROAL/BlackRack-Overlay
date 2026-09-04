@@ -517,7 +517,14 @@ impl TrackMapModelState {
     /// Keeps the last painted result of each sector. The shared state falls back
     /// to `pending` between laps, and a segment that simply waits for its next
     /// visit should not blink back to the plain track meanwhile.
+    ///
+    /// Only qualifying paints them: that is the session where a lap is the whole
+    /// point and the map can afford to talk about sector times.
     fn update_sector_results(&mut self, frame: &TelemetryFrame) {
+        if !QUALIFYING_SESSIONS.contains(&frame.session_type) {
+            self.sector_results = ["pending"; 3];
+            return;
+        }
         for index in 0..3 {
             let state = frame.player_sector_states[index];
             if state != "pending" {
@@ -589,6 +596,9 @@ impl TrackMapModelState {
 
 /// Sector bits follow the scoring numbering the yellow mask uses: 1, 2 and 0.
 const SECTOR_BITS: [u32; 3] = [1, 2, 0];
+/// The session numbering every overlay shares: 0-4 practice, 5-8 qualifying,
+/// 9 warmup and 10-13 race.
+const QUALIFYING_SESSIONS: std::ops::RangeInclusive<i32> = 5..=8;
 
 fn predicted_lap_distance(
     player_distance: f64,
@@ -692,22 +702,25 @@ mod tests {
     }
 
     #[test]
-    fn sector_highlights_split_the_shared_result_into_two_masks() {
+    fn only_qualifying_paints_the_sector_results() {
         let mut state = TrackMapModelState::default();
         let mut frame = TelemetryFrame::waiting_for_simulator(true);
+        frame.session_type = 5;
+        frame.session_type = 5;
         frame.player_sector_states = ["overall", "personal", "neutral"];
         state.update_sector_results(&frame);
+        assert_eq!(state.sector_highlights(), (1 << 1, (1 << 1) | (1 << 2)));
 
-        let (class_best, personal_best) = state.sector_highlights();
-
-        assert_eq!(class_best, 1 << 1);
-        assert_eq!(personal_best, (1 << 1) | (1 << 2));
+        frame.session_type = 10;
+        state.update_sector_results(&frame);
+        assert_eq!(state.sector_highlights(), (0, 0));
     }
 
     #[test]
     fn a_sector_waiting_for_its_next_visit_keeps_the_painted_result() {
         let mut state = TrackMapModelState::default();
         let mut frame = TelemetryFrame::waiting_for_simulator(true);
+        frame.session_type = 5;
         frame.player_sector_states = ["overall", "pending", "pending"];
         state.update_sector_results(&frame);
         frame.player_sector_states = ["pending"; 3];

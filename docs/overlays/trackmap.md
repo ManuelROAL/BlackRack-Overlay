@@ -81,14 +81,16 @@ TypeScript fetches static geometry, interpolates and renders it.
   Rust has observed and learned the two scoring-sector boundaries. The normal track
   remains visible until aligned geometry and both boundaries are available. Only
   the SDK's exact local-yellow value (`mSectorFlag == 1`) activates a segment.
-- Each sector the player closes repaints its segment with the same result Timing
-  paints in its cells: purple for the best time of the player's class, green for
+- In qualifying only, each sector the player closes repaints its segment with the
+  same result Timing paints in its cells: purple for the best time of the player's class, green for
   a personal best against the reference chosen in Timing, and nothing otherwise.
   The decision is made once in `delta_records` and travels on the frame, so the
   two overlays cannot disagree and the map does not need the timing panel open.
   The map latches the last painted result of each sector, because the shared
   state returns to `pending` between laps and a segment waiting for its next
-  visit should not blink back to the plain track. An invalidated sector clears
+  visit should not blink back to the plain track. Any other session clears the
+  three segments: a lap is the point of a qualifying session, while in practice
+  or a race the map is read for traffic and flags. An invalidated sector clears
   its colour, and a yellow always outranks both on the same segment.
 
 ## Verification focus
