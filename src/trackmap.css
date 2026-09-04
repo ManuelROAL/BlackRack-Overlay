@@ -28,7 +28,8 @@
 
 .track-outline,
 .track-line,
-.purple-sector,
+.personal-best-sector,
+.class-best-sector,
 .yellow-sector,
 .pit-outline,
 .pit-line,
@@ -54,8 +55,13 @@
   stroke-width: 8px;
 }
 
-.purple-sector {
-  stroke: #ec82e8;
+.class-best-sector {
+  stroke: #c77dff;
+  stroke-width: 8px;
+}
+
+.personal-best-sector {
+  stroke: #62df8d;
   stroke-width: 8px;
 }
 

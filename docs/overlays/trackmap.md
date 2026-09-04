@@ -81,15 +81,19 @@ TypeScript fetches static geometry, interpolates and renders it.
   Rust has observed and learned the two scoring-sector boundaries. The normal track
   remains visible until aligned geometry and both boundaries are available. Only
   the SDK's exact local-yellow value (`mSectorFlag == 1`) activates a segment.
-- The player's own class-best sectors paint the corresponding segment purple on
-  the same learned boundaries. Rust rebuilds each car's per-sector bests from the
-  cumulative scoring ends (sector 1, sector 1+2 and best lap) and compares only
-  cars of the player's class; a rival that went back to the garage has left the
-  roster and no longer defends its sector. A yellow always outranks the purple on
-  the same segment.
-  Timing and Standings keep their own purple for the session best across every
-  car; the map deliberately answers the question the driver asks while looking at
-  the track, which is where they stand inside their own category.
+- Each sector the player closes repaints its segment the way a live-timing screen
+  does: purple for the best time of the player's class, green for a personal best
+  and nothing when neither. The colour survives until that same sector closes
+  again, so after the line the map shows the finished lap. Rust rebuilds every
+  car's per-sector bests from the cumulative scoring ends (sector 1, sector 1+2
+  and best lap) and compares only cars of the player's class; a rival that went
+  back to the garage has left the roster and no longer defends its sector. Sector
+  3 has no running end of its own, so it is closed from the published lap time.
+  An invalidated lap sets no reference and leaves the previous colours alone, and
+  a yellow always outranks both on the same segment. Timing and Standings keep
+  their own purple for the session best across every car; the map answers the
+  question the driver asks while looking at the track, which is where they stand
+  inside their own category.
 
 ## Verification focus
 

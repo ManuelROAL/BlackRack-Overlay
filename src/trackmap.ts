@@ -74,8 +74,11 @@ const startLine = document.querySelector<SVGPathElement>("#start-line")!;
 const yellowSectorLines = [1, 2, 3].map((sector) =>
   document.querySelector<SVGPathElement>(`#yellow-sector-${sector}`)!
 );
-const purpleSectorLines = [1, 2, 3].map((sector) =>
-  document.querySelector<SVGPathElement>(`#purple-sector-${sector}`)!
+const classBestSectorLines = [1, 2, 3].map((sector) =>
+  document.querySelector<SVGPathElement>(`#class-best-sector-${sector}`)!
+);
+const personalBestSectorLines = [1, 2, 3].map((sector) =>
+  document.querySelector<SVGPathElement>(`#personal-best-sector-${sector}`)!
 );
 const vehicleLayer = document.querySelector<HTMLDivElement>("#vehicle-layer")!;
 const status = document.getElementById("map-status") as HTMLElement;
@@ -96,7 +99,8 @@ let predictionTransform = "";
 let trackMapSettings = readTrackMapSettings();
 let latestPerformanceProfile: TelemetryFrame["performance_profile"] = "smooth";
 let latestYellowSectors = 0;
-let latestPurpleSectors = 0;
+let latestClassBestSectors = 0;
+let latestPersonalBestSectors = 0;
 let latestSectorBoundaries: [number | null, number | null] = [null, null];
 let latestTrackLength = 0;
 let sectorHighlightRenderKey = "";
@@ -406,11 +410,14 @@ const renderSectorHighlights = (): void => {
   const ranges: Array<[number, number, number]> = ready
     ? [[0, sector1End, 1], [sector1End, sector2End, 2], [sector2End, latestTrackLength, 0]]
     : [];
-  const renderKey = `${ready ? 1 : 0}|${latestYellowSectors}|${latestPurpleSectors}|${sector1End}|${sector2End}|${latestTrackLength}`;
+  const renderKey = `${ready ? 1 : 0}|${latestYellowSectors}|${latestClassBestSectors}|${latestPersonalBestSectors}|${sector1End}|${sector2End}|${latestTrackLength}`;
   if (renderKey === sectorHighlightRenderKey) return;
   sectorHighlightRenderKey = renderKey;
-  // A yellow warns and a purple only reports, so the flag keeps the segment.
-  applySectorMask(purpleSectorLines, latestPurpleSectors & ~latestYellowSectors, ranges, points);
+  // A yellow warns and a result only reports, so the flag keeps the segment,
+  // and the class best outranks the personal one it already contains.
+  const claimed = latestYellowSectors | latestClassBestSectors;
+  applySectorMask(personalBestSectorLines, latestPersonalBestSectors & ~claimed, ranges, points);
+  applySectorMask(classBestSectorLines, latestClassBestSectors & ~latestYellowSectors, ranges, points);
   applySectorMask(yellowSectorLines, latestYellowSectors, ranges, points);
 };
 
@@ -573,7 +580,8 @@ const renderVehicles = (vehicles: TrackMapVehicle[], trackLength: number): void 
 const render = (frame: TelemetryFrame): void => {
   latestPerformanceProfile = frame.performance_profile;
   latestYellowSectors = frame.track_map_model.yellow_sectors;
-  latestPurpleSectors = frame.track_map_model.purple_sectors;
+  latestClassBestSectors = frame.track_map_model.class_best_sectors;
+  latestPersonalBestSectors = frame.track_map_model.personal_best_sectors;
   latestSectorBoundaries = frame.track_map_model.sector_boundaries;
   latestTrackLength = frame.track_length_meters;
   const nextKey = frame.track_map_model.cache_key;

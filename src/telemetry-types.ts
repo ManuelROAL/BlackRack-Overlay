@@ -70,7 +70,8 @@ export interface TrackMapViewModel {
   learned_geometry_available: boolean;
   pit_prediction_lap_distance: number | null;
   yellow_sectors: number;
-  purple_sectors: number;
+  class_best_sectors: number;
+  personal_best_sectors: number;
   sector_boundaries: [number | null, number | null];
 }
 

@@ -459,8 +459,10 @@ impl TelemetrySource for MockTelemetrySource {
             track_map_model: Default::default(),
             consumption_profile_samples: 5,
             current_lap_seconds,
-            current_sector1_seconds: 0.0,
-            current_sector2_seconds: 0.0,
+            // Matches the eighth mock car, the player: best of its class in
+            // sector 1 and a personal best in sector 2.
+            current_sector1_seconds: 68.4,
+            current_sector2_seconds: 146.8,
             player_best_sector_ends: [0.0; 3],
             session_best_sector_ends: [0.0; 3],
             last_lap_seconds: 215.0,
