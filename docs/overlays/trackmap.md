@@ -87,6 +87,9 @@ TypeScript fetches static geometry, interpolates and renders it.
   cars of the player's class; a rival that went back to the garage has left the
   roster and no longer defends its sector. A yellow always outranks the purple on
   the same segment.
+  Timing and Standings keep their own purple for the session best across every
+  car; the map deliberately answers the question the driver asks while looking at
+  the track, which is where they stand inside their own category.
 
 ## Verification focus
 
