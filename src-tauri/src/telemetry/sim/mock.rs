@@ -433,6 +433,15 @@ impl TelemetrySource for MockTelemetrySource {
                             in_pits: false,
                             in_garage: false,
                             causing_yellow: index == 4,
+                            best_sector_ends: {
+                                let class_offset = (index % 4) as f64 * 3.0;
+                                let driver_offset = (index / 4) as f64 * 0.4;
+                                let sector1 = 60.0 + class_offset + driver_offset
+                                    - if index == 7 { 1.0 } else { 0.0 };
+                                let sector2_end = sector1 + 78.0 + class_offset + driver_offset;
+                                let lap = sector2_end + 70.0 + class_offset + driver_offset;
+                                [sector1, sector2_end, lap]
+                            },
                             sector: match angle.rem_euclid(std::f64::consts::TAU)
                                 / std::f64::consts::TAU
                             {

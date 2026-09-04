@@ -24,6 +24,7 @@ pub(crate) struct TrackMapViewModel {
     learned_geometry_available: bool,
     pit_prediction_lap_distance: Option<f64>,
     yellow_sectors: u32,
+    purple_sectors: u32,
     sector_boundaries: [Option<f64>; 2],
 }
 
@@ -544,9 +545,65 @@ impl TrackMapModelState {
             learned_geometry_available,
             pit_prediction_lap_distance,
             yellow_sectors: frame.yellow_sectors,
+            purple_sectors: class_purple_sectors(&frame.track_map_vehicles, player),
             sector_boundaries: self.sector_boundaries,
         }
     }
+}
+
+/// Scoring publishes cumulative bests: sector 1, sector 1+2 and the best lap.
+/// Their differences are the per-sector bests, the same reconstruction the
+/// timing panel already relies on.
+const SECTOR_END_MIN: [f64; 3] = [5.0, 10.0, 20.0];
+const SECTOR_END_MAX: [f64; 3] = [300.0, 600.0, 900.0];
+/// Sector bits follow the scoring numbering the yellow mask uses: 1, 2 and 0.
+const SECTOR_BITS: [u32; 3] = [1, 2, 0];
+
+fn best_sector_times(ends: &[f64; 3]) -> [Option<f64>; 3] {
+    let mut cumulative = [None; 3];
+    for index in 0..3 {
+        let end = ends[index];
+        if end.is_finite() && end >= SECTOR_END_MIN[index] && end <= SECTOR_END_MAX[index] {
+            cumulative[index] = Some(end);
+        }
+    }
+    let split = |previous: Option<f64>, end: Option<f64>| match (previous, end) {
+        (Some(previous), Some(end)) if end > previous => Some(end - previous),
+        _ => None,
+    };
+    [
+        cumulative[0],
+        split(cumulative[0], cumulative[1]),
+        split(cumulative[1], cumulative[2]),
+    ]
+}
+
+/// The sectors where the player currently holds the best time of their own
+/// class. A rival that returned to the garage has already left the track map
+/// roster, so its time no longer defends the sector.
+fn class_purple_sectors(vehicles: &[TrackMapVehicle], player: Option<&TrackMapVehicle>) -> u32 {
+    let Some(player) = player else {
+        return 0;
+    };
+    let player_times = best_sector_times(&player.best_sector_ends);
+    let mut purple = 0;
+    for index in 0..3 {
+        let Some(player_time) = player_times[index] else {
+            continue;
+        };
+        let fastest_of_the_class = vehicles
+            .iter()
+            .filter(|vehicle| {
+                vehicle.vehicle_id != player.vehicle_id
+                    && vehicle.vehicle_class == player.vehicle_class
+            })
+            .filter_map(|vehicle| best_sector_times(&vehicle.best_sector_ends)[index])
+            .all(|time| time > player_time);
+        if fastest_of_the_class {
+            purple |= 1 << SECTOR_BITS[index];
+        }
+    }
+    purple
 }
 
 fn predicted_lap_distance(
@@ -646,8 +703,55 @@ mod tests {
             in_garage: false,
             causing_yellow: false,
             sector,
+            best_sector_ends: [0.0; 3],
             is_player: false,
         }
+    }
+
+    fn class_vehicle(
+        vehicle_id: i32,
+        vehicle_class: &str,
+        best_sector_ends: [f64; 3],
+        is_player: bool,
+    ) -> TrackMapVehicle {
+        TrackMapVehicle {
+            vehicle_id,
+            vehicle_class: vehicle_class.into(),
+            best_sector_ends,
+            is_player,
+            ..sector_vehicle(1, 0.0)
+        }
+    }
+
+    #[test]
+    fn purple_sectors_compare_only_inside_the_player_class() {
+        let player = class_vehicle(1, "LMGT3", [30.0, 70.0, 110.0], true);
+        let vehicles = vec![
+            player.clone(),
+            // Faster overall, but another class does not defend the sector.
+            class_vehicle(2, "HYPERCAR", [28.0, 66.0, 104.0], false),
+            // Same class, better second sector only.
+            class_vehicle(3, "LMGT3", [31.0, 69.0, 112.0], false),
+        ];
+
+        let purple = class_purple_sectors(&vehicles, Some(&player));
+
+        assert_eq!(purple & (1 << 1), 1 << 1);
+        assert_eq!(purple & (1 << 2), 0);
+        assert_eq!(purple & 1, 1);
+    }
+
+    #[test]
+    fn purple_sectors_ignore_implausible_or_missing_bests() {
+        let player = class_vehicle(1, "LMGT3", [0.0, 0.0, 0.0], true);
+        assert_eq!(class_purple_sectors(&[player.clone()], Some(&player)), 0);
+        assert_eq!(class_purple_sectors(&[], None), 0);
+
+        let started = class_vehicle(1, "LMGT3", [30.0, 0.0, 0.0], true);
+        assert_eq!(
+            class_purple_sectors(&[started.clone()], Some(&started)),
+            1 << 1
+        );
     }
 
     #[test]

@@ -28,6 +28,7 @@
 
 .track-outline,
 .track-line,
+.purple-sector,
 .yellow-sector,
 .pit-outline,
 .pit-line,
@@ -50,6 +51,11 @@
 
 .yellow-sector {
   stroke: #ffe34f;
+  stroke-width: 8px;
+}
+
+.purple-sector {
+  stroke: #ec82e8;
   stroke-width: 8px;
 }
 

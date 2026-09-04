@@ -574,6 +574,10 @@ pub struct TrackMapVehicle {
     causing_yellow: bool,
     #[serde(skip)]
     sector: i32,
+    /// Best sector 1, best sector 1+2 and best lap of this vehicle, the three
+    /// cumulative ends the scoring feed exposes. Only the model reads them.
+    #[serde(skip)]
+    best_sector_ends: [f64; 3],
     is_player: bool,
 }
 

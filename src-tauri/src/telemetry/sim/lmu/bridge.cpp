@@ -36,6 +36,7 @@ struct LmuStandingEntry {
     double estimated_lap_time;
     double best_lap_seconds;
     double last_lap_seconds;
+    double best_sector_ends[3];
     double lap_start_elapsed_seconds;
     double elapsed_seconds;
     double virtual_energy;
@@ -374,6 +375,7 @@ extern "C" int lmu_read_snapshot(LmuSnapshot* output, int32_t spectator_vehicle_
                 output->session_best_sector_ends[sector_index] = candidate;
             }
         }
+        std::copy_n(best_sector_ends, 3, destination.best_sector_ends);
         destination.speed_kph = std::sqrt(
             source.mLocalVel.x * source.mLocalVel.x +
             source.mLocalVel.y * source.mLocalVel.y +

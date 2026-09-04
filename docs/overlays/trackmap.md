@@ -81,6 +81,12 @@ TypeScript fetches static geometry, interpolates and renders it.
   Rust has observed and learned the two scoring-sector boundaries. The normal track
   remains visible until aligned geometry and both boundaries are available. Only
   the SDK's exact local-yellow value (`mSectorFlag == 1`) activates a segment.
+- The player's own class-best sectors paint the corresponding segment purple on
+  the same learned boundaries. Rust rebuilds each car's per-sector bests from the
+  cumulative scoring ends (sector 1, sector 1+2 and best lap) and compares only
+  cars of the player's class; a rival that went back to the garage has left the
+  roster and no longer defends its sector. A yellow always outranks the purple on
+  the same segment.
 
 ## Verification focus
 
