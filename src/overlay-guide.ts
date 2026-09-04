@@ -49,6 +49,7 @@ export const OVERLAY_GUIDE: Record<OverlayId, OverlayGuideEntry> = {
     title: "card.liftcoast",
     purpose: "guide.liftcoast.purpose",
     reading: "guide.liftcoast.reading",
+    warnings: "guide.liftcoast.warnings",
     tip: "guide.liftcoast.tip"
   },
   tires: {
@@ -77,6 +78,7 @@ export const OVERLAY_GUIDE: Record<OverlayId, OverlayGuideEntry> = {
     title: "card.flags",
     purpose: "guide.flags.purpose",
     reading: "guide.flags.reading",
+    warnings: "guide.flags.warnings",
     tip: "guide.flags.tip"
   },
   rejoin: {
@@ -84,6 +86,7 @@ export const OVERLAY_GUIDE: Record<OverlayId, OverlayGuideEntry> = {
     title: "card.rejoin",
     purpose: "guide.rejoin.purpose",
     reading: "guide.rejoin.reading",
+    warnings: "guide.rejoin.warnings",
     tip: "guide.rejoin.tip"
   },
   delta: {
