@@ -25,13 +25,18 @@ modelo visual de Timing sólo se construye con el panel nativo o `/timing` en us
 ## Comportamiento
 
 - S1, S2 y S3 usan los cruces de sector oficiales que LMU publica para el jugador.
-  El morado siempre identifica el mejor parcial global de la sesión entre todos
-  los coches. El verde identifica una mejora personal según la referencia elegida:
+  El morado identifica el mejor parcial de la clase del jugador, la convención
+  de un cronometraje multiclase como el de la WEC; en una parrilla de una sola
+  clase equivale al mejor global. El verde identifica una mejora personal según
+  la referencia elegida:
   - `lmu` (por defecto): mejores parciales personales oficiales de LMU.
   - `session`: mejores sectores personales reconstruidos durante la sesión.
   - `overall`: mejores sectores personales absolutos persistidos.
   La comparación oficial usa los finales acumulados de S1/S2 y el tiempo de vuelta
-  para S3, tal como los publica el SDK de LMU.
+  para S3, tal como los publica el SDK de LMU. Los mejores de clase se reducen en
+  Rust desde esos mismos finales por coche; el puente sólo los copia.
+- El estado de cada parcial se decide una vez por ciclo, con el panel abierto o
+  sin él, y viaja en el frame para que el Mapa pinte exactamente lo mismo.
 - Las referencias por sector (`overall`/`session`) se siguen aprendiendo en todos los
   modos aunque no se muestren, de modo que cambiar de referencia no pierde historial.
 - El historial registra hasta cinco vueltas reconstruibles. El panel no muestra

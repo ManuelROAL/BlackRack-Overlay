@@ -574,7 +574,6 @@ impl TelemetrySource for LmuTelemetrySource {
                     in_garage: entry.in_garage != 0,
                     causing_yellow: standings_yellow_culprits.contains(&entry.vehicle_id),
                     sector: entry.sector,
-                    best_sector_ends: entry.best_sector_ends,
                     is_player: entry.is_player != 0,
                 })
                 .collect()
@@ -905,7 +904,8 @@ impl TelemetrySource for LmuTelemetrySource {
             current_sector1_seconds: snapshot.current_sector1_seconds.max(0.0),
             current_sector2_seconds: snapshot.current_sector2_seconds.max(0.0),
             player_best_sector_ends: snapshot.player_best_sector_ends,
-            session_best_sector_ends: snapshot.session_best_sector_ends,
+            player_sector_states: ["pending"; 3],
+            class_best_sector_ends: Self::class_best_sector_ends(&snapshot),
             last_lap_seconds: displayed_last_lap_seconds,
             last_lap_valid,
             best_lap_seconds: snapshot.best_lap_seconds.max(0.0),

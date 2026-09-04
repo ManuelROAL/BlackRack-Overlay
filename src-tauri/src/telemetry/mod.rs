@@ -574,10 +574,6 @@ pub struct TrackMapVehicle {
     causing_yellow: bool,
     #[serde(skip)]
     sector: i32,
-    /// Best sector 1, best sector 1+2 and best lap of this vehicle, the three
-    /// cumulative ends the scoring feed exposes. Only the model reads them.
-    #[serde(skip)]
-    best_sector_ends: [f64; 3],
     is_player: bool,
 }
 
@@ -768,8 +764,14 @@ pub struct TelemetryFrame {
     current_sector2_seconds: f64,
     #[serde(skip)]
     player_best_sector_ends: [f64; 3],
+    /// Best cumulative sector ends inside the player's class: the reference a
+    /// live-timing screen paints purple on a multiclass grid.
     #[serde(skip)]
-    session_best_sector_ends: [f64; 3],
+    class_best_sector_ends: [f64; 3],
+    /// How each sector the player closed compares, decided once and read by
+    /// every overlay that paints a sector.
+    #[serde(skip)]
+    player_sector_states: [&'static str; 3],
     last_lap_seconds: f64,
     #[serde(skip)]
     last_lap_valid: bool,
@@ -1055,7 +1057,8 @@ impl TelemetryFrame {
             current_sector1_seconds: 0.0,
             current_sector2_seconds: 0.0,
             player_best_sector_ends: [0.0; 3],
-            session_best_sector_ends: [0.0; 3],
+            class_best_sector_ends: [0.0; 3],
+            player_sector_states: ["pending"; 3],
             last_lap_seconds: 0.0,
             last_lap_valid: true,
             best_lap_seconds: 0.0,

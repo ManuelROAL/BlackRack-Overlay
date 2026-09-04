@@ -83,6 +83,40 @@ impl LmuTelemetrySource {
         (steering * range * 0.5, force)
     }
 
+    /// The best cumulative sector ends among the cars sharing the player's
+    /// class, the reference a live-timing screen paints purple on a multiclass
+    /// grid. Scoring publishes one best per sector, so the three ends need not
+    /// come from the same lap or even the same car.
+    pub(super) fn class_best_sector_ends(snapshot: &LmuSnapshot) -> [f64; 3] {
+        const MINIMUM_END: [f64; 3] = [5.0, 10.0, 20.0];
+        const MAXIMUM_END: [f64; 3] = [300.0, 600.0, 900.0];
+        let entries =
+            &snapshot.standings[..snapshot.standings_count.min(MAX_VEHICLES as u32) as usize];
+        let Some(player_class) = entries
+            .iter()
+            .find(|entry| entry.is_player != 0)
+            .map(|entry| entry.vehicle_class)
+        else {
+            return [0.0; 3];
+        };
+        let mut best = [0.0; 3];
+        for entry in entries
+            .iter()
+            .filter(|entry| entry.vehicle_class == player_class)
+        {
+            for index in 0..3 {
+                let candidate = entry.best_sector_ends[index];
+                if candidate >= MINIMUM_END[index]
+                    && candidate <= MAXIMUM_END[index]
+                    && (best[index] <= 0.0 || candidate < best[index])
+                {
+                    best[index] = candidate;
+                }
+            }
+        }
+        best
+    }
+
     pub(super) fn string_from_chars(chars: &[c_char]) -> String {
         let bytes = chars
             .iter()

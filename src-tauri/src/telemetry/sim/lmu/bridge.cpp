@@ -101,7 +101,6 @@ struct LmuSnapshot {
     double current_sector1_seconds;
     double current_sector2_seconds;
     double player_best_sector_ends[3];
-    double session_best_sector_ends[3];
     double best_lap_seconds;
     double lap_delta_seconds;
     double session_time_remaining;
@@ -364,17 +363,6 @@ extern "C" int lmu_read_snapshot(LmuSnapshot* output, int32_t spectator_vehicle_
             std::abs(source.mBestSector2),
             source.mBestLapTime,
         };
-        const double minimum_sector_end[3] = {5.0, 10.0, 20.0};
-        const double maximum_sector_end[3] = {300.0, 600.0, 900.0};
-        for (size_t sector_index = 0; sector_index < 3; ++sector_index) {
-            const double candidate = best_sector_ends[sector_index];
-            if (candidate >= minimum_sector_end[sector_index]
-                && candidate <= maximum_sector_end[sector_index]
-                && (output->session_best_sector_ends[sector_index] <= 0.0
-                    || candidate < output->session_best_sector_ends[sector_index])) {
-                output->session_best_sector_ends[sector_index] = candidate;
-            }
-        }
         std::copy_n(best_sector_ends, 3, destination.best_sector_ends);
         destination.speed_kph = std::sqrt(
             source.mLocalVel.x * source.mLocalVel.x +

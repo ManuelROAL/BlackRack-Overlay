@@ -231,9 +231,7 @@ pub(crate) struct TrackMapModelState {
     previous_pit_sample_time: Option<f64>,
     vehicle_sectors: HashMap<i32, (i32, f64)>,
     sector_boundaries: [Option<f64>; 2],
-    player_lap: Option<i32>,
-    player_sector_times: [Option<f64>; 3],
-    latched_sector2_end: Option<f64>,
+    sector_results: [&'static str; 3],
 }
 
 impl Default for TrackMapModelState {
@@ -248,9 +246,7 @@ impl Default for TrackMapModelState {
             previous_pit_sample_time: None,
             vehicle_sectors: HashMap::new(),
             sector_boundaries: [None; 2],
-            player_lap: None,
-            player_sector_times: [None; 3],
-            latched_sector2_end: None,
+            sector_results: ["pending"; 3],
         }
     }
 }
@@ -268,9 +264,7 @@ impl TrackMapModelState {
             self.previous_pit_sample_time = None;
             self.vehicle_sectors.clear();
             self.sector_boundaries = [None; 2];
-            self.player_lap = None;
-            self.player_sector_times = [None; 3];
-            self.latched_sector2_end = None;
+            self.sector_results = ["pending"; 3];
         }
         if frame.track_map_vehicles.is_empty() {
             frame.track_map_model = self.view_model(frame, None);
@@ -282,7 +276,7 @@ impl TrackMapModelState {
             .iter()
             .position(|vehicle| vehicle.is_player);
         self.update_sector_boundaries(frame);
-        self.update_player_sectors(frame);
+        self.update_sector_results(frame);
         self.update_pit_traversal(frame);
         if let Some(index) = player_index {
             self.update_recorder(frame, index);
@@ -520,76 +514,30 @@ impl TrackMapModelState {
         });
     }
 
-    /// The player's own sector times, closed one at a time the way a live-timing
-    /// screen fills its three cells. Each one survives until that same sector is
-    /// closed again, so after the line the map still shows the finished lap.
-    fn update_player_sectors(&mut self, frame: &TelemetryFrame) {
-        let lap = frame.player_total_laps;
-        if self.player_lap.is_some_and(|previous| lap < previous) {
-            self.player_sector_times = [None; 3];
-            self.latched_sector2_end = None;
-        }
-        if self.player_lap.is_some_and(|previous| lap > previous) {
-            // Sector 3 has no running end of its own: scoring clears the lap's
-            // cumulative ends and publishes the finished lap time instead.
-            if frame.last_lap_valid {
-                self.player_sector_times[2] = self
-                    .latched_sector2_end
-                    .filter(|end| frame.last_lap_seconds > *end)
-                    .map(|end| frame.last_lap_seconds - end);
+    /// Keeps the last painted result of each sector. The shared state falls back
+    /// to `pending` between laps, and a segment that simply waits for its next
+    /// visit should not blink back to the plain track meanwhile.
+    fn update_sector_results(&mut self, frame: &TelemetryFrame) {
+        for index in 0..3 {
+            let state = frame.player_sector_states[index];
+            if state != "pending" {
+                self.sector_results[index] = state;
             }
-            self.latched_sector2_end = None;
-        }
-        self.player_lap = Some(lap);
-        let sector1_end = frame.current_sector1_seconds;
-        let sector2_end = frame.current_sector2_seconds;
-        if sector2_end > 0.0 {
-            self.latched_sector2_end = Some(sector2_end);
-        }
-        // An invalidated lap sets no reference, so it leaves the map as it was.
-        if !frame.player_lap_valid {
-            return;
-        }
-        if sector1_end > 0.0 {
-            self.player_sector_times[0] = Some(sector1_end);
-        }
-        if sector1_end > 0.0 && sector2_end > sector1_end {
-            self.player_sector_times[1] = Some(sector2_end - sector1_end);
         }
     }
 
-    /// How the sector the player just closed compares, in the colours every
-    /// live-timing screen uses: the best of the class, and a personal best. A
-    /// rival that returned to the garage has left the track map roster, so its
-    /// time no longer defends the sector.
-    fn sector_highlights(
-        &self,
-        vehicles: &[TrackMapVehicle],
-        player: Option<&TrackMapVehicle>,
-    ) -> (u32, u32) {
-        let Some(player) = player else {
-            return (0, 0);
-        };
-        let player_bests = best_sector_times(&player.best_sector_ends);
+    /// The colours every live-timing screen uses, as two masks the renderer can
+    /// paint directly: the best of the player's class, and a personal best.
+    fn sector_highlights(&self) -> (u32, u32) {
         let (mut class_best, mut personal_best) = (0, 0);
         for index in 0..3 {
-            let Some(seconds) = self.player_sector_times[index] else {
-                continue;
-            };
-            if !player_bests[index].is_some_and(|best| seconds <= best + SECTOR_TOLERANCE) {
-                continue;
-            }
-            personal_best |= 1 << SECTOR_BITS[index];
-            let best_of_the_class = vehicles
-                .iter()
-                .filter(|vehicle| {
-                    vehicle.vehicle_id != player.vehicle_id
-                        && vehicle.vehicle_class == player.vehicle_class
-                })
-                .filter_map(|vehicle| best_sector_times(&vehicle.best_sector_ends)[index])
-                .all(|best| seconds <= best + SECTOR_TOLERANCE);
-            if best_of_the_class {
-                class_best |= 1 << SECTOR_BITS[index];
+            match self.sector_results[index] {
+                "overall" => {
+                    class_best |= 1 << SECTOR_BITS[index];
+                    personal_best |= 1 << SECTOR_BITS[index];
+                }
+                "personal" => personal_best |= 1 << SECTOR_BITS[index],
+                _ => {}
             }
         }
         (class_best, personal_best)
@@ -625,8 +573,7 @@ impl TrackMapModelState {
                     frame.track_length_meters,
                 )
             });
-        let (class_best_sectors, personal_best_sectors) =
-            self.sector_highlights(&frame.track_map_vehicles, player);
+        let (class_best_sectors, personal_best_sectors) = self.sector_highlights();
         TrackMapViewModel {
             cache_key: self.cache_key.clone(),
             geometry_revision,
@@ -640,34 +587,8 @@ impl TrackMapModelState {
     }
 }
 
-/// Scoring publishes cumulative bests: sector 1, sector 1+2 and the best lap.
-/// Their differences are the per-sector bests, the same reconstruction the
-/// timing panel already relies on.
-const SECTOR_END_MIN: [f64; 3] = [5.0, 10.0, 20.0];
-const SECTOR_END_MAX: [f64; 3] = [300.0, 600.0, 900.0];
 /// Sector bits follow the scoring numbering the yellow mask uses: 1, 2 and 0.
 const SECTOR_BITS: [u32; 3] = [1, 2, 0];
-/// The half-millisecond the timing panel already uses to accept a matching time.
-const SECTOR_TOLERANCE: f64 = 0.000_5;
-
-fn best_sector_times(ends: &[f64; 3]) -> [Option<f64>; 3] {
-    let mut cumulative = [None; 3];
-    for index in 0..3 {
-        let end = ends[index];
-        if end.is_finite() && end >= SECTOR_END_MIN[index] && end <= SECTOR_END_MAX[index] {
-            cumulative[index] = Some(end);
-        }
-    }
-    let split = |previous: Option<f64>, end: Option<f64>| match (previous, end) {
-        (Some(previous), Some(end)) if end > previous => Some(end - previous),
-        _ => None,
-    };
-    [
-        cumulative[0],
-        split(cumulative[0], cumulative[1]),
-        split(cumulative[1], cumulative[2]),
-    ]
-}
 
 fn predicted_lap_distance(
     player_distance: f64,
@@ -766,99 +687,38 @@ mod tests {
             in_garage: false,
             causing_yellow: false,
             sector,
-            best_sector_ends: [0.0; 3],
             is_player: false,
         }
     }
 
-    fn class_vehicle(
-        vehicle_id: i32,
-        vehicle_class: &str,
-        best_sector_ends: [f64; 3],
-        is_player: bool,
-    ) -> TrackMapVehicle {
-        TrackMapVehicle {
-            vehicle_id,
-            vehicle_class: vehicle_class.into(),
-            best_sector_ends,
-            is_player,
-            ..sector_vehicle(1, 0.0)
-        }
-    }
-
     #[test]
-    fn sector_highlights_compare_the_closed_sector_inside_the_player_class() {
-        let player = class_vehicle(1, "LMGT3", [30.0, 70.0, 110.0], true);
-        let vehicles = vec![
-            player.clone(),
-            // Faster overall, but another class does not defend the sector.
-            class_vehicle(2, "HYPERCAR", [28.0, 66.0, 104.0], false),
-            // Same class, quicker second sector only.
-            class_vehicle(3, "LMGT3", [31.0, 69.0, 112.0], false),
-        ];
-        let mut state = TrackMapModelState::default();
-        state.player_sector_times = [Some(30.0), Some(40.0), Some(40.0)];
-
-        let (class_best, personal_best) = state.sector_highlights(&vehicles, Some(&player));
-
-        assert_eq!(class_best, (1 << 1) | 1);
-        assert_eq!(personal_best, (1 << 1) | (1 << 2) | 1);
-    }
-
-    #[test]
-    fn a_sector_slower_than_the_player_best_is_not_highlighted() {
-        let player = class_vehicle(1, "LMGT3", [30.0, 70.0, 110.0], true);
-        let mut state = TrackMapModelState::default();
-        state.player_sector_times = [Some(31.5), None, None];
-
-        assert_eq!(
-            state.sector_highlights(&[player.clone()], Some(&player)),
-            (0, 0)
-        );
-        assert_eq!(state.sector_highlights(&[], None), (0, 0));
-    }
-
-    #[test]
-    fn player_sectors_close_one_at_a_time_and_survive_the_line() {
+    fn sector_highlights_split_the_shared_result_into_two_masks() {
         let mut state = TrackMapModelState::default();
         let mut frame = TelemetryFrame::waiting_for_simulator(true);
-        frame.player_lap_valid = true;
-        frame.last_lap_valid = true;
-        frame.player_total_laps = 4;
-        state.update_player_sectors(&frame);
-        assert_eq!(state.player_sector_times, [None; 3]);
+        frame.player_sector_states = ["overall", "personal", "neutral"];
+        state.update_sector_results(&frame);
 
-        frame.current_sector1_seconds = 30.0;
-        state.update_player_sectors(&frame);
-        assert_eq!(state.player_sector_times, [Some(30.0), None, None]);
+        let (class_best, personal_best) = state.sector_highlights();
 
-        frame.current_sector2_seconds = 70.0;
-        state.update_player_sectors(&frame);
-        assert_eq!(state.player_sector_times, [Some(30.0), Some(40.0), None]);
-
-        // Crossing the line clears the running ends and publishes the lap time.
-        frame.player_total_laps = 5;
-        frame.current_sector1_seconds = 0.0;
-        frame.current_sector2_seconds = 0.0;
-        frame.last_lap_seconds = 110.0;
-        state.update_player_sectors(&frame);
-        assert_eq!(
-            state.player_sector_times,
-            [Some(30.0), Some(40.0), Some(40.0)]
-        );
+        assert_eq!(class_best, 1 << 1);
+        assert_eq!(personal_best, (1 << 1) | (1 << 2));
     }
 
     #[test]
-    fn an_invalidated_lap_leaves_the_previous_sectors_alone() {
+    fn a_sector_waiting_for_its_next_visit_keeps_the_painted_result() {
         let mut state = TrackMapModelState::default();
         let mut frame = TelemetryFrame::waiting_for_simulator(true);
-        frame.player_lap_valid = false;
-        frame.player_total_laps = 4;
-        frame.current_sector1_seconds = 28.0;
-        state.player_sector_times = [Some(30.0), None, None];
-        state.update_player_sectors(&frame);
+        frame.player_sector_states = ["overall", "pending", "pending"];
+        state.update_sector_results(&frame);
+        frame.player_sector_states = ["pending"; 3];
+        state.update_sector_results(&frame);
 
-        assert_eq!(state.player_sector_times, [Some(30.0), None, None]);
+        assert_eq!(state.sector_highlights(), (1 << 1, 1 << 1));
+
+        frame.player_sector_states = ["invalid", "pending", "pending"];
+        state.update_sector_results(&frame);
+
+        assert_eq!(state.sector_highlights(), (0, 0));
     }
 
     #[test]

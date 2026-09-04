@@ -81,19 +81,15 @@ TypeScript fetches static geometry, interpolates and renders it.
   Rust has observed and learned the two scoring-sector boundaries. The normal track
   remains visible until aligned geometry and both boundaries are available. Only
   the SDK's exact local-yellow value (`mSectorFlag == 1`) activates a segment.
-- Each sector the player closes repaints its segment the way a live-timing screen
-  does: purple for the best time of the player's class, green for a personal best
-  and nothing when neither. The colour survives until that same sector closes
-  again, so after the line the map shows the finished lap. Rust rebuilds every
-  car's per-sector bests from the cumulative scoring ends (sector 1, sector 1+2
-  and best lap) and compares only cars of the player's class; a rival that went
-  back to the garage has left the roster and no longer defends its sector. Sector
-  3 has no running end of its own, so it is closed from the published lap time.
-  An invalidated lap sets no reference and leaves the previous colours alone, and
-  a yellow always outranks both on the same segment. Timing and Standings keep
-  their own purple for the session best across every car; the map answers the
-  question the driver asks while looking at the track, which is where they stand
-  inside their own category.
+- Each sector the player closes repaints its segment with the same result Timing
+  paints in its cells: purple for the best time of the player's class, green for
+  a personal best against the reference chosen in Timing, and nothing otherwise.
+  The decision is made once in `delta_records` and travels on the frame, so the
+  two overlays cannot disagree and the map does not need the timing panel open.
+  The map latches the last painted result of each sector, because the shared
+  state returns to `pending` between laps and a segment waiting for its next
+  visit should not blink back to the plain track. An invalidated sector clears
+  its colour, and a yellow always outranks both on the same segment.
 
 ## Verification focus
 

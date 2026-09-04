@@ -149,6 +149,15 @@ pub(crate) fn set_timing_settings(settings: TimingSettings) {
     TIMING_SECTOR_REFERENCE.store(settings.sector_reference as u8, Ordering::Relaxed);
 }
 
+/// LMU/rFactor codifica 0=S3, 1=S1 y 2=S2.
+fn active_timing_sector(frame: &TelemetryFrame) -> usize {
+    match frame.player_sector {
+        2 => 1,
+        0 => 2,
+        _ => 0,
+    }
+}
+
 fn active_sector_reference() -> TimingSectorReference {
     TimingSectorReference::from_u8(TIMING_SECTOR_REFERENCE.load(Ordering::Relaxed))
 }
@@ -157,7 +166,7 @@ fn sector_state(
     reference: TimingSectorReference,
     seconds: f64,
     official_end: f64,
-    session_best_end: f64,
+    class_best_end: f64,
     player_best_end: f64,
     overall: Option<f64>,
     session: Option<f64>,
@@ -165,7 +174,7 @@ fn sector_state(
     let matches_official = |current: f64, best: f64| {
         current.is_finite() && best.is_finite() && best > 0.0 && current <= best + 0.000_5
     };
-    if matches_official(official_end, session_best_end) {
+    if matches_official(official_end, class_best_end) {
         return "overall";
     }
     match reference {
@@ -1004,6 +1013,7 @@ impl DeltaEngine {
             self.current_lap = Some(CurrentLap::new(frame));
         }
         self.finish_lap(frame);
+        self.update_player_sectors(frame);
         if let Some(lap) = self.current_lap.as_mut() {
             lap.observe(frame);
         }
@@ -1200,7 +1210,7 @@ impl DeltaEngine {
                     reference,
                     seconds,
                     sector_ends[index],
-                    frame.session_best_sector_ends[index],
+                    frame.class_best_sector_ends[index],
                     frame.player_best_sector_ends[index],
                     self.overall_timing_sectors[index],
                     self.session_timing_sectors[index],
@@ -1313,7 +1323,10 @@ impl DeltaEngine {
         }
     }
 
-    fn timing_view_model(&mut self, frame: &TelemetryFrame) -> TimingViewModel {
+    /// Closes the sectors the player has already driven and publishes how each
+    /// one compares. Every overlay that paints a sector reads this one result,
+    /// so it runs whether or not the timing panel is on screen.
+    fn update_player_sectors(&mut self, frame: &mut TelemetryFrame) {
         if self
             .timing_results_until
             .is_some_and(|until| Instant::now() >= until)
@@ -1329,15 +1342,9 @@ impl DeltaEngine {
             self.timing_comparisons_until = None;
             self.timing_comparisons = TimingComparisons::default();
         }
-        // LMU/rFactor codifica 0=S3, 1=S1 y 2=S2.
-        let active_sector = match frame.player_sector {
-            2 => 1,
-            0 => 2,
-            _ => 0,
-        };
         let reference = active_sector_reference();
         if let Some(lap) = self.current_lap.as_ref() {
-            for index in 0..active_sector {
+            for index in 0..active_timing_sector(frame) {
                 if self.timing_sectors[index].is_some() {
                     continue;
                 }
@@ -1353,7 +1360,7 @@ impl DeltaEngine {
                         reference,
                         seconds,
                         end_time,
-                        frame.session_best_sector_ends[index],
+                        frame.class_best_sector_ends[index],
                         frame.player_best_sector_ends[index],
                         self.overall_timing_sectors[index],
                         self.session_timing_sectors[index],
@@ -1363,7 +1370,19 @@ impl DeltaEngine {
                 }
             }
         }
+        frame.player_sector_states = std::array::from_fn(|index| {
+            if self.timing_sectors[index].is_some()
+                && self.current_lap.as_ref().is_some_and(|lap| !lap.valid)
+            {
+                "invalid"
+            } else {
+                self.timing_sector_states[index]
+            }
+        });
+    }
 
+    fn timing_view_model(&mut self, frame: &TelemetryFrame) -> TimingViewModel {
+        let active_sector = active_timing_sector(frame);
         let timed_lap_active = self
             .current_lap
             .as_ref()
@@ -2291,6 +2310,37 @@ mod tests {
 
         frame.best_lap_seconds = 0.0;
         assert_eq!(native_session_delta(&frame), None);
+    }
+
+    #[test]
+    fn the_purple_sector_is_the_best_of_the_player_class() {
+        // A quicker car of another class never reaches this comparison: the
+        // frame carries the best ends of the player's own class.
+        let class_best_end = 29.8;
+        assert_eq!(
+            sector_state(
+                TimingSectorReference::Lmu,
+                29.8,
+                29.8,
+                class_best_end,
+                29.8,
+                None,
+                None,
+            ),
+            "overall"
+        );
+        assert_eq!(
+            sector_state(
+                TimingSectorReference::Lmu,
+                30.0,
+                30.0,
+                class_best_end,
+                30.0,
+                None,
+                None,
+            ),
+            "personal"
+        );
     }
 
     #[test]
