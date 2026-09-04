@@ -42,7 +42,7 @@ const applyTimingSettings = (): void => {
     if (row) row.hidden = !settings.times[id];
   }
   if (times) times.hidden = visibleTimeCount() === 0;
-  if (history) history.dataset.rowCount = String(settings.historyLaps);
+  if (history) history.hidden = settings.historyLaps === 0 || !history.firstElementChild;
   resizeOverlay();
 };
 applyTimingSettings();
@@ -91,7 +91,7 @@ const render = (model: TimingViewModel): void => {
   }
   if (history) {
     const rows = model.history.slice(0, settings.historyLaps);
-    history.hidden = settings.historyLaps === 0;
+    history.hidden = settings.historyLaps === 0 || rows.length === 0;
     const signature = rows.map((lap) => `${lap.number}:${lap.seconds}:${lap.valid}:${lap.state}`).join("|");
     if (history.dataset.signature !== signature) {
       history.dataset.signature = signature;

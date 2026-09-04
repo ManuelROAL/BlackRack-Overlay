@@ -87,14 +87,14 @@ modelo visual de Timing sólo se construye con el panel nativo o `/timing` en us
   que destaca el tiempo actual.
   Al cambiar entre 0, 3 o 5 vueltas, conserva la escala visual elegida. Un texto
   mayor añade solo la altura de línea necesaria, sin ensanchar el panel. La
-  superficie mide el contenido renderizado y reserva la altura completa del
-  historial configurado para que no deje espacio sobrante ni recorte filas al
-  empezar a recibir vueltas. Esa reserva mide exactamente lo mismo que las filas
-  reales, incluido el texto ampliado, y los huecos que faltan se quedan vacíos:
-  las vueltas ya recibidas conservan su alto en lugar de estirarse para llenar el
-  hueco de las que aún no existen. La primera medida usa el contenido ya
-  renderizado; una altura provisional no puede modificar ni persistir la escala
-  elegida.
+  superficie mide el contenido renderizado y crece con las vueltas que ya han
+  entrado en el historial: cada vuelta añade su fila y alarga el panel, sin
+  reservar huecos para vueltas que todavía no existen. Con el historial vacío la
+  lista no ocupa nada, ni siquiera su separador. Si el panel se alarga más que su
+  ventana, la escala compartida lo reduce para no recortarlo, de modo que conviene
+  dejar altura de ventana para las vueltas configuradas. La primera medida usa el
+  contenido ya renderizado; una altura provisional no puede modificar ni persistir
+  la escala elegida.
 
 ## Invariantes
 

@@ -48,13 +48,14 @@ html, body { width: fit-content; min-width: 100%; min-height: 100%; margin: 0; o
 .timing-sectors [data-state="overall"] b { color: #c77dff; }
 .timing-sectors [data-state="invalid"] { --sector-accent: #ffad4d; }
 .timing-sectors [data-state="invalid"] b { color: #ffad4d; }
-/* The reserved history box must measure exactly what the rendered rows measure.
-   A shorter reserve stretches the rows that are already there and then grows the
-   surface when the last configured lap finally arrives. */
-.timing-history { --timing-history-row: max(calc(12px * var(--overlay-font-height-expansion, 1)), calc(10px * var(--overlay-font-scale, 1) + 2px)); display: grid; align-content: start; gap: 2px; margin: 4px 0 0; padding: 4px 0 0; border-top: 1px solid rgb(255 255 255 / 8%); list-style: none; }
-.timing-history[data-row-count="3"] { min-height: calc(var(--timing-history-row) * 3 + 9px); }
-.timing-history[data-row-count="5"] { min-height: calc(var(--timing-history-row) * 5 + 13px); }
-.timing-history li { display: flex; min-height: var(--timing-history-row); align-items: center; justify-content: space-between; padding: 1px 6px; border-radius: 3px; color: #f4f6f8; background: rgb(255 255 255 / 3%); font-size: calc(10px * var(--overlay-font-scale, 1)); font-weight: 850; line-height: 1; }
+/* The history sizes itself to the laps already received, so the panel grows one
+   row at a time instead of holding empty slots for laps that may never arrive. */
+.timing-history { display: grid; gap: 2px; margin: 4px 0 0; padding: 4px 0 0; border-top: 1px solid rgb(255 255 255 / 8%); list-style: none; }
+/* An author display wins over the user-agent rule behind the hidden attribute,
+   so the list needs its own rule to take its separator and padding out of the
+   layout while there is nothing to list. */
+.timing-history[hidden] { display: none; }
+.timing-history li { display: flex; min-height: calc(12px * var(--overlay-font-height-expansion, 1)); align-items: center; justify-content: space-between; padding: 1px 6px; border-radius: 3px; color: #f4f6f8; background: rgb(255 255 255 / 3%); font-size: calc(10px * var(--overlay-font-scale, 1)); font-weight: 850; line-height: 1; }
 .timing-history li b { color: #d9dee3; font-weight: 950; }
 .timing-history li[data-state="best"] b { color: #61e98a; }
 .timing-history li.invalid-lap b { color: #7a7a7a; }
