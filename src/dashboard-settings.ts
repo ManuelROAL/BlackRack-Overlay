@@ -5,6 +5,7 @@ export type DashboardFieldId =
   | "tc"
   | "delta"
   | "energy"
+  | "liftcoast"
   | "limiter"
   | "revs"
   | "map"
@@ -42,9 +43,11 @@ export const DASHBOARD_MAX_FIELDS = 8;
  * the Spanish label. The default eight are the ones that read the same in every
  * car and every session; anything car-specific is opt-in.
  *
- * `counts: false` marks a field that draws only while its state is active, so
- * it costs no room on the strip the rest of the time and is not charged against
- * the cap. The pit limiter is the only one: it is a warning, not a readout.
+ * `counts: false` marks a field that draws only while its own state is active,
+ * so it costs no room on the strip the rest of the time and is not charged
+ * against the cap. The pit limiter and the lift-and-coast cue are the two: both
+ * are warnings rather than readouts, and both light something already on the
+ * strip instead of adding a readout of their own.
  */
 export const DASHBOARD_FIELDS = [
   { id: "abs", labelKey: "dashboard.abs", default: false, counts: true },
@@ -53,6 +56,7 @@ export const DASHBOARD_FIELDS = [
   { id: "tc", labelKey: "dashboard.tc", default: false, counts: true },
   { id: "delta", labelKey: "dashboard.delta", default: false, counts: true },
   { id: "energy", labelKey: "dashboard.energy", default: false, counts: true },
+  { id: "liftcoast", labelKey: "dashboard.liftcoast", default: true, counts: false },
   { id: "limiter", labelKey: "dashboard.limiter", default: true, counts: false },
   { id: "revs", labelKey: "dashboard.revs", default: true, counts: true },
   { id: "map", labelKey: "dashboard.map", default: false, counts: true },

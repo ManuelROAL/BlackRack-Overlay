@@ -31,11 +31,17 @@ One pill-shaped strip, not a cluster:
 - Everything else is a uniform label-over-value pair in a single row. Class
   position carries the accent colour, since it is the one value read as a
   standing rather than as a measurement.
-- The pit limiter adds nothing to the strip. It blinks something already on
-  screen — the gear ring in amber, or the shell's border and background when the
-  strip is configured without the gear, so the warning never depends on which
-  readouts the driver chose. Blinking colour rather than adding a badge also
-  means the strip cannot change width while it is engaged.
+- The two warnings add nothing to the strip. They blink something already on
+  screen — the gear ring, or the shell's border and background when the strip is
+  configured without the gear, so a warning never depends on which readouts the
+  driver chose. Blinking colour rather than adding a badge also means the strip
+  cannot change width while one is engaged.
+- Each keeps the colour of the overlay that owns it, so the cue reads the same
+  wherever it appears: amber for the pit limiter, and Lift & Coast's own purple
+  (`#ad52ff`) for its cue, which follows `lift_and_coast_progress > 0` exactly
+  as that overlay's segments do. The limiter wins when both are engaged; they
+  only overlap on the way into the pits, where the limiter is the one with a
+  penalty attached.
 - That blink is driven from the telemetry loop, reading the clock on each frame
   and flipping a data attribute every 450 ms. It is never a CSS animation: the
   shared `composite-embed` safeguard disables those precisely so the native host
@@ -54,8 +60,8 @@ publishes.
 
 - A field marked `counts: false` has no readout of its own and takes no room on
   the strip, so it is not charged against the cap and the control panel never
-  locks it when the cap is full. The pit limiter is the only one. Adding another
-  means arguing that it is a warning rather than a readout.
+  locks it when the cap is full. The pit limiter and Lift & Coast are the two.
+  Adding a third means arguing that it is a warning rather than a readout.
 - The three traction-control trims are separate fields, because a car can expose
   any combination of them: the level (`mTC`), the slip target (`mTCSlip`) and
   the cut (`mTCCut`). Each is gated on its own maximum, so a car without one
@@ -67,8 +73,7 @@ publishes.
   order rather than rejecting the whole configuration.
 - The defaults are the eight that read the same in every car and every session:
   gear, rev lights, speed, class position, fuel, last lap, air and track
-  temperature, plus the uncounted pit-limiter warning. Anything car-specific is
-  opt-in.
+  temperature, plus the two uncounted warnings. Anything car-specific is opt-in.
 
 ## Data semantics
 
@@ -128,10 +133,11 @@ publishes.
 
 Check a Hypercar and an LMP2 in the same session: the battery, the engine map
 and ABS must appear for one and be absent for the other, and the strip must
-shorten accordingly. Confirm the limiter blink starts and stops entering and
-leaving the pits, falls back to the shell with the gear turned off, never
-counts against the cap and stays reachable in the control panel with the cap
-full, and that each traction-control trim
+shorten accordingly. Confirm both warnings start and stop with their own
+state — the limiter entering and leaving the pits, the purple cue with Lift &
+Coast's own segments — that they fall back to the shell with the gear turned
+off, that the limiter wins while both are engaged, and that neither counts
+against the cap nor becomes unreachable in the control panel with the cap full, and that each traction-control trim
 appears only on a car that publishes a maximum for it. Confirm the cap disables
 the remaining toggles at eight and releases them when one is turned off, that
 the delta and lap times fill in with the Delta and Timing overlays closed, the

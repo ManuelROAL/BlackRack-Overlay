@@ -105,7 +105,17 @@ const revLevel = (ratio: number): string =>
  * arrives, so the host keeps repainting from data, and the rate stays the same
  * across performance profiles even though their cadences differ.
  */
-const LIMITER_BLINK_MS = 450;
+const WARNING_BLINK_MS = 450;
+
+/**
+ * The limiter wins when both are engaged. They only overlap on the way into the
+ * pits, where the limiter is the one with a penalty attached.
+ */
+const warningKind = (frame: TelemetryFrame): "limiter" | "liftcoast" | "none" => {
+  if (settings.visible.limiter && frame.speed_limiter_active) return "limiter";
+  if (settings.visible.liftcoast && frame.lift_and_coast_progress > 0) return "liftcoast";
+  return "none";
+};
 
 /**
  * A field the car or the session cannot answer is dropped rather than drawn as
@@ -205,11 +215,11 @@ const render = (frame: TelemetryFrame): void => {
   const gearShown = live && settings.visible.gear;
   const revsShown = live && settings.visible.revs;
 
-  const limiterEngaged = live && settings.visible.limiter && frame.speed_limiter_active;
-  const lit = limiterEngaged
-    && Math.floor(performance.now() / LIMITER_BLINK_MS) % 2 === 0;
-  setState(gear, "limiter", lit && gearShown ? "on" : "off");
-  setState(shell, "limiter", lit && !gearShown ? "on" : "off");
+  const warning = live ? warningKind(frame) : "none";
+  const lit = warning !== "none"
+    && Math.floor(performance.now() / WARNING_BLINK_MS) % 2 === 0;
+  setState(gear, "warning", lit && gearShown ? warning : "none");
+  setState(shell, "warning", lit && !gearShown ? warning : "none");
   setState(shell, "gear", gearShown ? "on" : "off");
   toggle(row, rowFields > 0);
   toggle(readout, rowFields > 0 || revsShown);
@@ -246,6 +256,7 @@ const previewFrame = {
   estimated_virtual_energy_laps: 15.2,
   hybrid_available: true,
   battery_charge_percent: 62,
+  lift_and_coast_progress: 0,
   car_electronics_available: true,
   engine_map: 6,
   engine_map_max: 9,

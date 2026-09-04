@@ -143,7 +143,7 @@ const telemetryFields: Record<OverlayId, readonly (keyof TelemetryFrame)[]> = {
     "traction_control_slip", "traction_control_slip_max",
     "traction_control_cut", "traction_control_cut_max",
     "anti_lock_brakes_level", "anti_lock_brakes_max", "brake_bias_percent",
-    "speed_limiter_active",
+    "speed_limiter_active", "lift_and_coast_progress",
     "ambient_temperature_c", "track_temperature_c"
   ]
 };

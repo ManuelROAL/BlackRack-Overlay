@@ -167,25 +167,41 @@ body.dashboard-body {
 #dashboard-delta[data-trend="improving"] { color: #8fe04f; }
 #dashboard-delta[data-trend="worsening"] { color: #f05252; }
 
-/* The pit-limiter warning blinks something already on screen instead of adding
-   a badge, so it costs no room and cannot change the width of the strip. It
-   must come after the rev states, which it overrides while it is lit. The blink
-   itself is driven from the telemetry loop, never by a CSS animation: the
-   native host has to repaint from data, not at the monitor refresh rate. */
-.dash-gear[data-limiter="on"] {
+/* Warnings blink something already on screen instead of adding a badge, so they
+   cost no room and cannot change the width of the strip. They must come after
+   the rev states, which they override while lit. The blink itself is driven
+   from the telemetry loop, never by a CSS animation: the native host has to
+   repaint from data, not at the monitor refresh rate. Each keeps the colour of
+   the overlay that owns it, so the cue reads the same wherever it appears. */
+.dash-gear[data-warning="limiter"] {
   border-color: #ffb84d;
   background: rgb(255 184 77 / 22%);
   color: #ffb84d;
 }
 
-/* Fallback for a strip configured without the gear: the warning can never
-   depend on which readouts the driver happens to have chosen. */
-.dashboard-shell[data-limiter="on"] {
+.dash-gear[data-warning="liftcoast"] {
+  border-color: #e5c8ff;
+  background: rgb(173 82 255 / 24%);
+  color: #e5c8ff;
+}
+
+/* Fallback for a strip configured without the gear: a warning can never depend
+   on which readouts the driver happens to have chosen. */
+.dashboard-shell[data-warning="limiter"] {
   border-color: #ffb84d;
   background: linear-gradient(
     145deg,
     rgb(62 46 20 / var(--overlay-background-opacity)),
     rgb(38 27 10 / var(--overlay-background-opacity))
+  );
+}
+
+.dashboard-shell[data-warning="liftcoast"] {
+  border-color: #c79bff;
+  background: linear-gradient(
+    145deg,
+    rgb(52 26 82 / var(--overlay-background-opacity)),
+    rgb(31 15 50 / var(--overlay-background-opacity))
   );
 }
 
