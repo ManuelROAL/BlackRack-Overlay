@@ -102,7 +102,7 @@ const renderStintTargets = (frame: TelemetryFrame, unit: string): void => {
     text(`stint-target-${number}`, target ? `${format(target.target_consumption)}${unit}` : "--");
     text(
       `stint-target-${number}-meta`,
-      target ? `+${target.extra_laps}` : `+${number}`
+      target ? `+${target.extra_laps}${target.stops_saved > 0 && target.net_time_seconds != null && frame.pit_traversal_approximate ? "~" : ""}` : `+${number}`
     );
     tone(
       `stint-target-${number}`,

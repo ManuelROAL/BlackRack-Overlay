@@ -89,6 +89,12 @@ restore per-overlay native listeners or direct cross-realm object events.
   value as `timing_model.extra_laps_estimated`. These values are independent of
   Fuel strategy demand; Timing/Dashboard also request the cached REST supplement
   that provides the official pit-service estimate.
+- Pit traversal prefers measured moving-time median, with official open pitlane
+  length divided by calibrated limiter speed as its initial fallback. The shared
+  `pit_traversal` module owns validation/calibration and bounded asynchronous
+  geometry prefetch; speed persists in track learning without becoming a measured
+  traversal sample. Fuel, lap corrections and Track Map mark dependent estimates
+  with `~`. The official pit-service total remains unchanged.
 - Derive lap validity from telemetry's per-vehicle `mLapInvalidated` signal,
   latched for the complete lap. A negative official `mLastLapTime` confirms an
   invalid completed lap. LMU can publish the sentinel `-1` instead of the invalid

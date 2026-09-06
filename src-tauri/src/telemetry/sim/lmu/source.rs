@@ -21,6 +21,7 @@ use crate::telemetry::fuel_strategy::{
     next_stint_autonomy, projected_consumption, FuelStrategies, ResourceAutonomy,
     ResourceStrategyInput,
 };
+use crate::telemetry::pit_traversal::{PitSpeedSample, PitTraversalEstimator};
 use crate::telemetry::{
     FlagWarning, RejoinWarning, StandingEntry, TelemetryDemand, TelemetryFrame, TireLifeModel,
     TrackMapVehicle,
@@ -973,6 +974,7 @@ pub struct LmuTelemetrySource {
     lap_was_green: bool,
     tire_wear_tracker: TireWearTracker,
     consumption_profiler: ConsumptionProfiler,
+    pit_traversal_estimator: PitTraversalEstimator,
     car_histories: HashMap<i32, CarHistory>,
     starting_positions: HashMap<i32, i32>,
     scored_finish_positions: HashMap<i32, i32>,
@@ -1301,6 +1303,7 @@ impl LmuTelemetrySource {
             lap_was_green: true,
             tire_wear_tracker: TireWearTracker::default(),
             consumption_profiler: ConsumptionProfiler::new(profile_directory),
+            pit_traversal_estimator: PitTraversalEstimator::default(),
             car_histories: HashMap::new(),
             starting_positions: HashMap::new(),
             scored_finish_positions: HashMap::new(),

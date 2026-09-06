@@ -314,11 +314,20 @@ impl TelemetrySource for LmuTelemetrySource {
             planned_energy_per_lap,
             virtual_energy_active,
         );
-        let pit_traversal_seconds =
-            crate::telemetry::track_map_model::learned_pit_traversal_seconds(
-                &track_name,
-                snapshot.track_length,
-            );
+        let pit_traversal = self.pit_traversal_estimator.observe(
+            &track_name,
+            snapshot.track_length,
+            PitSpeedSample {
+                time: snapshot.session_elapsed_seconds,
+                speed_ms: snapshot.speed_kph / 3.6,
+                in_pits,
+                limiter: snapshot.speed_limiter_active != 0,
+                throttle: snapshot.throttle,
+                brake: snapshot.brake,
+            },
+            snapshot.player_active != 0 && (include_track_map || include_rest_supplement),
+        );
+        let pit_traversal_seconds = pit_traversal.seconds.unwrap_or(0.0);
         let (active_amount, active_consumption, active_used, active_capacity) =
             if virtual_energy_active {
                 (
@@ -814,11 +823,15 @@ impl TelemetrySource for LmuTelemetrySource {
             },
             estimated_fuel_laps,
             resource_autonomy,
+            pit_traversal_approximate: pit_traversal.approximate,
             session_laps_remaining,
             session_laps_remaining_estimated,
             session_lap_equivalents_remaining,
             session_total_laps_estimated,
             session_extra_laps_estimated,
+            session_extra_laps_approximate: session_extra_laps_estimated.is_some()
+                && final_pit_seconds > 0.0
+                && pit_traversal.approximate,
             fuel_needed_liters,
             fuel_to_add_liters: (fuel_needed_liters - snapshot.fuel_liters).max(0.0),
             virtual_energy_active,

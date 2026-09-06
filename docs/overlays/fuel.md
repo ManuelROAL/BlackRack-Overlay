@@ -79,7 +79,7 @@ calculated only for a visible native panel or connected `/fuel` route.
   `session_extra_laps_estimated` for those headers. They never reduce or increase
   fuel/energy requirements. The final-stop hint uses the active resource's
   fractional remaining stops (strictly between 0.2 and 1.2), official concurrent
-  service time and learned moving pitlane time; unavailable time references omit
+  service time and shared pitlane traversal estimate; unavailable time references omit
   that component. The leader component uses the overall leader's finish time.
 - These shared estimates do not depend on whether the Fuel panel is enabled.
 - The serialized frame contains the active plan, parallel fuel plan where needed,
@@ -145,15 +145,16 @@ calculated only for a visible native panel or connected `/fuel` route.
   minimum stop duration. A requested driver change sets
   a 26-second parallel-service floor; it is never added on top of a longer
   refuel. Add the median moving pitlane time learned by Track Map once for every
-  stop the target actually removes. If a target removes a stop but no complete
-  pit passage has been learned yet, keep its time and color neutral rather than
-  underestimating the gain;
+  stop the target actually removes. Before a complete passage is learned, the
+  shared official-distance/calibrated-speed fallback may supply this time. If
+  neither reference exists, keep time and color neutral;
   color a positive result green, a negative result red and a near-zero result
   amber. Keep the target neutral and omit the time when those references are not
   available; never invent a pace cost in the frontend.
 - Keep the target's time calculation as color semantics only; the compact caption
   shows only the extra range (`+1`, `+2` or `+3`) instead of diagnostic deltas or
   repeated seconds.
+- Add `~` to that caption when its stop-saving time uses approximate pit traversal.
 - Parse the absolute fuel or virtual-energy load selected in LMU's official pit
   menu and show its post-pit autonomy using the projected valid consumption.
   Keep it unavailable when the REST value or consumption reference is unavailable.

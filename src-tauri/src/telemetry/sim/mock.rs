@@ -336,6 +336,8 @@ impl TelemetrySource for MockTelemetrySource {
                 true,
             ),
             session_extra_laps_estimated: Some(1),
+            session_extra_laps_approximate: false,
+            pit_traversal_approximate: false,
             session_laps_remaining,
             session_laps_remaining_estimated: session_laps_remaining - 0.35,
             session_lap_equivalents_remaining: laps_remaining,

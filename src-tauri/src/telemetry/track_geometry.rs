@@ -21,6 +21,8 @@ pub(crate) struct TrackGeometryPoint {
 pub(crate) struct OfficialTrackMapGeometry {
     pub(super) main_path: Vec<TrackGeometryPoint>,
     pub(super) pit_path: Vec<TrackGeometryPoint>,
+    #[serde(skip)]
+    pub(super) pit_length_meters: f64,
 }
 
 #[derive(Clone, Copy, Debug, Serialize)]
@@ -80,6 +82,7 @@ pub(super) fn decode_geometry(
         return Err("track_geometry_pit_path_invalid".into());
     }
     Ok(OfficialTrackMapGeometry {
+        pit_length_meters: path_length(&pit_path),
         main_path,
         pit_path,
     })
@@ -231,6 +234,7 @@ mod tests {
         let geometry = decode_geometry(points).expect("valid geometry");
         assert_eq!(geometry.main_path.len(), 45);
         assert_eq!(geometry.pit_path.len(), 3);
+        assert_eq!(geometry.pit_length_meters, 2.0);
         assert_eq!(geometry.main_path[1].x, 1.0);
         assert_eq!(geometry.main_path[1].y, -2.0);
     }

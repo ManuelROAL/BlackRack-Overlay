@@ -59,6 +59,8 @@ modelo visual de Timing sólo se construye con el panel nativo o `/timing` en us
   En carreras por tiempo se añade entre paréntesis el ajuste firmado por líder
   absoluto/última parada (`+1`, `0`, `-1`); no modifica el combustible necesario.
   Si no hay referencia, la carrera es por vueltas o ya terminó, se omite el ajuste.
+- Se añade `~` al ajuste cuando depende del recorrido de boxes aproximado por
+  distancia/velocidad, hasta disponer de un paso completo medido.
 - La estimación proyecta la vuelta actual sobre la mejor traza disponible, con
   prioridad stint, sesión y absoluto, y suaviza el delta vivo. No usa
   `mEstimatedLapTime`, que puede anticipar tiempos irreales.

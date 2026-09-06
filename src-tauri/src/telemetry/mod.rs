@@ -3,6 +3,7 @@ mod consumption_profile;
 mod delta_records;
 mod dr_estimate_log;
 mod fuel_strategy;
+mod pit_traversal;
 mod sim;
 mod standings_models;
 mod strategy_log;
@@ -697,6 +698,7 @@ pub struct TelemetryFrame {
     session_lap_equivalents_remaining: f64,
     session_total_laps_estimated: f64,
     session_extra_laps_estimated: Option<i32>,
+    session_extra_laps_approximate: bool,
     fuel_needed_liters: f64,
     fuel_to_add_liters: f64,
     virtual_energy_active: bool,
@@ -716,6 +718,7 @@ pub struct TelemetryFrame {
     virtual_energy_next_stint_percent: f64,
     virtual_energy_stints_remaining: u32,
     resource_autonomy: ResourceAutonomy,
+    pit_traversal_approximate: bool,
     fuel_strategies: FuelStrategies,
     standings_model: standings_models::StandingsViewModel,
     relative_model: standings_models::RelativeViewModel,
@@ -997,6 +1000,7 @@ impl TelemetryFrame {
             session_lap_equivalents_remaining: 0.0,
             session_total_laps_estimated: 0.0,
             session_extra_laps_estimated: None,
+            session_extra_laps_approximate: false,
             fuel_needed_liters: 0.0,
             fuel_to_add_liters: 0.0,
             virtual_energy_active: false,
@@ -1016,6 +1020,7 @@ impl TelemetryFrame {
             virtual_energy_next_stint_percent: 0.0,
             virtual_energy_stints_remaining: 0,
             resource_autonomy: ResourceAutonomy::default(),
+            pit_traversal_approximate: false,
             fuel_strategies: FuelStrategies::default(),
             standings_model: standings_models::StandingsViewModel::default(),
             relative_model: standings_models::RelativeViewModel::default(),

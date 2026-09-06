@@ -262,6 +262,7 @@ pub(crate) struct TimingViewModel {
     lap_number: i32,
     total_laps_estimated: f64,
     extra_laps_estimated: Option<i32>,
+    extra_laps_approximate: bool,
     current_seconds: f64,
     last_seconds: f64,
     last_valid: bool,
@@ -303,6 +304,7 @@ impl Default for TimingViewModel {
             lap_number: 0,
             total_laps_estimated: 0.0,
             extra_laps_estimated: None,
+            extra_laps_approximate: false,
             current_seconds: 0.0,
             last_seconds: 0.0,
             last_valid: true,
@@ -1395,6 +1397,7 @@ impl DeltaEngine {
             lap_number: frame.player_total_laps.saturating_add(1).max(1),
             total_laps_estimated: frame.session_total_laps_estimated,
             extra_laps_estimated: frame.session_extra_laps_estimated,
+            extra_laps_approximate: frame.session_extra_laps_approximate,
             current_seconds: if timed_lap_active {
                 frame.current_lap_seconds
             } else {

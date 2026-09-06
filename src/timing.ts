@@ -72,7 +72,7 @@ const render = (model: TimingViewModel): void => {
     ? `~${formatNumber(model.total_laps_estimated, 2)}`
     : "~--";
   const extraLaps = model.extra_laps_estimated == null ? ""
-    : ` (${model.extra_laps_estimated >= 0 ? "+" : ""}${model.extra_laps_estimated})`;
+    : ` (${model.extra_laps_estimated >= 0 ? "+" : ""}${model.extra_laps_estimated}${model.extra_laps_approximate ? "~" : ""})`;
   setText(lapNumber, model.lap_number > 0 ? `${model.lap_number}/${totalLaps}${extraLaps}` : `--/${totalLaps}`);
   setText(current, lapTime(model.current_seconds));
   setText(last, lapTime(model.last_seconds));

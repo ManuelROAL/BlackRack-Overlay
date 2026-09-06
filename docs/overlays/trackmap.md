@@ -46,13 +46,27 @@ TypeScript fetches static geometry, interpolates and renders it.
   through the pitlane, then convert it using the latest valid player lap with best
   lap as fallback. Rust serializes the prepared lap distance; the renderer only
   interpolates it.
+- Before a complete passage is learned, use official open type-1 path length
+  divided by the calibrated pit speed. Length is computed once when decoding
+  geometry, never by closing the path or subtracting main-track lap distances.
+  Prefer measured median as soon as available; approximations never enter the
+  measured sample history. The initial marker is `P~`, returning to `P` when measured.
+- LMU does not supply a pit-speed limit in the consumed SDK. Rust calibrates it
+  after two seconds in pitlane with the limiter on, throttle at least 95%, brake
+  at most 1%, speed within 0.4 m/s and sample gaps at most 0.5 seconds. Braking,
+  acceleration, leaving pitlane and clock rollback reset the candidate. Persist
+  the result per circuit in the existing learning file; old files remain valid.
+  Missing geometry or speed leaves the estimate unavailable; never assume a limit.
+- Geometry may be prefetched outside the telemetry thread by Fuel/Timing/Standings
+  demand as well as Track Map. Failed requests retry no faster than every ten
+  seconds. The fallback needs no complete passage, but a new circuit still needs
+  a short stable limiter run before its first speed reference is available.
 - Learn moving time and pit-entry lap distance per circuit from complete pit
   passages by any visible vehicle. Exclude stationary service time and keep the
   last seven valid observations. Fuel's stint targets reuse the learned entry to
   apply TinyPedal's finish-line-to-pit-entry bias while another stop remains.
-- With official type-1 geometry, accept only endpoint-to-endpoint progress. Do not
-  seed from a partial passage or invent a circuit-wide fallback before a complete
-  passage is observed. Latch the entry and exit endpoints throughout the observed
+- With official type-1 geometry, accept only endpoint-to-endpoint progress as a
+  measured passage. Never seed measured samples from partial passages. Latch the entry and exit endpoints throughout the observed
   pit traversal rather than requiring the `in_pits` transition sample itself to
   fall within endpoint proximity.
 - Scan type-1 proximity only for vehicles entering, traversing or exiting pitlane.
@@ -98,6 +112,8 @@ TypeScript fetches static geometry, interpolates and renders it.
 Validate type-0/type-1 geometry, alignment, fallback lap completion, persistence,
 partial/full pit passages, service-time composition, marker stacking and GPU idle
 behavior on at least one additional circuit.
+Cover calibrated-speed fallback, missing inputs, acceleration rejection, open-path
+length and replacement by measured time without contaminating measured samples.
 
 ## Localization
 

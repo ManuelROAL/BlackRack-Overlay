@@ -88,6 +88,8 @@ duplicate selection or timing semantics.
   `21/~24.00 (+1)`. This is informational and is not included in Fuel requirements.
   Unknown corrections and lap-limited/finished sessions omit the parentheses.
   The header update key includes the correction, even when the base total is unchanged.
+- A trailing `~` inside the correction marks reliance on the initial
+  pitlane-distance/calibrated-speed approximation instead of a measured passage.
 
 ## Identity, roster and enrichment
 

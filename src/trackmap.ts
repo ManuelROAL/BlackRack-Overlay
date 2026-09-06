@@ -434,13 +434,17 @@ const ensurePredictionMarker = (): HTMLDivElement => {
   return group;
 };
 
-const renderPitPrediction = (lapDistance: number | null, trackLength: number): void => {
+const renderPitPrediction = (lapDistance: number | null, trackLength: number, approximate = false): void => {
   if (lapDistance === null || trackLength <= 0) {
     if (predictionMarker) predictionMarker.setAttribute("hidden", "");
     return;
   }
   const [x, y] = positionAtLapDistance(lapDistance, trackLength);
   const marker = ensurePredictionMarker();
+  const label = approximate ? "P~" : "P";
+  if (marker.firstElementChild?.textContent !== label && marker.firstElementChild) {
+    marker.firstElementChild.textContent = label;
+  }
   marker.removeAttribute("hidden");
   const nextTransform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0)`;
   if (predictionTransform !== nextTransform) {
@@ -611,7 +615,8 @@ const render = (frame: TelemetryFrame): void => {
     trackMapSettings.showPitPrediction
       ? frame.track_map_model.pit_prediction_lap_distance
       : null,
-    frame.track_length_meters
+    frame.track_length_meters,
+    frame.track_map_model.pit_prediction_approximate
   );
 };
 

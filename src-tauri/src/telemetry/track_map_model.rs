@@ -23,6 +23,7 @@ pub(crate) struct TrackMapViewModel {
     geometry_revision: u64,
     learned_geometry_available: bool,
     pit_prediction_lap_distance: Option<f64>,
+    pit_prediction_approximate: bool,
     yellow_sectors: u32,
     class_best_sectors: u32,
     personal_best_sectors: u32,
@@ -37,6 +38,8 @@ struct LearnedTrack {
     pit_traversal_samples: Vec<f64>,
     #[serde(default)]
     pit_entry_distance: Option<f64>,
+    #[serde(default)]
+    pit_speed_ms: Option<f64>,
     revision: u64,
 }
 
@@ -127,6 +130,37 @@ pub(crate) fn learned_pit_entry_bias(track_name: &str, track_length: f64) -> f64
     })
     .unwrap_or(0.0)
     .clamp(0.0, 1.0)
+}
+
+pub(super) fn learned_pit_speed(track_name: &str, track_length: f64) -> f64 {
+    let key = track_map_cache_key(track_name, track_length);
+    with_store(|store| {
+        store
+            .data
+            .tracks
+            .get(&key)
+            .and_then(|track| track.pit_speed_ms)
+    })
+    .flatten()
+    .filter(|speed| speed.is_finite() && (5.0..=50.0).contains(speed))
+    .unwrap_or(0.0)
+}
+
+pub(super) fn save_pit_speed(track_name: &str, track_length: f64, speed: f64) {
+    let key = track_map_cache_key(track_name, track_length);
+    let _ = with_store(|store| {
+        let track = store.data.tracks.entry(key).or_default();
+        if track
+            .pit_speed_ms
+            .is_some_and(|old| (old - speed).abs() < 0.4)
+        {
+            return;
+        }
+        track.track_name = track_name.to_owned();
+        track.track_length = track_length;
+        track.pit_speed_ms = Some(speed);
+        persist(store);
+    });
 }
 
 pub(crate) fn migrate_legacy_track_map_learning(
@@ -556,7 +590,14 @@ impl TrackMapModelState {
         player: Option<&TrackMapVehicle>,
     ) -> TrackMapViewModel {
         let (geometry_revision, learned_geometry_available, pit_samples) = self.track_metadata();
-        let traversal_seconds = median(&pit_samples);
+        let measured = median(&pit_samples);
+        let traversal = super::pit_traversal::choose_estimate(
+            measured,
+            cached_official_track_map_geometry(&self.cache_key)
+                .map_or(0.0, |map| map.pit_length_meters),
+            learned_pit_speed(&frame.track_name, frame.track_length_meters),
+        );
+        let traversal_seconds = traversal.seconds.unwrap_or(0.0);
         let pace = if frame.last_lap_seconds > 0.0 {
             frame.last_lap_seconds
         } else {
@@ -586,6 +627,8 @@ impl TrackMapModelState {
             geometry_revision,
             learned_geometry_available,
             pit_prediction_lap_distance,
+            pit_prediction_approximate: pit_prediction_lap_distance.is_some()
+                && traversal.approximate,
             yellow_sectors: frame.yellow_sectors,
             class_best_sectors,
             personal_best_sectors,

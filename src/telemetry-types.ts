@@ -69,6 +69,7 @@ export interface TrackMapViewModel {
   geometry_revision: number;
   learned_geometry_available: boolean;
   pit_prediction_lap_distance: number | null;
+  pit_prediction_approximate: boolean;
   yellow_sectors: number;
   class_best_sectors: number;
   personal_best_sectors: number;
@@ -118,6 +119,7 @@ export interface TimingViewModel {
   lap_number: number;
   total_laps_estimated: number;
   extra_laps_estimated: number | null;
+  extra_laps_approximate: boolean;
   current_seconds: number;
   last_seconds: number;
   last_valid: boolean;
@@ -280,6 +282,8 @@ export interface TelemetryFrame {
   session_lap_equivalents_remaining: number;
   session_total_laps_estimated: number;
   session_extra_laps_estimated: number | null;
+  session_extra_laps_approximate: boolean;
+  pit_traversal_approximate: boolean;
   fuel_needed_liters: number;
   fuel_to_add_liters: number;
   virtual_energy_active: boolean;
