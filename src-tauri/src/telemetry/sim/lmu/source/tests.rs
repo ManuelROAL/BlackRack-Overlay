@@ -1872,117 +1872,6 @@ fn pit_lap_consumption_includes_the_resource_added_during_the_lap() {
 }
 
 #[test]
-fn fixed_lap_race_ends_when_the_leader_reaches_the_target() {
-    let snapshot = LmuSnapshot {
-        max_laps: 100,
-        leader_total_laps: 99,
-        leader_lap_time: 120.0,
-        leader_time_into_lap: 100.0,
-        player_total_laps: 95,
-        estimated_lap_time: 180.0,
-        player_time_into_lap: 20.0,
-        ..LmuSnapshot::default()
-    };
-
-    // El líder termina en 20 s. El coche doblado recibe bandera en su próximo cruce.
-    assert_eq!(LmuTelemetrySource::laps_remaining(&snapshot, 180.0), 1.0);
-    assert_eq!(LmuTelemetrySource::total_laps_estimated(&snapshot), 100.0);
-}
-
-#[test]
-fn timed_race_total_laps_falls_back_to_the_overall_leader_without_a_roster() {
-    let snapshot = LmuSnapshot {
-        max_laps: 10_000,
-        session_time_remaining: 100.0,
-        leader_total_laps: 42,
-        leader_lap_time: 240.0,
-        leader_time_into_lap: 230.0,
-        estimated_lap_time: 130.0,
-        player_time_into_lap: 30.0,
-        ..LmuSnapshot::default()
-    };
-
-    // El reloj acaba en 100 s y el líder cruza después en t=250.
-    // El jugador cruza en t=100, 230 y 360, recibiendo bandera en el tercero.
-    assert_eq!(
-        LmuTelemetrySource::leader_finish_delay(&snapshot),
-        Some(250.0)
-    );
-    assert_eq!(LmuTelemetrySource::laps_remaining(&snapshot, 130.0), 3.0);
-    assert_eq!(LmuTelemetrySource::total_laps_estimated(&snapshot), 44.0);
-}
-
-#[test]
-fn race_projection_uses_the_smoothed_player_pace() {
-    let snapshot = LmuSnapshot {
-        max_laps: 10_000,
-        session_time_remaining: 100.0,
-        leader_total_laps: 42,
-        leader_lap_time: 240.0,
-        leader_time_into_lap: 230.0,
-        estimated_lap_time: 130.0,
-        player_time_into_lap: 30.0,
-        ..LmuSnapshot::default()
-    };
-
-    assert_eq!(LmuTelemetrySource::laps_remaining(&snapshot, 130.0), 3.0);
-    assert_eq!(LmuTelemetrySource::laps_remaining(&snapshot, 200.0), 2.0);
-    assert_eq!(
-        LmuTelemetrySource::laps_remaining_after_delay(&snapshot, 130.0, 80.0),
-        2.0
-    );
-}
-
-#[test]
-fn multiclass_total_laps_uses_the_player_class_leader() {
-    let mut snapshot = LmuSnapshot {
-        max_laps: 10_000,
-        session_time_remaining: 600.0,
-        leader_total_laps: 25,
-        leader_lap_time: 90.0,
-        leader_time_into_lap: 45.0,
-        standings_count: 3,
-        ..LmuSnapshot::default()
-    };
-    snapshot.standings[0] = LmuStandingEntry {
-        vehicle_id: 1,
-        position: 1,
-        total_laps: 25,
-        estimated_lap_time: 90.0,
-        time_into_lap: 45.0,
-        ..LmuStandingEntry::default()
-    };
-    set_chars(&mut snapshot.standings[0].vehicle_class, "Hypercar");
-    snapshot.standings[1] = LmuStandingEntry {
-        vehicle_id: 2,
-        position: 8,
-        total_laps: 20,
-        estimated_lap_time: 120.0,
-        time_into_lap: 60.0,
-        ..LmuStandingEntry::default()
-    };
-    set_chars(&mut snapshot.standings[1].vehicle_class, "LMGT3");
-    snapshot.standings[2] = LmuStandingEntry {
-        vehicle_id: 3,
-        position: 10,
-        total_laps: 20,
-        is_player: 1,
-        estimated_lap_time: 122.0,
-        time_into_lap: 50.0,
-        ..LmuStandingEntry::default()
-    };
-    set_chars(&mut snapshot.standings[2].vehicle_class, "LMGT3");
-
-    // El Hypercar inicia la bandera en t=675, pero las vueltas máximas
-    // mostradas pertenecen al líder de LMGT3.
-    assert_eq!(
-        LmuTelemetrySource::leader_finish_delay(&snapshot),
-        Some(675.0)
-    );
-    assert_eq!(LmuTelemetrySource::total_laps_estimated(&snapshot), 27.0);
-}
-
-#[test]
 fn standings_remaining_laps_preserves_current_lap_progress() {
     let lap_race = LmuSnapshot {
         max_laps: 100,
@@ -2029,39 +1918,133 @@ fn standings_remaining_laps_uses_the_first_hybrid_finish_criterion() {
 }
 
 #[test]
-fn leader_gets_exact_number_of_remaining_crossings_in_lap_race() {
+fn timed_distance_is_player_based_and_leader_adjustment_is_separate() {
     let snapshot = LmuSnapshot {
-        max_laps: 100,
-        leader_total_laps: 98,
-        player_total_laps: 98,
-        leader_lap_time: 120.0,
-        leader_time_into_lap: 100.0,
-        estimated_lap_time: 120.0,
-        player_time_into_lap: 100.0,
+        max_laps: 10_000,
+        session_time_remaining: 100.0,
+        leader_lap_time: 240.0,
+        leader_time_into_lap: 230.0,
+        player_total_laps: 20,
+        player_position: 10,
         ..LmuSnapshot::default()
     };
-
-    assert_eq!(LmuTelemetrySource::laps_remaining(&snapshot, 120.0), 2.0);
-    assert_eq!(LmuTelemetrySource::total_laps_estimated(&snapshot), 100.0);
+    let base = LmuTelemetrySource::estimated_laps_remaining(&snapshot, 0.25, 130.0);
+    assert_eq!(base, 1.75);
+    assert_eq!(
+        LmuTelemetrySource::total_laps_estimated(&snapshot, 0.25, 130.0),
+        22.0
+    );
+    assert_eq!(
+        LmuTelemetrySource::extra_laps_estimated(&snapshot, 0.25, 130.0, 0.0),
+        Some(1)
+    );
+    assert_eq!(
+        LmuTelemetrySource::extra_laps_estimated(&snapshot, 0.25, 130.0, 80.0),
+        Some(0)
+    );
+    assert_eq!(
+        LmuTelemetrySource::estimated_laps_remaining(&snapshot, 0.25, 130.0),
+        base
+    );
 }
 
 #[test]
-fn session_over_keeps_one_crossing_until_the_player_finishes() {
+fn distance_does_not_need_a_roster_and_missing_leader_hides_only_adjustment() {
     let mut snapshot = LmuSnapshot {
-        game_phase: 8,
-        player_total_laps: 36,
-        standings_count: 1,
+        max_laps: 10_000,
+        session_time_remaining: 300.0,
+        player_total_laps: 20,
         ..LmuSnapshot::default()
     };
-    snapshot.standings[0].is_player = 1;
-
-    assert_eq!(LmuTelemetrySource::laps_remaining(&snapshot, 120.0), 1.0);
-    assert_eq!(LmuTelemetrySource::total_laps_estimated(&snapshot), 37.0);
-
-    snapshot.player_total_laps = 37;
-    snapshot.standings[0].finish_status = 1;
-    assert_eq!(LmuTelemetrySource::laps_remaining(&snapshot, 120.0), 0.0);
-    assert_eq!(LmuTelemetrySource::total_laps_estimated(&snapshot), 37.0);
+    assert_eq!(
+        LmuTelemetrySource::total_laps_estimated(&snapshot, 0.25, 100.0),
+        24.0
+    );
+    assert_eq!(
+        LmuTelemetrySource::total_laps_estimated(&snapshot, 0.25, 200.0),
+        22.0
+    );
+    assert_eq!(
+        LmuTelemetrySource::extra_laps_estimated(&snapshot, 0.25, 100.0, 0.0),
+        None
+    );
+    snapshot.player_position = 1;
+    assert_eq!(
+        LmuTelemetrySource::extra_laps_estimated(&snapshot, 0.25, 100.0, 80.0),
+        Some(0)
+    );
+    assert_eq!(
+        LmuTelemetrySource::total_laps_estimated(&snapshot, 0.25, 0.0),
+        0.0
+    );
 }
 
+#[test]
+fn lap_race_keeps_official_target_for_a_lapped_player() {
+    let mut snapshot = LmuSnapshot {
+        max_laps: 100,
+        player_total_laps: 95,
+        leader_total_laps: 99,
+        leader_lap_time: 120.0,
+        leader_time_into_lap: 100.0,
+        ..LmuSnapshot::default()
+    };
+    assert_eq!(
+        LmuTelemetrySource::estimated_laps_remaining(&snapshot, 0.25, 180.0),
+        4.75
+    );
+    assert_eq!(
+        LmuTelemetrySource::total_laps_estimated(&snapshot, 0.25, 180.0),
+        100.0
+    );
+    assert_eq!(
+        LmuTelemetrySource::extra_laps_estimated(&snapshot, 0.25, 180.0, 0.0),
+        None
+    );
+    snapshot.player_total_laps = 100;
+    assert_eq!(
+        LmuTelemetrySource::total_laps_estimated(&snapshot, 0.0, 180.0),
+        100.0
+    );
+}
 
+#[test]
+fn shared_distance_preserves_physical_progress_at_the_line_and_finish() {
+    let mut snapshot = LmuSnapshot {
+        max_laps: 10_000,
+        session_time_remaining: 50.0,
+        player_total_laps: 20,
+        ..LmuSnapshot::default()
+    };
+    assert_eq!(
+        LmuTelemetrySource::total_laps_estimated(&snapshot, 0.99, 100.0),
+        22.0
+    );
+    snapshot.player_total_laps = 21;
+    snapshot.session_time_remaining = 49.0;
+    assert_eq!(
+        LmuTelemetrySource::total_laps_estimated(&snapshot, 0.0, 100.0),
+        22.0
+    );
+    snapshot.game_phase = 8;
+    snapshot.standings_count = 1;
+    snapshot.standings[0].is_player = 1;
+    assert_eq!(
+        LmuTelemetrySource::estimated_laps_remaining(&snapshot, 0.25, 100.0),
+        0.75
+    );
+    assert_eq!(
+        LmuTelemetrySource::total_laps_estimated(&snapshot, 0.25, 100.0),
+        22.0
+    );
+    snapshot.player_total_laps = 22;
+    snapshot.standings[0].finish_status = 1;
+    assert_eq!(
+        LmuTelemetrySource::estimated_laps_remaining(&snapshot, 0.0, 100.0),
+        0.0
+    );
+    assert_eq!(
+        LmuTelemetrySource::total_laps_estimated(&snapshot, 0.0, 100.0),
+        22.0
+    );
+}

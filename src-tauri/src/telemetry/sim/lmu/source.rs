@@ -17,8 +17,9 @@ use super::rest::{
 };
 use crate::telemetry::consumption_profile::{ConsumptionProfiler, ProfileEstimate};
 use crate::telemetry::fuel_strategy::{
-    calculate_resource_strategy, calculate_stint_targets, next_stint_autonomy,
-    projected_consumption, FuelStrategies, ResourceAutonomy, ResourceStrategyInput,
+    calculate_resource_strategy, calculate_stint_targets, estimated_final_pit_delay,
+    next_stint_autonomy, projected_consumption, FuelStrategies, ResourceAutonomy,
+    ResourceStrategyInput,
 };
 use crate::telemetry::{
     FlagWarning, RejoinWarning, StandingEntry, TelemetryDemand, TelemetryFrame, TireLifeModel,

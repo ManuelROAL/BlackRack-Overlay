@@ -20,8 +20,8 @@ calculated only for a visible native panel or connected `/fuel` route.
   classes use fuel litres.
 - Regulated classes calculate virtual energy and fuel in parallel. The active race
   plan uses whichever resource requires more stops.
-- Consumption belongs to the player. Only total race-lap projection follows the
-  leader.
+- Consumption and base race distance belong to the player. Leader/last-stop lap
+  adjustments are informational and never modify the resource requirement.
 - Use exact fractional-lap projections. Never add an arbitrary safety lap or
   subtract a reserve from the race-wide requirement. The stint-target widget's
   separate 0.2-unit end-of-stint reserve follows TinyPedal semantics and does not
@@ -68,16 +68,20 @@ calculated only for a visible native panel or connected `/fuel` route.
 
 ## Race distance
 
-- For timed races, project leader crossings and then player crossings. For
-  fixed-lap races use the official target. Preserve physical progress across the
-  finish-line transition.
+- For timed races use `ceil(remaining_seconds / player_pace + lap_progress) -
+  lap_progress` as the shared base remaining distance. For fixed-lap races use
+  the official target minus completed laps and current progress; mixed sessions
+  select the first finish criterion. Preserve progress across the finish line.
 - Use the player's six-sample clean-lap EMA for projected crossings, matching
   TinyPedal rather than relying on LMU's noisier instantaneous estimated lap.
-  When exactly one stop remains in a timer-controlled race, subtract the official
-  concurrent service total plus learned moving pitlane time and accept the reduced
-  lap count only if that stop is still required after recalculation.
-- Keep the Standings visual remaining-lap estimate separate from this leader-aware
-  strategy count.
+  Standings and Timing derive the player's total from this same base distance.
+- Timed-race leader and final-stop effects are published separately as
+  `session_extra_laps_estimated` for those headers. They never reduce or increase
+  fuel/energy requirements. The final-stop hint uses the active resource's
+  fractional remaining stops (strictly between 0.2 and 1.2), official concurrent
+  service time and learned moving pitlane time; unavailable time references omit
+  that component. The leader component uses the overall leader's finish time.
+- These shared estimates do not depend on whether the Fuel panel is enabled.
 - The serialized frame contains the active plan, parallel fuel plan where needed,
   and each reference scenario; the frontend must not recalculate them.
 

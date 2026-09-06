@@ -3,6 +3,39 @@ use serde::Serialize;
 const MAX_GUIDANCE_SAVING_PERCENT: f64 = 15.0;
 const STINT_TARGET_RESERVE: f64 = 0.2;
 
+/// Estimate only the time adjustment displayed alongside timed-race distance.
+pub(super) fn estimated_final_pit_delay(
+    current: f64,
+    consumption: f64,
+    used_this_lap: f64,
+    capacity: f64,
+    remaining_laps: f64,
+    service_seconds: f64,
+    traversal_seconds: f64,
+) -> f64 {
+    if !valid_positive(consumption)
+        || !valid_positive(capacity)
+        || !valid_positive(service_seconds)
+        || !valid_positive(traversal_seconds)
+        || !current.is_finite()
+        || !used_this_lap.is_finite()
+        || !remaining_laps.is_finite()
+    {
+        return 0.0;
+    }
+    let leftover_at_line = (current + used_this_lap).max(0.0) % consumption;
+    let usable_load = capacity - leftover_at_line;
+    if usable_load <= 0.0 {
+        return 0.0;
+    }
+    let fractional_stops = (remaining_laps * consumption - current) / usable_load;
+    if fractional_stops > 0.2 && fractional_stops < 1.2 {
+        service_seconds + traversal_seconds
+    } else {
+        0.0
+    }
+}
+
 /// Shared projected range. Unknown references stay unavailable; empty tanks are zero.
 #[derive(Clone, Copy, Debug, Default, Serialize)]
 pub(crate) struct ResourceAutonomy {
@@ -412,6 +445,26 @@ pub(super) fn calculate_resource_strategy(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn final_pit_hint_requires_a_near_single_stop_and_complete_time_reference() {
+        assert_eq!(
+            estimated_final_pit_delay(40.0, 10.0, 0.0, 100.0, 10.0, 30.0, 20.0),
+            50.0
+        );
+        assert_eq!(
+            estimated_final_pit_delay(40.0, 10.0, 0.0, 100.0, 4.0, 30.0, 20.0),
+            0.0
+        );
+        assert_eq!(
+            estimated_final_pit_delay(40.0, 10.0, 0.0, 100.0, 20.0, 30.0, 20.0),
+            0.0
+        );
+        assert_eq!(
+            estimated_final_pit_delay(40.0, 10.0, 0.0, 100.0, 10.0, 30.0, 0.0),
+            0.0
+        );
+    }
 
     #[test]
     fn projected_range_matches_strategy_and_refill_instead_of_average() {

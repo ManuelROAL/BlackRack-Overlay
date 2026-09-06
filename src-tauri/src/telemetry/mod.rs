@@ -696,6 +696,7 @@ pub struct TelemetryFrame {
     session_laps_remaining_estimated: f64,
     session_lap_equivalents_remaining: f64,
     session_total_laps_estimated: f64,
+    session_extra_laps_estimated: Option<i32>,
     fuel_needed_liters: f64,
     fuel_to_add_liters: f64,
     virtual_energy_active: bool,
@@ -995,6 +996,7 @@ impl TelemetryFrame {
             session_laps_remaining_estimated: 0.0,
             session_lap_equivalents_remaining: 0.0,
             session_total_laps_estimated: 0.0,
+            session_extra_laps_estimated: None,
             fuel_needed_liters: 0.0,
             fuel_to_add_liters: 0.0,
             virtual_energy_active: false,
@@ -1139,6 +1141,8 @@ pub fn spawn_source(app: AppHandle) {
             let rest_supplement_requested = team_mode()
                 || [
                     "standings",
+                    "timing",
+                    "dashboard",
                     "relative",
                     "fuel",
                     "tires",

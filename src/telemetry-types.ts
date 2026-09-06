@@ -117,6 +117,7 @@ export interface TimingViewModel {
   available: boolean;
   lap_number: number;
   total_laps_estimated: number;
+  extra_laps_estimated: number | null;
   current_seconds: number;
   last_seconds: number;
   last_valid: boolean;
@@ -278,6 +279,7 @@ export interface TelemetryFrame {
   session_laps_remaining_estimated: number;
   session_lap_equivalents_remaining: number;
   session_total_laps_estimated: number;
+  session_extra_laps_estimated: number | null;
   fuel_needed_liters: number;
   fuel_to_add_liters: number;
   virtual_energy_active: boolean;

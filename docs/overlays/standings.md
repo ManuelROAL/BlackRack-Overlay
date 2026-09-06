@@ -79,12 +79,15 @@ duplicate selection or timing semantics.
   recent lap. Clean validity remains mandatory for consumption learning.
 - `OUT` replaces last-lap time for the complete pit-out lap and retains its orange
   state rather than best-lap coloring.
-- The TinyPedal-style remaining-lap display estimate is separate from the
-  leader-aware finish-line crossing count used by fuel strategy.
-- Estimated total laps in the header follow Dox's multiclass projection: the
-  overall leader determines when the checkered flag begins, while the player's
-  class leader supplies the completed laps, lap phase and pace used to project
-  that category's maximum lap count.
+- The header's total is the player's projected completed race distance, using
+  the same base remaining laps and smoothed player pace as Fuel and Timing.
+  It no longer reports the class leader's total. Full finish-line crossings are
+  rounded up before subtracting current progress, keeping the total stable at
+  the line; lap-limited sessions use the official target.
+- Timed races append a separate signed leader/final-stop correction, for example
+  `21/~24.00 (+1)`. This is informational and is not included in Fuel requirements.
+  Unknown corrections and lap-limited/finished sessions omit the parentheses.
+  The header update key includes the correction, even when the base total is unchanged.
 
 ## Identity, roster and enrichment
 

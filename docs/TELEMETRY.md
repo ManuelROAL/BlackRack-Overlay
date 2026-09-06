@@ -81,6 +81,14 @@ restore per-overlay native listeners or direct cross-realm object events.
   it directly; null means unavailable and zero means exhausted with a valid
   reference. Legacy `estimated_fuel_laps` / `estimated_virtual_energy_laps` retain
   their average-consumption semantics and are not the shared displayed range.
+- Race-distance fields share the player's base projection: fractional remaining
+  distance drives Fuel, and completed laps plus progress plus that distance gives
+  Standings/Timing their total. `session_extra_laps_estimated` is a nullable signed
+  timed-race correction for the overall leader and final pit stop, displayed
+  separately and never applied to resource requirements. Timing carries the same
+  value as `timing_model.extra_laps_estimated`. These values are independent of
+  Fuel strategy demand; Timing/Dashboard also request the cached REST supplement
+  that provides the official pit-service estimate.
 - Derive lap validity from telemetry's per-vehicle `mLapInvalidated` signal,
   latched for the complete lap. A negative official `mLastLapTime` confirms an
   invalid completed lap. LMU can publish the sentinel `-1` instead of the invalid

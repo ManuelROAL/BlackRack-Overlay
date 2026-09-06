@@ -282,12 +282,16 @@ impl TelemetrySource for LmuTelemetrySource {
         .unwrap_or(0.0);
         // Match TinyPedal's fuel projection: use the smoothed clean player pace
         // rather than the noisier instantaneous estimated-lap field.
-        let session_laps_remaining = Self::laps_remaining(&snapshot, lap_seconds);
         let session_laps_remaining_estimated =
             Self::estimated_laps_remaining(&snapshot, lap_progress, lap_seconds);
-        let mut session_lap_equivalents_remaining =
-            (session_laps_remaining - profile_estimate.lap_progress).max(0.0);
-        let session_total_laps_estimated = Self::total_laps_estimated(&snapshot);
+        let session_lap_equivalents_remaining = session_laps_remaining_estimated;
+        let session_laps_remaining = if session_lap_equivalents_remaining <= 0.0 {
+            0.0
+        } else {
+            session_lap_equivalents_remaining + lap_progress
+        };
+        let session_total_laps_estimated =
+            Self::total_laps_estimated(&snapshot, lap_progress, lap_seconds);
         let planned_fuel_per_lap = projected_consumption([
             profile_estimate.fuel_projected,
             fuel_per_lap,
@@ -310,6 +314,40 @@ impl TelemetrySource for LmuTelemetrySource {
             planned_energy_per_lap,
             virtual_energy_active,
         );
+        let pit_traversal_seconds =
+            crate::telemetry::track_map_model::learned_pit_traversal_seconds(
+                &track_name,
+                snapshot.track_length,
+            );
+        let (active_amount, active_consumption, active_used, active_capacity) =
+            if virtual_energy_active {
+                (
+                    virtual_energy_percent,
+                    planned_energy_per_lap,
+                    energy_used_current_lap,
+                    100.0,
+                )
+            } else {
+                (
+                    snapshot.fuel_liters,
+                    planned_fuel_per_lap,
+                    fuel_used_current_lap,
+                    snapshot.fuel_capacity_liters,
+                )
+            };
+        let final_pit_seconds = estimated_final_pit_delay(
+            active_amount,
+            active_consumption,
+            active_used,
+            active_capacity,
+            session_lap_equivalents_remaining,
+            rest_pit_stop
+                .as_ref()
+                .map_or(0.0, |estimate| estimate.total),
+            pit_traversal_seconds,
+        );
+        let session_extra_laps_estimated =
+            Self::extra_laps_estimated(&snapshot, lap_progress, lap_seconds, final_pit_seconds);
         let fuel_full_stint_laps = (planned_fuel_per_lap > 0.0)
             .then_some(snapshot.fuel_capacity_liters / planned_fuel_per_lap);
         let energy_full_stint_laps =
@@ -391,39 +429,8 @@ impl TelemetrySource for LmuTelemetrySource {
                     calculate_resource_strategy(active_input, lap_seconds, parallel_minimum_stops);
                 (fuel_strategy, active_strategy, parallel_minimum_stops)
             };
-            let (mut fuel_strategy, mut active_strategy, mut parallel_minimum_stops) =
+            let (fuel_strategy, active_strategy, parallel_minimum_stops) =
                 calculate_primary(session_lap_equivalents_remaining);
-            let pit_traversal_seconds =
-                crate::telemetry::track_map_model::learned_pit_traversal_seconds(
-                    &track_name,
-                    snapshot.track_length,
-                );
-            let stop_service_seconds = rest_pit_stop
-                .as_ref()
-                .map_or(0.0, |estimate| estimate.total.max(0.0));
-            let final_pit_seconds = if stop_service_seconds > 0.0 && pit_traversal_seconds > 0.0 {
-                stop_service_seconds + pit_traversal_seconds
-            } else {
-                0.0
-            };
-            let timer_controls_finish = snapshot.max_laps <= 0 || snapshot.max_laps >= 10_000;
-            if timer_controls_finish
-                && active_strategy.is_some_and(|strategy| strategy.stops == 1)
-                && final_pit_seconds > 0.0
-            {
-                let adjusted_laps =
-                    Self::laps_remaining_after_delay(&snapshot, lap_seconds, final_pit_seconds);
-                let adjusted_equivalents = (adjusted_laps - profile_estimate.lap_progress).max(0.0);
-                if adjusted_equivalents < session_lap_equivalents_remaining {
-                    let adjusted = calculate_primary(adjusted_equivalents);
-                    if adjusted.1.is_some_and(|strategy| strategy.stops == 1) {
-                        fuel_strategy = adjusted.0;
-                        active_strategy = adjusted.1;
-                        parallel_minimum_stops = adjusted.2;
-                        session_lap_equivalents_remaining = adjusted_equivalents;
-                    }
-                }
-            }
             let active_minimum_stops = active_strategy.map_or(0, |strategy| strategy.stops);
             let active_scenario = |consumption| {
                 let input = if virtual_energy_active {
@@ -811,6 +818,7 @@ impl TelemetrySource for LmuTelemetrySource {
             session_laps_remaining_estimated,
             session_lap_equivalents_remaining,
             session_total_laps_estimated,
+            session_extra_laps_estimated,
             fuel_needed_liters,
             fuel_to_add_liters: (fuel_needed_liters - snapshot.fuel_liters).max(0.0),
             virtual_energy_active,

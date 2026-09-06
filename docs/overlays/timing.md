@@ -55,6 +55,10 @@ modelo visual de Timing sólo se construye con el panel nativo o `/timing` en us
   ámbar y por encima es rojo. El tiempo principal permanece visible.
 - La cabecera muestra la vuelta actual y el total estimado (`actual/~total`) con
   la misma estimación de carrera usada por los demás overlays.
+- Ese total pertenece al jugador y usa las vueltas base de Fuel y Standings.
+  En carreras por tiempo se añade entre paréntesis el ajuste firmado por líder
+  absoluto/última parada (`+1`, `0`, `-1`); no modifica el combustible necesario.
+  Si no hay referencia, la carrera es por vueltas o ya terminó, se omite el ajuste.
 - La estimación proyecta la vuelta actual sobre la mejor traza disponible, con
   prioridad stint, sesión y absoluto, y suaviza el delta vivo. No usa
   `mEstimatedLapTime`, que puede anticipar tiempos irreales.

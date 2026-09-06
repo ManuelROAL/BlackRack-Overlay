@@ -193,6 +193,9 @@ impl LmuTelemetrySource {
         }
 
         let progress = lap_progress.clamp(0.0, 1.0);
+        if snapshot.game_phase >= 8 {
+            return 1.0 - progress;
+        }
         let finite_lap_target = snapshot.max_laps > 0 && snapshot.max_laps < 10_000;
         let target_finishes_first = finite_lap_target
             && (snapshot.session_time_remaining <= 0.0
@@ -221,136 +224,55 @@ impl LmuTelemetrySource {
             .any(|entry| entry.is_player != 0 && entry.finish_status != 0)
     }
 
-    pub(super) fn player_crossings_until_finish(
-        snapshot: &LmuSnapshot,
-        finish_delay: f64,
-        player_lap: f64,
-    ) -> Option<f64> {
-        let next_crossing = Self::time_to_next_crossing(player_lap, snapshot.player_time_into_lap)?;
-
-        if finish_delay <= next_crossing {
-            return Some(1.0);
+    pub(super) fn total_laps_estimated(snapshot: &LmuSnapshot, progress: f64, pace: f64) -> f64 {
+        if Self::player_finished(snapshot) {
+            return snapshot.player_total_laps.max(0) as f64;
         }
-
-        let crossings_after_next = ((finish_delay - next_crossing - 0.001) / player_lap)
-            .ceil()
-            .max(0.0);
-        Some(1.0 + crossings_after_next)
-    }
-
-    pub(super) fn player_class_leader(snapshot: &LmuSnapshot) -> Option<&LmuStandingEntry> {
-        let count = (snapshot.standings_count as usize).min(MAX_VEHICLES);
-        let standings = &snapshot.standings[..count];
-        let player = standings.iter().find(|entry| entry.is_player != 0)?;
-        standings
-            .iter()
-            .filter(|entry| entry.position > 0 && entry.vehicle_class == player.vehicle_class)
-            .min_by_key(|entry| entry.position)
-    }
-
-    pub(super) fn standing_reference_lap(entry: &LmuStandingEntry) -> Option<f64> {
-        [
-            entry.estimated_lap_time,
-            entry.last_lap_seconds,
-            entry.best_lap_seconds,
-        ]
-        .into_iter()
-        .find(|value| value.is_finite() && *value > 0.0)
-    }
-
-    pub(super) fn total_laps_estimated(snapshot: &LmuSnapshot) -> f64 {
         if snapshot.game_phase >= 8 {
-            if let Some(class_leader) = Self::player_class_leader(snapshot) {
-                return if class_leader.finish_status != 0 {
-                    class_leader.total_laps.max(0) as f64
-                } else {
-                    class_leader.total_laps.saturating_add(1).max(0) as f64
-                };
-            }
-            return if Self::player_finished(snapshot) {
-                snapshot.player_total_laps.max(0) as f64
-            } else {
-                snapshot.player_total_laps.saturating_add(1).max(0) as f64
-            };
+            return snapshot.player_total_laps.saturating_add(1).max(0) as f64;
         }
-        if snapshot.max_laps > 0 && snapshot.max_laps < 10_000 {
-            return snapshot.max_laps as f64;
-        }
-
-        let Some(finish_delay) = Self::leader_finish_delay(snapshot) else {
-            return 0.0;
-        };
-        if finish_delay <= 0.0 {
-            return 0.0;
-        }
-
-        let (completed_laps, lap_time, time_into_lap) =
-            if let Some(class_leader) = Self::player_class_leader(snapshot) {
-                if class_leader.finish_status != 0 {
-                    return class_leader.total_laps.max(0) as f64;
-                }
-                let Some(lap_time) = Self::standing_reference_lap(class_leader) else {
-                    return 0.0;
-                };
-                (
-                    class_leader.total_laps,
-                    lap_time,
-                    class_leader.time_into_lap,
-                )
-            } else {
-                (
-                    snapshot.leader_total_laps,
-                    snapshot.leader_lap_time,
-                    snapshot.leader_time_into_lap,
-                )
-            };
-        let Some(next_crossing) = Self::time_to_next_crossing(lap_time, time_into_lap) else {
-            return 0.0;
-        };
-        let crossings = if finish_delay <= next_crossing {
-            1.0
-        } else {
-            1.0 + ((finish_delay - next_crossing - 0.001) / lap_time)
-                .ceil()
-                .max(0.0)
-        };
-
-        completed_laps.max(0) as f64 + crossings
-    }
-
-    pub(super) fn laps_remaining_after_delay(
-        snapshot: &LmuSnapshot,
-        player_lap: f64,
-        delay_seconds: f64,
-    ) -> f64 {
-        if snapshot.game_phase >= 8 {
-            return if Self::player_finished(snapshot) {
-                0.0
-            } else {
-                1.0
-            };
-        }
-        if let Some(finish_delay) = Self::leader_finish_delay(snapshot) {
-            let available_time = (finish_delay - delay_seconds.max(0.0)).max(0.0);
-            if let Some(crossings) =
-                Self::player_crossings_until_finish(snapshot, available_time, player_lap)
+        let remaining = Self::estimated_laps_remaining(snapshot, progress, pace);
+        if remaining <= 0.0 {
+            if snapshot.max_laps > 0
+                && snapshot.max_laps < 10_000
+                && snapshot.player_total_laps >= snapshot.max_laps
             {
-                return crossings;
+                return snapshot.max_laps as f64;
             }
+            return 0.0;
         }
-
-        // Fallback para sesiones sin datos válidos del líder.
-        if snapshot.max_laps > 0 && snapshot.max_laps < 10_000 {
-            return (snapshot.max_laps - snapshot.player_total_laps).max(0) as f64;
-        }
-        let available_time = (snapshot.session_time_remaining - delay_seconds.max(0.0)).max(0.0);
-        if snapshot.session_time_remaining > 0.0 && player_lap > 0.0 {
-            return (available_time / player_lap).ceil() + 1.0;
-        }
-        0.0
+        snapshot.player_total_laps.max(0) as f64 + progress.clamp(0.0, 1.0) + remaining
     }
 
-    pub(super) fn laps_remaining(snapshot: &LmuSnapshot, player_lap: f64) -> f64 {
-        Self::laps_remaining_after_delay(snapshot, player_lap, 0.0)
+    /// Informational only: never feed this correction back into resource requirements.
+    pub(super) fn extra_laps_estimated(
+        snapshot: &LmuSnapshot,
+        progress: f64,
+        pace: f64,
+        pit_seconds: f64,
+    ) -> Option<i32> {
+        if (snapshot.max_laps > 0 && snapshot.max_laps < 10_000)
+            || snapshot.game_phase >= 8
+            || Self::player_finished(snapshot)
+            || !pace.is_finite()
+            || pace <= 0.0
+        {
+            return None;
+        }
+        let count = (snapshot.standings_count as usize).min(MAX_VEHICLES);
+        let leader_finished = snapshot.standings[..count]
+            .iter()
+            .any(|entry| entry.position == 1 && entry.finish_status != 0);
+        if snapshot.player_position == 1 || leader_finished {
+            return Some(0);
+        }
+        let leader_finish = Self::leader_finish_delay(snapshot)?;
+        let progress = progress.clamp(0.0, 1.0);
+        let clock = snapshot.session_time_remaining.max(0.0);
+        let crossings = |seconds: f64| (seconds.max(0.0) / pace + progress).ceil();
+        let base = crossings(clock);
+        let leader_gain = crossings(leader_finish) - base;
+        let pit_gain = crossings(clock - pit_seconds.max(0.0)) - base;
+        Some((leader_gain + pit_gain) as i32)
     }
 }

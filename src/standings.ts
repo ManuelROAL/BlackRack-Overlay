@@ -688,7 +688,7 @@ const sessionHeader = (frame: TelemetryFrame): HTMLElement => {
     sessionGroup.append(node(
       "b",
       "standings-session-lap",
-      `${frame.player_total_laps + 1}/${totalLabel}`
+      `${frame.player_total_laps + 1}/${totalLabel}${frame.session_extra_laps_estimated == null ? "" : ` (${frame.session_extra_laps_estimated >= 0 ? "+" : ""}${frame.session_extra_laps_estimated})`}`
     ));
   }
   if (frame.rest_weather_available && settings.header.airTemperature) {
@@ -807,6 +807,7 @@ const cachedSessionHeaderFor = (frame: TelemetryFrame): HTMLElement => {
     frame.session_split_number,
     frame.session_split_count,
     Math.round(frame.session_total_laps_estimated * 100),
+    frame.session_extra_laps_estimated,
     frame.rest_weather_available,
     Math.round(frame.ambient_temperature_c),
     Math.round(frame.track_temperature_c),
