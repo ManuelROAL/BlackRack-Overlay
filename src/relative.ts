@@ -43,7 +43,7 @@ const columnExpansionRatio = (id: RelativeColumnId): number => {
 };
 const relativeBaseHeight = (): number => Math.max(
   220,
-  48 + (relativeSettings.aheadRows + relativeSettings.behindRows + 1) * 23
+  48 + (relativeSettings.aheadRows + relativeSettings.behindRows + 1) * (relativeSettings.pitInformationLayout === "above" && (relativeSettings.options.pitStops || relativeSettings.options.pitTime || relativeSettings.options.pitLap) ? 40 : 23)
 );
 const relativeBaseWidth = (): number => Math.max(
   344,
@@ -425,7 +425,10 @@ const cellSignature = (entry: StandingEntry, column: RelativeColumnId, trackLimi
     case "number": return liveCarNumbers.get(entry.vehicle_id) || entry.car_number || "--";
     case "country": return entry.nationality;
     case "badge": return entry.driver_badge;
-    case "driver": return `${entry.driver_name}|${entry.nationality}|${relativeSettings.driverNameFormat}|${relativeSettings.options.pitStops}|${relativeSettings.options.pitTime}|${relativeSettings.options.pitLap}|${raceSession}|${entry.in_pits}|${entry.pit_stop_requested}|${entry.pit_stops}|${entry.pit_stop_lap ?? ""}|${entry.pit_stop_time_seconds === null ? "" : pitTimeLabel(entry.pit_stop_time_seconds)}`;
+    case "pitTime":
+    case "pitLap":
+    case "pitStops":
+    case "driver": return `${entry.driver_name}|${entry.nationality}|${relativeSettings.driverNameFormat}|${relativeSettings.pitInformationLayout}|${relativeSettings.options.pitStops}|${relativeSettings.options.pitTime}|${relativeSettings.options.pitLap}|${raceSession}|${entry.in_pits}|${entry.pit_stop_requested}|${entry.pit_stops}|${entry.pit_stop_lap ?? ""}|${entry.pit_stop_time_seconds === null ? "" : pitTimeLabel(entry.pit_stop_time_seconds)}`;
     case "ranks": return `${entry.driver_rank}|${Math.round(entry.driver_rank_progress)}|${Math.round(entry.estimated_driver_rank_gain)}|${entry.estimated_driver_rank_gain_available}|${entry.safety_rank}`;
     case "relative": return relativeGapSeconds.toFixed(2);
     case "lap": return entry.total_laps.toString();
@@ -437,9 +440,6 @@ const cellSignature = (entry: StandingEntry, column: RelativeColumnId, trackLimi
       : "--";
     case "damage": return Math.round(entry.damage_percent).toString();
     case "trackLimits": return entry.track_limits_steps === null ? "--" : `${entry.track_limits_steps}|${trackLimit}`;
-    case "pitTime":
-    case "pitLap":
-    case "pitStops": return `${entry.pit_stops}|${entry.pit_stop_requested}|${entry.pit_stop_time_seconds === null ? "" : pitTimeLabel(entry.pit_stop_time_seconds)}`;
     case "tire": return entry.tire_compounds.join("/");
     case "signals": {
       const penalties = livePenalties.get(entry.vehicle_id);
@@ -473,7 +473,10 @@ const createCell = (entry: StandingEntry, column: RelativeColumnId, trackLimit: 
       name.append(node("span", "driver-name-text", formatDriverName(fullName, relativeSettings.driverNameFormat)));
       name.title = fullName;
       cell.append(name);
-      appendDriverPitStatus(cell, entry);
+      if (relativeSettings.pitInformationLayout !== "column") {
+        cell.classList.toggle("pit-above", relativeSettings.pitInformationLayout === "above" && (relativeSettings.options.pitStops || relativeSettings.options.pitTime || relativeSettings.options.pitLap));
+        appendDriverPitStatus(cell, entry);
+      }
       return cell;
     }
     case "ranks": {
@@ -531,11 +534,8 @@ const createCell = (entry: StandingEntry, column: RelativeColumnId, trackLimit: 
     case "pitTime":
     case "pitLap":
     case "pitStops": {
-      const timing = entry.pit_stop_time_seconds !== null;
-      const value = timing ? pitTimeLabel(entry.pit_stop_time_seconds ?? 0) : entry.pit_stops.toString();
-      const cell = node("strong", "standing-pit-stops", value);
-      cell.classList.toggle("timing", timing);
-      cell.classList.toggle("requested", entry.pit_stop_requested && !timing);
+      const cell = node("span", "standing-pit-information");
+      appendDriverPitStatus(cell, entry);
       return cell;
     }
     case "tire": {

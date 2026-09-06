@@ -2157,6 +2157,7 @@ const parseOverlayConfiguration = (
     || !Number.isInteger(standings.otherClassRows) || Number(standings.otherClassRows) < 1
     || Number(standings.otherClassRows) > 15
     || typeof standings.showOtherClasses !== "boolean"
+    || (standings.pitInformationLayout !== undefined && !["inline", "above", "column"].includes(String(standings.pitInformationLayout)))
     || (standings.driverNameFormat !== undefined && !isDriverNameFormat(standings.driverNameFormat))) {
     throw new Error(t("config.invalidStandings"));
   }
@@ -2175,6 +2176,7 @@ const parseOverlayConfiguration = (
     || Number(relative.aheadRows) > 10
     || !Number.isInteger(relative.behindRows) || Number(relative.behindRows) < 1
     || Number(relative.behindRows) > 10
+    || (relative.pitInformationLayout !== undefined && !["inline", "above", "column"].includes(String(relative.pitInformationLayout)))
     || (relative.driverNameFormat !== undefined && !isDriverNameFormat(relative.driverNameFormat))) {
     throw new Error(t("config.invalidRelative"));
   }
@@ -2306,6 +2308,7 @@ const parseOverlayConfiguration = (
         columns: normalizedStandingsColumns,
         columnOrder: normalizedStandingsOrder,
         header: normalizedStandingsHeader,
+        pitInformationLayout: (standings.pitInformationLayout ?? "inline") as StandingsSettings["pitInformationLayout"],
         driverNameFormat: isDriverNameFormat(standings.driverNameFormat)
           ? standings.driverNameFormat
           : defaultStandings.driverNameFormat
@@ -2314,6 +2317,7 @@ const parseOverlayConfiguration = (
         ...(relative as unknown as RelativeSettings),
         options: normalizedRelativeOptions,
         columnOrder: normalizedRelativeOrder,
+        pitInformationLayout: (relative.pitInformationLayout ?? "inline") as RelativeSettings["pitInformationLayout"],
         driverNameFormat: isDriverNameFormat(relative.driverNameFormat)
           ? relative.driverNameFormat
           : defaultRelative.driverNameFormat
@@ -3276,3 +3280,25 @@ const refreshSimulatorStatus = (): void => {
   }).catch(reportInitializationError("simulator status"));
 };
 refreshSimulatorStatus();
+
+const standingsPitLayout = document.getElementById("standings-pit-layout") as HTMLSelectElement | null;
+if (standingsPitLayout) {
+  standingsPitLayout.value = standingsSettings.pitInformationLayout;
+  standingsPitLayout.addEventListener("change", () => {
+    const value = standingsPitLayout.value;
+    if (value !== "inline" && value !== "above" && value !== "column") return;
+    standingsSettings = { ...standingsSettings, pitInformationLayout: value };
+    persistStandingsSettings();
+  });
+}
+
+const relativePitLayout = document.getElementById("relative-pit-layout") as HTMLSelectElement | null;
+if (relativePitLayout) {
+  relativePitLayout.value = relativeSettings.pitInformationLayout;
+  relativePitLayout.addEventListener("change", () => {
+    const value = relativePitLayout.value;
+    if (value !== "inline" && value !== "above" && value !== "column") return;
+    relativeSettings = { ...relativeSettings, pitInformationLayout: value };
+    persistRelativeSettings();
+  });
+}

@@ -958,3 +958,22 @@ body[data-overlay-fit="true"].standings-body .standings-shell {
   font-size: calc(10px * var(--overlay-font-scale, 1));
   text-align: center;
 }
+
+.standing-pit-information {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+}
+.standing-pit-information .driver-pit-summary { margin-left: 0; }
+.standing-driver.pit-above {
+  position: relative;
+  min-height: 38px;
+  padding-top: 19px;
+  box-sizing: border-box;
+}
+.standing-driver.pit-above .driver-pit-summary {
+  position: absolute;
+  top: 1px;
+  right: 2px;
+}

@@ -42,6 +42,7 @@ export interface StandingsSettings {
   ownClassRows: number;
   otherClassRows: number;
   showOtherClasses: boolean;
+  pitInformationLayout: "inline" | "above" | "column";
   driverNameFormat: DriverNameFormat;
 }
 
@@ -127,6 +128,7 @@ export const defaultStandingsSettings = (): StandingsSettings => {
     ownClassRows: 10,
     otherClassRows: 3,
     showOtherClasses: true,
+    pitInformationLayout: "inline",
     driverNameFormat: DEFAULT_DRIVER_NAME_FORMAT
   };
 };
@@ -145,6 +147,7 @@ export const readStandingsSettings = (): StandingsSettings => {
       ownClassRows?: number;
       otherClassRows?: number;
       showOtherClasses?: boolean;
+      pitInformationLayout?: unknown;
       driverNameFormat?: unknown;
     };
     for (const column of STANDINGS_COLUMNS) {
@@ -178,6 +181,9 @@ export const readStandingsSettings = (): StandingsSettings => {
     if (typeof stored.showOtherClasses === "boolean") {
       settings.showOtherClasses = stored.showOtherClasses;
     }
+    if (stored.pitInformationLayout === "above" || stored.pitInformationLayout === "column") {
+      settings.pitInformationLayout = stored.pitInformationLayout;
+    }
     if (isDriverNameFormat(stored.driverNameFormat)) {
       settings.driverNameFormat = stored.driverNameFormat;
     }
@@ -188,7 +194,7 @@ export const readStandingsSettings = (): StandingsSettings => {
 };
 
 export const visibleStandingsColumns = (
-  settings: Pick<StandingsSettings, "columns" | "columnOrder">
+  settings: Pick<StandingsSettings, "columns" | "columnOrder" | "pitInformationLayout">
 ): StandingsColumnDefinition[] => {
   const columns = new Map(STANDINGS_COLUMNS.map((column) => [column.id, column]));
   const order = [...settings.columnOrder.filter((id) => id !== "signals"), "signals" as const];
@@ -196,7 +202,9 @@ export const visibleStandingsColumns = (
     .map((id) => columns.get(id))
     .filter((column): column is StandingsColumnDefinition =>
       column !== undefined
-        && !["pitStops", "pitTime", "pitLap"].includes(column.id)
-        && (!column.configurable || settings.columns[column.id])
-    );
+        && !["pitTime", "pitLap"].includes(column.id)
+        && (column.id === "pitStops"
+          ? settings.pitInformationLayout === "column" && (settings.columns.pitStops || settings.columns.pitTime || settings.columns.pitLap)
+          : !column.configurable || settings.columns[column.id])
+    ).map((column) => column.id === "pitStops" ? { ...column, width: 112 } : column);
 };

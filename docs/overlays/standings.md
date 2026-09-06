@@ -32,9 +32,8 @@ duplicate selection or timing semantics.
 - Columns are position, assigned number, manufacturer, badge, driver, DR/SR,
   GAP, INT, best, last, AVG 5, NRG, damage, track-limit steps, tyre and
   signals. Position and driver are mandatory; signals stays fixed at the far
-  right. Other columns are independently visible and reorderable. Pit data is an
-  independently visible status integrated into the driver cell rather than a
-  separate reorderable column.
+  right. Other columns are independently visible and reorderable. Pit data has independent visibility and placement settings: beside the name,
+  above the name or in one dedicated PIT column.
 - Reordering preserves the category-header boundary: identity columns without a
   label remain inside the colored category heading, while labeled data columns
   remain outside it. Signals stays fixed at the far right.
@@ -156,7 +155,7 @@ duplicate selection or timing semantics.
   from elapsed plus remaining clocks.
 - Category headers show current/initial counts and DNF/DQ difference outside
   practice. Recover initial counts from history when opened late.
-- Pit status shares the driver cell and stays empty until a request or stop is observed.
+- Pit status uses the selected placement and stays empty until a request or stop is observed.
   Show an active request as a green `PIT` badge. While the car is in pit lane,
   show only its elapsed pit-cycle timer. Once the stop is confirmed, retain
   `L<lap>`, the final compact duration and the unprefixed completed-stop count
@@ -240,7 +239,11 @@ The OBS route follows the shared saved locale or a page-local `?lang=` override.
 ## Independent pit information
 
 - Number of stops, time in pits and pit-stop lap have independent visibility
-  toggles. They remain integrated into the driver cell, outside column reordering.
+  toggles, independent of placement. Placement is configurable per overlay: next
+  to the name (the existing default), above the name, or in one dedicated PIT
+  column outside column reordering. The column appears while any pit toggle is
+  enabled, including when only time or lap is selected. Above-name mode reserves
+  a second line in every row while any pit toggle is enabled.
   Time controls both the active timer and the latest completed duration.
   Completed summaries remain race-only; a request badge appears while any of
   these options is enabled.
@@ -248,3 +251,9 @@ The OBS route follows the shared saved locale or a page-local `?lang=` override.
   settings, profiles or configuration imports, preserving the previous appearance.
 - Verify all eight visibility combinations, active/request/completed states,
   and legacy settings/imports with pit information enabled and disabled.
+
+- Placement persists in native/OBS settings, profiles and configuration exports.
+  Missing placement loads as next-to-name; invalid imported values are rejected.
+- Verification: frontend build and the three placements across all eight pit
+  visibility combinations, plus legacy placement loading. Native visual verification
+  at enlarged text sizes remains part of release validation.

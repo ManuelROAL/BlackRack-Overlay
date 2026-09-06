@@ -71,6 +71,7 @@ export interface RelativeSettings {
   columnOrder: RelativeColumnId[];
   aheadRows: number;
   behindRows: number;
+  pitInformationLayout: "inline" | "above" | "column";
   driverNameFormat: DriverNameFormat;
 }
 
@@ -147,6 +148,7 @@ export const defaultRelativeSettings = (): RelativeSettings => {
     columnOrder: RELATIVE_COLUMNS.map(({ id }) => id),
     aheadRows: 4,
     behindRows: 4,
+    pitInformationLayout: "inline",
     driverNameFormat: DEFAULT_DRIVER_NAME_FORMAT
   };
 };
@@ -162,6 +164,7 @@ export const readRelativeSettings = (): RelativeSettings => {
       columnOrder?: unknown[];
       aheadRows?: number;
       behindRows?: number;
+      pitInformationLayout?: unknown;
       driverNameFormat?: unknown;
     };
     for (const option of RELATIVE_OPTIONS) {
@@ -190,6 +193,9 @@ export const readRelativeSettings = (): RelativeSettings => {
     }
     settings.aheadRows = integerInRange(stored.aheadRows, settings.aheadRows);
     settings.behindRows = integerInRange(stored.behindRows, settings.behindRows);
+    if (stored.pitInformationLayout === "above" || stored.pitInformationLayout === "column") {
+      settings.pitInformationLayout = stored.pitInformationLayout;
+    }
     if (isDriverNameFormat(stored.driverNameFormat)) {
       settings.driverNameFormat = stored.driverNameFormat;
     }
@@ -200,8 +206,10 @@ export const readRelativeSettings = (): RelativeSettings => {
 };
 
 export const visibleRelativeColumns = (settings: RelativeSettings): RelativeColumnDefinition[] =>
-  [...settings.columnOrder.filter((id) => !["pitStops", "pitTime", "pitLap"].includes(id) && id !== "signals"), "signals" as const]
+  [...settings.columnOrder.filter((id) => !["pitTime", "pitLap"].includes(id) && id !== "signals"), "signals" as const]
     .map((id) => RELATIVE_COLUMNS.find((column) => column.id === id))
     .filter((column): column is RelativeColumnDefinition =>
-      column !== undefined && (column.option === undefined || settings.options[column.option])
-    );
+      column !== undefined && (column.id === "pitStops"
+        ? settings.pitInformationLayout === "column" && (settings.options.pitStops || settings.options.pitTime || settings.options.pitLap)
+        : column.option === undefined || settings.options[column.option])
+    ).map((column) => column.id === "pitStops" ? { ...column, width: 112 } : column);

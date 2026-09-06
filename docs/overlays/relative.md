@@ -40,7 +40,7 @@ the prepared vehicle IDs and formats them; it must not repeat domain selection.
   timing line.
 - Show a compact, cumulative `OUT` chip in Signals in every session: it warns of
   a slow car ahead in a race and of a car about to start a hot lap in qualifying. Pit request and pit-lane
-  states belong exclusively to the integrated driver-cell status. Damage is represented
+  states belong exclusively to the selected pit-information placement. Damage is represented
   only by a restrained underline on the driver name, becoming red at the shared
   50% heavy-damage threshold. Render it on a text-sized inner element rather than
   the flexible name cell so it stays visible, ends with the displayed name and
@@ -130,7 +130,11 @@ The OBS route follows the shared saved locale or a page-local `?lang=` override.
 ## Independent pit information
 
 - Number of stops, time in pits and pit-stop lap have independent visibility
-  toggles. They remain integrated into the driver cell, outside column reordering.
+  toggles, independent of placement. Placement is configurable per overlay: next
+  to the name (the existing default), above the name, or in one dedicated PIT
+  column outside column reordering. The column appears while any pit toggle is
+  enabled, including when only time or lap is selected. Above-name mode reserves
+  a second line in every row while any pit toggle is enabled.
   Time controls both the active timer and the latest completed duration.
   Completed summaries remain race-only; a request badge appears while any of
   these options is enabled.
@@ -138,3 +142,9 @@ The OBS route follows the shared saved locale or a page-local `?lang=` override.
   settings, profiles or configuration imports, preserving the previous appearance.
 - Verify all eight visibility combinations, active/request/completed states,
   and legacy settings/imports with pit information enabled and disabled.
+
+- Placement persists in native/OBS settings, profiles and configuration exports.
+  Missing placement loads as next-to-name; invalid imported values are rejected.
+- Verification: frontend build and the three placements across all eight pit
+  visibility combinations, plus legacy placement loading. Native visual verification
+  at enlarged text sizes remains part of release validation.
