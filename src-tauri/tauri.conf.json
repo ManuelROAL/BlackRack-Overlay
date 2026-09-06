@@ -17,6 +17,7 @@
   },
   "bundle": {
     "active": true,
+    "licenseFile": "terms-of-use.txt",
     "targets": ["nsis"],
     "icon": [
       "icons/32x32.png",

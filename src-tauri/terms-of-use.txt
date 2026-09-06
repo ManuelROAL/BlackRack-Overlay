@@ -1,0 +1,70 @@
+﻿BLACKRACK OVERLAY - TERMS OF USE / CONDICIONES DE USO
+
+ENGLISH
+
+Free use
+You may download and use BlackRack Overlay free of charge for sim racing,
+including in videos, livestreams and monetized content.
+
+Redistribution
+Please share the official download page. Reselling, repackaging or uploading
+modified versions requires the author's permission, except where applicable
+law or third-party licences permit otherwise.
+
+Ownership
+The application's original content remains the property of its respective
+rights holders. Third-party components, trademarks and assets remain subject
+to their own licences and rights.
+
+Compatibility and telemetry
+Compatibility with every system, simulator update or external service is not
+guaranteed. Features and data availability may change. Displayed values,
+estimates and warnings are informational aids and may be incomplete or inaccurate.
+
+Support and donations
+Updates and support are provided as available, without a guaranteed response
+time. Donations are optional and do not purchase additional features, priority
+support or future updates.
+
+Statutory rights
+Nothing in these terms excludes warranties, liability or consumer rights that
+cannot legally be excluded.
+
+Contact
+Please report issues or questions through the BlackRack Overlay resource page
+on OverTake.
+
+ESPAÑOL
+
+Uso gratuito
+Puedes descargar y utilizar BlackRack Overlay gratuitamente para sim racing,
+incluidos vídeos, retransmisiones y contenido monetizado.
+
+Redistribución
+Comparte la página oficial de descarga. La reventa, el reempaquetado o la
+publicación de versiones modificadas requieren permiso del autor, salvo cuando
+la legislación aplicable o las licencias de terceros permitan lo contrario.
+
+Propiedad
+El contenido original de la aplicación pertenece a sus respectivos titulares.
+Los componentes, marcas y recursos de terceros conservan sus propias licencias
+y derechos.
+
+Compatibilidad y telemetría
+No se garantiza la compatibilidad con todos los equipos, actualizaciones del
+simulador o servicios externos. Las funciones y los datos disponibles pueden
+cambiar. Los valores, estimaciones y avisos son ayudas informativas y pueden
+ser incompletos o inexactos.
+
+Soporte y donaciones
+Las actualizaciones y el soporte se ofrecen según disponibilidad, sin un plazo
+de respuesta garantizado. Las donaciones son opcionales y no compran funciones
+adicionales, soporte prioritario ni futuras actualizaciones.
+
+Derechos legales
+Estas condiciones no excluyen garantías, responsabilidades ni derechos de los
+consumidores que legalmente no puedan excluirse.
+
+Contacto
+Comunica las incidencias o consultas a través de la página de BlackRack Overlay
+en OverTake.

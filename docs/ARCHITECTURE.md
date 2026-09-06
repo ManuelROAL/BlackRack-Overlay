@@ -154,6 +154,15 @@ Overlay-specific frontend and backend ownership is indexed in
 
 ## Release compilation
 
+The NSIS installer reads `src-tauri/terms-of-use.txt` through `bundle.licenseFile`.
+This UTF-8 BOM document contains the English and Spanish terms in one scrollable
+page after Welcome. `MUI_LICENSEPAGE_CHECKBOX` requires explicit acceptance before
+continuing in interactive installation; NSIS localizes the surrounding controls
+to the selected installer language. Existing passive/silent installation behavior
+is unchanged and does not record interactive acceptance. Keep the terms aligned
+with the public resource description. Verify packaging with `npm.cmd run tauri build`;
+native UI verification must check the unchecked/checked Next button and accents.
+
 The Cargo release profile enables fat link-time optimization with one codegen
 unit and strips symbols from release binaries. This applies to production/Tauri
 release builds only; development builds keep their normal fast incremental

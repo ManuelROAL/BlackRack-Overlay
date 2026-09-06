@@ -1,5 +1,5 @@
 ; Based on Tauri CLI 2.11.4's official NSIS template.
-; BlackRack Overlay customization: optional Ko-fi checkbox on the finish page.
+; BlackRack Overlay: explicit terms acceptance and optional Ko-fi finish checkbox.
 Unicode true
 ManifestDPIAware true
 ; Add in `dpiAwareness` `PerMonitorV2` to manifest for Windows 10 1607+ (note this should not affect lower versions since they should be able to ignore this and pick up `dpiAware` `true` set by `ManifestDPIAware true`)
@@ -174,6 +174,7 @@ VIAddVersionKey "ProductVersion" "${VERSION}"
 ; 2. License Page (if defined)
 !if "${LICENSE}" != ""
   !define MUI_PAGE_CUSTOMFUNCTION_PRE SkipIfPassive
+  !define MUI_LICENSEPAGE_CHECKBOX
   !insertmacro MUI_PAGE_LICENSE "${LICENSE}"
 !endif
 
