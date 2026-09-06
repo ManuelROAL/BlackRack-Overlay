@@ -20,6 +20,8 @@ export type RelativeColumnId =
   | "damage"
   | "trackLimits"
   | "pitStops"
+  | "pitTime"
+  | "pitLap"
   | "tire"
   | "signals";
 
@@ -55,6 +57,8 @@ export type RelativeOptionId =
   | "trackLimitsColumn"
   | "signals"
   | "pitStops"
+  | "pitTime"
+  | "pitLap"
   | "tire";
 
 export interface RelativeOptionDefinition {
@@ -82,7 +86,7 @@ export const RELATIVE_COLUMN_OPTIONS: RelativeOptionDefinition[] = [
   { id: "rating", labelKey: "column.ranks" }, { id: "positionChange", labelKey: "option.positionChange" }, { id: "lap", labelKey: "column.lap" },
   { id: "best", labelKey: "column.best" }, { id: "last", labelKey: "column.last" }, { id: "average", labelKey: "column.average" },
   { id: "energy", labelKey: "column.energy" }, { id: "damage", labelKey: "column.damage" }, { id: "trackLimitsColumn", labelKey: "column.trackLimits" },
-  { id: "pitStops", labelKey: "column.pitStops" }, { id: "tire", labelKey: "column.tire" }, { id: "signals", labelKey: "column.signals" }
+  { id: "pitStops", labelKey: "column.pitStops" }, { id: "pitTime", labelKey: "column.pitTime" }, { id: "pitLap", labelKey: "column.pitLap" }, { id: "tire", labelKey: "column.tire" }, { id: "signals", labelKey: "column.signals" }
 ];
 
 export const RELATIVE_OPTIONS: RelativeOptionDefinition[] = [
@@ -110,7 +114,7 @@ const relativeColumn = (
 const RELATIVE_COLUMN_LABELS: Record<RelativeColumnId, import("./i18n").TranslationKey> = {
   position: "column.position", number: "column.number", country: "column.country", badge: "column.badge", driver: "column.driver", ranks: "column.ranks",
   relative: "column.relative", lap: "column.lap", best: "column.best", last: "column.last", average: "column.average", energy: "column.energy",
-  damage: "column.damage", trackLimits: "column.trackLimits", pitStops: "column.pitStops", tire: "column.tire", signals: "column.signals"
+  damage: "column.damage", trackLimits: "column.trackLimits", pitStops: "column.pitStops", pitTime: "column.pitTime", pitLap: "column.pitLap", tire: "column.tire", signals: "column.signals"
 };
 
 export const RELATIVE_COLUMNS: RelativeColumnDefinition[] = [
@@ -129,6 +133,8 @@ export const RELATIVE_COLUMNS: RelativeColumnDefinition[] = [
   relativeColumn("damage", "DMG", 42, false, "damage"),
   relativeColumn("trackLimits", "TL", 30, false, "trackLimitsColumn"),
   relativeColumn("pitStops", "PIT", 42, false, "pitStops"),
+  relativeColumn("pitTime", "", 0, false, "pitTime"),
+  relativeColumn("pitLap", "", 0, false, "pitLap"),
   relativeColumn("tire", "NEU", 30, false, "tire"),
   relativeColumn("signals", "", 104, false, "signals")
 ];
@@ -163,6 +169,11 @@ export const readRelativeSettings = (): RelativeSettings => {
         settings.options[option.id] = stored.options[option.id] as boolean;
       }
     }
+    for (const id of ["pitTime", "pitLap"] as const) {
+      if (stored.options?.[id] === undefined && typeof stored.options?.pitStops === "boolean") {
+        settings.options[id] = stored.options.pitStops;
+      }
+    }
     if (Array.isArray(stored.columnOrder)) {
       const validIds = new Set(RELATIVE_COLUMNS.map(({ id }) => id));
       const storedOrder = stored.columnOrder.filter(
@@ -189,7 +200,7 @@ export const readRelativeSettings = (): RelativeSettings => {
 };
 
 export const visibleRelativeColumns = (settings: RelativeSettings): RelativeColumnDefinition[] =>
-  [...settings.columnOrder.filter((id) => id !== "pitStops" && id !== "signals"), "signals" as const]
+  [...settings.columnOrder.filter((id) => !["pitStops", "pitTime", "pitLap"].includes(id) && id !== "signals"), "signals" as const]
     .map((id) => RELATIVE_COLUMNS.find((column) => column.id === id))
     .filter((column): column is RelativeColumnDefinition =>
       column !== undefined && (column.option === undefined || settings.options[column.option])

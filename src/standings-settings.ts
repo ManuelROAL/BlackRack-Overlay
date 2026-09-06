@@ -20,6 +20,8 @@ export type StandingsColumnId =
   | "damage"
   | "trackLimits"
   | "pitStops"
+  | "pitTime"
+  | "pitLap"
   | "tire"
   | "signals";
 
@@ -86,6 +88,8 @@ export const STANDINGS_COLUMNS: StandingsColumnDefinition[] = [
   { id: "damage", labelKey: "column.damage", header: "DMG", width: 34, configurable: true, identity: false },
   { id: "trackLimits", labelKey: "column.trackLimits", header: "TL", width: 30, configurable: true, identity: false },
   { id: "pitStops", labelKey: "column.pitStops", header: "PIT", width: 34, configurable: true, identity: false },
+  { id: "pitTime", labelKey: "column.pitTime", header: "", width: 0, configurable: true, identity: false },
+  { id: "pitLap", labelKey: "column.pitLap", header: "", width: 0, configurable: true, identity: false },
   { id: "tire", labelKey: "column.tire", header: "NEU", width: 30, configurable: true, identity: false },
   { id: "signals", labelKey: "column.signals", header: "", width: 96, configurable: true, identity: false }
 ];
@@ -148,6 +152,11 @@ export const readStandingsSettings = (): StandingsSettings => {
         settings.columns[column.id] = stored.columns[column.id] as boolean;
       }
     }
+    for (const id of ["pitTime", "pitLap"] as const) {
+      if (stored.columns?.[id] === undefined && typeof stored.columns?.pitStops === "boolean") {
+        settings.columns[id] = stored.columns.pitStops;
+      }
+    }
     if (Array.isArray(stored.columnOrder)) {
       const validIds = new Set(STANDINGS_COLUMNS.map(({ id }) => id));
       const storedOrder = stored.columnOrder.filter(
@@ -187,7 +196,7 @@ export const visibleStandingsColumns = (
     .map((id) => columns.get(id))
     .filter((column): column is StandingsColumnDefinition =>
       column !== undefined
-        && column.id !== "pitStops"
+        && !["pitStops", "pitTime", "pitLap"].includes(column.id)
         && (!column.configurable || settings.columns[column.id])
     );
 };

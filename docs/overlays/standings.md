@@ -236,3 +236,15 @@ Session names, empty states, counts, tooltips, table header and accessibility te
 use the bundled locale. Cached rows translate only when their visible cell or
 header changes; domain IDs and roster calculations remain stable.
 The OBS route follows the shared saved locale or a page-local `?lang=` override.
+
+## Independent pit information
+
+- Number of stops, time in pits and pit-stop lap have independent visibility
+  toggles. They remain integrated into the driver cell, outside column reordering.
+  Time controls both the active timer and the latest completed duration.
+  Completed summaries remain race-only; a request badge appears while any of
+  these options is enabled.
+- Missing time/lap preferences inherit the old pit visibility when loading
+  settings, profiles or configuration imports, preserving the previous appearance.
+- Verify all eight visibility combinations, active/request/completed states,
+  and legacy settings/imports with pit information enabled and disabled.

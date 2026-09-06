@@ -2128,6 +2128,12 @@ const parseOverlayConfiguration = (
   };
   const defaultStandings = defaultStandingsSettings();
   const normalizedStandingsColumns = mergeBooleanRecord(standings.columns, defaultStandings.columns);
+  for (const id of ["pitTime", "pitLap"] as const) {
+    const imported = configurationObject(standings.columns);
+    if (normalizedStandingsColumns && imported?.[id] === undefined && typeof imported?.pitStops === "boolean") {
+      normalizedStandingsColumns[id] = imported.pitStops;
+    }
+  }
   const importedStandingsOrder = mergeOrder(standings.columnOrder, defaultStandings.columnOrder);
   const normalizedStandingsOrder = importedStandingsOrder
     ? normalizeStandingsColumnOrder(importedStandingsOrder)
@@ -2147,6 +2153,12 @@ const parseOverlayConfiguration = (
   }
   const defaultRelative = defaultRelativeSettings();
   const normalizedRelativeOptions = mergeBooleanRecord(relative.options, defaultRelative.options);
+  for (const id of ["pitTime", "pitLap"] as const) {
+    const imported = configurationObject(relative.options);
+    if (normalizedRelativeOptions && imported?.[id] === undefined && typeof imported?.pitStops === "boolean") {
+      normalizedRelativeOptions[id] = imported.pitStops;
+    }
+  }
   const normalizedRelativeOrder = mergeOrder(relative.columnOrder, defaultRelative.columnOrder);
   if (!normalizedRelativeOptions
     || !normalizedRelativeOrder
@@ -2669,12 +2681,12 @@ const bindColumnOrder = <Id extends string>(
 
 bindColumnOrder<StandingsColumnId>(
   document.getElementById("standings-column-order"),
-  STANDINGS_COLUMNS.filter(({ id }) => id !== "pitStops"),
-  () => standingsSettings.columnOrder.filter((id) => id !== "pitStops"),
+  STANDINGS_COLUMNS.filter(({ id }) => !["pitStops", "pitTime", "pitLap"].includes(id)),
+  () => standingsSettings.columnOrder.filter((id) => !["pitStops", "pitTime", "pitLap"].includes(id)),
   (columnOrder) => {
     standingsSettings = {
       ...standingsSettings,
-      columnOrder: [...columnOrder.filter((id) => id !== "signals"), "pitStops", "signals"]
+      columnOrder: [...columnOrder.filter((id) => id !== "signals"), "pitStops", "pitTime", "pitLap", "signals"]
     };
     persistStandingsSettings();
   },
@@ -2877,12 +2889,12 @@ for (const option of RELATIVE_COLUMN_OPTIONS) {
 
 bindColumnOrder<RelativeColumnId>(
   document.getElementById("relative-column-order"),
-  RELATIVE_COLUMNS.filter(({ id }) => id !== "pitStops"),
-  () => relativeSettings.columnOrder.filter((id) => id !== "pitStops"),
+  RELATIVE_COLUMNS.filter(({ id }) => !["pitStops", "pitTime", "pitLap"].includes(id)),
+  () => relativeSettings.columnOrder.filter((id) => !["pitStops", "pitTime", "pitLap"].includes(id)),
   (columnOrder) => {
     relativeSettings = {
       ...relativeSettings,
-      columnOrder: [...columnOrder.filter((id) => id !== "signals"), "pitStops", "signals"]
+      columnOrder: [...columnOrder.filter((id) => id !== "signals"), "pitStops", "pitTime", "pitLap", "signals"]
     };
     persistRelativeSettings();
   },

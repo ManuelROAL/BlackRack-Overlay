@@ -391,10 +391,11 @@ const pitTimeLabel = (seconds: number): string => {
 };
 
 const appendDriverPitStatus = (cell: HTMLElement, entry: StandingEntry): void => {
-  if (!relativeSettings.options.pitStops) return;
+  const { pitStops, pitTime, pitLap } = relativeSettings.options;
+  if (!pitStops && !pitTime && !pitLap) return;
   const summary = node("span", "driver-pit-summary");
   if (entry.in_pits) {
-    if (entry.pit_stop_time_seconds !== null) {
+    if (pitTime && entry.pit_stop_time_seconds !== null) {
       const time = pitTimeLabel(entry.pit_stop_time_seconds);
       summary.classList.add("timing");
       summary.append(node("b", "driver-pit-time", time));
@@ -406,11 +407,9 @@ const appendDriverPitStatus = (cell: HTMLElement, entry: StandingEntry): void =>
     summary.title = t("standings.pitRequested", { count: entry.pit_stops });
   } else if (raceSession && entry.pit_stop_time_seconds !== null && entry.pit_stop_lap !== null && entry.pit_stops > 0) {
     const time = pitTimeLabel(entry.pit_stop_time_seconds);
-    summary.append(
-      node("b", "driver-pit-lap", `L${entry.pit_stop_lap}`),
-      node("b", "driver-pit-time", time),
-      node("b", "driver-pit-count", entry.pit_stops.toString())
-    );
+    if (pitLap) summary.append(node("b", "driver-pit-lap", `L${entry.pit_stop_lap}`));
+    if (pitTime) summary.append(node("b", "driver-pit-time", time));
+    if (pitStops) summary.append(node("b", "driver-pit-count", entry.pit_stops.toString()));
     summary.title = t("standings.pitSummary", {
       count: entry.pit_stops,
       lap: entry.pit_stop_lap,
@@ -426,7 +425,7 @@ const cellSignature = (entry: StandingEntry, column: RelativeColumnId, trackLimi
     case "number": return liveCarNumbers.get(entry.vehicle_id) || entry.car_number || "--";
     case "country": return entry.nationality;
     case "badge": return entry.driver_badge;
-    case "driver": return `${entry.driver_name}|${entry.nationality}|${relativeSettings.driverNameFormat}|${relativeSettings.options.pitStops}|${raceSession}|${entry.in_pits}|${entry.pit_stop_requested}|${entry.pit_stops}|${entry.pit_stop_lap ?? ""}|${entry.pit_stop_time_seconds === null ? "" : pitTimeLabel(entry.pit_stop_time_seconds)}`;
+    case "driver": return `${entry.driver_name}|${entry.nationality}|${relativeSettings.driverNameFormat}|${relativeSettings.options.pitStops}|${relativeSettings.options.pitTime}|${relativeSettings.options.pitLap}|${raceSession}|${entry.in_pits}|${entry.pit_stop_requested}|${entry.pit_stops}|${entry.pit_stop_lap ?? ""}|${entry.pit_stop_time_seconds === null ? "" : pitTimeLabel(entry.pit_stop_time_seconds)}`;
     case "ranks": return `${entry.driver_rank}|${Math.round(entry.driver_rank_progress)}|${Math.round(entry.estimated_driver_rank_gain)}|${entry.estimated_driver_rank_gain_available}|${entry.safety_rank}`;
     case "relative": return relativeGapSeconds.toFixed(2);
     case "lap": return entry.total_laps.toString();
@@ -438,6 +437,8 @@ const cellSignature = (entry: StandingEntry, column: RelativeColumnId, trackLimi
       : "--";
     case "damage": return Math.round(entry.damage_percent).toString();
     case "trackLimits": return entry.track_limits_steps === null ? "--" : `${entry.track_limits_steps}|${trackLimit}`;
+    case "pitTime":
+    case "pitLap":
     case "pitStops": return `${entry.pit_stops}|${entry.pit_stop_requested}|${entry.pit_stop_time_seconds === null ? "" : pitTimeLabel(entry.pit_stop_time_seconds)}`;
     case "tire": return entry.tire_compounds.join("/");
     case "signals": {
@@ -527,6 +528,8 @@ const createCell = (entry: StandingEntry, column: RelativeColumnId, trackLimit: 
       if (entry.track_limits_steps !== null) applyTrackLimitTone(cell, entry.track_limits_steps, trackLimit);
       return cell;
     }
+    case "pitTime":
+    case "pitLap":
     case "pitStops": {
       const timing = entry.pit_stop_time_seconds !== null;
       const value = timing ? pitTimeLabel(entry.pit_stop_time_seconds ?? 0) : entry.pit_stops.toString();
@@ -799,7 +802,7 @@ bindOverlayInteractionMode();
 if (import.meta.env.DEV && new URLSearchParams(window.location.search).has("preview")) {
   relativeSettings = {
     ...relativeSettings,
-    options: { ...relativeSettings.options, pitStops: true }
+    options: { ...relativeSettings.options, pitStops: true, pitTime: true, pitLap: true }
   };
   updateOverlayFit({ width: relativeBaseWidth(), height: relativeBaseHeight() });
   applyColumnLayout();
