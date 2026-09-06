@@ -1,6 +1,16 @@
 export type Message = string | Readonly<{ one: string; other: string }>;
 
 export const es = {
+  "start.title": "Bienvenido a BlackRack Overlay",
+  "start.screen": "Elige el idioma y el monitor en General.",
+  "start.profile": "Activa los paneles que necesites en Overlays y personaliza sus ajustes.",
+  "start.layout": "Activa el modo edición en General → Aplicación para mover y redimensionar los overlays. Vuelve al modo juego antes de conducir.",
+  "start.drive": "Abre el simulador y entra en pista. Los overlays pueden ocultarse automáticamente en el garaje o fuera del juego.",
+  "start.done": "ENTENDIDO",
+  "start.support": "SOPORTE", "start.diagnosticTitle": "Información para pedir ayuda",
+  "start.diagnosticHelp": "Copia el resumen y adjúntalo a tu consulta junto con los pasos para reproducir el problema. No incluye registros, rutas personales ni credenciales.",
+  "start.copy": "COPIAR DIAGNÓSTICO", "start.copied": "Diagnóstico copiado.",
+  "start.copyFallback": "No se pudo copiar automáticamente. Selecciona y copia el texto del resumen.",
   "settings.fuelField.current": "Recurso actual",
   "settings.fuelField.autonomy": "Autonomía",
   "settings.fuelField.pitWindow": "Ventana de parada",
@@ -310,6 +320,16 @@ type Catalog = { readonly [Key in TranslationKey]: Message };
 
 export const en = {
   ...es,
+  "start.title": "Welcome to BlackRack Overlay",
+  "start.screen": "Choose your language and monitor in General.",
+  "start.profile": "Enable the panels you need in Overlays and customize their settings.",
+  "start.layout": "Enter edit mode in General → Application, then move and resize the overlays. Return to game mode before driving.",
+  "start.drive": "Open the simulator and head out on track. Overlays may hide automatically in the garage or outside the game.",
+  "start.done": "GOT IT",
+  "start.support": "SUPPORT", "start.diagnosticTitle": "Information for support",
+  "start.diagnosticHelp": "Copy the summary and include it with your question and steps to reproduce the issue. It contains no logs, personal paths or credentials.",
+  "start.copy": "COPY DIAGNOSTICS", "start.copied": "Diagnostics copied.",
+  "start.copyFallback": "Could not copy automatically. Select and copy the summary text.",
   "settings.fuelField.current": "Current resource",
   "settings.fuelField.autonomy": "Range",
   "settings.fuelField.pitWindow": "Pit window",

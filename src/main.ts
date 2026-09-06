@@ -1730,6 +1730,18 @@ createProfileButton?.addEventListener("click", () => {
   })().catch(() => undefined);
 });
 
+const gettingStarted = document.getElementById("getting-started") as HTMLDetailsElement;
+const GETTING_STARTED_KEY = "blackrack-overlay.getting-started.v1";
+gettingStarted.open = localStorage.getItem(GETTING_STARTED_KEY) !== "done";
+document.getElementById("start-done")?.addEventListener("click", () => {
+  localStorage.setItem(GETTING_STARTED_KEY, "done");
+  gettingStarted.open = false;
+  gettingStarted.querySelector("summary")?.focus();
+});
+document.getElementById("start-guide")?.addEventListener("click", () => {
+  document.getElementById("open-overlay-guide")?.click();
+});
+
 renderModeSelection();
 renderProfiles();
 
@@ -3182,7 +3194,9 @@ const renderConnection = (frame: TelemetryFrame): void => {
   }
 };
 
+let supportConnected: boolean | null = null;
 void listen<TelemetryFrame>("telemetry://frame", ({ payload }) => {
+  supportConnected = payload.connected;
   // The active simulator is chosen at runtime, so the panel follows the frame
   // instead of the answer it got once at startup.
   if (simulatorStatus && payload.source !== simulatorStatus.id) refreshSimulatorStatus();
@@ -3191,6 +3205,41 @@ void listen<TelemetryFrame>("telemetry://frame", ({ payload }) => {
   trackSessionKind(payload);
 })
   .catch(reportInitializationError("telemetry listener"));
+const diagnosticButton = document.getElementById("copy-support-diagnostic") as HTMLButtonElement;
+diagnosticButton.addEventListener("click", () => {
+  diagnosticButton.disabled = true;
+  void (async () => {
+    const output = document.getElementById("support-diagnostic-output") as HTMLTextAreaElement;
+    const status = document.getElementById("support-diagnostic-status")!;
+    // Explicit allowlist: never serialize source status, settings or logs wholesale.
+    const report = JSON.stringify({
+      application: "BlackRack Overlay",
+      version: await getVersion().catch(() => null),
+      simulator: simulatorStatus?.id ?? null,
+      simulatorSelection: simulatorStatus?.preference ?? null,
+      connected: supportConnected,
+      dependencyAvailable: simulatorStatus?.dependency?.available ?? null,
+      locale: getLocale(),
+      performanceProfile,
+      mode: activeMode,
+      enabledOverlays: overlayIds.filter((id) => preferences[id]),
+      displayScale: window.devicePixelRatio,
+      screen: { width: window.screen.width, height: window.screen.height },
+      overlayMonitor: (document.getElementById("overlay-monitor") as HTMLSelectElement | null)?.value || null
+    }, null, 2);
+    output.value = report;
+    output.hidden = false;
+    try {
+      await navigator.clipboard.writeText(report);
+      status.textContent = t("start.copied");
+    } catch {
+      status.textContent = t("start.copyFallback");
+      output.focus();
+      output.select();
+    }
+  })().finally(() => { diagnosticButton.disabled = false; });
+});
+
 const renderInteractionMode = (mode: InteractionMode): void => {
   const status = document.getElementById("interaction-status");
   if (status) status.textContent = t(mode.click_through ? "mode.game" : "mode.edit");

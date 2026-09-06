@@ -73,6 +73,20 @@
         <p id="overlay-filter-empty" class="overlay-filter-empty" hidden data-i18n="filter.empty">No hay overlays que coincidan.</p>
       </section>
 
+      <details id="getting-started" class="general-settings-section getting-started" data-view-section="general">
+        <summary data-i18n="start.title">Bienvenido a BlackRack Overlay</summary>
+        <ol>
+          <li data-i18n="start.screen">Elige el idioma y el monitor en General.</li>
+          <li data-i18n="start.profile">Activa los paneles que necesites en Overlays y personaliza sus ajustes.</li>
+          <li data-i18n="start.layout">Activa el modo edición en General → Aplicación para mover y redimensionar los overlays. Vuelve al modo juego antes de conducir.</li>
+          <li data-i18n="start.drive">Abre el simulador y entra en pista. Los overlays pueden ocultarse automáticamente en el garaje o fuera del juego.</li>
+        </ol>
+        <div class="getting-started-actions">
+          <button id="start-guide" type="button" data-i18n="guide.open">Guía</button>
+          <button id="start-done" type="button" data-i18n="start.done">ENTENDIDO</button>
+        </div>
+      </details>
+
       <section class="general-settings-section general-settings-lead" data-view-section="general" aria-label="Pantalla y apariencia" data-i18n-aria-label="display.aria">
         <header class="settings-section-heading">
           <span data-i18n="display.heading">PANTALLA</span>
@@ -781,6 +795,17 @@
         </div>
       </details>
       
+      <section class="general-settings-section support-diagnostic" data-view-section="integrations">
+        <header class="settings-section-heading">
+          <span data-i18n="start.support">SOPORTE</span>
+          <strong data-i18n="start.diagnosticTitle">Información para pedir ayuda</strong>
+        </header>
+        <p data-i18n="start.diagnosticHelp">Copia el resumen y adjúntalo a tu consulta junto con los pasos para reproducir el problema. No incluye registros, rutas personales ni credenciales.</p>
+        <button id="copy-support-diagnostic" type="button" data-i18n="start.copy">COPIAR DIAGNÓSTICO</button>
+        <p id="support-diagnostic-status" aria-live="polite"></p>
+        <textarea id="support-diagnostic-output" rows="10" readonly hidden aria-label="Resumen de diagnóstico" data-i18n-aria-label="start.diagnosticTitle"></textarea>
+      </section>
+
       <details class="logging-section diagnostic-details" data-view-section="integrations" aria-label="Análisis de estrategia" data-i18n-aria-label="strategyLog.aria">
         <summary class="integration-section-heading">
           <span data-i18n="strategyLog.heading">ESTRATEGIA</span>

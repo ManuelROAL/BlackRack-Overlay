@@ -88,6 +88,26 @@ telemetry semantics and file ownership live under `docs/overlays/`; use
 
 ## Control panel and persistence
 
+- General opens with a collapsible getting-started guide (language/monitor,
+  overlay selection, edit/game mode and automatic visibility). Acknowledging it persists
+  locally under `blackrack-overlay.getting-started.v1`; the summary always lets
+  users reopen it, and its guide action opens the existing overlay help dialog.
+- Configuration profiles are user-created; the panel has no recommended presets.
+  Previously saved profiles remain available as ordinary editable profiles.
+- Integrations provides a copyable support summary with an explicit field allowlist:
+  app version, simulator selection/connection/dependency availability, locale,
+  performance/follow mode, enabled overlay IDs, control-screen size/scale and selected
+  overlay monitor index. Unknown values remain null. It never reads logs or includes
+  personal paths, profile names, telemetry identities or credentials. The summary
+  remains visible for manual copying when clipboard access fails.
+- These onboarding/support controls live in `index.html`, `src/main.ts`,
+  `src/control-panel.css` and the shared ES/EN catalogs. Verify with `npm.cmd run build`
+  plus first-open/acknowledgement and clipboard success/fallback checks in the
+  control panel.
+  Verified for this addition: production frontend build, ES/EN browser rendering,
+  acknowledgement surviving reload, reopening the overlay guide and clipboard
+  success. Clipboard-denied behavior remains pending native verification.
+
 - Keep top-level separation between overlays, general settings and integrations.
   General is the leftmost tab and the default view when the control panel opens.
   Visibility stays immediately accessible. Per-overlay monitor, transparency,

@@ -2640,3 +2640,57 @@ select {
     width: 100%;
   }
 }
+.getting-started summary {
+  cursor: pointer;
+  color: var(--accent, #d5f36b);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.getting-started, .support-diagnostic { padding: 14px 16px; }
+.support-diagnostic > .settings-section-heading { padding: 0 0 12px; }
+.getting-started-actions button, .support-diagnostic button {
+  padding: 8px 12px;
+  border: 1px solid rgb(255 255 255 / 16%);
+  border-radius: 6px;
+  background: #17212c;
+  color: #eef3f8;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+}
+.getting-started-actions button:hover:not(:disabled), .support-diagnostic button:hover:not(:disabled) {
+  border-color: #d8ff3e;
+}
+.getting-started-actions button:disabled, .support-diagnostic button:disabled { opacity: .5; cursor: default; }
+
+.getting-started ol {
+  margin: 12px 0;
+  padding-left: 22px;
+  color: #c5cbd3;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.getting-started-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.getting-started-actions button, .support-diagnostic button { min-height: 36px; }
+.support-diagnostic p { font-size: 13px; color: #c5cbd3; }
+.support-diagnostic [aria-live]:empty { display: none; }
+.support-diagnostic textarea {
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 10px;
+  padding: 10px;
+  resize: vertical;
+  background: #10151c;
+  color: #e3e8ee;
+  border: 1px solid #343d48;
+  border-radius: 6px;
+  font-size: 12px;
+}
