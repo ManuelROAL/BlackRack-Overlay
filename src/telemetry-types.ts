@@ -296,6 +296,11 @@ export interface TelemetryFrame {
   virtual_energy_needed_percent: number;
   virtual_energy_next_stint_percent: number;
   virtual_energy_stints_remaining: number;
+  resource_autonomy: {
+    fuel_laps: number | null;
+    energy_laps: number | null;
+    range_laps: number | null;
+  };
   fuel_strategies: FuelStrategies;
   standings_model: StandingsViewModel;
   relative_model: RelativeViewModel;

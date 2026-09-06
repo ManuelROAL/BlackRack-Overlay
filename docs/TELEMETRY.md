@@ -76,6 +76,11 @@ restore per-overlay native listeners or direct cross-realm object events.
   explicitly permits it.
 - Preserve unavailable values as unavailable rather than converting them to real
   zeroes.
+- `resource_autonomy` is the shared projected fuel, energy and limiting lap range.
+  Rust publishes it independently of Fuel strategy demand. Dashboard and Fuel use
+  it directly; null means unavailable and zero means exhausted with a valid
+  reference. Legacy `estimated_fuel_laps` / `estimated_virtual_energy_laps` retain
+  their average-consumption semantics and are not the shared displayed range.
 - Derive lap validity from telemetry's per-vehicle `mLapInvalidated` signal,
   latched for the complete lap. A negative official `mLastLapTime` confirms an
   invalid completed lap. LMU can publish the sentinel `-1` instead of the invalid

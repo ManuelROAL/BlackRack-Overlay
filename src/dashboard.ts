@@ -85,11 +85,6 @@ const level = (current: number, max: number): string =>
 const rounded = (input: number, digits = 0, suffix = ""): string =>
   Number.isFinite(input) && input >= 0 ? `${input.toFixed(digits)}${suffix}` : UNKNOWN;
 
-/// Zero can only mean "not learned yet" for a rate or a range: no car burns
-/// nothing per lap, and a range of zero laps would mean an empty tank.
-const learned = (input: number, digits: number, suffix = ""): string =>
-  Number.isFinite(input) && input > 0 ? `${input.toFixed(digits)}${suffix}` : UNKNOWN;
-
 const lapTime = (seconds: number): string => {
   if (!Number.isFinite(seconds) || seconds <= 0) return UNKNOWN_LAP;
   const minutes = Math.floor(seconds / 60);
@@ -192,12 +187,8 @@ const renderValues = (frame: TelemetryFrame): void => {
 
   setText(value("fuel"), rounded(frame.fuel_liters, 1));
   setText(value("energy"), rounded(frame.virtual_energy_percent, 0, "%"));
-  const fuelLaps = frame.estimated_fuel_laps;
-  const energyLaps = frame.estimated_virtual_energy_laps;
-  setText(value("laps"), learned(
-    frame.virtual_energy_active && energyLaps > 0 ? Math.min(fuelLaps, energyLaps) : fuelLaps,
-    1
-  ));
+  const range = frame.resource_autonomy.range_laps;
+  setText(value("laps"), range == null ? "--" : rounded(range, 1));
   setText(value("battery"), rounded(frame.battery_charge_percent, 0, "%"));
 
   setText(value("map"), level(frame.engine_map, frame.engine_map_max));
@@ -296,6 +287,7 @@ const previewFrame = {
   session_time_remaining: 3 * 3600 + 42 * 60 + 15,
   fuel_liters: 46.3,
   estimated_fuel_laps: 17.5,
+  resource_autonomy: { fuel_laps: 17.5, energy_laps: 15.2, range_laps: 15.2 },
   virtual_energy_active: true,
   virtual_energy_percent: 58,
   estimated_virtual_energy_laps: 15.2,

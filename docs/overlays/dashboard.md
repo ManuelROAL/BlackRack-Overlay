@@ -94,9 +94,11 @@ fields may be enabled, including all of them. The strip grows with its content.
   actually raced on, and falls back to the overall place. Both are counted in
   the bridge, the class one over the scoring class name, which is filled for
   every car including those without per-vehicle telemetry.
-- The range in laps is whichever budget runs out first: with virtual energy
-  active that is usually the energy, not the tank. Consumption and range show
-  `--` until they are learned, because zero is not a reading for either.
+- Range reads Rust's shared `resource_autonomy.range_laps`, exactly like Fuel's
+  summary. It uses projected consumption with the same fallback order as strategy,
+  rather than the clean average. With energy active, the smaller fuel/energy range
+  wins; both references must exist. Unknown is `--`, while an empty resource with
+  a valid consumption reference is `0.0`. This model runs even with Fuel disabled.
 - Delta and lap times come from `delta_model` and `timing_model`. Both are built
   on demand, so the source loop treats an active Dashboard as a request for them
   exactly like the Delta and Timing overlays.

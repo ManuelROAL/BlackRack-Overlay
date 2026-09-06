@@ -19,7 +19,7 @@ use std::time::{Instant, SystemTime, UNIX_EPOCH};
 use std::{thread, time::Duration};
 use tauri::{AppHandle, Emitter, Manager};
 
-use fuel_strategy::FuelStrategies;
+use fuel_strategy::{FuelStrategies, ResourceAutonomy};
 
 pub(crate) use delta_records::{
     cycle_mode as cycle_delta_mode, set_settings as set_delta_settings, set_timing_settings,
@@ -714,6 +714,7 @@ pub struct TelemetryFrame {
     virtual_energy_needed_percent: f64,
     virtual_energy_next_stint_percent: f64,
     virtual_energy_stints_remaining: u32,
+    resource_autonomy: ResourceAutonomy,
     fuel_strategies: FuelStrategies,
     standings_model: standings_models::StandingsViewModel,
     relative_model: standings_models::RelativeViewModel,
@@ -1012,6 +1013,7 @@ impl TelemetryFrame {
             virtual_energy_needed_percent: 0.0,
             virtual_energy_next_stint_percent: 0.0,
             virtual_energy_stints_remaining: 0,
+            resource_autonomy: ResourceAutonomy::default(),
             fuel_strategies: FuelStrategies::default(),
             standings_model: standings_models::StandingsViewModel::default(),
             relative_model: standings_models::RelativeViewModel::default(),

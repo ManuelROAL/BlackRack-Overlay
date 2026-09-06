@@ -288,27 +288,28 @@ impl TelemetrySource for LmuTelemetrySource {
         let mut session_lap_equivalents_remaining =
             (session_laps_remaining - profile_estimate.lap_progress).max(0.0);
         let session_total_laps_estimated = Self::total_laps_estimated(&snapshot);
-        let planned_fuel_per_lap = [
+        let planned_fuel_per_lap = projected_consumption([
             profile_estimate.fuel_projected,
             fuel_per_lap,
             self.fuel_last_lap.unwrap_or(0.0),
             profile_estimate.fuel_reference,
             self.fuel_qualifying_lap.unwrap_or(0.0),
-        ]
-        .into_iter()
-        .find(|value| *value > 0.0)
-        .unwrap_or(0.0);
+        ]);
         let virtual_energy_active = Self::uses_virtual_energy(&snapshot);
-        let planned_energy_per_lap = [
+        let planned_energy_per_lap = projected_consumption([
             profile_estimate.energy_projected,
             virtual_energy_per_lap,
             self.energy_last_lap.unwrap_or(0.0),
             profile_estimate.energy_reference,
             self.energy_qualifying_lap.unwrap_or(0.0),
-        ]
-        .into_iter()
-        .find(|value| *value > 0.0)
-        .unwrap_or(0.0);
+        ]);
+        let resource_autonomy = ResourceAutonomy::calculate(
+            Some(snapshot.fuel_liters),
+            planned_fuel_per_lap,
+            Some(virtual_energy_percent),
+            planned_energy_per_lap,
+            virtual_energy_active,
+        );
         let fuel_full_stint_laps = (planned_fuel_per_lap > 0.0)
             .then_some(snapshot.fuel_capacity_liters / planned_fuel_per_lap);
         let energy_full_stint_laps =
@@ -494,7 +495,14 @@ impl TelemetrySource for LmuTelemetrySource {
                 other_service_seconds,
                 pit_traversal_seconds,
             );
-            let (next_stint_load, next_stint_laps, next_stint_minutes) = next_stint_autonomy(
+            let post_pit = ResourceAutonomy::calculate(
+                self.local_rest.pit_refill_target(false),
+                planned_fuel_per_lap,
+                self.local_rest.pit_refill_target(true),
+                planned_energy_per_lap,
+                virtual_energy_active,
+            );
+            let (next_stint_load, _, _) = next_stint_autonomy(
                 self.local_rest.pit_refill_target(virtual_energy_active),
                 if virtual_energy_active {
                     planned_energy_per_lap
@@ -503,6 +511,10 @@ impl TelemetrySource for LmuTelemetrySource {
                 },
                 lap_seconds,
             );
+            let next_stint_laps = post_pit.range_laps;
+            let next_stint_minutes = next_stint_laps
+                .filter(|_| lap_seconds.is_finite() && lap_seconds > 0.0)
+                .map(|laps| laps * lap_seconds / 60.0);
             let strategies = FuelStrategies {
                 active: active_strategy,
                 fuel: virtual_energy_active.then_some(fuel_strategy).flatten(),
@@ -794,6 +806,7 @@ impl TelemetrySource for LmuTelemetrySource {
                 0.0
             },
             estimated_fuel_laps,
+            resource_autonomy,
             session_laps_remaining,
             session_laps_remaining_estimated,
             session_lap_equivalents_remaining,

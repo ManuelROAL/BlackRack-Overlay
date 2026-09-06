@@ -95,9 +95,6 @@ const tone = (id: string, value: "good" | "warn" | "bad" | "neutral"): void => {
 const format = (value: number, decimals = 2): string =>
   Number.isFinite(value) && value >= 0 ? formatNumber(value, decimals) : "--";
 
-const consumptionReference = (...values: number[]): number | undefined =>
-  values.find((value) => Number.isFinite(value) && value > 0);
-
 const renderStintTargets = (frame: TelemetryFrame, unit: string): void => {
   for (let index = 0; index < 3; index += 1) {
     const target = frame.fuel_strategies.stint_targets[index];
@@ -170,13 +167,7 @@ const render = (frame: TelemetryFrame): void => {
   const average = energyMode ? frame.virtual_energy_per_lap : frame.fuel_per_lap;
   const qualifying = energyMode ? frame.virtual_energy_qualifying_lap : frame.fuel_qualifying_lap;
   const last = energyMode ? frame.virtual_energy_last_lap : frame.fuel_last_lap;
-  const fuelReference = consumptionReference(
-    frame.fuel_projected_lap,
-    frame.fuel_per_lap,
-    frame.fuel_last_lap,
-    frame.fuel_reference_per_lap,
-    frame.fuel_qualifying_lap
-  ) ?? 0;
+  const range = frame.resource_autonomy.range_laps;
   const strategy = frame.fuel_strategies.active;
   const nextStintLaps = frame.fuel_strategies.next_stint_laps;
   text("scenario-value-label", t(settings.scenarioMode === "refuel" ? "fuel.refuel" : "fuel.totalAdd"));
@@ -197,7 +188,6 @@ const render = (frame: TelemetryFrame): void => {
   text("resource-current", frame.player_active ? format(current, 1) : "--");
   text("resource-unit", unit);
   if (strategy) {
-    text("strategy-autonomy", t("fuel.lapsValue", { value: format(strategy.autonomy, 1) }));
     text(
       "pit-window",
       strategy.stops > 0
@@ -206,22 +196,17 @@ const render = (frame: TelemetryFrame): void => {
           : t("fuel.lapRange", { first: strategy.earliest_pit_lap, last: strategy.latest_pit_lap })
         : t("fuel.noPit")
     );
-    const pit = document.getElementById("pit-status");
-    if (pit) pit.dataset.level = pitLevel(frame.player_active, strategy.autonomy);
   } else {
-    for (const [id, value] of [
-      ["strategy-autonomy", "--"], ["pit-window", "--"]
-    ]) text(id, value);
-    const pit = document.getElementById("pit-status");
-    if (pit) pit.dataset.level = "unknown";
+    text("pit-window", "--");
   }
 
-  const fuelAutonomy = fuelReference > 0
-    ? Math.max(frame.fuel_liters, 0) / fuelReference
-    : Number.POSITIVE_INFINITY;
+  const pit = document.getElementById("pit-status");
+  if (pit) pit.dataset.level = range == null ? "unknown" : pitLevel(frame.player_active, range);
+  text("strategy-autonomy", t("fuel.lapsValue", { value: format(range ?? NaN, 1) }));
+  const fuelAutonomy = frame.resource_autonomy.fuel_laps;
   text("fuel-current", energyMode ? format(frame.fuel_liters, 1) : "--");
   text("fuel-capacity", energyMode ? `/ ${format(frame.fuel_capacity_liters, 1)}` : "/ --");
-  text("fuel-autonomy", energyMode ? t("fuel.lapsValue", { value: format(fuelAutonomy, 1) }) : "--");
+  text("fuel-autonomy", energyMode ? t("fuel.lapsValue", { value: format(fuelAutonomy ?? NaN, 1) }) : "--");
   text("fuel-ratio-assigned", energyMode ? format(frame.fuel_ratio_assigned) : "--");
   text("fuel-ratio-average", energyMode ? format(frame.fuel_ratio_average) : "--");
   text("fuel-ratio-last", energyMode ? format(frame.fuel_ratio_last) : "--");

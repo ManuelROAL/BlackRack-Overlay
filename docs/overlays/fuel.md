@@ -30,6 +30,14 @@ calculated only for a visible native panel or connected `/fuel` route.
   remains correct.
 - Autonomy is remaining resource divided by the selected reference and may be
   fractional.
+- The summary and PIT range warning read `resource_autonomy.range_laps`, shared
+  with Dashboard; the auxiliary fuel card reads `resource_autonomy.fuel_laps`.
+  Rust selects the first finite positive consumption from projected, clean average,
+  last lap, stored profile reference and qualifying. These lightweight ranges are
+  built independently of strategy demand or remaining race distance. With energy
+  active, the summary uses the smaller fuel/energy range and requires both
+  references. Missing values are null; a known empty resource is zero. Scenario
+  rows retain their separate consumption references and resource-specific ranges.
 
 ## Consumption references and learning
 
@@ -145,6 +153,10 @@ calculated only for a visible native panel or connected `/fuel` route.
 - Parse the absolute fuel or virtual-energy load selected in LMU's official pit
   menu and show its post-pit autonomy using the projected valid consumption.
   Keep it unavailable when the REST value or consumption reference is unavailable.
+- Post-pit range uses the same Rust range model and planned references as current
+  autonomy. With virtual energy active, both configured absolute loads are required
+  and the limiting resource determines laps and minutes. The selected active-resource
+  load remains separate from this combined range.
 - Omit diagnostic context (confidence, pit-cycle delta, qualifying gain and
   pit-service estimate) from the driving overlay; those values are not needed for
   the immediate stop/save decision.
@@ -188,6 +200,8 @@ calculated only for a visible native panel or connected `/fuel` route.
 Test session transitions, qualifying carryover, fractional progress, sub-100%
 starts, refills, formation/neutralization/pit exclusion, multi-stop pit profiles
 and the limiting-resource choice. Run Rust tests and the frontend build.
+Verify matching Dashboard/Fuel range with Fuel enabled and disabled, zero versus
+unknown consumption, either resource limiting and missing parallel post-pit loads.
 
 ## Localization
 

@@ -3,6 +3,56 @@ use serde::Serialize;
 const MAX_GUIDANCE_SAVING_PERCENT: f64 = 15.0;
 const STINT_TARGET_RESERVE: f64 = 0.2;
 
+/// Shared projected range. Unknown references stay unavailable; empty tanks are zero.
+#[derive(Clone, Copy, Debug, Default, Serialize)]
+pub(crate) struct ResourceAutonomy {
+    pub fuel_laps: Option<f64>,
+    pub energy_laps: Option<f64>,
+    pub range_laps: Option<f64>,
+}
+
+impl ResourceAutonomy {
+    pub(super) fn calculate(
+        fuel: Option<f64>,
+        fuel_consumption: f64,
+        energy: Option<f64>,
+        energy_consumption: f64,
+        energy_active: bool,
+    ) -> Self {
+        let fuel_laps = fuel.and_then(|amount| resource_autonomy(amount, fuel_consumption));
+        let energy_laps = energy_active
+            .then(|| energy.and_then(|amount| resource_autonomy(amount, energy_consumption)))
+            .flatten();
+        let range_laps = if energy_active {
+            fuel_laps
+                .zip(energy_laps)
+                .map(|(fuel, energy)| fuel.min(energy))
+        } else {
+            fuel_laps
+        };
+        Self {
+            fuel_laps,
+            energy_laps,
+            range_laps,
+        }
+    }
+}
+
+fn resource_autonomy(amount: f64, consumption: f64) -> Option<f64> {
+    if !amount.is_finite() || amount < 0.0 || !valid_positive(consumption) {
+        return None;
+    }
+    let laps = amount / consumption;
+    laps.is_finite().then_some(laps)
+}
+
+pub(super) fn projected_consumption(references: [f64; 5]) -> f64 {
+    references
+        .into_iter()
+        .find(|value| valid_positive(*value))
+        .unwrap_or(0.0)
+}
+
 #[derive(Clone, Copy, Debug)]
 pub(super) struct ResourceStrategyInput {
     pub current: f64,
@@ -66,10 +116,9 @@ pub(super) fn next_stint_autonomy(
     let Some(load) = configured_load.filter(|value| value.is_finite() && *value >= 0.0) else {
         return (None, None, None);
     };
-    if !valid_positive(consumption) {
+    let Some(laps) = resource_autonomy(load, consumption) else {
         return (Some(load), None, None);
-    }
-    let laps = load / consumption;
+    };
     let minutes = valid_positive(lap_seconds).then_some(laps * lap_seconds / 60.0);
     (Some(load), Some(laps), minutes)
 }
@@ -302,7 +351,7 @@ pub(super) fn calculate_resource_strategy(
     };
     let saving_percent =
         ((input.consumption - target_consumption) / input.consumption * 100.0).max(0.0);
-    let autonomy = input.current.max(0.0) / input.consumption;
+    let autonomy = resource_autonomy(input.current.max(0.0), input.consumption)?;
     let minutes = if lap_seconds > 0.0 {
         autonomy * lap_seconds / 60.0
     } else {
@@ -363,6 +412,62 @@ pub(super) fn calculate_resource_strategy(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn projected_range_matches_strategy_and_refill_instead_of_average() {
+        let consumption = projected_consumption([8.0, 10.0, 11.0, 12.0, 13.0]);
+        let range = ResourceAutonomy::calculate(Some(40.0), consumption, None, 0.0, false);
+        let strategy = calculate_resource_strategy(
+            ResourceStrategyInput {
+                current: 40.0,
+                consumption,
+                ..input()
+            },
+            120.0,
+            0,
+        )
+        .unwrap();
+        assert_eq!(range.range_laps, Some(5.0));
+        assert_eq!(range.range_laps, Some(strategy.autonomy));
+        assert_eq!(
+            range.range_laps,
+            next_stint_autonomy(Some(40.0), consumption, 120.0).1
+        );
+        assert_eq!(
+            projected_consumption([f64::NAN, f64::INFINITY, 0.0, 9.0, 10.0]),
+            9.0
+        );
+    }
+
+    #[test]
+    fn parallel_range_requires_both_references_and_preserves_empty_resources() {
+        let fuel_limited = ResourceAutonomy::calculate(Some(20.0), 10.0, Some(80.0), 10.0, true);
+        assert_eq!(fuel_limited.range_laps, Some(2.0));
+        let energy_limited = ResourceAutonomy::calculate(Some(80.0), 10.0, Some(20.0), 10.0, true);
+        assert_eq!(energy_limited.range_laps, Some(2.0));
+        for (fuel, consumption, energy) in [
+            (None, 10.0, Some(80.0)),
+            (Some(40.0), 0.0, Some(80.0)),
+            (Some(40.0), 10.0, None),
+        ] {
+            assert_eq!(
+                ResourceAutonomy::calculate(fuel, consumption, energy, 10.0, true).range_laps,
+                None
+            );
+        }
+        assert_eq!(
+            ResourceAutonomy::calculate(Some(40.0), 10.0, Some(0.0), 10.0, true).range_laps,
+            Some(0.0)
+        );
+        assert_eq!(
+            ResourceAutonomy::calculate(Some(0.0), 10.0, None, 0.0, false).range_laps,
+            Some(0.0)
+        );
+        assert_eq!(
+            ResourceAutonomy::calculate(Some(f64::NAN), 10.0, None, 0.0, false).range_laps,
+            None
+        );
+    }
 
     fn input() -> ResourceStrategyInput {
         ResourceStrategyInput {

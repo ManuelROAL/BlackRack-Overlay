@@ -2,7 +2,8 @@ use std::time::Instant;
 
 use super::{SourceCapabilities, SourceDescriptor, TelemetrySource};
 use crate::telemetry::fuel_strategy::{
-    calculate_resource_strategy, calculate_stint_targets, FuelStrategies, ResourceStrategyInput,
+    calculate_resource_strategy, calculate_stint_targets, FuelStrategies, ResourceAutonomy,
+    ResourceStrategyInput,
 };
 use crate::telemetry::{
     FlagWarning, RejoinWarning, StandingEntry, TelemetryDemand, TelemetryFrame, TireLifeModel,
@@ -327,6 +328,13 @@ impl TelemetrySource for MockTelemetrySource {
             fuel_ratio_average: fuel_per_lap / virtual_energy_per_lap,
             fuel_ratio_last: 12.05 / 8.55,
             estimated_fuel_laps: fuel_liters / fuel_per_lap,
+            resource_autonomy: ResourceAutonomy::calculate(
+                Some(fuel_liters),
+                12.1,
+                Some(virtual_energy_percent),
+                8.5,
+                true,
+            ),
             session_laps_remaining,
             session_laps_remaining_estimated: session_laps_remaining - 0.35,
             session_lap_equivalents_remaining: laps_remaining,
