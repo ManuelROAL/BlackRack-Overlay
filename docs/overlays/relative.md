@@ -93,9 +93,8 @@ the prepared vehicle IDs and formats them; it must not repeat domain selection.
   Use Hypercar red, LMP2 blue, LMP3 purple and LMGT3 green. Preserve distinct
   player and pit layers, including LMGT3 contrast.
 - Derive design width from active columns with a compact 344 px minimum. New and
-  reset configurations default to number, driver, physical time and Signals;
-  their base surface is 393 × 255 px. Advanced identity, timing and strategy
-  columns remain configurable. Reserve
+  reset configurations enable every column and header option. Existing saved
+  selections remain unchanged, and all optional fields can still be hidden. Reserve
   23 px for every selected row so the last card is not clipped.
 - Expand text-bearing column tracks together with the text-size design surface so
   enlarged labels and values cannot overlap neighboring columns. Country flags,

@@ -45,7 +45,7 @@ inferring them from pedals and slip is exactly what the rule above forbids.
   progressively from 84% to 96% of `max_rpm`, symmetrically from both outer
   edges toward the centre. Each side advances from two green through two yellow
   to two red segments, placing the four red segments in the centre. At 96% all
-  segments flash cyan; at 99.99% they flash magenta. It is disabled by default.
+  segments flash cyan; at 99.99% they flash magenta. It is enabled by default.
   The thresholds, the symmetric fill and the colour band of each position live
   in `src/rpm-leds.ts`, shared with Dashboard's strip: two panels disagreeing
   about when to shift is worse than either being slightly wrong. Change the

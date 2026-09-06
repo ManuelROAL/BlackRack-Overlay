@@ -25,7 +25,7 @@ export const defaultDrivingSettings = (): DrivingSettings => ({
   showForceFeedback: true,
   showSpeed: true,
   showGear: true,
-  showRpmLeds: false
+  showRpmLeds: true
 });
 
 export const readDrivingSettings = (): DrivingSettings => {

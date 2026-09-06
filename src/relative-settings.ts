@@ -134,10 +134,9 @@ export const RELATIVE_COLUMNS: RelativeColumnDefinition[] = [
 ];
 
 export const defaultRelativeSettings = (): RelativeSettings => {
-  const compactOptions = new Set<RelativeOptionId>(["number", "signals"]);
   return {
     options: Object.fromEntries(
-      RELATIVE_OPTIONS.map(({ id }) => [id, compactOptions.has(id)])
+      RELATIVE_OPTIONS.map(({ id }) => [id, true])
     ) as Record<RelativeOptionId, boolean>,
     columnOrder: RELATIVE_COLUMNS.map(({ id }) => id),
     aheadRows: 4,

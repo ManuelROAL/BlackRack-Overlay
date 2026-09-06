@@ -14,8 +14,8 @@ export const defaultTiresSettings = (): TiresSettings => ({
   showBrakeTemperature: true,
   showFlatSpot: true,
   showTireWear: true,
-  showOilTemperature: false,
-  showWaterTemperature: false
+  showOilTemperature: true,
+  showWaterTemperature: true
 });
 
 export const normalizeTiresSettings = (value: unknown): TiresSettings | null => {
