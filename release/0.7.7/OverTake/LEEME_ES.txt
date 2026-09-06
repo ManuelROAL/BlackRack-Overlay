@@ -1,0 +1,48 @@
+BLACKRACK OVERLAY 0.7.7 - Windows x64
+====================================
+Overlays de telemetría gratuitos y configurables para Le Mans Ultimate.
+No necesitas instalar SimHub, Node.js, Rust ni Tauri.
+
+INSTALACIÓN Y PRIMEROS PASOS
+1. Extrae el ZIP y ejecuta BlackRack Overlay_0.7.7_x64-setup.exe.
+2. Abre la aplicación y elige el idioma y el monitor en General.
+3. En Overlays, activa los paneles que necesites y personaliza sus ajustes.
+4. En General > Aplicación, activa el modo edición para moverlos y cambiar
+   su tamaño.
+5. Vuelve al modo juego antes de conducir para dejar pasar los clics.
+6. Abre Le Mans Ultimate y sal a pista.
+
+El instalador incluye el asistente de Microsoft WebView2 y puede necesitar
+Internet si WebView2 no está instalado. No copies ninguna DLL de BlackRack
+en el juego: utiliza Plugins/LMU_SharedMemoryMapPlugin64.dll, incluido con LMU.
+
+CONSEJOS
+- Consulta la Guía integrada para conocer cada overlay.
+- Los overlays pueden ocultarse automáticamente en el garaje o fuera del juego.
+- Atajos iniciales: Ctrl+Shift+O cambia entre juego y edición; Ctrl+Shift+M
+  muestra el panel. Puedes cambiarlos en General > Aplicación.
+- Crea perfiles personalizados en General y asígnalos al modo juego,
+  espectador o equipo, o a sesiones de práctica, clasificación y carrera.
+- Exporta la configuración en General > Copia de seguridad antes de actualizar.
+- Fluido, Equilibrado y Ahorro ajustan la cadencia de actualización visual.
+- La interfaz está disponible en español e inglés.
+
+OBS
+Activa la fuente de navegador local en Integraciones y añade las URL mostradas
+como fuentes de navegador en OBS en el mismo ordenador.
+
+SOPORTE
+Pulsa Copiar diagnóstico en Integraciones > Soporte y adjunta el resumen a tu
+consulta en la página de BlackRack Overlay en OverTake. Explica cómo reproducir
+el problema y añade una captura si ayuda. El resumen excluye registros, rutas
+personales y credenciales.
+
+Los datos disponibles dependen del simulador y de la sesión. Algunas estimaciones
+necesitan vueltas completas para aprender el consumo o el ritmo. La ausencia de
+datos online opcionales no interrumpe la telemetría principal.
+
+CONTENIDO
+Instalador de Windows, guías en inglés y español, novedades destacadas y
+SHA256SUMS.txt con sumas SHA-256 de estos archivos.
+
+Apoyo opcional al proyecto: https://ko-fi.com/blackrack
