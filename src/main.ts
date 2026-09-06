@@ -77,6 +77,8 @@ import {
 } from "./trackmap-settings";
 import {
   defaultFuelSettings,
+  FUEL_FIELDS,
+  normalizeFuelSettings,
   FUEL_SETTINGS_KEY,
   isFuelScenarioMode,
   readFuelSettings,
@@ -924,7 +926,7 @@ if (fuelScenarioMode) {
   fuelScenarioMode.value = fuelSettings.scenarioMode;
   fuelScenarioMode.addEventListener("change", () => {
     if (!isFuelScenarioMode(fuelScenarioMode.value)) return;
-    fuelSettings = { scenarioMode: fuelScenarioMode.value };
+    fuelSettings = { ...fuelSettings, scenarioMode: fuelScenarioMode.value };
     persistFuelSettings();
   });
 }
@@ -1359,7 +1361,7 @@ const applyProfileData = async (data: OverlayProfileData): Promise<void> => {
     deltaSettings = data.delta;
     timingSettings = data.timing;
     trackMapSettings = data.trackMap;
-    fuelSettings = data.fuel;
+    fuelSettings = normalizeFuelSettings(data.fuel);
     tiresSettings = data.tires;
     conditionsSettings = data.conditions;
     dashboardSettings = data.dashboard ?? defaultDashboardSettings();
@@ -2196,6 +2198,10 @@ const parseOverlayConfiguration = (
     throw new Error(t("config.invalidMap"));
   }
   const normalizedFuel = fuel ?? defaultFuelSettings();
+  if (normalizedFuel.visible !== undefined
+    && !completeBooleanRecord(normalizedFuel.visible, FUEL_FIELDS.map(({ id }) => id))) {
+    throw new Error(t("config.invalidFuel"));
+  }
   if (!isFuelScenarioMode(normalizedFuel.scenarioMode)) {
     throw new Error(t("config.invalidFuel"));
   }
@@ -2303,7 +2309,7 @@ const parseOverlayConfiguration = (
       delta: normalizedDelta as unknown as DeltaSettings,
       timing: normalizedTimingWithTimes as unknown as TimingSettings,
       trackMap: normalizedTrackMap as unknown as TrackMapSettings,
-      fuel: normalizedFuel as unknown as FuelSettings,
+      fuel: normalizeFuelSettings(normalizedFuel),
       tires: normalizedTires as unknown as TiresSettings,
       conditions: normalizedConditions,
       dashboard: normalizedDashboard,
@@ -2721,6 +2727,14 @@ for (const option of STANDINGS_HEADER_OPTIONS) {
 }
 
 const timingTimeOptions = document.getElementById("timing-time-options");
+const fuelFieldOptions = document.getElementById("fuel-field-options");
+for (const option of FUEL_FIELDS) {
+  appendToggle(fuelFieldOptions, t(option.labelKey), fuelSettings.visible[option.id], (checked) => {
+    fuelSettings = { ...fuelSettings, visible: { ...fuelSettings.visible, [option.id]: checked } };
+    persistFuelSettings();
+  });
+}
+
 for (const option of TIMING_TIMES) {
   appendToggle(timingTimeOptions, t(option.labelKey), timingSettings.times[option.id], (checked) => {
     timingSettings = {

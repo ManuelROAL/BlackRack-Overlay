@@ -75,6 +75,18 @@ calculated only for a visible native panel or connected `/fuel` route.
 
 ## Presentation
 
+- The fuel settings disclosure offers independent visibility switches for current
+  resource, autonomy, pit window, post-pit range, PIT warning, level bar, stint
+  targets, each scenario row, each numeric scenario column, the auxiliary fuel
+  card and its ratios. All are enabled by default, including when loading older
+  settings or importing a configuration without visibility preferences.
+- Hidden summary tracks and scenario columns collapse; the table disappears when
+  it has no selected rows or numeric columns. The design height follows visible
+  sections and rows, including the absence of the auxiliary card in fuel-only
+  mode, while preserving the user's visual scale. With everything hidden a
+  minimal 32 px surface remains recoverable in edit mode.
+- Visibility uses the existing fuel settings key/event and is included in
+  profiles, validated configuration export/import, scoped reset and OBS mirroring.
 - Present current resource, autonomy, pit window/load and the clean-average,
   qualifying and last-lap scenarios as a compact endurance strategy tool.
 - Use a `292 x 198` design surface. Migrate the former default `560 x 230` and

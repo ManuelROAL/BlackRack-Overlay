@@ -8,15 +8,65 @@ import type { ResourceStrategy, TelemetryFrame } from "./telemetry-types";
 import { isTauriRuntime, listenRuntimeEvent, listenTelemetry } from "./runtime-events";
 import { formatNumber, t } from "./i18n";
 import { energyIconUrl, fuelIconUrl } from "./lmu-icons";
-import { readFuelSettings, type FuelSettings } from "./fuel-settings";
+import { normalizeFuelSettings, readFuelSettings, type FuelField, type FuelSettings } from "./fuel-settings";
 
-fitOverlay(
+const resizeOverlay = fitOverlay(
   { width: 292, height: 198 },
   { widthTextRatio: 0.5, heightTextRatio: 0.3 }
 );
 bindOverlayTransparency("fuel");
 const renderPerformance = createOverlayPerformanceTracker("fuel");
 let settings = readFuelSettings();
+let energyLayout = true;
+const shell = document.querySelector<HTMLElement>(".fuel-shell")!;
+const summary = shell.querySelector<HTMLElement>(".strategy-summary")!;
+const table = shell.querySelector<HTMLElement>(".strategy-table")!;
+const fieldSelectors: Partial<Record<FuelField, string>> = {
+  current: ".accent-stat",
+  autonomy: ".summary-stat:nth-child(2)",
+  pitWindow: ".wide-stat > span, #pit-window",
+  postPit: "#next-stint-range",
+  pitStatus: "#pit-status",
+  level: ".strategy-level",
+  targets: ".stint-targets",
+  average: ".average-row",
+  qualifying: ".qualify-row",
+  last: ".last-row",
+  consumption: ".strategy-columns > :nth-child(2), .strategy-row > :nth-child(2)",
+  scenarioAutonomy: ".strategy-columns > :nth-child(3), .strategy-row > :nth-child(3)",
+  scenarioValue: ".strategy-columns > :nth-child(4), .strategy-row > :nth-child(4)",
+  fuelCard: ".fuel-card",
+  ratios: ".fuel-card-values"
+};
+const fieldNodes = Object.entries(fieldSelectors).map(([id, selector]) =>
+  [id as FuelField, Array.from(shell.querySelectorAll<HTMLElement>(selector))] as const
+);
+const wideStat = shell.querySelector<HTMLElement>(".wide-stat")!;
+const applySettings = (): void => {
+  const v = settings.visible;
+  for (const [id, nodes] of fieldNodes) {
+    for (const node of nodes) node.hidden = !v[id];
+  }
+  wideStat.hidden = !v.pitWindow && !v.postPit;
+  const summaryTracks = [
+    v.current ? "52fr" : "", v.autonomy ? "52fr" : "",
+    v.pitWindow || v.postPit ? "98fr" : "", v.pitStatus ? "28fr" : ""
+  ].filter(Boolean);
+  summary.hidden = summaryTracks.length === 0 && !v.level;
+  summary.style.gridTemplateColumns = summaryTracks.join(" ") || "1fr";
+  summary.classList.toggle("level-only", summaryTracks.length === 0);
+  const rows = Number(v.average) + Number(v.qualifying) + Number(v.last);
+  const columns = Number(v.consumption) + Number(v.scenarioAutonomy) + Number(v.scenarioValue);
+  table.hidden = rows === 0 || columns === 0;
+  table.style.gridTemplateRows = `max(12px, calc(11px * var(--overlay-font-scale, 1))) repeat(${Math.max(rows, 1)}, 1fr)`;
+  shell.style.setProperty("--fuel-scenario-columns", `56fr repeat(${Math.max(columns, 1)}, 58fr)`);
+  shell.classList.toggle("hide-ratios", !v.ratios);
+  const summaryHeight = summary.hidden ? 0 : summaryTracks.length ? 39 : 10;
+  const tableHeight = table.hidden ? 0 : 16 + rows * 18;
+  const cardHeight = v.fuelCard && energyLayout ? (v.ratios ? 52 : 34) : 0;
+  resizeOverlay({ width: 292, height: Math.max(32, 6 + summaryHeight + (v.targets ? 31 : 0) + tableHeight + cardHeight) });
+  text("scenario-value-label", t(settings.scenarioMode === "refuel" ? "fuel.refuel" : "fuel.totalAdd"));
+};
 
 type ProfileName = "average" | "qualifying" | "last";
 type PitLevel = "unknown" | "safe" | "caution" | "warning" | "critical";
@@ -137,7 +187,10 @@ const render = (frame: TelemetryFrame): void => {
       : ""
   );
 
-  const shell = document.querySelector<HTMLElement>(".fuel-shell");
+  if (energyLayout !== energyMode) {
+    energyLayout = energyMode;
+    applySettings();
+  }
   shell?.setAttribute("data-resource-mode", mode);
   renderResourceIcon("active-table-label", "active-table-icon", energyMode);
   renderStintTargets(frame, unit);
@@ -189,12 +242,14 @@ const render = (frame: TelemetryFrame): void => {
   }
 };
 
+applySettings();
 void listenTelemetry((frame) =>
   renderPerformance.measure(() => render(frame))
 );
 if (isTauriRuntime()) {
   void listenRuntimeEvent<FuelSettings>("fuel://settings", (next) => {
-    settings = next;
+    settings = normalizeFuelSettings(next);
+    applySettings();
   });
 }
 bindOverlayInteractionMode();

@@ -367,7 +367,7 @@ body[data-overlay-fit="true"].fuel-body .fuel-shell {
 .strategy-columns,
 .strategy-row {
   display: grid;
-  grid-template-columns: 56fr repeat(3, 58fr);
+  grid-template-columns: var(--fuel-scenario-columns, 56fr repeat(3, 58fr));
   align-items: center;
   column-gap: 2px;
   padding: 0 5px;
@@ -402,3 +402,17 @@ body[data-overlay-fit="true"].fuel-body .fuel-shell {
 .average-row > span { color: #55c7e8; }
 .qualify-row > span { color: #ff6b5f; }
 .last-row > span { color: #69d58a; }
+
+.fuel-shell [hidden] {
+  display: none !important;
+}
+
+.strategy-summary.level-only {
+  flex-basis: calc(10px * var(--overlay-font-height-expansion, 1));
+  grid-template-rows: 3px;
+}
+
+.fuel-shell.hide-ratios .fuel-card {
+  flex-basis: calc(34px * var(--overlay-font-height-expansion, 1));
+  grid-template-rows: 24px 4px;
+}
