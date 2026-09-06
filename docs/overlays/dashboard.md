@@ -49,31 +49,21 @@ One pill-shaped strip, not a cluster:
   Rejoin's pulse only runs on its standalone page. Reading the clock rather than
   counting frames keeps the rate identical across performance profiles.
 
-## Visible fields and the cap
+## Visible fields
 
 Every readout, the gear and the rev lights included, is one entry in a flat list
-the control panel shows alphabetically by its Spanish label. **At most
-`DASHBOARD_MAX_FIELDS` (8) may be on at once.** The strip is only readable while
-it is short, so the cap is what protects it: the driver chooses what matters for
-this car and this session instead of accumulating every field the game
-publishes.
+the control panel shows alphabetically by its Spanish label. Any number of
+fields may be enabled, including all of them. The strip grows with its content.
 
-- A field marked `counts: false` has no readout of its own and takes no room on
-  the strip, so it is not charged against the cap and the control panel never
-  locks it when the cap is full. The pit limiter and Lift & Coast are the two.
-  Adding a third means arguing that it is a warning rather than a readout.
-- The three traction-control trims are separate fields, because a car can expose
-  any combination of them: the level (`mTC`), the slip target (`mTCSlip`) and
-  the cut (`mTCCut`). Each is gated on its own maximum, so a car without one
-  simply never offers it.
-- The control panel disables the remaining entries once the cap is reached and
-  says so in the note under the list. Turning one off re-enables the rest.
-- `normalizeDashboardSettings` also trims a configuration that asks for more —
-  an imported document or a hand-edited one — keeping the first fields in list
-  order rather than rejecting the whole configuration.
-- The defaults are the eight that read the same in every car and every session:
-  gear, rev lights, speed, class position, fuel, last lap, air and track
-  temperature, plus the two uncounted warnings. Anything car-specific is opt-in.
+- The pit limiter and Lift & Coast light existing elements instead of adding
+  readouts.
+- The three traction-control trims are separate fields: level (`mTC`), slip
+  target (`mTCSlip`) and cut (`mTCCut`). Each is gated on its own maximum.
+- `normalizeDashboardSettings` preserves every selected known field when loading
+  settings, profiles or imported configuration, validates booleans and supplies
+  defaults for missing fields.
+- Defaults remain gear, rev lights, speed, class position, fuel, last lap, air
+  and track temperature, plus both warnings. Car-specific fields are opt-in.
 
 ## Data semantics
 
@@ -139,9 +129,6 @@ publishes.
   legitimate settings; the maxima and `hybrid_available` are the only signals.
 - The overlay owns presentation only. Normalisation of the charge scale, the
   availability flags and the class-position count stay in Rust and the bridge.
-- Do not let the field list grow without raising the cap deliberately. Adding an
-  entry that pushes the strip past a glance is the failure mode this overlay
-  exists to avoid.
 
 ## Verification focus
 
@@ -156,16 +143,16 @@ and ABS must appear for one and be absent for the other, and the strip must
 shorten accordingly. Confirm both warnings start and stop with their own
 state — the limiter entering and leaving the pits, the purple cue with Lift &
 Coast's own segments — that they fall back to the shell with the gear turned
-off, that the limiter wins while both are engaged, and that neither counts
-against the cap nor becomes unreachable in the control panel with the cap full, and that each traction-control trim
-appears only on a car that publishes a maximum for it. Confirm the cap disables
-the remaining toggles at eight and releases them when one is turned off, that
+off, that the limiter wins while both are engaged, and that each traction-control
+trim appears only on a car that publishes a maximum for it. Enable more than
+eight fields, including all fields, and confirm every toggle stays available and
+the selection survives reload and export/import. Confirm
 the delta and lap times fill in with the Delta and Timing overlays closed, the
 range with and without virtual energy, the OBS route and a configuration
 export/import round trip.
 
 ## Localization
 
-Field labels, the cap note, the waiting copy, the document title and
+Field labels, the waiting copy, the document title and
 accessibility text use the bundled locale; values remain format-only. Its OBS
 route follows the shared saved locale or a page-local `?lang=` override.
