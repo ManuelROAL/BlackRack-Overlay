@@ -27,6 +27,7 @@ export type DashboardFieldId =
 
 export interface DashboardSettings {
   visible: Record<DashboardFieldId, boolean>;
+  pitWarningTarget: "gear" | "overlay";
 }
 
 export const DASHBOARD_SETTINGS_KEY = "blackrack-overlay.dashboard.v1";
@@ -69,6 +70,7 @@ export const DASHBOARD_FIELDS = [
 }[];
 
 export const defaultDashboardSettings = (): DashboardSettings => ({
+  pitWarningTarget: "gear",
   visible: Object.fromEntries(
     DASHBOARD_FIELDS.map(({ id, default: enabled }) => [id, enabled])
   ) as Record<DashboardFieldId, boolean>
@@ -79,6 +81,9 @@ export const normalizeDashboardSettings = (value: unknown): DashboardSettings | 
   const visible = (value as Partial<DashboardSettings>).visible;
   if (!visible || typeof visible !== "object") return null;
   const fallback = defaultDashboardSettings();
+  const target = (value as Partial<DashboardSettings>).pitWarningTarget;
+  if (target !== undefined && target !== "gear" && target !== "overlay") return null;
+  fallback.pitWarningTarget = target ?? fallback.pitWarningTarget;
   for (const { id } of DASHBOARD_FIELDS) {
     if (visible[id] !== undefined && typeof visible[id] !== "boolean") return null;
     fallback.visible[id] = visible[id] ?? fallback.visible[id];

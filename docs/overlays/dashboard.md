@@ -36,6 +36,11 @@ One pill-shaped strip, not a cluster:
   configured without the gear, so a warning never depends on which readouts the
   driver chose. Blinking colour rather than adding a badge also means the strip
   cannot change width while one is engaged.
+- The pit warning target is selectable: gear only (default), or the whole
+  overlay, lighting both the gear and shell. With the gear hidden, either option
+  falls back to the shell. Lift & Coast keeps its existing gear/shell behavior.
+  `pitWarningTarget` is validated and persisted with dashboard preferences,
+  including profiles and OBS; older settings default to `gear`.
 - Each keeps the colour of the overlay that owns it, so the cue reads the same
   wherever it appears: amber for the pit limiter, and Lift & Coast's own purple
   (`#ad52ff`) for its cue, which follows `lift_and_coast_progress > 0` exactly
@@ -131,6 +136,10 @@ fields may be enabled, including all of them. The strip grows with its content.
   availability flags and the class-position count stay in Rust and the bridge.
 
 ## Verification focus
+
+Switch the pit warning between gear and whole-overlay targets while active.
+Confirm both clear when it stops, hidden gear falls back to the shell, and the
+choice survives reload, profiles and export/import.
 
 Change BB repeatedly and change each available electronics trim, including with
 its readout disabled: confirm the new value overlays the strip for three seconds

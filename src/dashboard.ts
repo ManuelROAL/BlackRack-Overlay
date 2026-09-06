@@ -262,7 +262,9 @@ const render = (frame: TelemetryFrame): void => {
   const lit = warning !== "none"
     && Math.floor(performance.now() / WARNING_BLINK_MS) % 2 === 0;
   setState(gear, "warning", lit && gearShown ? warning : "none");
-  setState(shell, "warning", lit && !gearShown ? warning : "none");
+  const warnWholeOverlay = !gearShown
+    || (warning === "limiter" && settings.pitWarningTarget === "overlay");
+  setState(shell, "warning", lit && warnWholeOverlay ? warning : "none");
   setState(shell, "gear", gearShown ? "on" : "off");
   toggle(row, rowFields > 0);
   toggle(readout, rowFields > 0 || revsShown);

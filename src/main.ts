@@ -2782,6 +2782,17 @@ for (const option of CONDITIONS_OPTIONS) {
 }
 
 const dashboardOptions = document.getElementById("dashboard-options");
+const dashboardPitTarget = document.getElementById("dashboard-pit-warning-target") as HTMLSelectElement | null;
+if (dashboardPitTarget) {
+  dashboardPitTarget.value = dashboardSettings.pitWarningTarget ?? "gear";
+  dashboardPitTarget.addEventListener("change", () => {
+    dashboardSettings = {
+      ...dashboardSettings,
+      pitWarningTarget: dashboardPitTarget.value === "overlay" ? "overlay" : "gear"
+    };
+    persistDashboardSettings();
+  });
+}
 for (const field of DASHBOARD_FIELDS) {
   appendToggle(
     dashboardOptions,

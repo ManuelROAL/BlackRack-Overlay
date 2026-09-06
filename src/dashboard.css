@@ -221,8 +221,7 @@ body.dashboard-body {
   color: #e5c8ff;
 }
 
-/* Fallback for a strip configured without the gear: a warning can never depend
-   on which readouts the driver happens to have chosen. */
+/* Whole-overlay pit warning, also the fallback when the gear is hidden. */
 .dashboard-shell[data-warning="limiter"] {
   border-color: #ffb84d;
   background: linear-gradient(
