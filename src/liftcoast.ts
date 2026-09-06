@@ -12,7 +12,7 @@ const card = document.getElementById("liftcoast-card")!;
 const segments = Array.from(document.querySelectorAll<HTMLElement>("[data-segment]"));
 const renderPerformance = createOverlayPerformanceTracker("liftcoast");
 
-fitOverlay({ width: 190, height: 64 });
+fitOverlay({ width: 190, height: 32 });
 bindOverlayTransparency("liftcoast");
 
 const visibleSegments = (rawProgress: number): number => {

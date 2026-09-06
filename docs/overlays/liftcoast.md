@@ -20,9 +20,10 @@
 
 ## Layout and behavior
 
-- Keep one compact row of five purple segments with a small `LIFT` label.
+- Show only one row of five purple segments, without a visible label. The
+  design surface is 190 × 32 px, with 2 px outer padding and a minimal frame.
 - The panel remains mounted while inactive so its configured position is stable;
-  inactive lamps and label are deliberately dim.
+  inactive lamps are deliberately dim.
 - Preserve proportional resize, general/per-overlay transparency and text size,
   click-through game mode, composite embedding and the `/liftcoast` OBS route.
 - Do not add continuous animation, blur or transitions. Repaint only when the

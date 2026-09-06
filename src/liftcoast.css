@@ -1,5 +1,5 @@
 .liftcoast-body {
-  padding: 6px;
+  padding: 2px;
   font-family: "Roboto Condensed", sans-serif;
 }
 
@@ -7,32 +7,18 @@
   display: grid;
   width: 100%;
   height: 100%;
-  padding: 7px 12px 8px;
+  padding: 4px 5px;
   overflow: hidden;
   border: 1px solid rgb(255 255 255 / 14%);
-  border-radius: 9px;
+  border-radius: 5px;
   background: linear-gradient(
     145deg,
     rgb(11 15 21 / var(--overlay-background-opacity)),
     rgb(5 8 12 / var(--overlay-background-opacity))
   );
-  box-shadow: 0 9px 28px rgb(0 0 0 / 45%);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 35%);
   cursor: move;
   place-items: center;
-}
-
-.liftcoast-label {
-  color: rgb(209 183 255 / 32%);
-  font-size: calc(11px * var(--overlay-font-scale, 1));
-  font-weight: 900;
-  letter-spacing: 0.26em;
-  line-height: 1;
-  text-indent: 0.26em;
-}
-
-.liftcoast-card[data-active="true"] .liftcoast-label {
-  color: #f1e8ff;
-  text-shadow: 0 0 8px rgb(165 94 255 / 72%);
 }
 
 .liftcoast-lights {
