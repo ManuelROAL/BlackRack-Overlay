@@ -35,6 +35,18 @@ const revs = value("revs");
 const readout = document.querySelector<HTMLElement>(".dash-readout")!;
 const row = value("fields");
 const empty = value("empty");
+const adjustment = value("adjustment");
+const adjustmentLabel = value("adjustment-label");
+const adjustmentValue = value("adjustment-value");
+const adjustmentFields = (["map", "tc", "tcslip", "tccut", "abs", "bias"] as const).map((id) => ({
+  id,
+  label: fields[id].querySelector("dt")!,
+  value: value(id),
+  previous: ""
+}));
+let adjustmentContext = "";
+let adjustmentUntil = 0;
+let lastAdjustment: typeof adjustmentFields[number] | undefined;
 
 const REV_LIGHTS = 12;
 const lights: HTMLElement[] = [];
@@ -198,9 +210,40 @@ const renderValues = (frame: TelemetryFrame): void => {
   setText(value("track"), rounded(frame.track_temperature_c, 0, "°"));
 };
 
+const renderAdjustment = (frame: TelemetryFrame): void => {
+  const context = JSON.stringify([
+    frame.source, frame.track_name, frame.player_vehicle_name, frame.session_type
+  ]);
+  const reset = !frame.player_active || context !== adjustmentContext;
+  if (reset) {
+    adjustmentUntil = 0;
+    lastAdjustment = undefined;
+  }
+  const now = performance.now();
+  for (const field of adjustmentFields) {
+    const current = frame.player_active && available(field.id, frame)
+      ? field.value.textContent ?? "" : "";
+    const valid = current !== "" && !current.includes("NaN") && !current.includes("--")
+      && !current.includes("Infinity") && !current.startsWith("-");
+    if (!reset && valid && field.previous !== "" && current !== field.previous) {
+      lastAdjustment = field;
+      adjustmentUntil = now + 3000;
+    }
+    field.previous = valid ? current : "";
+  }
+  adjustmentContext = frame.player_active ? context : "";
+  const shown = now < adjustmentUntil && lastAdjustment !== undefined;
+  if (shown && lastAdjustment) {
+    setText(adjustmentLabel, lastAdjustment.label.textContent ?? "");
+    setText(adjustmentValue, lastAdjustment.value.textContent ?? "");
+  }
+  toggle(adjustment, shown);
+};
+
 const render = (frame: TelemetryFrame): void => {
   const live = frame.player_active;
   if (live) renderValues(frame);
+  renderAdjustment(frame);
 
   let rowFields = 0;
   for (const { id } of DASHBOARD_FIELDS) {
@@ -282,7 +325,10 @@ const previewFrame = {
 } as unknown as TelemetryFrame;
 
 bindOverlayInteractionMode();
-if (!isTauriRuntime()) render(previewFrame);
+if (!isTauriRuntime()) {
+  render(previewFrame);
+  adjustmentContext = "";
+}
 void listenTelemetry((frame) => renderPerformance.measure(() => render(frame)));
 if (isTauriRuntime()) {
   void listenRuntimeEvent<DashboardSettings>("dashboard://settings", applySettings);

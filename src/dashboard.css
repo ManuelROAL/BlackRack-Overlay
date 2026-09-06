@@ -10,6 +10,7 @@ body.dashboard-body {
 /* The strip sizes itself to the fields that are on, so removing one shortens
    the design surface instead of leaving a gap. */
 .dashboard-shell {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 9px;
@@ -39,6 +40,41 @@ body.dashboard-body {
    over the user-agent rule behind the hidden attribute. */
 .dashboard-shell [hidden] {
   display: none;
+}
+
+.dash-adjustment {
+  position: absolute;
+  inset: 3px;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: inherit;
+  background: rgb(12 16 22 / var(--overlay-background-opacity));
+  pointer-events: none;
+  container-type: size;
+}
+
+.dashboard-shell:has(.dash-adjustment:not([hidden])) > :not(.dash-adjustment) {
+  visibility: hidden;
+}
+
+.dash-adjustment span {
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  color: #dce3ea;
+  font-size: min(calc(11px * var(--overlay-font-scale, 1)), 18cqw, 30cqh);
+  font-weight: 800;
+}
+
+.dash-adjustment strong {
+  color: #d8ff3e;
+  font-size: min(calc(28px * var(--overlay-font-scale, 1)), 24cqw, 60cqh);
+  line-height: 1;
+  font-weight: 900;
 }
 
 /* The accent lives on the gear ring rather than on a left edge bar: a pill has

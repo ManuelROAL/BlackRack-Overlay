@@ -131,6 +131,7 @@ const telemetryFields: Record<OverlayId, readonly (keyof TelemetryFrame)[]> = {
     "weather_forecast"
   ],
   dashboard: [
+    "source", "track_name", "player_vehicle_name", "session_type",
     "player_active", "gear", "speed_kph", "rpm", "max_rpm",
     "player_position", "player_class_position",
     "lap_number", "session_max_laps", "session_time_remaining",

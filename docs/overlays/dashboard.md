@@ -108,6 +108,20 @@ publishes.
 
 ## Presentation
 
+- Changes to brake bias, engine map, TC level/slip/cut and ABS show a centered
+  label and new value over the existing strip for three seconds, including when
+  that readout is disabled. Repeated changes restart the duration; the latest
+  change replaces the previous notice (simultaneous changes follow field order,
+  with brake bias taking precedence). Values are compared at their displayed
+  precision so sub-display brake-bias noise does not trigger a notice.
+- Initial telemetry, inactive players, a changed source/track/vehicle name/session
+  type and newly available electronics establish a baseline without a notice.
+  Identity detection is limited to those published fields; cars with identical
+  names cannot be distinguished here. Preview values never seed live notices.
+- Notices preserve layout and transparency, hide underlying text for readability,
+  and expire on telemetry updates without animations or an independent timer.
+  Native field projection includes the same context used by the OBS renderer.
+
 - The design surface follows the content on **both** axes through
   `fitOverlayToContentBox`, and the shell is `width: max-content`. Turning a
   field off therefore shortens the strip instead of leaving a gap: the eight
@@ -130,6 +144,12 @@ publishes.
   exists to avoid.
 
 ## Verification focus
+
+Change BB repeatedly and change each available electronics trim, including with
+its readout disabled: confirm the new value overlays the strip for three seconds
+after the last change, without resizing. Check initial/reconnected telemetry,
+unavailable systems and context changes do not generate false notices. Check
+compact gear-only layouts, text scaling, transparency and OBS as well.
 
 Check a Hypercar and an LMP2 in the same session: the battery, the engine map
 and ABS must appear for one and be absent for the other, and the strip must
