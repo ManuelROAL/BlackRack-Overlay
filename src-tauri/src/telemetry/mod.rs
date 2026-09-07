@@ -17,6 +17,17 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering};
 
 static FUEL_REFUEL_MARGIN: AtomicU64 = AtomicU64::new(0.5_f64.to_bits());
+static ENERGY_REFILL_MARGIN: AtomicU64 = AtomicU64::new(0.0_f64.to_bits());
+
+pub(crate) fn set_energy_refill_margin(percent: f64) {
+    if percent.is_finite() && (0.0..=20.0).contains(&percent) {
+        ENERGY_REFILL_MARGIN.store(percent.to_bits(), Ordering::Relaxed);
+    }
+}
+
+fn energy_refill_margin() -> f64 {
+    f64::from_bits(ENERGY_REFILL_MARGIN.load(Ordering::Relaxed))
+}
 
 pub(crate) fn set_fuel_refuel_margin(liters: f64) {
     if liters.is_finite() && (0.0..=20.0).contains(&liters) {

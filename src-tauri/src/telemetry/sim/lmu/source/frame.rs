@@ -396,6 +396,11 @@ impl TelemetrySource for LmuTelemetrySource {
             let fuel_race_laps =
                 self.fuel_race_laps_remaining(&snapshot, lap_progress, lap_seconds);
             let fuel_margin = crate::telemetry::fuel_refuel_margin();
+            let active_margin = if virtual_energy_active {
+                crate::telemetry::energy_refill_margin()
+            } else {
+                fuel_margin
+            };
             let calculate_plan = |input: ResourceStrategyInput, minimum_stops, margin| {
                 calculate_lap_reference_strategy(input, lap_seconds, minimum_stops, margin)
             };
@@ -451,15 +456,8 @@ impl TelemetrySource for LmuTelemetrySource {
                 } else {
                     0
                 };
-                let active_strategy = calculate_plan(
-                    active_input,
-                    parallel_minimum_stops,
-                    if virtual_energy_active {
-                        0.0
-                    } else {
-                        fuel_margin
-                    },
-                );
+                let active_strategy =
+                    calculate_plan(active_input, parallel_minimum_stops, active_margin);
                 (fuel_strategy, active_strategy, parallel_minimum_stops)
             };
             let (fuel_strategy, active_strategy, parallel_minimum_stops) =
@@ -470,15 +468,7 @@ impl TelemetrySource for LmuTelemetrySource {
                 } else {
                     fuel_input(consumption, fuel_race_laps)
                 };
-                calculate_plan(
-                    input,
-                    parallel_minimum_stops,
-                    if virtual_energy_active {
-                        0.0
-                    } else {
-                        fuel_margin
-                    },
-                )
+                calculate_plan(input, parallel_minimum_stops, active_margin)
             };
             let target_consumption = if virtual_energy_active {
                 virtual_energy_per_lap
@@ -549,11 +539,7 @@ impl TelemetrySource for LmuTelemetrySource {
                         ..target_input
                     },
                     parallel_minimum_stops,
-                    if virtual_energy_active {
-                        0.0
-                    } else {
-                        fuel_margin
-                    },
+                    active_margin,
                 ) {
                     let stops_saved =
                         active_strategy.map_or(0, |active| active.stops.saturating_sub(plan.stops));

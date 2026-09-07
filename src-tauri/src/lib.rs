@@ -1452,6 +1452,13 @@ fn set_fuel_refuel_margin(window: WebviewWindow, liters: f64) {
 }
 
 #[tauri::command]
+fn set_energy_refill_margin(window: WebviewWindow, percent: f64) {
+    if require_control_window(&window).is_ok() {
+        telemetry::set_energy_refill_margin(percent);
+    }
+}
+
+#[tauri::command]
 fn get_simulator_status(window: WebviewWindow) -> Result<telemetry::SimulatorStatus, String> {
     require_control_window(&window)?;
     Ok(telemetry::simulator_status())
@@ -1988,6 +1995,7 @@ pub fn run() {
             set_delta_settings,
             set_timing_settings,
             set_fuel_refuel_margin,
+            set_energy_refill_margin,
             get_simulator_status,
             set_simulator_preference,
             open_support_page,

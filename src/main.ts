@@ -625,6 +625,7 @@ const syncBrowserSourcePreferences = (): void => {
   void invoke("set_delta_settings", { settings: deltaSettings }).catch(() => undefined);
   void invoke("set_timing_settings", { settings: timingSettings }).catch(() => undefined);
   void invoke("set_fuel_refuel_margin", { liters: fuelSettings.refuelMarginLiters }).catch(() => undefined);
+  void invoke("set_energy_refill_margin", { percent: fuelSettings.energyMarginPercent }).catch(() => undefined);
   onLiveSettingsChanged();
 };
 
@@ -922,6 +923,19 @@ if (trackMapPitPrediction) {
 
 const fuelScenarioMode = document.getElementById("fuel-scenario-mode") as HTMLSelectElement | null;
 const fuelRefuelMargin = document.getElementById("fuel-refuel-margin") as HTMLInputElement | null;
+const fuelEnergyMargin = document.getElementById("fuel-energy-margin") as HTMLInputElement | null;
+if (fuelEnergyMargin) {
+  fuelEnergyMargin.value = String(fuelSettings.energyMarginPercent);
+  fuelEnergyMargin.addEventListener("change", () => {
+    const value = fuelEnergyMargin.valueAsNumber;
+    if (!Number.isFinite(value) || value < 0 || value > 20) {
+      fuelEnergyMargin.value = String(fuelSettings.energyMarginPercent);
+      return;
+    }
+    fuelSettings = { ...fuelSettings, energyMarginPercent: value };
+    persistFuelSettings();
+  });
+}
 if (fuelRefuelMargin) {
   fuelRefuelMargin.value = String(fuelSettings.refuelMarginLiters);
   fuelRefuelMargin.addEventListener("change", () => {
@@ -2256,6 +2270,12 @@ const parseOverlayConfiguration = (
     throw new Error(t("config.invalidMap"));
   }
   const normalizedFuel = fuel ?? defaultFuelSettings();
+  if (normalizedFuel.energyMarginPercent !== undefined
+    && (typeof normalizedFuel.energyMarginPercent !== "number"
+      || !Number.isFinite(normalizedFuel.energyMarginPercent)
+      || normalizedFuel.energyMarginPercent < 0 || normalizedFuel.energyMarginPercent > 20)) {
+    throw new Error(t("config.invalidFuel"));
+  }
   if (normalizedFuel.refuelMarginLiters !== undefined
     && (typeof normalizedFuel.refuelMarginLiters !== "number"
       || !Number.isFinite(normalizedFuel.refuelMarginLiters)

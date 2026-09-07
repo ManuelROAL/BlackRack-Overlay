@@ -46,7 +46,8 @@ impl LapConsumptionWindow {
 }
 
 /// Lap-reference planning: no learned pit-cycle correction. The margin is added
-/// once to the race deficit, only when at least one litre needs replenishing.
+/// once to the race deficit, only when at least one resource unit needs replenishing
+/// (litres for fuel, percentage points for energy).
 pub(super) fn calculate_lap_reference_strategy(
     mut input: ResourceStrategyInput,
     lap_seconds: f64,
@@ -623,6 +624,36 @@ mod tests {
             estimated_final_pit_delay(40.0, 10.0, 0.0, 100.0, 10.0, 30.0, 0.0),
             0.0
         );
+    }
+
+    #[test]
+    fn energy_margin_is_absolute_and_can_require_another_hundred_percent_load() {
+        let energy = ResourceStrategyInput {
+            current: 50.0,
+            capacity: 100.0,
+            consumption: 10.0,
+            laps_remaining: 15.0,
+            ..input()
+        };
+        let without = calculate_lap_reference_strategy(energy, 120.0, 0, 0.0).unwrap();
+        let with = calculate_lap_reference_strategy(energy, 120.0, 0, 2.0).unwrap();
+        assert_eq!(without.stops, 1);
+        assert_eq!(with.stops, 2);
+        assert!((with.total_additional - 102.0).abs() < 1e-9);
+        assert!(with.next_fill <= 100.0);
+        assert_eq!(with.autonomy, without.autonomy);
+        let small_deficit = calculate_lap_reference_strategy(
+            ResourceStrategyInput {
+                current: 49.5,
+                laps_remaining: 5.0,
+                ..energy
+            },
+            120.0,
+            0,
+            2.0,
+        )
+        .unwrap();
+        assert!((small_deficit.total_additional - 0.5).abs() < 1e-9);
     }
 
     #[test]

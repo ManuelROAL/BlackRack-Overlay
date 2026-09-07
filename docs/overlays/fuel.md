@@ -29,7 +29,10 @@ calculated only for a visible native panel or connected `/fuel` route.
 - Use fractional distance to the finish. Refill is remaining laps times reference
   consumption minus the current resource, clamped to zero. A configurable fuel
   margin (0–20 L, default 0.5 L) is added once when the unrounded deficit is at
-  least 1 L. Zero disables it; energy has no implicit percentage margin. The
+  least 1 L. Energy has an independent margin (0–20 percentage points, default 0),
+  added once when its unrounded deficit is at least 1 percentage point. These
+  are absolute resource amounts, not percentages of the required refill. Zero
+  disables the corresponding margin. The
   margin participates in stop count, pit window and next load, including when
   it makes another stop necessary. The stint-target widget's
   separate 0.2-unit end-of-stint reserve follows TinyPedal semantics and does not
@@ -127,8 +130,8 @@ calculated only for a visible native panel or connected `/fuel` route.
   sections and rows, including the absence of the auxiliary card in fuel-only
   mode, while preserving the user's visual scale. With everything hidden a
   minimal 32 px surface remains recoverable in edit mode.
-- The fuel settings include `refuelMarginLiters`. Validate finite values in
-  [0, 20], default missing values to 0.5, and preserve it in profiles, import/export
+- The fuel settings include `refuelMarginLiters` and `energyMarginPercent`. Validate finite values in
+  [0, 20], default missing values to 0.5 L and 0 points respectively, and preserve both in profiles, import/export
   and OBS preferences. The control panel synchronizes it to Rust even with Fuel
   hidden; browsers only consume the resulting plans.
 - Visibility uses the existing fuel settings key/event and is included in
@@ -243,6 +246,8 @@ and the limiting-resource choice. Run Rust tests and the frontend build.
 Verify the five-sample trim across 9/10 L, startup and rejected samples, class pace
 deduplication, leader finish projection, zero/custom margins, the 1 L threshold,
 one margin across several stops and a margin that forces another stop.
+Verify independent energy/fuel margins, the 1-point energy threshold, energy
+capacity at 100%, and legacy settings defaulting the energy margin to zero.
 Verify matching Dashboard/Fuel range with Fuel enabled and disabled, zero versus
 unknown consumption, either resource limiting and missing parallel post-pit loads.
 

@@ -23,6 +23,7 @@ export type FuelField = typeof FUEL_FIELDS[number]["id"];
 export interface FuelSettings {
   scenarioMode: FuelScenarioMode;
   refuelMarginLiters: number;
+  energyMarginPercent: number;
   visible: Record<FuelField, boolean>;
 }
 
@@ -31,6 +32,7 @@ export const FUEL_SETTINGS_KEY = "blackrack-overlay.fuel-strategy.v1";
 export const defaultFuelSettings = (): FuelSettings => ({
   scenarioMode: "total",
   refuelMarginLiters: 0.5,
+  energyMarginPercent: 0,
   visible: Object.fromEntries(FUEL_FIELDS.map(({ id }) => [id, true])) as Record<FuelField, boolean>
 });
 
@@ -42,6 +44,10 @@ export const normalizeFuelSettings = (value: unknown): FuelSettings => {
   if (!value || typeof value !== "object") return fallback;
   const stored = value as Partial<FuelSettings>;
   return {
+    energyMarginPercent: typeof stored.energyMarginPercent === "number"
+      && Number.isFinite(stored.energyMarginPercent)
+      && stored.energyMarginPercent >= 0 && stored.energyMarginPercent <= 20
+      ? stored.energyMarginPercent : fallback.energyMarginPercent,
     refuelMarginLiters: typeof stored.refuelMarginLiters === "number"
       && Number.isFinite(stored.refuelMarginLiters)
       && stored.refuelMarginLiters >= 0 && stored.refuelMarginLiters <= 20
