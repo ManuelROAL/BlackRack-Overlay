@@ -6,6 +6,8 @@
 - Renderer/style: `src/dashboard.ts`, `src/dashboard.css`
 - Preferences: `src/dashboard-settings.ts`
   (`blackrack-overlay.dashboard.v1`, event `dashboard://settings`)
+- Control-panel style: `src/dashboard-settings.css`; the pit-warning selector
+  stays compact at 160 px wide and 28 px high instead of filling the settings row.
 - Source fields: `src-tauri/src/telemetry/sim/lmu/bridge.cpp` and
   `src-tauri/src/telemetry/sim/lmu/source/frame.rs`
 - Capability: `car_electronics`; the control-panel card is disabled for a source
