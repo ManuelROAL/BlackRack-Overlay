@@ -23,10 +23,15 @@ calculated only for a visible native panel or connected `/fuel` route.
   classes use fuel litres.
 - Regulated classes calculate virtual energy and fuel in parallel. The active race
   plan uses whichever resource requires more stops.
-- Consumption and base race distance belong to the player. Leader/last-stop lap
-  adjustments are informational and never modify the resource requirement.
-- Use exact fractional-lap projections. Never add an arbitrary safety lap or
-  subtract a reserve from the race-wide requirement. The stint-target widget's
+- Fuel planning follows completed-lap references, inspired by Kapps 1.24.38.
+  The native panel stays unchanged; its multi-stop and parallel-energy features
+  remain extensions rather than a reproduction of Kapps' UI.
+- Use fractional distance to the finish. Refill is remaining laps times reference
+  consumption minus the current resource, clamped to zero. A configurable fuel
+  margin (0–20 L, default 0.5 L) is added once when the unrounded deficit is at
+  least 1 L. Zero disables it; energy has no implicit percentage margin. The
+  margin participates in stop count, pit window and next load, including when
+  it makes another stop necessary. The stint-target widget's
   separate 0.2-unit end-of-stint reserve follows TinyPedal semantics and does not
   change refills or total required fuel/energy.
 - Respect an initial resource below 100% and track pit refills so lap consumption
@@ -35,7 +40,7 @@ calculated only for a visible native panel or connected `/fuel` route.
   fractional.
 - The summary and PIT range warning read `resource_autonomy.range_laps`, shared
   with Dashboard; the auxiliary fuel card reads `resource_autonomy.fuel_laps`.
-  Rust selects the first finite positive consumption from projected, clean average,
+  Rust selects the first finite positive consumption from clean average,
   last lap, stored profile reference and qualifying. These lightweight ranges are
   built independently of strategy demand or remaining race distance. With energy
   active, the summary uses the smaller fuel/energy range and requires both
@@ -52,13 +57,22 @@ calculated only for a visible native panel or connected `/fuel` route.
   level; it is not a claim that a full lap has already been banked.
 - Average and last reset for a new session. Qualifying survives qualifying phases
   into the race and clears for a new practice/event.
+- Average is the arithmetic mean of up to five most recent clean laps. From
+  three samples, remove one numerical minimum and maximum before averaging.
+  Use numeric sorting, not Kapps' JavaScript lexicographic-sort defect. Energy
+  uses the same window. Live strategy no longer selects the distance-profile
+  projection of an unfinished lap.
+- The stored car/circuit profile includes a five-lap reference for startup before
+  a new clean lap; older profiles fall back to their existing reference. The
+  current session's average takes precedence as soon as it becomes available.
 - Formation, invalid, neutralized and pit laps affect real balance but do not
   contaminate clean average consumption.
 - Invalid laps follow the shared latched `mLapInvalidated`, negative official
   time confirmation and a reconstructed duration when LMU returns the missing
   official sentinel; `mCountLapFlag` is not used for consumption validity.
-- Learn pit-in and pit-out use separately per car/circuit and include them in
-  multi-stop strategy. Do not learn garage exit as a race pit-out lap.
+- Keep learning pit-in and pit-out use separately per car/circuit, but do not
+  apply their consumption corrections to the lap-reference refill calculation.
+  Do not learn garage exit as a race pit-out lap.
 - Automatic target consumption follows TinyPedal semantics and cannot exceed the
   qualifying reference. Reaching the cap means full-power running until the stop.
 - Show the theoretical one-stop reduction, its target consumption and the
@@ -71,6 +85,18 @@ calculated only for a visible native panel or connected `/fuel` route.
 
 ## Race distance
 
+- Fuel strategy estimates the finish using the overall leader and the player's
+  class pace. Each leader's five latest completed laps supply a mean excluding
+  samples at least two seconds slower than the fastest; repeated scoring frames
+  do not add samples. Before enough live data exists use official pace references.
+  Translate the leader's earliest timed/lap-limit finish into player-class
+  crossings, preserving the player's fractional progress. Missing class or leader
+  references fall back to the shared player-distance estimate. This adapts Kapps'
+  class/leader approach to LMU's telemetry, rather than reproducing its iRacing
+  results-table clock corrections.
+- Shared Timing/Standings headers retain the following player-distance contract;
+  they are not the fuel plan's class/leader projection:
+
 - For timed races use `ceil(remaining_seconds / player_pace + lap_progress) -
   lap_progress` as the shared base remaining distance. For fixed-lap races use
   the official target minus completed laps and current progress; mixed sessions
@@ -78,12 +104,13 @@ calculated only for a visible native panel or connected `/fuel` route.
 - Use the player's six-sample clean-lap EMA for projected crossings, matching
   TinyPedal rather than relying on LMU's noisier instantaneous estimated lap.
   Standings and Timing derive the player's total from this same base distance.
-- Timed-race leader and final-stop effects are published separately as
+- Shared timed-race leader and final-stop effects are published separately as
   `session_extra_laps_estimated` for those headers. They never reduce or increase
   fuel/energy requirements. The final-stop hint uses the active resource's
   fractional remaining stops (strictly between 0.2 and 1.2), official concurrent
   service time and shared pitlane traversal estimate; unavailable time references omit
   that component. The leader component uses the overall leader's finish time.
+  Fuel strategy uses its own leader finish horizon, with no final-stop delay.
 - These shared estimates do not depend on whether the Fuel panel is enabled.
 - The serialized frame contains the active plan, parallel fuel plan where needed,
   and each reference scenario; the frontend must not recalculate them.
@@ -100,6 +127,10 @@ calculated only for a visible native panel or connected `/fuel` route.
   sections and rows, including the absence of the auxiliary card in fuel-only
   mode, while preserving the user's visual scale. With everything hidden a
   minimal 32 px surface remains recoverable in edit mode.
+- The fuel settings include `refuelMarginLiters`. Validate finite values in
+  [0, 20], default missing values to 0.5, and preserve it in profiles, import/export
+  and OBS preferences. The control panel synchronizes it to Rust even with Fuel
+  hidden; browsers only consume the resulting plans.
 - Visibility uses the existing fuel settings key/event and is included in
   profiles, validated configuration export/import, scoped reset and OBS mirroring.
 - Present current resource, autonomy, pit window/load and the clean-average,
@@ -159,7 +190,7 @@ calculated only for a visible native panel or connected `/fuel` route.
   repeated seconds.
 - Add `~` to that caption when its stop-saving time uses approximate pit traversal.
 - Parse the absolute fuel or virtual-energy load selected in LMU's official pit
-  menu and show its post-pit autonomy using the projected valid consumption.
+  menu and show its post-pit autonomy using the selected completed-lap reference.
   Keep it unavailable when the REST value or consumption reference is unavailable.
 - Post-pit range uses the same Rust range model and planned references as current
   autonomy. With virtual energy active, both configured absolute loads are required
@@ -182,10 +213,11 @@ calculated only for a visible native panel or connected `/fuel` route.
   an active player pit request, calculate that load for the end of the current
   requested lap instead of the latest lap in the normal pit window. Persist and
   mirror this choice to OBS; `TOTAL +` remains the default.
-- When exactly one stop remains and the qualifying scenario can also finish with
-  one stop, use the larger of the active and qualifying next-fill calculations
-  and label it `CARGA Q`. This follows the conservative final-stint behavior of
-  planning for full-power running without adding an arbitrary reserve.
+- The next load follows the active average reference and configured margin;
+  qualifying remains an independent scenario and does not override it as `CARGA Q`.
+- Retain the extra +1/+2/+3 stint-target widgets. Their saved-stop count is checked
+  against the margin-aware plan; suppress their time color if the margin changes
+  that count compared with the original time model.
 - Keep `TOTAL +` in the scenario table, but omit `Δ QUALY` and the redundant
   `ESTIMADO` row. The visible rows are `PROMEDIO`, `QUALY` and `ÚLTIMA`.
 - Hybrid cars show energy scenarios plus a compact fuel card while the global pit
@@ -208,6 +240,9 @@ calculated only for a visible native panel or connected `/fuel` route.
 Test session transitions, qualifying carryover, fractional progress, sub-100%
 starts, refills, formation/neutralization/pit exclusion, multi-stop pit profiles
 and the limiting-resource choice. Run Rust tests and the frontend build.
+Verify the five-sample trim across 9/10 L, startup and rejected samples, class pace
+deduplication, leader finish projection, zero/custom margins, the 1 L threshold,
+one margin across several stops and a margin that forces another stop.
 Verify matching Dashboard/Fuel range with Fuel enabled and disabled, zero versus
 unknown consumption, either resource limiting and missing parallel post-pit loads.
 

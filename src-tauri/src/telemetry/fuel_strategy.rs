@@ -3,6 +3,78 @@ use serde::Serialize;
 const MAX_GUIDANCE_SAVING_PERCENT: f64 = 15.0;
 const STINT_TARGET_RESERVE: f64 = 0.2;
 
+/// Five completed clean laps; trim one numerical minimum and maximum from three samples.
+#[derive(Clone, Debug, Default, serde::Deserialize, Serialize)]
+pub(super) struct LapConsumptionWindow {
+    values: std::collections::VecDeque<f64>,
+}
+
+impl LapConsumptionWindow {
+    pub(super) fn push(&mut self, value: f64) -> Option<f64> {
+        if valid_positive(value) {
+            self.values.push_back(value);
+            while self.values.len() > 5 {
+                self.values.pop_front();
+            }
+        }
+        self.average()
+    }
+
+    pub(super) fn average(&self) -> Option<f64> {
+        let mut buffer = [0.0; 5];
+        let mut count = 0;
+        for value in self
+            .values
+            .iter()
+            .rev()
+            .take(5)
+            .copied()
+            .filter(|v| valid_positive(*v))
+        {
+            buffer[count] = value;
+            count += 1;
+        }
+        let values = &mut buffer[..count];
+        values.sort_by(f64::total_cmp);
+        let values = if values.len() >= 3 {
+            &values[1..values.len() - 1]
+        } else {
+            &values[..]
+        };
+        (!values.is_empty()).then(|| values.iter().sum::<f64>() / values.len() as f64)
+    }
+}
+
+/// Lap-reference planning: no learned pit-cycle correction. The margin is added
+/// once to the race deficit, only when at least one litre needs replenishing.
+pub(super) fn calculate_lap_reference_strategy(
+    mut input: ResourceStrategyInput,
+    lap_seconds: f64,
+    minimum_stops: u32,
+    margin: f64,
+) -> Option<ResourceStrategy> {
+    let deficit = input.laps_remaining * input.consumption - input.current;
+    input.pit_cycle_consumption = 0.0;
+    input.pit_out_consumption = 0.0;
+    let applied_margin = if deficit >= 1.0
+        && margin.is_finite()
+        && margin > 0.0
+        && valid_positive(input.consumption)
+    {
+        margin
+    } else {
+        0.0
+    };
+    input.laps_remaining += if valid_positive(input.consumption) {
+        applied_margin / input.consumption
+    } else {
+        0.0
+    };
+    let mut plan = calculate_resource_strategy(input, lap_seconds, minimum_stops)?;
+    plan.end_remaining += applied_margin;
+    Some(plan)
+}
+
 /// Estimate only the time adjustment displayed alongside timed-race distance.
 pub(super) fn estimated_final_pit_delay(
     current: f64,
@@ -343,7 +415,12 @@ fn consumption_for_stops(input: ResourceStrategyInput, stops: u32) -> f64 {
     let available = available_for_stops(input.current, input.capacity, stops);
     let active_pit_out = input.pit_out_lap && input.pit_out_consumption > 0.0;
     let later_stops = stops.saturating_sub(u32::from(active_pit_out));
-    let replaced_laps = u32::from(active_pit_out) + 2 * later_stops;
+    let replaced_laps = u32::from(active_pit_out)
+        + if input.pit_cycle_consumption > 0.0 {
+            2 * later_stops
+        } else {
+            0
+        };
     let fixed_pit_consumption = if active_pit_out {
         input.pit_out_consumption
     } else {
@@ -445,6 +522,88 @@ pub(super) fn calculate_resource_strategy(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn consumption_window_trims_numerically_and_forgets_the_oldest_lap() {
+        let mut window = LapConsumptionWindow::default();
+        assert_eq!(window.average(), None);
+        assert_eq!(window.push(9.0), Some(9.0));
+        assert_eq!(window.push(10.0), Some(9.5));
+        assert_eq!(window.push(11.0), Some(10.0));
+        assert_eq!(window.push(12.0), Some(10.5));
+        assert_eq!(window.push(100.0), Some(11.0));
+        assert_eq!(window.push(13.0), Some(12.0));
+        assert_eq!(window.push(f64::NAN), Some(12.0));
+        assert_eq!(window.push(0.0), Some(12.0));
+        assert_eq!(window.push(-1.0), Some(12.0));
+    }
+
+    #[test]
+    fn lap_reference_margin_is_once_per_race_and_respects_the_deficit_threshold() {
+        for (current, margin, expected) in [
+            (25.0, 0.5, 5.5),
+            (25.0, 0.0, 5.0),
+            (29.0, 2.0, 3.0),
+            (29.01, 2.0, 0.99),
+            (31.0, 2.0, 0.0),
+        ] {
+            let plan = calculate_lap_reference_strategy(
+                ResourceStrategyInput {
+                    current,
+                    capacity: 40.0,
+                    consumption: 3.0,
+                    laps_remaining: 10.0,
+                    pit_cycle_consumption: 2.0,
+                    ..input()
+                },
+                120.0,
+                0,
+                margin,
+            )
+            .unwrap();
+            assert!((plan.total_additional - expected).abs() < 1e-9);
+            assert!((plan.autonomy - current / 3.0).abs() < 1e-9);
+        }
+        let plan = calculate_lap_reference_strategy(
+            ResourceStrategyInput {
+                current: 5.0,
+                capacity: 10.0,
+                consumption: 3.0,
+                laps_remaining: 10.0,
+                ..input()
+            },
+            120.0,
+            0,
+            0.5,
+        )
+        .unwrap();
+        assert_eq!(plan.stops, 3);
+        assert!((plan.total_additional - 25.5).abs() < 1e-9);
+        assert!((plan.end_remaining - 0.5).abs() < 1e-9);
+    }
+
+    #[test]
+    fn lap_reference_margin_can_require_an_extra_stop() {
+        let input = ResourceStrategyInput {
+            current: 5.0,
+            capacity: 10.0,
+            consumption: 3.0,
+            laps_remaining: 5.0,
+            ..input()
+        };
+        assert_eq!(
+            calculate_lap_reference_strategy(input, 120.0, 0, 0.0)
+                .unwrap()
+                .stops,
+            1
+        );
+        assert_eq!(
+            calculate_lap_reference_strategy(input, 120.0, 0, 0.5)
+                .unwrap()
+                .stops,
+            2
+        );
+    }
 
     #[test]
     fn final_pit_hint_requires_a_near_single_stop_and_complete_time_reference() {

@@ -15,6 +15,18 @@ use std::fs::{self, File};
 use std::io::{BufWriter, Write};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering};
+
+static FUEL_REFUEL_MARGIN: AtomicU64 = AtomicU64::new(0.5_f64.to_bits());
+
+pub(crate) fn set_fuel_refuel_margin(liters: f64) {
+    if liters.is_finite() && (0.0..=20.0).contains(&liters) {
+        FUEL_REFUEL_MARGIN.store(liters.to_bits(), Ordering::Relaxed);
+    }
+}
+
+fn fuel_refuel_margin() -> f64 {
+    f64::from_bits(FUEL_REFUEL_MARGIN.load(Ordering::Relaxed))
+}
 use std::sync::{Mutex, OnceLock};
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 use std::{thread, time::Duration};

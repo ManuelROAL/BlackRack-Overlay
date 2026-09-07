@@ -2,18 +2,185 @@
 
 use super::*;
 
+#[derive(Default)]
+pub(super) struct ClassPace {
+    crossings: HashMap<i32, i32>,
+    laps: VecDeque<f64>,
+    pace: Option<f64>,
+}
+
+impl ClassPace {
+    fn observe(&mut self, entry: &LmuStandingEntry, green: bool) {
+        let changed =
+            self.crossings.insert(entry.vehicle_id, entry.total_laps) != Some(entry.total_laps);
+        if changed
+            && green
+            && entry.total_laps >= 2
+            && entry.in_pits == 0
+            && entry.last_lap_seconds.is_finite()
+            && entry.last_lap_seconds > 0.0
+        {
+            self.laps.push_back(entry.last_lap_seconds);
+            while self.laps.len() > 5 {
+                self.laps.pop_front();
+            }
+            let fastest = self.laps.iter().copied().fold(f64::INFINITY, f64::min);
+            let accepted: Vec<_> = self
+                .laps
+                .iter()
+                .filter(|lap| **lap < fastest + 2.0)
+                .collect();
+            self.pace = Some(accepted.iter().map(|lap| **lap).sum::<f64>() / accepted.len() as f64);
+        }
+        if self.pace.is_none() {
+            self.pace = [
+                entry.best_lap_seconds,
+                entry.last_lap_seconds,
+                entry.estimated_lap_time,
+            ]
+            .into_iter()
+            .find(|value| value.is_finite() && *value > 0.0);
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn class_pace_counts_each_crossing_once_and_excludes_slow_laps() {
+        let mut pace = ClassPace::default();
+        let mut entry = LmuStandingEntry {
+            vehicle_id: 1,
+            total_laps: 2,
+            last_lap_seconds: 100.0,
+            ..Default::default()
+        };
+        pace.observe(&entry, true);
+        pace.observe(&entry, true);
+        assert_eq!(pace.laps.len(), 1);
+        entry.total_laps = 3;
+        entry.last_lap_seconds = 101.0;
+        pace.observe(&entry, true);
+        entry.total_laps = 4;
+        entry.last_lap_seconds = 110.0;
+        pace.observe(&entry, true);
+        assert_eq!(pace.pace, Some(100.5));
+        entry.vehicle_id = 2;
+        entry.last_lap_seconds = 100.0;
+        pace.observe(&entry, true);
+        entry.vehicle_id = 1;
+        pace.observe(&entry, true);
+        assert_eq!(pace.laps.len(), 4);
+    }
+
+    #[test]
+    fn fuel_distance_uses_the_overall_finish_and_class_pace() {
+        let mut source = LmuTelemetrySource::new();
+        source.fuel_class_pace.pace = Some(120.0);
+        source.fuel_leader_pace.pace = Some(100.0);
+        let mut snapshot = LmuSnapshot {
+            game_phase: 5,
+            session_time_remaining: 250.0,
+            leader_time_into_lap: 50.0,
+            ..Default::default()
+        };
+        assert!((source.fuel_race_laps_remaining(&snapshot, 0.5, 150.0) - 2.5).abs() < 1e-9);
+        snapshot.session_time_remaining = 0.0;
+        snapshot.session_end_seconds = 1000.0;
+        snapshot.leader_time_into_lap = 10.0;
+        assert!((source.fuel_race_laps_remaining(&snapshot, 0.5, 150.0) - 1.5).abs() < 1e-9);
+        snapshot.session_time_remaining = 250.0;
+        snapshot.leader_time_into_lap = 50.0;
+        snapshot.max_laps = 10;
+        snapshot.leader_total_laps = 9;
+        assert!((source.fuel_race_laps_remaining(&snapshot, 0.5, 150.0) - 0.5).abs() < 1e-9);
+        source.fuel_class_pace = ClassPace::default();
+        assert_eq!(
+            source.fuel_race_laps_remaining(&snapshot, 0.5, 150.0),
+            LmuTelemetrySource::estimated_laps_remaining(&snapshot, 0.5, 150.0)
+        );
+    }
+}
+
 impl LmuTelemetrySource {
+    pub(super) fn update_fuel_race_pace(&mut self, snapshot: &LmuSnapshot) {
+        let entries = &snapshot.standings[..(snapshot.standings_count as usize).min(MAX_VEHICLES)];
+        if let Some(leader) = entries
+            .iter()
+            .filter(|entry| entry.position > 0)
+            .min_by_key(|entry| entry.position)
+        {
+            self.fuel_leader_pace
+                .observe(leader, snapshot.game_phase == 5);
+        }
+        if let Some(leader) = entries
+            .iter()
+            .filter(|entry| {
+                entry.position > 0 && entry.vehicle_class_id == snapshot.vehicle_class_id
+            })
+            .min_by_key(|entry| entry.position)
+        {
+            self.fuel_class_pace
+                .observe(leader, snapshot.game_phase == 5);
+        }
+    }
+
+    /// Fuel follows the class pace and the overall leader's finish horizon.
+    /// Shared timing headers keep their existing player-distance projection.
+    pub(super) fn fuel_race_laps_remaining(
+        &self,
+        snapshot: &LmuSnapshot,
+        progress: f64,
+        fallback_pace: f64,
+    ) -> f64 {
+        let fallback = Self::estimated_laps_remaining(snapshot, progress, fallback_pace);
+        if Self::player_finished(snapshot) || snapshot.game_phase >= 8 {
+            return fallback;
+        }
+        let (Some(pace), Some(leader_pace)) =
+            (self.fuel_class_pace.pace, self.fuel_leader_pace.pace)
+        else {
+            return fallback;
+        };
+        let Some(next) = Self::time_to_next_crossing(leader_pace, snapshot.leader_time_into_lap)
+        else {
+            return fallback;
+        };
+        let timed = if snapshot.session_time_remaining > 0.0 || snapshot.session_end_seconds > 0.0 {
+            next + ((snapshot.session_time_remaining - next).max(0.0) / leader_pace).ceil()
+                * leader_pace
+        } else {
+            f64::INFINITY
+        };
+        let lap_limited = if snapshot.max_laps > 0 && snapshot.max_laps < 10_000 {
+            let crossings = (snapshot.max_laps - snapshot.leader_total_laps).max(0);
+            if crossings == 0 {
+                0.0
+            } else {
+                next + f64::from(crossings - 1) * leader_pace
+            }
+        } else {
+            f64::INFINITY
+        };
+        let horizon = timed.min(lap_limited);
+        if !horizon.is_finite() {
+            return fallback;
+        }
+        let progress = progress.clamp(0.0, 1.0);
+        (horizon / pace + progress - 1e-9).ceil().max(1.0) - progress
+    }
+
     pub(super) fn update_clean_average(
         average: Option<f64>,
-        samples: &mut u32,
+        samples: &mut LapConsumptionWindow,
         consumed: f64,
     ) -> Option<f64> {
         if !consumed.is_finite() || consumed <= 0.0 {
             return average;
         }
-        *samples = samples.saturating_add(1);
-        let weight = 1.0 / (*samples).min(8) as f64;
-        Some(average.map_or(consumed, |value| value + (consumed - value) * weight))
+        samples.push(consumed)
     }
 
     pub(super) fn update_fuel_estimate(

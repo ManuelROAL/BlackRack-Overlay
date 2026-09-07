@@ -624,6 +624,7 @@ const syncBrowserSourcePreferences = (): void => {
   }).catch(() => undefined);
   void invoke("set_delta_settings", { settings: deltaSettings }).catch(() => undefined);
   void invoke("set_timing_settings", { settings: timingSettings }).catch(() => undefined);
+  void invoke("set_fuel_refuel_margin", { liters: fuelSettings.refuelMarginLiters }).catch(() => undefined);
   onLiveSettingsChanged();
 };
 
@@ -920,6 +921,19 @@ if (trackMapPitPrediction) {
 }
 
 const fuelScenarioMode = document.getElementById("fuel-scenario-mode") as HTMLSelectElement | null;
+const fuelRefuelMargin = document.getElementById("fuel-refuel-margin") as HTMLInputElement | null;
+if (fuelRefuelMargin) {
+  fuelRefuelMargin.value = String(fuelSettings.refuelMarginLiters);
+  fuelRefuelMargin.addEventListener("change", () => {
+    const value = fuelRefuelMargin.valueAsNumber;
+    if (!Number.isFinite(value) || value < 0 || value > 20) {
+      fuelRefuelMargin.value = String(fuelSettings.refuelMarginLiters);
+      return;
+    }
+    fuelSettings = { ...fuelSettings, refuelMarginLiters: value };
+    persistFuelSettings();
+  });
+}
 if (fuelScenarioMode) {
   fuelScenarioMode.value = fuelSettings.scenarioMode;
   fuelScenarioMode.addEventListener("change", () => {
@@ -2242,6 +2256,12 @@ const parseOverlayConfiguration = (
     throw new Error(t("config.invalidMap"));
   }
   const normalizedFuel = fuel ?? defaultFuelSettings();
+  if (normalizedFuel.refuelMarginLiters !== undefined
+    && (typeof normalizedFuel.refuelMarginLiters !== "number"
+      || !Number.isFinite(normalizedFuel.refuelMarginLiters)
+      || normalizedFuel.refuelMarginLiters < 0 || normalizedFuel.refuelMarginLiters > 20)) {
+    throw new Error(t("config.invalidFuel"));
+  }
   if (normalizedFuel.visible !== undefined
     && !completeBooleanRecord(normalizedFuel.visible, FUEL_FIELDS.map(({ id }) => id))) {
     throw new Error(t("config.invalidFuel"));

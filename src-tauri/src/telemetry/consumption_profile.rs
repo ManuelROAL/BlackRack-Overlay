@@ -1,3 +1,4 @@
+use super::fuel_strategy::LapConsumptionWindow;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -131,6 +132,10 @@ struct StoredProfiles {
     fuel: ResourceProfile,
     energy: ResourceProfile,
     #[serde(default)]
+    fuel_laps: LapConsumptionWindow,
+    #[serde(default)]
+    energy_laps: LapConsumptionWindow,
+    #[serde(default)]
     fuel_projection_correction: ProjectionCorrection,
     #[serde(default)]
     energy_projection_correction: ProjectionCorrection,
@@ -148,6 +153,8 @@ impl StoredProfiles {
             track,
             fuel: ResourceProfile::default(),
             energy: ResourceProfile::default(),
+            fuel_laps: LapConsumptionWindow::default(),
+            energy_laps: LapConsumptionWindow::default(),
             fuel_projection_correction: ProjectionCorrection::default(),
             energy_projection_correction: ProjectionCorrection::default(),
             pit_in: LapConsumptionAverage::default(),
@@ -319,8 +326,16 @@ impl ConsumptionProfiler {
         trace.visited_pits |= in_pits;
         trace.record(lap_progress, fuel_used, energy_used);
 
-        let fuel_reference = self.profiles.fuel.total();
-        let energy_reference = self.profiles.energy.total();
+        let fuel_reference = self
+            .profiles
+            .fuel_laps
+            .average()
+            .unwrap_or_else(|| self.profiles.fuel.total());
+        let energy_reference = self
+            .profiles
+            .energy_laps
+            .average()
+            .unwrap_or_else(|| self.profiles.energy.total());
         let complete_pit_cycle =
             self.profiles.pit_in.fuel.samples > 0 && self.profiles.pit_out.fuel.samples > 0;
         let complete_energy_pit_cycle =
@@ -419,6 +434,7 @@ impl ConsumptionProfiler {
             self.awaiting_pit_out = false;
             if let Some(total) = completed_fuel {
                 if let Some(lap) = LapTrace::completed_resource(&trace.fuel, total) {
+                    self.profiles.fuel_laps.push(total);
                     let had_reference = self.profiles.fuel.samples > 0;
                     self.profiles.fuel.update(&lap);
                     if had_reference {
@@ -431,6 +447,7 @@ impl ConsumptionProfiler {
             }
             if let Some(total) = completed_energy {
                 if let Some(lap) = LapTrace::completed_resource(&trace.energy, total) {
+                    self.profiles.energy_laps.push(total);
                     let had_reference = self.profiles.energy.samples > 0;
                     self.profiles.energy.update(&lap);
                     if had_reference {
