@@ -65,6 +65,11 @@ restore per-overlay native listeners or direct cross-realm object events.
   roster against `sessionInfo.playerName`, then match its drivers, team or vehicle
   identity to shared-memory scoring. This keeps the registered team car selected
   regardless of the active spectator camera. The two modes are mutually exclusive.
+- Once a telemetry vehicle is selected, only its scoring entry is marked as the
+  reference (`is_player`). The local `mIsPlayer` entry must not also qualify when
+  following another car: its garage state, timing and tyres would overwrite the
+  followed car's fields. Local identity is a fallback only without a selected
+  telemetry vehicle.
 - Shared-memory vehicle `mID` and REST `slotID` are different namespaces. Match
   cross-source vehicles by normalized driver identity; accept a numeric slot
   fallback only when identity agrees.

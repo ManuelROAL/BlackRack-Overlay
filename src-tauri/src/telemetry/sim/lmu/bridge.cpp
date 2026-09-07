@@ -338,8 +338,12 @@ extern "C" int lmu_read_snapshot(LmuSnapshot* output, int32_t spectator_vehicle_
         destination.position = static_cast<int32_t>(source.mPlace);
         destination.total_laps = static_cast<int32_t>(source.mTotalLaps);
         destination.laps_behind_leader = static_cast<int32_t>(source.mLapsBehindLeader);
-        destination.is_player =
-            source.mIsPlayer || source.mID == selected_vehicle_id ? 1u : 0u;
+        // Once a telemetry car is selected it is the only reference, including
+        // in observer modes. The local car may remain marked mIsPlayer in its
+        // garage; admitting both would overwrite the followed car's state.
+        destination.is_player = (selected_vehicle_id >= 0
+            ? source.mID == selected_vehicle_id
+            : source.mIsPlayer) ? 1u : 0u;
         destination.in_pits = source.mInPits ? 1u : 0u;
         destination.in_garage = source.mInGarageStall ? 1u : 0u;
         destination.flag = static_cast<uint32_t>(source.mFlag);

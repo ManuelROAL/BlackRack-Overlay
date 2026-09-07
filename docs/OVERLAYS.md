@@ -82,6 +82,8 @@ telemetry semantics and file ownership live under `docs/overlays/`; use
   currently watched entry as the reference vehicle; team mode keeps the player's
   registered team car as the reference regardless of the active camera. They are
   mutually exclusive; garage and session-end hiding still apply.
+  Garage hiding follows that single reference vehicle, not the local player's
+  garage state when spectating a different car.
   Keep overlays visible while the control panel has focus so configuration changes
   can be previewed; the remaining automatic visibility conditions still apply. Do
   not capture Escape for visibility.
