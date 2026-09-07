@@ -41,6 +41,14 @@ document.
 
 ## Context and concurrency efficiency
 
+- Work solo by default. Use subagents only when the user explicitly requests
+  them; give each a bounded task and only the context it needs.
+- For small, clear tasks, proceed directly without a formal plan or repeated
+  summaries. Keep exploration and edits within the requested scope.
+- Locate relevant documentation sections with headings or scoped searches before
+  reading long documents. Read the applicable sections and shared constraints;
+  expand only when a dependency or uncertainty requires it. Documentation-only
+  tasks need only the instructions and documents relevant to the edit.
 - Use a dedicated Git worktree for every concurrent implementation task. Keep the
   local checkout for one foreground task, integration or read-only coordination;
   do not start parallel writers in the same checkout when a worktree is available.
@@ -147,6 +155,11 @@ For Rust/backend changes:
 For frontend-only changes, run `npm.cmd run build`. For performance work, also
 collect a comparable race/replay sample as described in `docs/PERFORMANCE.md`;
 successful compilation alone is not performance evidence.
+
+For documentation/instruction-only changes, review the changed text and run
+`git diff --check` on the edited paths; do not run application builds or tests.
+For code changes, run the required checks above once after batching edits. Add
+further checks only for a concrete risk, failure or subsequent relevant change.
 
 ## Completion
 
