@@ -84,6 +84,10 @@ telemetry semantics and file ownership live under `docs/overlays/`; use
   mutually exclusive; garage and session-end hiding still apply.
   Garage hiding follows that single reference vehicle, not the local player's
   garage state when spectating a different car.
+  In spectator mode, the control panel disables Lift & Coast, Stint History and
+  Fuel/Energy and unmounts their native panels. Their saved profile visibility is
+  preserved, including when modes share a profile; game and team modes restore
+  their normal visibility. Show/hide-all skips these restricted panels.
   Keep overlays visible while the control panel has focus so configuration changes
   can be previewed; the remaining automatic visibility conditions still apply. Do
   not capture Escape for visibility.

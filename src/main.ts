@@ -950,6 +950,21 @@ for (const [id, setting] of tiresToggles) {
 const inputFor = (id: OverlayId): HTMLInputElement | null =>
   document.querySelector<HTMLInputElement>(`input[data-overlay="${id}"]`);
 
+const spectatorDisabledOverlays: readonly OverlayId[] = ["liftcoast", "stinthistory", "fuel"];
+const disabledInSpectator = (id: OverlayId): boolean =>
+  spectatorMode && spectatorDisabledOverlays.includes(id);
+
+const renderOverlayAvailability = (id: OverlayId): void => {
+  const card = document.querySelector<HTMLElement>(`[data-overlay-card="${id}"]`);
+  const blocked = disabledInSpectator(id);
+  const unsupported = card?.hasAttribute("data-unsupported") ?? false;
+  card?.toggleAttribute("data-spectator-disabled", blocked);
+  if (card) card.title = blocked ? t("card.spectatorDisabled")
+    : unsupported ? t("card.unsupported", { simulator: activeSimulatorName() }) : "";
+  const input = inputFor(id);
+  if (input) input.disabled = blocked || unsupported;
+};
+
 const activeOverlaySummary = document.getElementById("overlay-active-summary");
 
 const renderActiveOverlaySummary = (): void => {
@@ -959,6 +974,7 @@ const renderActiveOverlaySummary = (): void => {
 };
 
 const setCardState = (id: OverlayId, visible: boolean): void => {
+  visible = visible && !disabledInSpectator(id);
   const input = inputFor(id);
   if (input) input.checked = visible;
   document
@@ -978,20 +994,23 @@ const setOverlay = async (id: OverlayId, visible: boolean): Promise<void> => {
   if (input) input.disabled = true;
 
   try {
-    const actual = await invoke<boolean>("set_overlay_visible", { label: id, visible });
-    preferences[id] = actual;
+    const blocked = disabledInSpectator(id);
+    const actual = await invoke<boolean>("set_overlay_visible", { label: id, visible: visible && !blocked });
+    // Mode restrictions affect the mounted panels, not the saved profile.
+    preferences[id] = blocked ? visible : actual;
     setCardState(id, actual);
     persist();
   } catch (error) {
     console.error(`No se pudo cambiar la ventana ${id}:`, error);
     setCardState(id, preferences[id]);
   } finally {
-    if (input) input.disabled = false;
+    renderOverlayAvailability(id);
   }
 };
 
 const setAll = async (visible: boolean): Promise<void> => {
   for (const id of overlayIds) {
+    if (disabledInSpectator(id)) continue;
     await setOverlay(id, visible);
   }
 };
@@ -1677,6 +1696,7 @@ const selectOverlayMode = async (mode: OverlayMode): Promise<void> => {
   activeMode = mode;
   renderModeSelection();
   if (resolveProfileId(profileState, activeMode, activeSessionKind) === activeProfileId) {
+    for (const id of spectatorDisabledOverlays) await setOverlay(id, preferences[id]);
     renderProfiles();
     if (profileStatus) profileStatus.textContent = "";
     return;
@@ -3178,11 +3198,9 @@ const renderSourceCapabilities = (frame: TelemetryFrame): void => {
   unsupportedOverlays = signature;
   for (const [id] of entries) {
     const card = document.querySelector<HTMLElement>(`[data-overlay-card="${id}"]`);
-    const input = inputFor(id);
     const supported = !unsupported.includes(id);
     card?.toggleAttribute("data-unsupported", !supported);
-    if (card) card.title = supported ? "" : t("card.unsupported", { simulator: activeSimulatorName() });
-    if (input) input.disabled = !supported;
+    renderOverlayAvailability(id);
   }
 };
 

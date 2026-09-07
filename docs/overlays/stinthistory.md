@@ -19,6 +19,9 @@ compone las filas y selecciona los iconos de compuesto ya incluidos.
 
 ## Comportamiento
 
+- El panel nativo está deshabilitado en modo espectador; conserva su visibilidad
+  guardada para los modos juego y equipo.
+
 - Muestra como máximo dos filas: el stint actual y el anterior, en orden reciente.
 - Cada fila contiene número de stint, vueltas completadas, tiempo acumulado,
   combustible o energía virtual consumida, compuesto, desgaste medio de las cuatro

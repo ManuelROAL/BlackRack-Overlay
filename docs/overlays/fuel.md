@@ -16,6 +16,9 @@ calculated only for a visible native panel or connected `/fuel` route.
 
 ## Resource and strategy semantics
 
+- The native panel is disabled in spectator mode; its saved visibility is retained
+  for game and team modes.
+
 - Hypercar and LMGT3 use virtual energy when reported; LMP2, LMP3 and other
   classes use fuel litres.
 - Regulated classes calculate virtual energy and fuel in parallel. The active race

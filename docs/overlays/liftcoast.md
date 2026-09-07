@@ -20,6 +20,9 @@
 
 ## Layout and behavior
 
+- The native panel is disabled in spectator mode; its saved visibility is retained
+  for game and team modes.
+
 - Show only one row of five purple segments, without a visible label. The
   design surface is 190 × 32 px, with 2 px outer padding and a minimal frame.
 - The panel remains mounted while inactive so its configured position is stable;

@@ -1630,11 +1630,13 @@ select {
 
 /* The active simulator can never feed this overlay: it stays visible so the
    catalog reads the same everywhere, but it cannot be switched on. */
-.overlay-option[data-unsupported] {
+.overlay-option[data-unsupported],
+.overlay-option[data-spectator-disabled] {
   opacity: 55%;
 }
 
-.overlay-option[data-unsupported] .switch {
+.overlay-option[data-unsupported] .switch,
+.overlay-option[data-spectator-disabled] .switch {
   cursor: not-allowed;
 }
 
