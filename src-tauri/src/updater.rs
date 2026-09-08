@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
 const UPDATE_MANIFEST_URL: &str =
-    "https://github.com/BlackRack/LMUOverlay/releases/latest/download/manifest.json";
+    "https://github.com/ManuelROAL/BlackRack-Overlay/releases/latest/download/manifest.json";
 const UPDATE_SCHEMA_VERSION: u32 = 1;
 const MAX_MANIFEST_BYTES: u64 = 256 * 1024;
 const MAX_UPDATE_PROGRESS_INTERVAL_BYTES: u64 = 256 * 1024;

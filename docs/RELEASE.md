@@ -19,10 +19,10 @@ el esquema siguiente y publicar el instalador con el mismo hash:
 {
   "schemaVersion": 1,
   "version": "0.7.9",
-  "packageUrl": "https://github.com/BlackRack/LMUOverlay/releases/download/v0.7.9/BlackRack%20Overlay_0.7.9_x64-setup.exe",
+  "packageUrl": "https://github.com/ManuelROAL/BlackRack-Overlay/releases/download/v0.7.9/BlackRack%20Overlay_0.7.9_x64-setup.exe",
   "sha256": "<64 hex characters>",
   "fileName": "BlackRack Overlay_0.7.9_x64-setup.exe",
-  "releasePageUrl": "https://github.com/BlackRack/LMUOverlay/releases/tag/v0.7.9",
+  "releasePageUrl": "https://github.com/ManuelROAL/BlackRack-Overlay/releases/tag/v0.7.9",
   "updateTitle": "BlackRack Overlay 0.7.9",
   "fullTitle": "BlackRack Overlay 0.7.9",
   "changelog": ["Cambio visible para jugadores"]
