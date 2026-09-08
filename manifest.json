@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "version": "0.7.9",
+  "packageUrl": "https://github.com/ManuelROAL/BlackRack-Overlay/releases/download/v0.7.9/BlackRack%20Overlay_0.7.9_x64-setup.exe",
+  "sha256": "f3c23fdaca9bc3fe42bfd793172d1cbc4c7765150717ff1eec032630c23cd237",
+  "fileName": "BlackRack Overlay_0.7.9_x64-setup.exe",
+  "releasePageUrl": "https://github.com/ManuelROAL/BlackRack-Overlay/releases/tag/v0.7.9",
+  "updateTitle": "BlackRack Overlay 0.7.9",
+  "fullTitle": "BlackRack Overlay 0.7.9",
+  "changelog": [
+    "El panel de control puede comprobar automáticamente si hay actualizaciones.",
+    "La actualización verifica la integridad del instalador antes de ejecutarlo.",
+    "El orden de los tiempos visibles se puede reorganizar desde la configuración de Timing."
+  ]
+}
