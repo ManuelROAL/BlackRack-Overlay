@@ -6,7 +6,8 @@
 - Renderer/style: `src/conditions.ts`, `src/conditions.css`
 - Icon mapping: `src/weather-icons.ts`, icons under `src/assets/lmu-icons/weather/`
 - REST source: `src-tauri/src/telemetry/sim/lmu/rest.rs` (forecast humidity fallback
-  from `/rest/sessions/weather`)
+  from `/rest/sessions/weather`); iRacing reads its live weather variables from
+  `src-tauri/src/telemetry/sim/iracing/weather.rs`
 - OBS route: `/conditions`
 - Cadence: 20 Hz Smooth, 12.5 Hz Balanced, about 8 Hz Efficiency; the faster
   delivery keeps the relative wind arrow responsive while weather values remain
@@ -43,6 +44,9 @@
   covering the present moment; it degrades to unavailable when the forecast is
   missing or stale. The grip scale remains provisional until confirmed by a live
   capture.
+- iRacing reports live air/track temperatures, precipitation, wetness, humidity,
+  wind and sky state from shared memory. Its categorical wetness is mapped to
+  the same display bands; no REST forecast is invented for this source.
 
 ## Presentation
 

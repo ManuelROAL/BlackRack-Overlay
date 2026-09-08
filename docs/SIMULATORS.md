@@ -6,8 +6,9 @@ other module — the frame, the 50 Hz loop, the domain models and the whole
 frontend — is simulator agnostic and must stay that way.
 
 Le Mans Ultimate is complete. iRacing is being built out one overlay at a time
-and currently feeds Driving, Standings, Relative, Delta and Timing; what it does
-and does not fill is recorded below.
+and currently feeds Driving, Standings, Relative, Delta, Timing, Conditions,
+Flags, Rejoin and a partial Track Map; what it does and does not fill is
+recorded below.
 
 ## The contract
 
@@ -162,6 +163,13 @@ whether that mapping opens.
   `standings_models` module, and GAP/INT progress math is shared with LMU.
 - `foreground.rs` answers whether the simulator owns the foreground window,
   which the telemetry does not report and the overlay host needs.
+- `weather.rs` maps iRacing's live temperatures, rain, categorical wetness,
+  humidity, wind and sky variables into the shared Conditions contract.
+- `warnings.rs` gives SessionFlags their shared priority and infers a nearby
+  slow/off-track yellow culprit where the CarIdx roster supplies enough data;
+  it also arms Rejoin from pit/off-track/low-speed state and measures rear
+  traffic from lap distance and pace. Missing optional rival speed is treated
+  as non-closing.
 
 What it fills today is the session and car state the host uses to decide what to
 show, the Driving values (speed, gear, RPM against the published redline,
@@ -179,18 +187,26 @@ model. Tires use the four live carcass-temperature triplets and tread-wear
 triplets, while brake temperature, compounds, damage and pit service remain
 unavailable.
 
-Everything else in the frame is still at its documented sentinel. Capabilities
-for unsupported areas stay off, which keeps the control panel from offering an
-overlay that would stay empty. Landing an area means filling its fields, turning
-its capability on in the same change, and recording it here. The known shape of
-the remaining work:
+Conditions uses the live shared-memory weather variables. Flags and Rejoin use
+the shared-memory SessionFlags and CarIdx arrays, with no REST dependency. The
+Track Map keeps the full live roster and lap-distance sectors, but projects
+markers onto official/learned geometry or a circular fallback because iRacing's
+consumed interface does not provide authoritative world coordinates; it never
+learns geometry from those synthetic positions.
+
+Unsupported areas remain at their documented sentinels. Capabilities for those
+areas stay off, which keeps the control panel from offering an overlay that
+would stay empty. Landing an area means filling its fields, turning its
+capability on in the same change, and recording it here. The known shape of the
+remaining work:
 
 | Area | Source in the simulator |
 | --- | --- |
-| Track Map | the player's own position can support a learned outline; iRacing does not publish authoritative world coordinates for the other cars |
+| Track Map | full CarIdx roster projected by lap distance onto official/learned geometry or a circular fallback; iRacing does not publish authoritative world coordinates |
 | Fuel | `FuelLevel`/`FuelLevelPct` tracked across laps and used by the fuel-only strategy; there is no energy budget, so `virtual_energy_*` stays inactive |
 | Tyres | live per-corner wear and carcass temperature variables; brake temperature and compounds are not published reliably |
-| Conditions | `AirTemp`, `TrackTempCrew`, `Precipitation`, `TrackWetness`, `Skies`, wind |
+| Conditions | `AirTemp`, `TrackTempCrew`, `Precipitation`, `TrackWetness`, `Skies`, `RelativeHumidity`, wind |
+| Flags, Rejoin | `SessionFlags` plus inferred culprit/rear traffic from the `CarIdx*` arrays and session results |
 | Damage, Forecast, Lift and coast, Pit stop | not published; these four stay capability-gated off permanently |
 
 ## Shipping an unfinished simulator

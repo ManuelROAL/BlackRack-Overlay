@@ -280,7 +280,8 @@ const calibrateOfficialDistances = (
   player: TrackMapVehicle | undefined,
   trackLength: number
 ): void => {
-  if (!officialGeometry || officialDistancePoints.length || !player || player.in_pits || trackLength <= 0) return;
+  if (!officialGeometry || officialDistancePoints.length || !player || player.in_pits
+    || !player.world_position_available || trackLength <= 0) return;
   const nearest = nearestMainPoint(player.world_x, player.world_y);
   if (!nearest || nearest.distance > 25) {
     calibrationObservation = null;
@@ -314,11 +315,10 @@ const calibrateOfficialDistances = (
 };
 
 const markerPosition = (vehicle: TrackMapVehicle, trackLength: number): [number, number] => {
-  if (transform) return [transform.x(vehicle.world_x), transform.y(vehicle.world_y)];
-  const progress = trackLength > 0 ? vehicle.lap_distance / trackLength : 0;
-  const angle = progress * Math.PI * 2 - Math.PI / 2;
-  const radius = (SIZE - MARGIN * 2) / 2;
-  return [SIZE / 2 + Math.cos(angle) * radius, SIZE / 2 + Math.sin(angle) * radius];
+  if (transform && vehicle.world_position_available) {
+    return [transform.x(vehicle.world_x), transform.y(vehicle.world_y)];
+  }
+  return positionAtLapDistance(vehicle.lap_distance, trackLength);
 };
 
 const positionAtLapDistance = (lapDistance: number, trackLength: number): [number, number] => {
@@ -646,6 +646,7 @@ if (import.meta.env.DEV && new URLSearchParams(window.location.search).has("prev
       vehicle_class: ["HYPERCAR", "LMP2", "LMP3", "LMGT3"][index % 4],
       world_x: point.x,
       world_y: point.y,
+      world_position_available: true,
       lap_distance: point.distance,
       total_laps: 8,
       in_pits: index === 12,

@@ -659,6 +659,7 @@ impl TelemetrySource for LmuTelemetrySource {
                     vehicle_class: Self::string_from_chars(&entry.vehicle_class),
                     world_x: entry.world_x,
                     world_y: entry.world_y,
+                    world_position_available: true,
                     lap_distance: entry.lap_distance.max(0.0),
                     total_laps: entry.total_laps,
                     in_pits: entry.in_pits != 0,

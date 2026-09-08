@@ -56,6 +56,7 @@ export interface TrackMapVehicle {
   vehicle_class: string;
   world_x: number;
   world_y: number;
+  world_position_available: boolean;
   lap_distance: number;
   total_laps: number;
   in_pits: boolean;

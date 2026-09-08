@@ -592,6 +592,7 @@ pub struct TrackMapVehicle {
     vehicle_class: String,
     world_x: f64,
     world_y: f64,
+    world_position_available: bool,
     lap_distance: f64,
     total_laps: i32,
     in_pits: bool,

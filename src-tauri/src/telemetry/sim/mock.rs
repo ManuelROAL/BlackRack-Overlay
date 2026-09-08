@@ -439,6 +439,7 @@ impl TelemetrySource for MockTelemetrySource {
                             .into(),
                             world_x: angle.cos() * radius,
                             world_y: angle.sin() * radius * 0.62,
+                            world_position_available: true,
                             lap_distance: angle.rem_euclid(std::f64::consts::TAU)
                                 / std::f64::consts::TAU
                                 * 13_626.0,

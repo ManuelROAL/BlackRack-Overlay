@@ -17,7 +17,12 @@ use crate::telemetry::fuel_strategy::{
     calculate_lap_reference_strategy, projected_consumption, FuelStrategies, LapConsumptionWindow,
     ResourceAutonomy, ResourceStrategyInput,
 };
-use crate::telemetry::{TelemetryDemand, TelemetryFrame};
+use crate::telemetry::{TelemetryDemand, TelemetryFrame, TrackMapVehicle};
+
+#[path = "warnings.rs"]
+mod warnings;
+#[path = "weather.rs"]
+mod weather;
 
 /// How long to wait before reopening a mapping that stopped answering, so a
 /// simulator restart is picked up without probing on every cycle.
@@ -63,6 +68,8 @@ pub(super) struct IracingTelemetrySource {
     fuel_last_lap: Option<f64>,
     fuel_qualifying_lap: Option<f64>,
     fuel_consumption: LapConsumptionWindow,
+    rejoin_hold_until: Option<Instant>,
+    rejoin_reason: &'static str,
     observed_max_rpm: f64,
     foreground: bool,
     foreground_checked_at: Option<Instant>,
@@ -86,6 +93,8 @@ impl IracingTelemetrySource {
             fuel_last_lap: None,
             fuel_qualifying_lap: None,
             fuel_consumption: LapConsumptionWindow::default(),
+            rejoin_hold_until: None,
+            rejoin_reason: "rejoin",
             observed_max_rpm: 0.0,
             foreground: false,
             foreground_checked_at: None,
@@ -104,6 +113,8 @@ impl IracingTelemetrySource {
         self.fuel_last_lap = None;
         self.fuel_qualifying_lap = None;
         self.fuel_consumption = LapConsumptionWindow::default();
+        self.rejoin_hold_until = None;
+        self.rejoin_reason = "rejoin";
         self.observed_max_rpm = 0.0;
         self.starting_positions.clear();
     }
@@ -198,6 +209,7 @@ impl IracingTelemetrySource {
         let in_garage = sdk.flag("IsInGarage").unwrap_or(false);
         let on_track = sdk.flag("IsOnTrack").unwrap_or(false);
         let on_pit_road = sdk.flag("OnPitRoad").unwrap_or(false);
+        let session_flags = sdk.bits("SessionFlags");
         let surface = sdk
             .integer("PlayerTrackSurface")
             .unwrap_or(SURFACE_NOT_IN_WORLD);
@@ -225,7 +237,7 @@ impl IracingTelemetrySource {
         frame.game_in_realtime = !in_garage && session_state != 0;
         frame.player_in_garage = in_garage;
         frame.session_type = session::session_type_code(session_name);
-        frame.game_phase = game_phase(session_state, sdk.bits("SessionFlags"));
+        frame.game_phase = game_phase(session_state, session_flags);
         frame.session_max_laps = schedule.as_ref().map_or(0, |entry| entry.laps);
         frame.session_time_remaining = finite_duration(sdk.number("SessionTimeRemain"));
         frame.session_elapsed_seconds = sdk.number("SessionTime").unwrap_or(0.0).max(0.0);
@@ -369,6 +381,54 @@ impl IracingTelemetrySource {
         .with_qualifying_guidance();
         let resource_autonomy =
             ResourceAutonomy::calculate(fuel_level, fuel_per_lap, None, 0.0, false);
+        let mut auxiliary_vehicles = if demand.include_track_map
+            || demand.include_flag_warning
+            || demand.include_rejoin_warning
+        {
+            build_auxiliary_vehicles(
+                &self.session,
+                sdk,
+                session_number,
+                frame.track_length_meters,
+            )
+        } else {
+            Vec::new()
+        };
+        let inferred_yellow_id = (demand.include_track_map || demand.include_flag_warning)
+            .then_some(session_flags)
+            .filter(|flags| warnings::yellow_flag_active(*flags))
+            .and_then(|_| {
+                warnings::inferred_yellow_culprit_id(&auxiliary_vehicles, frame.track_length_meters)
+            });
+        if let Some(vehicle_id) = inferred_yellow_id {
+            for vehicle in &mut auxiliary_vehicles {
+                vehicle.map.causing_yellow = vehicle.map.vehicle_id == vehicle_id;
+            }
+        }
+        let flag_warning = if demand.include_flag_warning {
+            let warning = warnings::flag_warning(
+                &auxiliary_vehicles,
+                session_flags,
+                session_state,
+                frame.game_phase,
+                frame.track_length_meters,
+            );
+            warning
+        } else {
+            crate::telemetry::FlagWarning::default()
+        };
+        let rejoin_warning = if demand.include_rejoin_warning {
+            self.update_rejoin_warning(
+                &auxiliary_vehicles,
+                frame.speed_kph,
+                surface,
+                on_pit_road,
+                frame.track_length_meters,
+            )
+        } else {
+            crate::telemetry::RejoinWarning::default()
+        };
+        let weather = weather::read(sdk);
         let tire_temperatures = read_wheel_values(sdk, &TIRE_TEMP_NAMES);
         let tire_wear = read_wheel_values(sdk, &TIRE_WEAR_NAMES);
         let oil_temperature = optional_value(sdk.number("OilTemp"));
@@ -395,6 +455,31 @@ impl IracingTelemetrySource {
         frame.fuel_to_add_liters = active_strategy.map_or(0.0, |plan| plan.total_additional);
         frame.resource_autonomy = resource_autonomy;
         frame.fuel_strategies = fuel_strategies;
+        frame.rest_weather_available = weather.available;
+        frame.ambient_temperature_c = weather.ambient_temperature_c;
+        frame.track_temperature_c = weather.track_temperature_c;
+        frame.rain_percent = weather.rain_percent;
+        frame.track_wetness_percent = weather.track_wetness_percent;
+        frame.track_wetness_min_percent = weather.track_wetness_percent;
+        frame.track_wetness_max_percent = weather.track_wetness_percent;
+        frame.current_humidity_percent = weather.current_humidity_percent;
+        frame.wind_speed_ms = weather.wind_speed_ms;
+        frame.wind_direction_degrees = weather.wind_direction_degrees;
+        frame.wind_relative_direction_degrees = weather.wind_relative_direction_degrees;
+        frame.player_grip_percent = -1.0;
+        frame.track_rubber_percent = -1.0;
+        frame.track_grip_state = weather.track_grip_state;
+        frame.cloud_coverage = weather.cloud_coverage;
+        frame.flag_warning = flag_warning;
+        frame.rejoin_warning = rejoin_warning;
+        frame.track_map_vehicles = if demand.include_track_map {
+            auxiliary_vehicles
+                .iter()
+                .map(|vehicle| vehicle.map.clone())
+                .collect()
+        } else {
+            Vec::new()
+        };
         frame.player_damage_percent = -1.0;
         frame.player_suspension_damage_percent = -1.0;
         frame.player_suspension_damage_by_wheel_percent = [-1.0; 4];
@@ -457,6 +542,162 @@ impl IracingTelemetrySource {
             .map(|start| (start + self.fuel_added_this_lap - level).max(0.0))
             .unwrap_or(0.0)
     }
+}
+
+#[derive(Clone)]
+struct AuxiliaryVehicle {
+    map: TrackMapVehicle,
+    speed_kph: f64,
+    speed_available: bool,
+    pace_seconds: f64,
+    pace_available: bool,
+    progress: f64,
+    track_surface: i32,
+}
+
+fn build_auxiliary_vehicles(
+    session: &Session,
+    sdk: &Connection,
+    session_number: i32,
+    track_length: f64,
+) -> Vec<AuxiliaryVehicle> {
+    if track_length <= 100.0 || !track_length.is_finite() {
+        return Vec::new();
+    }
+    let results = session.results(session_number);
+    let mut vehicles = session
+        .cars()
+        .iter()
+        .filter(|driver| {
+            (0..64).contains(&driver.car_idx) && !driver.is_spectator && !driver.is_pace_car
+        })
+        .filter_map(|driver| {
+            let index = usize::try_from(driver.car_idx).ok()?;
+            let result = results
+                .iter()
+                .find(|result| result.car_idx == driver.car_idx);
+            let fraction = sdk
+                .number_at("CarIdxLapDistPct", index)
+                .or_else(|| {
+                    (driver.car_idx == session.player_car_idx)
+                        .then(|| sdk.number("LapDistPct"))
+                        .flatten()
+                })
+                .filter(|value| value.is_finite() && (0.0..=1.0).contains(value))?;
+            let laps = sdk
+                .integer_at("CarIdxLapCompleted", index)
+                .filter(|value| *value >= 0)
+                .or_else(|| {
+                    sdk.integer_at("CarIdxLap", index)
+                        .filter(|value| *value >= 0)
+                })
+                .or_else(|| {
+                    result
+                        .map(|result| result.laps_complete)
+                        .filter(|value| *value >= 0)
+                })
+                .unwrap_or(0);
+            let surface = sdk
+                .integer_at("CarIdxTrackSurface", index)
+                .or_else(|| {
+                    (driver.car_idx == session.player_car_idx)
+                        .then(|| sdk.integer("PlayerTrackSurface"))
+                        .flatten()
+                })
+                .unwrap_or(SURFACE_NOT_IN_WORLD);
+            let in_pits = sdk.integer_at("CarIdxOnPitRoad", index).map_or_else(
+                || {
+                    driver.car_idx == session.player_car_idx
+                        && sdk.flag("OnPitRoad").unwrap_or(false)
+                },
+                |value| value != 0,
+            );
+            let in_garage = surface == SURFACE_NOT_IN_WORLD && !in_pits;
+            let best_lap = sdk
+                .number_at("CarIdxBestLapTime", index)
+                .filter(|value| value.is_finite() && *value > 1.0)
+                .or_else(|| {
+                    result
+                        .map(|result| result.fastest_lap_time)
+                        .filter(|value| *value > 1.0)
+                });
+            let last_lap = sdk
+                .number_at("CarIdxLastLapTime", index)
+                .filter(|value| value.is_finite() && *value > 1.0)
+                .or_else(|| {
+                    result
+                        .map(|result| result.last_lap_time)
+                        .filter(|value| *value > 1.0)
+                });
+            let pace = best_lap.or(last_lap);
+            let pace_available = pace.is_some();
+            let pace_seconds = pace.unwrap_or(100.0);
+            let speed = sdk
+                .number_at("CarIdxSpeed", index)
+                .filter(|value| value.is_finite() && *value >= 0.0)
+                .map(|value| value * 3.6);
+            let speed_available = speed.is_some();
+            let speed_kph = speed.unwrap_or(0.0);
+            let overall_position = sdk
+                .integer_at("CarIdxPosition", index)
+                .filter(|value| *value > 0)
+                .or_else(|| result.and_then(|result| result.overall_position))
+                .unwrap_or(0);
+            let vehicle_class = if driver.car_class_short_name.trim().is_empty() {
+                "OTHER".to_owned()
+            } else {
+                driver.car_class_short_name.trim().to_owned()
+            };
+            let progress = f64::from(laps) + fraction;
+            Some(AuxiliaryVehicle {
+                map: TrackMapVehicle {
+                    vehicle_id: driver.car_idx,
+                    overall_position,
+                    vehicle_class,
+                    world_x: 0.0,
+                    world_y: 0.0,
+                    world_position_available: false,
+                    lap_distance: fraction * track_length,
+                    total_laps: laps,
+                    in_pits,
+                    in_garage,
+                    causing_yellow: false,
+                    sector: session.sector(fraction),
+                    is_player: driver.car_idx == session.player_car_idx,
+                },
+                speed_kph,
+                speed_available,
+                pace_seconds,
+                pace_available,
+                progress,
+                track_surface: surface,
+            })
+        })
+        .collect::<Vec<_>>();
+    vehicles.sort_by(|left, right| {
+        let left_position = if left.map.overall_position > 0 {
+            left.map.overall_position
+        } else {
+            i32::MAX
+        };
+        let right_position = if right.map.overall_position > 0 {
+            right.map.overall_position
+        } else {
+            i32::MAX
+        };
+        left_position
+            .cmp(&right_position)
+            .then_with(|| right.progress.total_cmp(&left.progress))
+            .then_with(|| left.map.vehicle_id.cmp(&right.map.vehicle_id))
+    });
+    let mut next_position = 1;
+    for vehicle in &mut vehicles {
+        if vehicle.map.overall_position <= 0 {
+            vehicle.map.overall_position = next_position;
+        }
+        next_position = next_position.max(vehicle.map.overall_position.saturating_add(1));
+    }
+    vehicles
 }
 
 fn fuel_capacity(session: &Session, sdk: &Connection) -> f64 {

@@ -4,7 +4,8 @@
 
 - Entry: `flags.html`
 - Renderer/style: `src/flags.ts`, `src/flags.css`
-- Backend inference: `src-tauri/src/telemetry/sim/lmu/source/warnings.rs`
+- Backend inference: `src-tauri/src/telemetry/sim/lmu/source/warnings.rs` and
+  `src-tauri/src/telemetry/sim/iracing/warnings.rs`
 - OBS route: `/flags`
 - Cadence: 50 Hz while active; 250 ms while inactive
 
@@ -21,6 +22,10 @@ Candidate scanning and warning inference run only while the native panel or the
   separated throughout the supported 75–200% range.
 - Blue uses the player's official flag state and nearest plausible faster/lapping
   car behind. Cars in pitlane, in the garage or already finished are excluded.
+- iRacing uses the documented `SessionFlags` priority (checkered, yellow/caution,
+  blue). Yellow culprit details are inferred from a nearby off-track or slow car;
+  if no live culprit can be identified, the official flag remains active without
+  fabricated distance or class data.
 
 ## Yellow semantics
 

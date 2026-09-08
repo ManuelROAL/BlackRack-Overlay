@@ -469,6 +469,9 @@ impl TrackMapModelState {
 
     fn update_recorder(&mut self, frame: &TelemetryFrame, player_index: usize) {
         let player = &frame.track_map_vehicles[player_index];
+        if !player.world_position_available {
+            return;
+        }
         if cached_official_track_map_geometry(&self.cache_key).is_some()
             || self.track_metadata().1
             || frame.track_length_meters <= 100.0
@@ -856,6 +859,7 @@ mod tests {
             vehicle_class: "HYPERCAR".into(),
             world_x: 0.0,
             world_y: 0.0,
+            world_position_available: true,
             lap_distance,
             total_laps: 1,
             in_pits: false,
