@@ -11,12 +11,12 @@ SimHub package.
 ## Resource fields
 
 - Title: `BlackRack Overlay`
-- Version: `0.7.8`
+- Version: `0.7.9`
 - Category: `Le Mans Ultimate`
 - Tag line: `Lightweight, configurable LMU telemetry overlays — no SimHub required.`
 - Tags: `le mans ultimate`, `lmu`, `overlay`, `standings`, `relative`,
   `delta bar`, `fuel calculator`, `virtual energy`, `track map`, `obs`
-- Download: `release/0.7.8/BlackRack Overlay_0.7.8_x64-setup.exe`
+- Download: `release/0.7.9/BlackRack Overlay_0.7.9_x64-setup.exe`
 - Support URL: `https://ko-fi.com/blackrack`
 
 ## Overview copy
@@ -64,12 +64,13 @@ optional service is unavailable, the overlays keep running.
 - Spanish and English interface.
 - Optional localhost-only OBS browser sources.
 - Versioned configuration import/export.
+- Automatic and on-demand update checks with verified installer download.
 - Bundled fonts, flags, badges and manufacturer logos; no web assets are required
   while driving.
 
 ### Installation
 
-1. Download and run `BlackRack Overlay_0.7.8_x64-setup.exe`.
+1. Download and run `BlackRack Overlay_0.7.9_x64-setup.exe`.
 2. Start Le Mans Ultimate in windowed or borderless-windowed mode.
 3. Open BlackRack Overlay and enable the panels you want to use.
 
@@ -138,6 +139,14 @@ https://ko-fi.com/blackrack.
   stalled iRacing mapping recovery, OBS/browser-source handling and durable Track
   Map learning.
 
+### 0.7.9 — Configurable Timing and in-app updates
+
+- Added drag-and-drop and button controls for the order of visible Timing rows,
+  preserved in profiles, configuration backup and OBS.
+- Added automatic and on-demand update checks in the control panel, with release
+  highlights, download/install flow, installer verification and post-start
+  failure reporting.
+
 ## Decisions required before submission
 
 Choose and insert the resource's usage terms. Do not inherit the doX listing's
@@ -157,11 +166,11 @@ Prepare at least one real in-game hero image before publishing. Recommended set:
 
 ## Final checklist
 
-- [x] Version synchronized at `0.7.8` in npm, Cargo and Tauri.
+- [x] Version synchronized at `0.7.9` in npm, Cargo and Tauri.
 - [x] Frontend production build and localization checks pass.
 - [x] Rust library tests pass with the official LMU SDK detected.
-- [x] Production NSIS installer generated under the BlackRack name.
-- [x] SHA-256 generated and matched to the release installer.
+- [ ] Production NSIS installer generated under the BlackRack name.
+- [ ] SHA-256 generated and matched to the release installer.
 - [ ] Comparable moving race/replay performance capture completed.
 - [ ] Clean-machine installation and functional smoke test completed.
 - [ ] Real in-game publication images selected.
