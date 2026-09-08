@@ -1,17 +1,16 @@
 //! Telemetry source backed by the simulator's shared memory.
 //!
-//! This first pass fills the session and car state the overlay host needs to
-//! decide what to show, and the driving values themselves. Everything else in
-//! the frame stays at the sentinel it documents and the matching capability
-//! stays off, so no renderer shows an empty panel: standings, the track map,
-//! consumption, tyres, damage, warnings and the weather block are added here as
-//! each of those overlays is validated against the simulator.
+//! This source fills the session, car and standings state the overlay host
+//! needs, plus the Driving values. Other areas remain at their documented
+//! sentinel until they are validated against the simulator.
 
+use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
 use super::super::{SourceDescriptor, TelemetrySource};
 use super::irsdk::Connection;
 use super::session::{self, Session};
+use super::standings;
 use super::{foreground, DESCRIPTOR};
 use crate::telemetry::{TelemetryDemand, TelemetryFrame};
 
@@ -43,6 +42,7 @@ pub(super) struct IracingTelemetrySource {
     observed_max_rpm: f64,
     foreground: bool,
     foreground_checked_at: Option<Instant>,
+    starting_positions: HashMap<i32, i32>,
 }
 
 impl IracingTelemetrySource {
@@ -59,6 +59,7 @@ impl IracingTelemetrySource {
             observed_max_rpm: 0.0,
             foreground: false,
             foreground_checked_at: None,
+            starting_positions: HashMap::new(),
         }
     }
 
@@ -68,6 +69,7 @@ impl IracingTelemetrySource {
         self.last_laps_completed = -1;
         self.lap_valid = true;
         self.observed_max_rpm = 0.0;
+        self.starting_positions.clear();
     }
 
     /// A new mapping is a new producer, even if iRacing reuses its session
@@ -105,7 +107,7 @@ impl TelemetrySource for IracingTelemetrySource {
         DESCRIPTOR
     }
 
-    fn next_frame(&mut self, _demand: TelemetryDemand) -> TelemetryFrame {
+    fn next_frame(&mut self, demand: TelemetryDemand) -> TelemetryFrame {
         if self.connection.is_none() {
             let now = Instant::now();
             if now < self.reconnect_at {
@@ -130,14 +132,14 @@ impl TelemetrySource for IracingTelemetrySource {
         // Held outside `self` while the frame is assembled so the readers can
         // take the source mutably; it goes straight back afterwards.
         let sdk = self.connection.take().expect("la conexión está abierta");
-        let frame = self.build(&sdk);
+        let frame = self.build(&sdk, demand);
         self.connection = Some(sdk);
         frame
     }
 }
 
 impl IracingTelemetrySource {
-    fn build(&mut self, sdk: &Connection) -> TelemetryFrame {
+    fn build(&mut self, sdk: &Connection, demand: TelemetryDemand) -> TelemetryFrame {
         if self
             .session_parsed_at
             .is_none_or(|parsed| parsed.elapsed() >= SESSION_PARSE_INTERVAL)
@@ -194,6 +196,32 @@ impl IracingTelemetrySource {
         frame.player_vehicle_name = self.session.player_car_name.clone();
         frame.player_vehicle_livery_name = self.session.player_car_name.clone();
         frame.track_length_meters = self.session.track_length_meters;
+
+        if demand.include_standings {
+            frame.standings = standings::build(
+                &self.session,
+                sdk,
+                session_number,
+                frame.session_type,
+                session_state,
+                &mut self.starting_positions,
+            );
+            frame.leader_total_laps = frame
+                .standings
+                .iter()
+                .map(|entry| entry.total_laps)
+                .max()
+                .unwrap_or(0);
+            if let Some(player) = frame.standings.iter().find(|entry| entry.is_player) {
+                frame.player_position = player.overall_position;
+                frame.player_class_position = player.position;
+                frame.player_class_size = frame
+                    .standings
+                    .iter()
+                    .filter(|entry| entry.vehicle_class == player.vehicle_class)
+                    .count() as i32;
+            }
+        }
 
         frame.lap_number = sdk.integer("Lap").unwrap_or(0).max(0);
         frame.player_total_laps = laps_completed;

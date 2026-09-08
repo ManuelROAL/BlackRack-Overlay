@@ -6,7 +6,8 @@ other module — the frame, the 50 Hz loop, the domain models and the whole
 frontend — is simulator agnostic and must stay that way.
 
 Le Mans Ultimate is complete. iRacing is being built out one overlay at a time
-and today feeds Driving; what it does and does not fill is recorded below.
+and currently feeds Driving, Standings and Relative; what it does and does not
+fill is recorded below.
 
 ## The contract
 
@@ -152,23 +153,34 @@ whether that mapping opens.
   block sequences of maps and plain scalars — without a dependency.
 - `session.rs` reparses at most once a second and only when the generation
   changes, because the string is large and is republished as results change.
+  It adapts the roster and session results into the same car-oriented identity
+  data consumed by the standings source.
+- `standings.rs` adapts iRacing's live `CarIdxLap` and `CarIdxLapDistPct`
+  arrays, with `SessionInfo` results as the initial/classification fallback,
+  into the shared `StandingEntry` contract. Class grouping, visible-row
+  selection and presentation remain in the simulator-agnostic
+  `standings_models` module, and GAP/INT progress math is shared with LMU.
 - `foreground.rs` answers whether the simulator owns the foreground window,
   which the telemetry does not report and the overlay host needs.
 
 What it fills today is the session and car state the host uses to decide what to
-show, plus the Driving values: speed, gear, RPM against the published redline,
-throttle, brake, ABS, steering angle and wheel torque. Traction control has no
-published state, so its indicator stays off rather than being inferred.
+show, the Driving values (speed, gear, RPM against the published redline,
+throttle, brake, ABS, steering angle and wheel torque), and the standings data
+needed by Standings and Relative. iRating is carried as the driver's rank and
+the iRacing license string as the safety rank; no gain estimate is invented.
+Traction control has no published state, so its indicator stays off rather than
+being inferred. AVG 5, opponent fuel/tyres/damage, penalties and official track
+geometry remain unavailable until their sources are validated.
 
-Everything else in the frame is still at its documented sentinel and every
-capability is off, which is what keeps the control panel from offering an
-overlay that would stay empty. Landing an area means filling its fields, turning
-its capability on in the same change, and recording it here. The known shape of
-the remaining work:
+Everything else in the frame is still at its documented sentinel. Apart from
+the now-supported driver ranks, capabilities for the remaining areas stay off,
+which keeps the control panel from offering an overlay that would stay empty.
+Landing an area means filling its fields, turning its capability on in the same
+change, and recording it here. The known shape of the remaining work:
 
 | Area | Source in the simulator |
 | --- | --- |
-| Standings, Relative, Track Map | the `CarIdx*` arrays joined to the roster in the session string; no world coordinates for other cars, so the outline has to be learned from the player's own position |
+| Track Map | the player's own position can support a learned outline; iRacing does not publish authoritative world coordinates for the other cars |
 | Fuel | `FuelLevel` tracked across laps; there is no energy budget, so `virtual_energy_*` stays inactive |
 | Tyres | the per-corner wear and carcass temperature variables |
 | Conditions | `AirTemp`, `TrackTempCrew`, `Precipitation`, `TrackWetness`, `Skies`, wind |

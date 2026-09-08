@@ -583,14 +583,11 @@ impl LmuTelemetrySource {
         let ahead_progress = ahead.total_laps as f64 + ahead.lap_distance / track_length;
         let behind_progress = behind.total_laps as f64 + behind.lap_distance / track_length;
         let lap_diff = ahead_progress - behind_progress;
-        if lap_diff >= 1.0 {
-            return (lap_diff as i32, 0.0);
-        }
-        let mut time_gap = ahead.time_into_lap - behind.time_into_lap;
-        if time_gap < 0.0 && lap_diff > 0.0 {
-            time_gap += behind.estimated_lap_time.max(1.0);
-        }
-        (0, time_gap.abs().max(0.0))
+        crate::telemetry::standings_math::class_relative_gap(
+            lap_diff,
+            Some(ahead.time_into_lap - behind.time_into_lap),
+            behind.estimated_lap_time,
+        )
     }
 
     pub(super) fn relative_gaps_seconds(

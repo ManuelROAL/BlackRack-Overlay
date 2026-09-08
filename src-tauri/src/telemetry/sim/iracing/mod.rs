@@ -20,18 +20,22 @@ mod session;
 #[cfg(target_os = "windows")]
 mod source;
 #[cfg(target_os = "windows")]
+mod standings;
+#[cfg(target_os = "windows")]
 mod yaml;
 
 /// What this source reports today. A capability is turned on when the source
 /// actually fills the frame fields behind it, so the control panel never offers
-/// an overlay that would stay empty; the first pass covers the driving values
-/// only. The simulator has no virtual energy, no per-part damage and no
-/// authoritative track outline, so those stay off permanently.
+/// an overlay that would stay empty. The simulator has no virtual energy, no
+/// per-part damage and no authoritative track outline, so those stay off.
 #[cfg(target_os = "windows")]
 pub(super) const DESCRIPTOR: SourceDescriptor = SourceDescriptor {
     id: "iracing",
     display_name: "iRacing",
-    capabilities: SourceCapabilities::NONE,
+    capabilities: SourceCapabilities {
+        driver_ranks: true,
+        ..SourceCapabilities::NONE
+    },
     official_geometry: None,
     dependency: Some(telemetry_dependency),
 };

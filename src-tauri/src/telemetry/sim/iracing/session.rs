@@ -31,6 +31,36 @@ pub(super) struct Schedule {
     pub(super) name: String,
     pub(super) laps: i32,
     pub(super) seconds: f64,
+    pub(super) results: Vec<ResultPosition>,
+}
+
+#[derive(Clone, Default)]
+pub(super) struct Driver {
+    pub(super) car_idx: i32,
+    pub(super) user_name: String,
+    pub(super) abbrev_name: String,
+    pub(super) initials: String,
+    pub(super) team_name: String,
+    pub(super) car_number: String,
+    pub(super) car_screen_name: String,
+    pub(super) car_class_short_name: String,
+    pub(super) license: String,
+    pub(super) irating: i32,
+    pub(super) nationality: String,
+    pub(super) is_spectator: bool,
+    pub(super) is_pace_car: bool,
+}
+
+#[derive(Clone, Copy, Default)]
+pub(super) struct ResultPosition {
+    pub(super) car_idx: i32,
+    /// iRacing stores these positions zero-based in the session results. The
+    /// source converts them to the one-based contract used by the frame.
+    pub(super) overall_position: Option<i32>,
+    pub(super) class_position: Option<i32>,
+    pub(super) laps_complete: i32,
+    pub(super) fastest_lap_time: f64,
+    pub(super) last_lap_time: f64,
 }
 
 #[derive(Default)]
@@ -41,9 +71,11 @@ pub(super) struct Session {
     /// Lap fraction where each sector starts, first entry always zero.
     pub(super) sector_starts: Vec<f64>,
     pub(super) player_car_name: String,
+    pub(super) player_car_idx: i32,
     pub(super) fuel_capacity_liters: f64,
     pub(super) redline_rpm: f64,
     pub(super) schedule: Vec<Schedule>,
+    pub(super) drivers: Vec<Driver>,
 }
 
 impl Session {
@@ -73,6 +105,7 @@ impl Session {
         self.sector_starts = sector_starts(root.get("SplitTimeInfo").get("Sectors"));
 
         let driver_info = root.get("DriverInfo");
+        self.player_car_idx = driver_info.get("DriverCarIdx").integer().unwrap_or(-1);
         self.player_car_name = player_car_name(driver_info);
         // The tank is reported at its full size; the session may cap it.
         let capacity = driver_info
@@ -86,6 +119,14 @@ impl Session {
             .unwrap_or(1.0);
         self.fuel_capacity_liters = (capacity * allowed).max(0.0);
         self.redline_rpm = driver_info.get("DriverCarRedLine").number().unwrap_or(0.0);
+        let parsed_drivers = driver_info
+            .get("Drivers")
+            .items()
+            .iter()
+            .map(driver)
+            .filter(|driver| driver.car_idx >= 0 && !driver.is_spectator && !driver.is_pace_car)
+            .collect();
+        self.drivers = deduplicate_drivers(parsed_drivers);
 
         self.schedule = root
             .get("SessionInfo")
@@ -99,6 +140,19 @@ impl Session {
 
     pub(super) fn scheduled(&self, number: i32) -> Option<&Schedule> {
         self.schedule.iter().find(|entry| entry.number == number)
+    }
+
+    pub(super) fn results(&self, number: i32) -> &[ResultPosition] {
+        self.scheduled(number)
+            .map_or(&[], |schedule| schedule.results.as_slice())
+    }
+
+    /// DriverInfo can contain one entry per driver in a team car. Standings
+    /// are car-based, and the simulator's last entry is the active driver in
+    /// that case; the roster is already deduplicated during refresh so the hot
+    /// standings path only borrows these records.
+    pub(super) fn cars(&self) -> &[Driver] {
+        &self.drivers
     }
 
     /// Which sector a lap fraction falls in, numbered the way the frame counts
@@ -160,6 +214,85 @@ fn player_car_name(driver_info: &Node) -> String {
         .unwrap_or_default()
 }
 
+fn text_or(entry: &Node, keys: &[&str]) -> String {
+    keys.iter()
+        .map(|key| entry.get(key).text().trim())
+        .find(|value| !value.is_empty())
+        .unwrap_or_default()
+        .to_owned()
+}
+
+fn boolean(entry: &Node, key: &str) -> bool {
+    matches!(
+        entry.get(key).text().trim().to_ascii_lowercase().as_str(),
+        "1" | "true" | "yes"
+    )
+}
+
+fn driver(entry: &Node) -> Driver {
+    let class = text_or(entry, &["CarClassShortName", "CarClassName"]);
+    let class = if class.is_empty() {
+        entry
+            .get("CarClassID")
+            .integer()
+            .map_or_else(String::new, |id| format!("CLASS {id}"))
+    } else {
+        class
+    };
+    Driver {
+        car_idx: entry.get("CarIdx").integer().unwrap_or(-1),
+        user_name: text_or(entry, &["UserName", "Name"]),
+        abbrev_name: text_or(entry, &["AbbrevName"]),
+        initials: text_or(entry, &["Initials"]),
+        team_name: text_or(entry, &["TeamName"]),
+        car_number: text_or(entry, &["CarNumber", "CarNumberRaw"]),
+        car_screen_name: text_or(entry, &["CarScreenName", "CarName"]),
+        car_class_short_name: class,
+        license: text_or(entry, &["LicString", "License"]),
+        irating: entry.get("IRating").integer().unwrap_or(0).max(0),
+        nationality: text_or(entry, &["LicCountry", "LicenseCountry", "Country"]),
+        is_spectator: boolean(entry, "IsSpectator"),
+        is_pace_car: boolean(entry, "CarIsPaceCar"),
+    }
+}
+
+fn deduplicate_drivers(drivers: Vec<Driver>) -> Vec<Driver> {
+    let mut cars = Vec::with_capacity(drivers.len());
+    for driver in drivers {
+        if let Some(existing) = cars
+            .iter_mut()
+            .find(|entry: &&mut Driver| entry.car_idx == driver.car_idx)
+        {
+            *existing = driver;
+        } else {
+            cars.push(driver);
+        }
+    }
+    cars
+}
+
+fn one_based(value: Option<i32>) -> Option<i32> {
+    value.filter(|value| *value >= 0).map(|value| value + 1)
+}
+
+fn first_time(entry: &Node, keys: &[&str]) -> f64 {
+    keys.iter()
+        .filter_map(|key| entry.get(key).number())
+        .find(|value| *value > 0.0)
+        .unwrap_or(0.0)
+}
+
+fn result_position(entry: &Node) -> ResultPosition {
+    ResultPosition {
+        car_idx: entry.get("CarIdx").integer().unwrap_or(-1),
+        overall_position: one_based(entry.get("Position").integer()),
+        class_position: one_based(entry.get("ClassPosition").integer()),
+        laps_complete: entry.get("LapsComplete").integer().unwrap_or(-1),
+        fastest_lap_time: first_time(entry, &["FastestTime", "FastestLapTime"]),
+        last_lap_time: first_time(entry, &["LastTime", "LastLapTime"]),
+    }
+}
+
 fn schedule(entry: &Node) -> Schedule {
     let name = {
         let session_name = entry.get("SessionName").text().trim();
@@ -176,14 +309,21 @@ fn schedule(entry: &Node) -> Schedule {
         // limited stays at zero the way the frame expects.
         laps: entry.get("SessionLaps").integer().unwrap_or(0).max(0),
         seconds: entry.get("SessionTime").number().unwrap_or(0.0).max(0.0),
+        results: entry
+            .get("ResultsPositions")
+            .items()
+            .iter()
+            .map(result_position)
+            .filter(|result| result.car_idx >= 0)
+            .collect(),
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{session_type_code, Session};
+    use super::{deduplicate_drivers, session_type_code, Driver, Session};
 
-    const DOCUMENT: &str = "WeekendInfo:\n TrackDisplayName: Spa\n TrackConfigName: Grand Prix\n TrackLength: 7.00 km\nSessionInfo:\n Sessions:\n - SessionNum: 0\n   SessionName: PRACTICE\n   SessionLaps: unlimited\n   SessionTime: 1800.0000 sec\n - SessionNum: 1\n   SessionName: RACE\n   SessionLaps: 25\n   SessionTime: unlimited\nSplitTimeInfo:\n Sectors:\n - SectorNum: 0\n   SectorStartPct: 0.0000\n - SectorNum: 1\n   SectorStartPct: 0.4000\n - SectorNum: 2\n   SectorStartPct: 0.7500\nDriverInfo:\n DriverCarIdx: 3\n DriverCarFuelMaxLtr: 100.000\n DriverCarMaxFuelPct: 0.500\n DriverCarRedLine: 7200.000\n Drivers:\n - CarIdx: 1\n   CarScreenName: Porsche 911 GT3 R\n - CarIdx: 3\n   CarScreenName: Ferrari 296 GT3\n";
+    const DOCUMENT: &str = "WeekendInfo:\n TrackDisplayName: Spa\n TrackConfigName: Grand Prix\n TrackLength: 7.00 km\nSessionInfo:\n Sessions:\n - SessionNum: 0\n   SessionName: PRACTICE\n   SessionLaps: unlimited\n   SessionTime: 1800.0000 sec\n - SessionNum: 1\n   SessionName: RACE\n   SessionLaps: 25\n   SessionTime: unlimited\n   ResultsPositions:\n   - Position: 0\n     ClassPosition: 0\n     CarIdx: 3\n     LapsComplete: 4\n     FastestTime: 130.5 sec\n     LastTime: 131.5 sec\nSplitTimeInfo:\n Sectors:\n - SectorNum: 0\n   SectorStartPct: 0.0000\n - SectorNum: 1\n   SectorStartPct: 0.4000\n - SectorNum: 2\n   SectorStartPct: 0.7500\nDriverInfo:\n DriverCarIdx: 3\n DriverCarFuelMaxLtr: 100.000\n DriverCarMaxFuelPct: 0.500\n DriverCarRedLine: 7200.000\n Drivers:\n - CarIdx: 1\n   UserName: Ana Perez\n   CarScreenName: Porsche 911 GT3 R\n   CarClassShortName: GT3\n   CarNumber: 12\n   LicString: A 4.99\n   IRating: 2400\n   LicCountry: ES\n - CarIdx: 3\n   UserName: Juan Perez\n   CarScreenName: Ferrari 296 GT3\n   CarClassShortName: GT3\n";
 
     fn parsed() -> Session {
         let mut session = Session::new();
@@ -203,6 +343,30 @@ mod tests {
     #[test]
     fn picks_the_local_car_out_of_the_roster() {
         assert_eq!(parsed().player_car_name, "Ferrari 296 GT3");
+        assert_eq!(parsed().player_car_idx, 3);
+        assert_eq!(parsed().cars().len(), 2);
+        assert_eq!(parsed().cars()[0].license, "A 4.99");
+        assert_eq!(parsed().cars()[0].irating, 2400);
+        assert_eq!(parsed().cars()[0].nationality, "ES");
+    }
+
+    #[test]
+    fn keeps_the_last_driver_for_a_team_car() {
+        let cars = deduplicate_drivers(vec![
+            Driver {
+                car_idx: 5,
+                user_name: "First stint".into(),
+                ..Driver::default()
+            },
+            Driver {
+                car_idx: 5,
+                user_name: "Active stint".into(),
+                ..Driver::default()
+            },
+        ]);
+
+        assert_eq!(cars.len(), 1);
+        assert_eq!(cars[0].user_name, "Active stint");
     }
 
     #[test]
@@ -215,6 +379,11 @@ mod tests {
         assert_eq!(session.scheduled(0).map(|entry| entry.laps), Some(0));
         assert_eq!(session.scheduled(1).map(|entry| entry.laps), Some(25));
         assert_eq!(session.scheduled(1).map(|entry| entry.seconds), Some(0.0));
+        assert_eq!(session.results(1)[0].overall_position, Some(1));
+        assert_eq!(session.results(1)[0].class_position, Some(1));
+        assert_eq!(session.results(1)[0].laps_complete, 4);
+        assert_eq!(session.results(1)[0].fastest_lap_time, 130.5);
+        assert_eq!(session.results(1)[0].last_lap_time, 131.5);
         assert_eq!(session_type_code("PRACTICE"), 0);
         assert_eq!(session_type_code("OPEN QUALIFY"), 5);
         assert_eq!(session_type_code("WARMUP"), 9);

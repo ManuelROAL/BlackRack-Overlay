@@ -260,14 +260,19 @@ impl Snapshot {
 
     /// The bytes of a variable's first entry. Some variables are arrays, one
     /// entry per car slot; reading those by index arrives with the roster.
-    fn slot(&self, name: &str) -> Option<(i32, &[u8])> {
+    fn slot_at(&self, name: &str, index: usize) -> Option<(i32, &[u8])> {
         let variable = self.variables.get(name)?;
-        if variable.count == 0 {
+        if index >= variable.count {
             return None;
         }
         let size = value_size(variable.kind);
-        let end = variable.offset.checked_add(size)?;
-        Some((variable.kind, self.values.get(variable.offset..end)?))
+        let offset = variable.offset.checked_add(size.checked_mul(index)?)?;
+        let end = offset.checked_add(size)?;
+        Some((variable.kind, self.values.get(offset..end)?))
+    }
+
+    fn slot(&self, name: &str) -> Option<(i32, &[u8])> {
+        self.slot_at(name, 0)
     }
 
     fn number(&self, name: &str) -> Option<f64> {
@@ -283,6 +288,27 @@ impl Snapshot {
 
     fn integer(&self, name: &str) -> Option<i32> {
         let (kind, bytes) = self.slot(name)?;
+        Some(match kind {
+            TYPE_DOUBLE => f64::from_le_bytes(bytes.try_into().ok()?) as i32,
+            TYPE_FLOAT => f32::from_le_bytes(bytes.try_into().ok()?) as i32,
+            TYPE_INT | TYPE_BITFIELD => i32::from_le_bytes(bytes.try_into().ok()?),
+            _ => i32::from(bytes[0]),
+        })
+    }
+
+    fn number_at(&self, name: &str, index: usize) -> Option<f64> {
+        let (kind, bytes) = self.slot_at(name, index)?;
+        let value = match kind {
+            TYPE_DOUBLE => f64::from_le_bytes(bytes.try_into().ok()?),
+            TYPE_FLOAT => f64::from(f32::from_le_bytes(bytes.try_into().ok()?)),
+            TYPE_INT | TYPE_BITFIELD => f64::from(i32::from_le_bytes(bytes.try_into().ok()?)),
+            _ => f64::from(bytes[0]),
+        };
+        value.is_finite().then_some(value)
+    }
+
+    fn integer_at(&self, name: &str, index: usize) -> Option<i32> {
+        let (kind, bytes) = self.slot_at(name, index)?;
         Some(match kind {
             TYPE_DOUBLE => f64::from_le_bytes(bytes.try_into().ok()?) as i32,
             TYPE_FLOAT => f32::from_le_bytes(bytes.try_into().ok()?) as i32,
@@ -408,6 +434,14 @@ impl Connection {
         self.snapshot.integer(name)
     }
 
+    pub(super) fn number_at(&self, name: &str, index: usize) -> Option<f64> {
+        self.snapshot.number_at(name, index)
+    }
+
+    pub(super) fn integer_at(&self, name: &str, index: usize) -> Option<i32> {
+        self.snapshot.integer_at(name, index)
+    }
+
     pub(super) fn flag(&self, name: &str) -> Option<bool> {
         self.integer(name).map(|value| value != 0)
     }
@@ -457,6 +491,17 @@ mod tests {
         }
     }
 
+    fn integer_array(name: &'static str, values: &[i32]) -> Value {
+        Value {
+            name,
+            kind: TYPE_INT,
+            bytes: values
+                .iter()
+                .flat_map(|value| value.to_le_bytes())
+                .collect(),
+        }
+    }
+
     fn boolean(name: &'static str, value: bool) -> Value {
         Value {
             name,
@@ -493,7 +538,12 @@ mod tests {
             let entry = table + index * VAR_HEADER_STRIDE;
             write(&mut result, entry, value.kind);
             write(&mut result, entry + 4, value_offset as i32);
-            write(&mut result, entry + 8, 1);
+            let item_size = super::value_size(value.kind);
+            write(
+                &mut result,
+                entry + 8,
+                (value.bytes.len() / item_size) as i32,
+            );
             let name = entry + VAR_HEADER_NAME;
             result[name..name + value.name.len()].copy_from_slice(value.name.as_bytes());
             value_offset += value.bytes.len();
@@ -535,6 +585,19 @@ mod tests {
         assert_eq!(snapshot.number("Gear"), Some(4.0));
         assert_eq!(snapshot.number("Missing"), None);
         assert_eq!(snapshot.integer("Missing"), None);
+    }
+
+    #[test]
+    fn reads_indexed_array_values_without_exposing_the_mapping() {
+        let values = [integer_array("CarIdxLap", &[3, 7, -1])];
+        let bytes = mapping(&values, "", &[(1, 0)]);
+        let mut snapshot = Snapshot::new();
+
+        assert!(snapshot.refresh(&bytes));
+        assert_eq!(snapshot.integer_at("CarIdxLap", 0), Some(3));
+        assert_eq!(snapshot.integer_at("CarIdxLap", 1), Some(7));
+        assert_eq!(snapshot.integer_at("CarIdxLap", 2), Some(-1));
+        assert_eq!(snapshot.integer_at("CarIdxLap", 3), None);
     }
 
     #[test]

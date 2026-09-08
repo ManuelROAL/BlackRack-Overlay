@@ -5,6 +5,7 @@ mod dr_estimate_log;
 mod fuel_strategy;
 mod pit_traversal;
 mod sim;
+mod standings_math;
 mod standings_models;
 mod strategy_log;
 mod track_geometry;

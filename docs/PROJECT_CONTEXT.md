@@ -60,8 +60,8 @@ on their runtime or source code.
 3. RaceControl/RaceOS client endpoints, authenticated with LMU's local session
    ticket, for DR/SR profiles and the online-event split.
 4. iRacing's memory-mapped telemetry interface, read directly and needing
-   nothing at build time. It currently feeds the Driving overlay; the remaining
-   areas are tracked in `docs/SIMULATORS.md`.
+   nothing at build time. It currently feeds the Driving, Standings and Relative
+   overlays; the remaining areas are tracked in `docs/SIMULATORS.md`.
 5. Mock telemetry when no simulator is available.
 
 All optional REST/network integrations must degrade gracefully. Losing them may

@@ -53,6 +53,22 @@ duplicate selection or timing semantics.
 - A uniform tyre set uses the bundled sidewall-style compound SVG with a fixed
   color and letter glyph; mixed sets use four compact colored circles.
 
+## Simulator adapters
+
+The renderer and the view-model selection are simulator-agnostic. Each source
+only adapts its native roster into the shared `StandingEntry` contract:
+
+- LMU keeps its existing shared-memory/REST enrichment and history pipeline.
+- iRacing reads identity and static results from `DriverInfo` and
+  `SessionInfo`, then orders live cars from `CarIdxLap` and
+  `CarIdxLapDistPct`. Its adapter lives under
+  `src-tauri/src/telemetry/sim/iracing/` and reuses `standings_models` for
+  class ordering, counts and visible-row selection.
+- iRacing maps iRating to the driver's-rank field and `LicString` to the
+  safety-rank field. It leaves unavailable history, pit, penalty, damage,
+  tyre and energy fields at their documented sentinels instead of fabricating
+  values or adding a second renderer path.
+
 ## Timing and history semantics
 
 - GAP is relative to the class leader; INT is relative to the preceding car in
