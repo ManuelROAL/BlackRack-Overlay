@@ -64,11 +64,14 @@ import {
 import {
   defaultTimingSettings,
   isTimingSectorReference,
+  normalizeTimingOrder,
+  normalizeTimingSettings,
   readTimingSettings,
   TIMING_SECTOR_REFERENCES,
   TIMING_SETTINGS_KEY,
   TIMING_TIMES,
-  type TimingSettings
+  type TimingSettings,
+  type TimingTimeId
 } from "./timing-settings";
 import {
   defaultTrackMapSettings,
@@ -1427,7 +1430,7 @@ const applyProfileData = async (data: OverlayProfileData): Promise<void> => {
     relativeSettings = data.relative;
     drivingSettings = data.driving;
     deltaSettings = data.delta;
-    timingSettings = data.timing;
+    timingSettings = normalizeTimingSettings(data.timing);
     trackMapSettings = data.trackMap;
     fuelSettings = normalizeFuelSettings(data.fuel);
     tiresSettings = data.tires;
@@ -2275,7 +2278,8 @@ const parseOverlayConfiguration = (
     || ![0.5, 1, 2, 5].includes(normalizedDelta.displayRange)) {
     throw new Error(t("config.invalidDelta"));
   }
-  const normalizedTiming = timing ?? defaultTimingSettings();
+  const defaultTiming = defaultTimingSettings();
+  const normalizedTiming = timing ?? defaultTiming;
   if (normalizedTiming.historyLaps !== 0
     && normalizedTiming.historyLaps !== 3
     && normalizedTiming.historyLaps !== 5) {
@@ -2289,9 +2293,20 @@ const parseOverlayConfiguration = (
     && !completeBooleanRecord(normalizedTiming.times, timingTimeIds)) {
     throw new Error(t("config.invalidTiming"));
   }
+  const normalizedTimingOrder = normalizedTiming.timeOrder === undefined
+    ? defaultTiming.timeOrder
+    : normalizeTimingOrder(normalizedTiming.timeOrder);
+  if (normalizedTiming.timeOrder !== undefined
+    && (!Array.isArray(normalizedTiming.timeOrder)
+      || normalizedTiming.timeOrder.some((id) => typeof id !== "string")
+      || new Set(normalizedTiming.timeOrder).size !== normalizedTiming.timeOrder.length
+      || normalizedTiming.timeOrder.some((id) => !timingTimeIds.includes(id as typeof timingTimeIds[number])))) {
+    throw new Error(t("config.invalidTiming"));
+  }
   const normalizedTimingWithTimes = {
     ...normalizedTiming,
-    times: normalizedTiming.times ?? defaultTimingSettings().times
+    times: normalizedTiming.times ?? defaultTiming.times,
+    timeOrder: normalizedTimingOrder
   };
   const normalizedTrackMap = trackMap ?? defaultTrackMapSettings();
   if (typeof normalizedTrackMap.showPitPrediction !== "boolean") {
@@ -2868,6 +2883,16 @@ for (const option of TIMING_TIMES) {
     persistTimingSettings();
   });
 }
+
+bindColumnOrder<TimingTimeId>(
+  document.getElementById("timing-time-order"),
+  TIMING_TIMES,
+  () => timingSettings.timeOrder,
+  (timeOrder) => {
+    timingSettings = { ...timingSettings, timeOrder: [...timeOrder] };
+    persistTimingSettings();
+  }
+);
 
 const conditionsOptions = document.getElementById("conditions-options");
 for (const option of CONDITIONS_OPTIONS) {

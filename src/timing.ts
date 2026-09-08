@@ -5,7 +5,7 @@ import { fitOverlayToContent } from "./overlay-fit";
 import { bindOverlayInteractionMode } from "./overlay-interaction";
 import { createOverlayPerformanceTracker } from "./overlay-performance";
 import { isTauriRuntime, listenRuntimeEvent, listenTelemetry } from "./runtime-events";
-import { readTimingSettings, TIMING_TIMES, type TimingSettings } from "./timing-settings";
+import { normalizeTimingOrder, readTimingSettings, TIMING_TIMES, type TimingSettings, type TimingTimeId } from "./timing-settings";
 import type { TimingViewModel } from "./telemetry-types";
 import { formatNumber, t } from "./i18n";
 
@@ -17,6 +17,10 @@ const designWidth = 250;
 const visibleTimeCount = (): number => TIMING_TIMES.filter(({ id }) => settings.times[id]).length;
 const card = document.getElementById("timing-card");
 const times = document.getElementById("timing-times");
+const timeRows = new Map<TimingTimeId, HTMLElement>(TIMING_TIMES.map(({ id }) => [
+  id,
+  document.querySelector<HTMLElement>(`[data-time-id="${id}"]`)
+]).filter((entry): entry is [TimingTimeId, HTMLElement] => entry[1] !== null));
 const lapNumber = document.getElementById("timing-lap-number");
 const current = document.getElementById("timing-current");
 const last = document.getElementById("timing-last");
@@ -37,8 +41,10 @@ const sectorNodes = [...document.querySelectorAll<HTMLElement>("[data-sector]")]
 const resizeOverlay = card ? fitOverlayToContent(designWidth, card) : () => undefined;
 
 const applyTimingSettings = (): void => {
+  const order = normalizeTimingOrder(settings.timeOrder);
+  if (times) times.append(...order.map((id) => timeRows.get(id)).filter((row): row is HTMLElement => row !== undefined));
   for (const { id } of TIMING_TIMES) {
-    const row = document.querySelector<HTMLElement>(`[data-time-id="${id}"]`);
+    const row = timeRows.get(id);
     if (row) row.hidden = !settings.times[id];
   }
   if (times) times.hidden = visibleTimeCount() === 0;
@@ -115,7 +121,7 @@ const render = (model: TimingViewModel): void => {
 void listenTelemetry((frame) => performance.measure(() => render(frame.timing_model)));
 if (isTauriRuntime()) {
   void listenRuntimeEvent<TimingSettings>("timing://settings", (next) => {
-    settings = next;
+    settings = { ...next, timeOrder: normalizeTimingOrder(next.timeOrder) };
     applyTimingSettings();
   });
 }

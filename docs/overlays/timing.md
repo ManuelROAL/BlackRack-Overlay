@@ -10,8 +10,9 @@ estrechamente relacionada en varios micro-overlays.
 ## Archivos y propiedad
 
 - `timing.html`, `src/timing.ts`, `src/timing.css`: presentación.
-- `src/timing-settings.ts`: tiempos visibles, longitud del historial (oculto, 3 o
-  5 vueltas) y referencia de sectores (`lmu`, `session` u `overall`).
+- `src/timing-settings.ts`: tiempos visibles, orden de las filas, longitud del
+  historial (oculto, 3 o 5 vueltas) y referencia de sectores (`lmu`, `session` u
+  `overall`).
 - `src-tauri/src/telemetry/delta_records.rs`: reconstrucción, referencias, sectores,
   historial y el estado de color de cada sector según la referencia elegida.
 - `src/composite.ts`, `src/composite-layout.ts`: proyección y geometría compartida.
@@ -67,6 +68,9 @@ modelo visual de Timing sólo se construye con el panel nativo o `/timing` en us
 - Cada una de las siete filas de tiempo se puede ocultar de forma independiente.
   Todas están visibles por defecto; el panel reduce su altura según las filas
   activas sin ocultar los sectores ni el historial.
+- El orden de esas siete filas se puede cambiar desde el panel de control con
+  arrastre o con los botones laterales. La preferencia se guarda junto con la
+  configuración de Timing y se aplica también a la ruta OBS.
 - La nota sobre los colores de sector aparece dentro del bloque de referencia de
   sectores, antes del separador y de las opciones de tiempos visibles.
 - Las vueltas inválidas se conservan en el historial; tanto `ÚLTIMA` como su fila
@@ -108,7 +112,8 @@ modelo visual de Timing sólo se construye con el panel nativo o `/timing` en us
 - Una vuelta debe cumplir los mismos controles de reconstrucción que Delta antes
   de incorporarse al historial.
 - El historial aprendido no forma parte de importar/exportar configuración; sólo
-  se exportan los tiempos visibles, las filas de historial y la referencia de sectores.
+  se exportan los tiempos visibles, su orden, las filas de historial y la
+  referencia de sectores.
 - Las referencias por sector se siguen aprendiendo en todos los modos de referencia.
 
 ## Verificación enfocada
