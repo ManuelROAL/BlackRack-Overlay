@@ -1,125 +1,86 @@
 # BlackRack Overlay
 
-[![Apoyar en Ko-fi](https://img.shields.io/badge/Ko--fi-Apoyar-72cbff?logo=kofi&logoColor=white)](https://ko-fi.com/blackrack)
+Overlays de telemetría configurables para **Le Mans Ultimate** en Windows.
 
-Overlay de telemetría para **Le Mans Ultimate**, pensado para Windows y Linux. La aplicación usa Tauri 2, una interfaz TypeScript sin framework y un núcleo Rust. En Windows lee la interfaz oficial de memoria compartida `LMU_Data`; si el SDK del juego no está disponible al compilar, mantiene una fuente simulada para desarrollo.
+[Descargar la última versión](https://github.com/ManuelROAL/BlackRack-Overlay/releases/latest) ·
+[Ver cambios](https://github.com/ManuelROAL/BlackRack-Overlay/releases) ·
+[Apoyar el proyecto](https://ko-fi.com/blackrack)
 
-## Estado actual
+BlackRack Overlay muestra información de conducción, tiempos, clasificación,
+neumáticos, daños, combustible, energía, boxes, banderas, mapa y condiciones de
+pista sobre el simulador. Es gratuito y no necesita SimHub, Node.js, Rust ni
+Tauri para funcionar.
 
-- Panel de control para abrir y ocultar cada overlay de forma independiente.
-- Clasificación multiclase con posición de salida, gaps, intervalos, mejor/última vuelta,
-  media de las últimas cinco vueltas válidas, energía virtual, daño general, neumático,
-  banderas, vuelta rápida, estado en boxes y rangos DR/SR cuando RaceControl los facilita.
-  Muestra 10 coches de la clase del jugador y 3 de cada clase restante, sin scroll.
-- Calculadora de Energía Virtual para Hypercar/LMGT3 con tres escenarios: consumo promedio, vuelta rápida de Qualy y última vuelta.
-- Perfiles persistentes de consumo por coche y circuito, con proyección de la vuelta actual según la distancia recorrida.
-- Promedio limpio separado del consumo real: formación, neutralizaciones y boxes no alteran el ritmo base.
-- Aprendizaje persistente del consumo de entrada y salida de boxes para corregir las estrategias con varias paradas.
-- Cálculos de energía necesaria basados en la fracción real de vuelta pendiente, no solo en vueltas enteras.
-- Cada escenario muestra consumo, autonomía, energía/combustible a cargar y remanente estimado al final.
-- Modo de combustible automático para LMP2, LMP3 y clases sin regulación NRG.
-- Fuente de datos desacoplada mediante `TelemetrySource` y lector oficial de LMU en Windows.
-- `Ctrl+Shift+O` alterna entre edición y modo juego; los overlays dejan pasar el ratón.
-- `Ctrl+Shift+M` muestra y enfoca el panel de control.
-- Perfiles de configuración con nombre: cada uno guarda visibilidad, posición, tamaño,
-  transparencia, tamaño de texto y ajustes de los overlays, y se asigna al modo juego,
-  al modo espectador o al modo equipo. Al cambiar de modo se aplica su perfil.
-  En modo juego, la práctica (con el warmup), la clasificación y la carrera pueden
-  usar además su propio perfil, que se aplica al cambiar el tipo de sesión.
-- La selección, posición y tamaño de las ventanas se conservan entre ejecuciones.
-- Los overlays se ocultan fuera del juego y en el garaje, y reaparecen al volver a pista.
-- Registro de análisis activable desde el panel, persistente entre ejecuciones y guardado en JSONL.
-- Interfaz y núcleo compartidos entre Windows y Linux.
+## Requisitos
 
-Al arrancar por primera vez no se activa ningún overlay. En los siguientes arranques se restaura la última selección.
+- Windows 10 u 11 de 64 bits.
+- Le Mans Ultimate.
+- El plugin oficial de LMU en
+  `Plugins/LMU_SharedMemoryMapPlugin64.dll`.
+- Microsoft Edge WebView2 Runtime. El instalador incluye su bootstrapper; puede
+  necesitar conexión a Internet si WebView2 no está instalado.
 
-Cuando LMU se ejecuta con Proton, el acceso se hará dentro del mismo entorno Wine/Proton o mediante un pequeño puente local; esta decisión queda pendiente de validar en Linux.
+## Instalación
 
-## Instalación para usuarios
+1. Descarga el instalador desde la [última release](https://github.com/ManuelROAL/BlackRack-Overlay/releases/latest).
+2. Ejecuta `BlackRack Overlay_<versión>_x64-setup.exe`.
+3. Abre BlackRack Overlay y selecciona el idioma y el monitor en **General**.
+4. Activa y configura los overlays que quieras usar.
+5. Usa el modo **Edición** para mover o redimensionar los paneles.
+6. Vuelve al modo **Juego** antes de conducir para que el ratón pueda pasar al simulador.
 
-La distribución pública se realiza mediante el instalador de Windows, no mediante
-el código fuente. Descarga el `.exe` junto a `README.txt` y `SHA256SUMS.txt`,
-comprueba opcionalmente su SHA-256 y ejecuta el instalador. No se necesitan Node.js,
-Rust ni Tauri. Mientras el instalador no esté firmado, Windows SmartScreen puede
-mostrar una advertencia la primera vez.
+No copies ninguna DLL de BlackRack Overlay a la carpeta del juego. La telemetría
+de LMU utiliza el plugin oficial del simulador.
 
-## Apoyar el proyecto
+## Actualizaciones
 
-BlackRack Overlay es gratuito. El bloque **Apoyar el proyecto**, situado al final del
-panel en todas las pestañas, permite abrir
-[Ko-fi de Blackrack](https://ko-fi.com/blackrack) en el navegador predeterminado.
-La aplicación no carga contenido de Ko-fi dentro del panel ni envía datos al servicio
-por su cuenta.
+El panel de control comprueba automáticamente si hay una versión nueva al iniciar
+y periódicamente mientras permanece abierto. También puedes comprobarla bajo
+demanda desde **General > Actualizaciones**.
 
-## Ejecutar en desarrollo
+Cuando hay una versión disponible, la aplicación muestra sus cambios, descarga el
+instalador y verifica su SHA-256 antes de ejecutarlo. La actualización es opcional
+y no afecta al funcionamiento de la telemetría si el servidor no está disponible.
 
-Se necesitan Node.js LTS, Rust estable y las dependencias del sistema de Tauri 2.
+## OBS y fuente de navegador
 
-```powershell
-npm install
-npm run tauri dev
-```
+La integración de OBS es opcional y solo escucha en el equipo local. Actívala en
+**Integraciones > OBS / Navegador local** y añade las URLs mostradas como fuentes
+de navegador en OBS.
 
-En Windows también se requieren Microsoft C++ Build Tools con “Desktop development with C++” y WebView2. En Debian/Ubuntu:
+## Atajos predeterminados
 
-```bash
-sudo apt update
-sudo apt install libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
-npm install
-npm run tauri dev
-```
+- `Ctrl+Shift+O`: alternar entre modo Juego y Edición.
+- `Ctrl+Shift+M`: mostrar el panel de control.
 
-Para que los overlays aparezcan sobre el juego, LMU debe usarse en modo ventana o ventana sin bordes. En Linux se recomienda una sesión X11/XWayland para la primera versión; Wayland puro impone restricciones adicionales a las ventanas siempre visibles y al posicionamiento global.
+Puedes cambiar los atajos en **General > Aplicación**.
 
-## Diagnóstico de arranque
+## SmartScreen y verificación
 
-Cada inicio crea un nuevo `%APPDATA%\BlackRack Overlay\startup.log` y conserva
-la ejecución anterior como `startup.previous.log`. Estos registros incluyen las
-etapas de Tauri, la ventana de control, el registro de atajos, el hilo de
-telemetría, el cierre normal, cualquier error fatal o panic y las excepciones no
-controladas del panel y los overlays. Los campos sensibles conocidos se ocultan.
+El instalador actualmente no está firmado digitalmente, por lo que Windows
+SmartScreen puede mostrar una advertencia la primera vez. Si quieres verificar la
+descarga, usa el archivo `SHA256SUMS.txt` incluido en la release.
 
-## Arquitectura
+## Soporte
 
-```text
-LMU / fuente simulada
-        │
-        ▼
-TelemetrySource (Rust) ──► TelemetryFrame ──► eventos Tauri (20 Hz)
-                                                    │
-                       ┌────────────────────────────┼──────────────────────────┐
-                       ▼                            ▼                          ▼
-                     Delta                   Clasificación              Combustible
-```
+Desde **Integraciones > Soporte** puedes copiar un resumen de diagnóstico. Incluye
+ese resumen, los pasos para reproducir el problema y una captura si es necesario.
+No contiene tickets, tokens ni credenciales.
 
-El panel crea los overlays bajo demanda y puede ocultarlos sin detener la fuente de telemetría. La estructura normalizada de `TelemetryFrame` evita que la interfaz dependa del formato binario del simulador. La calculadora de estrategia detecta la clase mediante el SDK: usa `mVirtualEnergy` en Hypercar y LMGT3, y `mFuel` en el resto.
+## English
 
-El sistema de perfiles por distancia es una implementación propia en Rust inspirada funcionalmente en TinyPedal. No incorpora su código GPL. El balance real sigue midiendo todo lo consumido, pero solo las vueltas válidas, sin boxes y completamente en bandera verde alimentan el promedio limpio. Las vueltas de entrada y salida se aprenden por separado y corrigen el recurso necesario según el número estimado de paradas.
+BlackRack Overlay is a free, configurable telemetry overlay for **Le Mans
+Ultimate** on 64-bit Windows. It provides driving, timing, standings, tyre,
+damage, fuel, energy, pit, flag, track-map and weather information over the
+simulator.
 
-## Registro para análisis
+Download the [latest release](https://github.com/ManuelROAL/BlackRack-Overlay/releases/latest),
+run the installer, select the language and monitor in **General**, then enable
+the overlays you need. No SimHub, Node.js, Rust or Tauri installation is
+required.
 
-El interruptor **Registro para análisis** del panel abre un archivo `lmu-telemetry-<timestamp>.jsonl` en la carpeta de datos de la aplicación. Registra a 10 Hz los valores crudos de combustible y Energía Virtual, fase y tipo de sesión, progreso y validez de vuelta, estado de boxes, cargas realizadas, referencias aprendidas y resultados de estrategia. La clasificación completa se omite para mantener un tamaño razonable.
+The control panel checks for updates automatically and on demand. Downloads are
+verified with SHA-256 before installation. The installer is not digitally signed,
+so Windows SmartScreen may display a warning on first run.
 
-El mismo archivo incluye eventos `driver_rank_refresh` con el estado de la consulta agrupada de perfiles a RaceControl y eventos `driver_rank_lookup` con el nombre, DR/SR y resultado de cada consulta. El ticket temporal y el token de acceso nunca se escriben en el log. Estas entradas se deduplican y solo se repiten cuando cambia el resultado o se vuelve a activar el registro.
-
-La preferencia se conserva al reiniciar. Al desactivarlo se vacía y cierra inmediatamente el archivo activo; al volver a activarlo se crea uno nuevo. El panel muestra el nombre del archivo y la ruta completa al mantener el cursor sobre él.
-
-## Fuente de navegador para OBS
-
-El apartado **OBS / Navegador local** del panel permite exponer los mismos overlays en
-`http://127.0.0.1:47636`. Al activarlo aparecen URLs independientes para cada overlay.
-El servidor sólo escucha en el equipo local, reutiliza la trama de telemetría existente y
-entrega los datos a 5 Hz mediante una única conexión por fuente.
-
-La opción está desactivada de forma predeterminada. Mientras permanece apagada no se abre
-ningún puerto, no se mantiene un hilo HTTP y no se serializan tramas para el navegador.
-Los HTML, la fuente Roboto Condensed, las banderas y los logotipos se incluyen en el paquete,
-por lo que OBS no necesita acceder a Internet.
-
-## Próximos hitos
-
-1. Guardar opacidad, escala y preferencias de cálculo por overlay.
-2. Añadir compatibilidad con la interfaz de LMU ejecutada bajo Proton.
-3. Añadir clasificación relativa, banderas, neumáticos y cálculo avanzado de combustible.
-4. Preparar instaladores de Windows y paquetes AppImage/deb para Linux mediante CI.
-5. Añadir captura y reproducción de sesiones para probar sin arrancar el simulador.
+Optional project support: [Ko-fi](https://ko-fi.com/blackrack).
