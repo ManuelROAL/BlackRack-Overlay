@@ -1,53 +1,86 @@
-BLACKRACK OVERLAY 0.7.9 - Windows x64
-====================================
-Free, configurable telemetry overlays for Le Mans Ultimate.
-No SimHub, Node.js, Rust or Tauri installation is required.
+# BlackRack Overlay
 
-REQUIREMENTS
-- 64-bit Windows 10 or Windows 11.
-- Le Mans Ultimate with its official
-  Plugins/LMU_SharedMemoryMapPlugin64.dll.
-- The Microsoft Edge WebView2 Runtime. The installer includes its bootstrapper.
+Overlays de telemetría configurables para **Le Mans Ultimate** en Windows.
 
-INSTALLATION
-1. Run BlackRack Overlay_0.7.9_x64-setup.exe.
-2. Open BlackRack Overlay and select the language and monitor in General.
-3. Enable the panels you want and configure them in Overlays.
-4. Use Edit mode to move or resize panels, then return to Game mode before
-   driving so mouse input passes through.
+[Descargar la última versión](https://github.com/ManuelROAL/BlackRack-Overlay/releases/latest) ·
+[Ver cambios](https://github.com/ManuelROAL/BlackRack-Overlay/releases) ·
+[Apoyar el proyecto](https://ko-fi.com/blackrack)
 
-WHAT'S NEW
-- Timing rows can be reordered with drag-and-drop or the side buttons. The
-  order is preserved in profiles, configuration backup and OBS.
-- The control panel checks for updates automatically and on demand, shows the
-  release highlights and can download and install a verified update.
+BlackRack Overlay muestra información de conducción, tiempos, clasificación,
+neumáticos, daños, combustible, energía, boxes, banderas, mapa y condiciones de
+pista sobre el simulador. Es gratuito y no necesita SimHub, Node.js, Rust ni
+Tauri para funcionar.
 
-The installer is not digitally signed, so Windows SmartScreen may warn on the
-first run. Verify the installer with SHA256SUMS.txt if desired.
+## Requisitos
 
-ESPAÑOL
--------
-REQUISITOS
 - Windows 10 u 11 de 64 bits.
-- Le Mans Ultimate con su archivo oficial
-  Plugins/LMU_SharedMemoryMapPlugin64.dll.
-- Microsoft Edge WebView2 Runtime; el instalador incluye su bootstrapper.
+- Le Mans Ultimate.
+- El plugin oficial de LMU en
+  `Plugins/LMU_SharedMemoryMapPlugin64.dll`.
+- Microsoft Edge WebView2 Runtime. El instalador incluye su bootstrapper; puede
+  necesitar conexión a Internet si WebView2 no está instalado.
 
-INSTALACIÓN
-1. Ejecuta BlackRack Overlay_0.7.9_x64-setup.exe.
-2. Abre BlackRack Overlay y elige el idioma y el monitor en General.
-3. Activa los paneles que necesites y configúralos en Overlays.
-4. Usa el modo edición para moverlos o cambiar su tamaño y vuelve al modo
-   juego antes de conducir para dejar pasar los clics.
+## Instalación
 
-NOVEDADES
-- Puedes reordenar las filas de Timing arrastrándolas o usando los botones
-  laterales. El orden se conserva en perfiles, copias de seguridad y OBS.
-- El panel de control busca actualizaciones automáticamente y bajo demanda,
-  muestra sus novedades y permite descargar e instalar una actualización
-  verificada.
+1. Descarga el instalador desde la [última release](https://github.com/ManuelROAL/BlackRack-Overlay/releases/latest).
+2. Ejecuta `BlackRack Overlay_<versión>_x64-setup.exe`.
+3. Abre BlackRack Overlay y selecciona el idioma y el monitor en **General**.
+4. Activa y configura los overlays que quieras usar.
+5. Usa el modo **Edición** para mover o redimensionar los paneles.
+6. Vuelve al modo **Juego** antes de conducir para que el ratón pueda pasar al simulador.
 
-El instalador no está firmado digitalmente y Windows SmartScreen puede mostrar
-un aviso la primera vez. Si quieres, verifica el instalador con SHA256SUMS.txt.
+No copies ninguna DLL de BlackRack Overlay a la carpeta del juego. La telemetría
+de LMU utiliza el plugin oficial del simulador.
 
-Apoyo opcional al proyecto: https://ko-fi.com/blackrack
+## Actualizaciones
+
+El panel de control comprueba automáticamente si hay una versión nueva al iniciar
+y periódicamente mientras permanece abierto. También puedes comprobarla bajo
+demanda desde **General > Actualizaciones**.
+
+Cuando hay una versión disponible, la aplicación muestra sus cambios, descarga el
+instalador y verifica su SHA-256 antes de ejecutarlo. La actualización es opcional
+y no afecta al funcionamiento de la telemetría si el servidor no está disponible.
+
+## OBS y fuente de navegador
+
+La integración de OBS es opcional y solo escucha en el equipo local. Actívala en
+**Integraciones > OBS / Navegador local** y añade las URLs mostradas como fuentes
+de navegador en OBS.
+
+## Atajos predeterminados
+
+- `Ctrl+Shift+O`: alternar entre modo Juego y Edición.
+- `Ctrl+Shift+M`: mostrar el panel de control.
+
+Puedes cambiar los atajos en **General > Aplicación**.
+
+## SmartScreen y verificación
+
+El instalador actualmente no está firmado digitalmente, por lo que Windows
+SmartScreen puede mostrar una advertencia la primera vez. Si quieres verificar la
+descarga, usa el archivo `SHA256SUMS.txt` incluido en la release.
+
+## Soporte
+
+Desde **Integraciones > Soporte** puedes copiar un resumen de diagnóstico. Incluye
+ese resumen, los pasos para reproducir el problema y una captura si es necesario.
+No contiene tickets, tokens ni credenciales.
+
+## English
+
+BlackRack Overlay is a free, configurable telemetry overlay for **Le Mans
+Ultimate** on 64-bit Windows. It provides driving, timing, standings, tyre,
+damage, fuel, energy, pit, flag, track-map and weather information over the
+simulator.
+
+Download the [latest release](https://github.com/ManuelROAL/BlackRack-Overlay/releases/latest),
+run the installer, select the language and monitor in **General**, then enable
+the overlays you need. No SimHub, Node.js, Rust or Tauri installation is
+required.
+
+The control panel checks for updates automatically and on demand. Downloads are
+verified with SHA-256 before installation. The installer is not digitally signed,
+so Windows SmartScreen may display a warning on first run.
+
+Optional project support: [Ko-fi](https://ko-fi.com/blackrack).
