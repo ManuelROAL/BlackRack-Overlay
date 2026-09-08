@@ -218,6 +218,12 @@ body.dashboard-body {
   white-space: nowrap;
 }
 
+/* Keep the strip stable when speed crosses the 100 km/h boundary. */
+.dash-fields > div[data-dashboard-field="speed"] dd {
+  min-width: 3ch;
+  text-align: center;
+}
+
 .dash-battery-readout {
   display: flex;
   align-items: center;
