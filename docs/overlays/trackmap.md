@@ -19,10 +19,6 @@ TypeScript fetches static geometry, interpolates and renders it.
 
 - Prefer matched per-vehicle telemetry coordinates over slower scoring position.
   Normalize LMU lateral position as `world_y = -mPos.z`.
-- iRacing does not publish authoritative world coordinates for the roster in the
-  consumed SDK. Its complete roster is projected by lap distance onto official
-  or learned geometry when available, then onto the circular fallback; synthetic
-  coordinates never seed learned geometry.
 - Fetch `/rest/watch/trackmap` once per circuit. Type 0 is the ordered main
   centerline and type 1 the open pitlane. Filter other families and cache valid
   geometry by normalized circuit key.

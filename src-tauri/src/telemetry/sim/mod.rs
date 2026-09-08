@@ -18,7 +18,6 @@ use std::time::{Duration, Instant};
 use super::track_geometry::OfficialTrackMapGeometry;
 use super::{TelemetryDemand, TelemetryFrame};
 
-pub(crate) mod iracing;
 pub(crate) mod lmu;
 pub(crate) mod mock;
 
@@ -119,44 +118,22 @@ pub(crate) trait TelemetrySource: Send + 'static {
 }
 
 /// One simulator the app can read, with the probe that says whether it can be
-/// read right now. Order is priority: a candidate whose `available` cannot
-/// fail — LMU, once its SDK is compiled in — goes last, or nothing after it
-/// would ever be reached in automatic selection.
+/// read right now. Order is priority; candidates whose availability cannot fail
+/// should go last so earlier runtime probes can win when they are added.
 struct Candidate {
     id: &'static str,
     /// Shown in the control panel's simulator picker.
     display_name: &'static str,
     available: fn() -> bool,
     try_new: fn(&Path) -> Option<Box<dyn TelemetrySource>>,
-    /// Still filling the frame one overlay at a time. Such a candidate is
-    /// compiled and tested in every build, but only a build with
-    /// `experimental-simulators` lets the user reach it.
-    experimental: bool,
 }
 
-const CANDIDATES: [Candidate; 2] = [
-    Candidate {
-        id: "iracing",
-        display_name: "iRacing",
-        available: iracing::available,
-        try_new: iracing::try_new,
-        experimental: true,
-    },
-    Candidate {
-        id: "lmu",
-        display_name: "Le Mans Ultimate",
-        available: lmu::available,
-        try_new: lmu::try_new,
-        experimental: false,
-    },
-];
-
-/// Whether this build offers the candidate to the user at all. Filtering here
-/// rather than at the `CANDIDATES` declaration keeps every simulator compiled
-/// and covered by `cargo test`, so one waiting to be finished cannot rot.
-fn shipped(candidate: &Candidate) -> bool {
-    cfg!(feature = "experimental-simulators") || !candidate.experimental
-}
+const CANDIDATES: [Candidate; 1] = [Candidate {
+    id: "lmu",
+    display_name: "Le Mans Ultimate",
+    available: lmu::available,
+    try_new: lmu::try_new,
+}];
 
 /// How often a disconnected source looks for a simulator that is running.
 const PROBE_INTERVAL: Duration = Duration::from_secs(2);
@@ -222,7 +199,7 @@ pub(crate) fn set_preference(id: &str) -> Result<(), String> {
     } else {
         CANDIDATES
             .iter()
-            .position(|candidate| candidate.id == id && shipped(candidate))
+            .position(|candidate| candidate.id == id)
             .ok_or_else(|| format!("unknown_simulator_{id}"))?
     };
     PREFERENCE.store(index, Ordering::Relaxed);
@@ -240,7 +217,6 @@ pub(crate) struct SimulatorOption {
 pub(crate) fn options() -> Vec<SimulatorOption> {
     CANDIDATES
         .iter()
-        .filter(|candidate| shipped(candidate))
         .map(|candidate| SimulatorOption {
             id: candidate.id,
             display_name: candidate.display_name,
@@ -257,7 +233,6 @@ fn allowed_candidates() -> impl Iterator<Item = &'static Candidate> {
     CANDIDATES
         .iter()
         .enumerate()
-        .filter(|(_, candidate)| shipped(candidate))
         .filter(move |(index, _)| forced.is_none_or(|only| *index == only))
         .map(|(_, candidate)| candidate)
 }
@@ -266,9 +241,7 @@ fn allowed_candidates() -> impl Iterator<Item = &'static Candidate> {
 /// allowed candidate that is available.
 ///
 /// Every automatic path shares this one function rather than walking the
-/// candidates itself, because walking `CANDIDATES` directly is how a simulator
-/// this build does not ship reaches the overlays through a path that never
-/// shows it in the picker.
+/// candidates itself, so selection policy remains centralized.
 fn available_candidate() -> Option<&'static Candidate> {
     allowed_candidates().find(|candidate| (candidate.available)())
 }
@@ -306,8 +279,7 @@ pub(crate) fn status() -> SimulatorStatus {
 
 /// Follows whichever simulator is running, or the one the user pinned,
 /// instead of deciding once at startup: the app is normally launched before
-/// the game, and closing one simulator to open another must not need a
-/// restart.
+/// the game and must notice when telemetry becomes available later.
 struct SelectedSource {
     app_data: PathBuf,
     active: Box<dyn TelemetrySource>,
@@ -406,46 +378,15 @@ pub(crate) fn detect(app_data: &Path) -> Box<dyn TelemetrySource> {
 
 #[cfg(test)]
 mod tests {
-    use super::{options, set_preference, CANDIDATES};
-
-    /// A simulator still being filled in must be unreachable in the builds that
-    /// go to users: absent from the picker, and refused when something tries to
-    /// pin it from a preference saved by a development build.
-    #[test]
-    fn experimental_simulators_are_offered_only_when_the_build_asks_for_them() {
-        let shipped = cfg!(feature = "experimental-simulators");
-        let offered: Vec<&str> = options().iter().map(|option| option.id).collect();
-        let experimental = CANDIDATES.iter().filter(|candidate| candidate.experimental);
-        assert!(
-            CANDIDATES.iter().any(|candidate| candidate.experimental),
-            "the test proves nothing without an experimental candidate"
-        );
-        assert!(
-            experimental.into_iter().all(|candidate| {
-                offered.contains(&candidate.id) == shipped
-                    // Pinning is only exercised where it must fail, so the
-                    // shared preference is never disturbed.
-                    && (shipped || set_preference(candidate.id).is_err())
-            }),
-            "offered {offered:?} with experimental-simulators = {shipped}"
-        );
-    }
+    use super::options;
 
     #[test]
     fn every_build_offers_at_least_one_simulator() {
         assert!(!options().is_empty());
     }
 
-    /// The picker is not the only way to reach a simulator: automatic selection
-    /// adopts one on its own, and it runs on every launch, as soon as the
-    /// control panel sends its stored preference. So the pool it draws from has
-    /// to hold exactly what the build offers, or a simulator deliberately kept
-    /// out of the picker would still end up feeding the overlays.
-    ///
-    /// This pins the pool, not the walk over it. What keeps every automatic
-    /// path on the pool is that they all go through `available_candidate`;
-    /// proving that needs a candidate whose availability the test can force,
-    /// which the fixed `CANDIDATES` array does not allow today.
+    /// The automatic pool must match the options exposed to the control panel,
+    /// so a pinned or future candidate cannot bypass the selection contract.
     #[test]
     fn automatic_selection_draws_only_from_the_simulators_this_build_offers() {
         assert_eq!(super::preference(), "auto", "the default is auto selection");

@@ -5,10 +5,8 @@ knows a simulator exists lives under `src-tauri/src/telemetry/sim/<id>/`; every
 other module — the frame, the 50 Hz loop, the domain models and the whole
 frontend — is simulator agnostic and must stay that way.
 
-Le Mans Ultimate is complete. iRacing is being built out one overlay at a time
-and currently feeds Driving, Standings, Relative, Delta, Timing, Conditions,
-Flags, Rejoin and a partial Track Map; what it does and does not fill is
-recorded below.
+Le Mans Ultimate is the only shipped simulator. When its shared-memory SDK is
+not available, the mock source keeps the control panel and overlays usable.
 
 ## The contract
 
@@ -36,28 +34,24 @@ dependency.
 
 ## Choosing the simulator
 
-`detect` returns a source that keeps looking. It builds the first candidate whose
-`available` probe answers yes, falling back to the mock, and then on every cycle
-where the frame comes back disconnected — or where the mock is active, since it
-is always "connected" — it re-probes at most once every two seconds and swaps in
-the first available candidate whose id differs from the current one.
+`detect` returns a source that keeps looking. It builds LMU when its `available`
+probe answers yes, falls back to the mock, and then on every cycle where the
+frame comes back disconnected — or where the mock is active, since it is always
+"connected" — it re-probes at most once every two seconds and adopts LMU when it
+becomes available.
 
-That is what makes launching the app before the game work, and what lets one
-simulator be closed and another opened without a restart. A connected source is
+That is what makes launching the app before the game work. A connected source is
 never displaced, and when nothing is available the current source is kept, so a
 waiting simulator keeps reporting itself instead of falling back to the mock.
 
 An `available` probe must be cheap and must answer about *this machine, right
-now*: iRacing opens its memory mapping, which only exists while it runs; LMU
-answers whether the build has the SDK, because its bridge cannot be asked more
-cheaply than that. Consequently LMU is the last candidate: a build that has its
-SDK is always "available", so anything below it would never be reached.
+now*. LMU answers whether the build has the SDK, because its bridge cannot be
+asked more cheaply than that.
 
 Every automatic path — the first pick, the two-second re-probe and the return to
 auto — draws from `available_candidate`, the single function that answers which
-simulator selection adopts right now. Walking `CANDIDATES` directly instead is
-how a simulator this build does not ship reaches the overlays through a path
-that never shows it in the picker.
+simulator selection adopts right now. Keeping that decision centralized makes
+future additions follow the same picker and preference rules.
 
 Each genuine switch is written to the session diagnostics log as
 `telemetry source <previous> -> <next>`, with `none` as the first previous. Only
@@ -67,28 +61,25 @@ which is what a report of "the overlays went empty" needs to be answerable.
 
 `try_new` is a different question from `available` and must not assume it was
 already checked: it answers whether this build can ever construct the source at
-all (wrong OS, no SDK), not whether the simulator is running. Both LMU's and
-iRacing's `try_new` succeed unconditionally on a capable build; the source they
-return handles "not running yet" itself, per frame, the same way it handles a
-mid-session disconnect. That gap is what lets a pinned preference (below)
-construct a source before its simulator has even started, so it reports
-"waiting for iRacing" instead of a fabricated mock frame.
+all (wrong OS, no SDK), not whether the simulator is running. LMU's `try_new`
+succeeds on a capable build; the source it returns handles "not running yet"
+itself, per frame, the same way it handles a mid-session disconnect. That gap is
+what lets a pinned preference construct a source before the simulator has even
+started, so it reports its waiting state instead of a fabricated mock frame.
 
 ## Pinning a preference
 
-The control panel's header carries a compact select, next to the connection
+The control panel's header can carry a compact select next to the connection
 pill, with Auto plus one option per `CANDIDATES` entry, labelled from
 `sim::options()` — never a literal name in TypeScript or the catalogs, the same
-rule visible copy already follows.
+rule visible copy already follows. With only LMU shipped, the picker is hidden.
 `set_simulator_preference` (`sim::set_preference`) stores the choice as an
 index into `CANDIDATES`, with `CANDIDATES.len()` standing for "auto", and bumps
 a generation counter. `SelectedSource::next_frame` compares that counter every
 cycle and reacts on the one cycle it changes: a pin builds the chosen
 candidate's own source regardless of `available`, and returning to Auto lets
-the normal priority order pick. This forced switch is what keeps a pin from
-being silently overridden by auto-reselecting the moment the pinned simulator
-happens to be closed — a pinned choice reports "waiting", not a different
-simulator's data.
+the normal priority order pick. This keeps a future pinned source from being
+silently overridden by auto-reselection while it is temporarily closed.
 
 The preference itself is frontend state, following the same pattern as the
 performance profile: `src/simulator-settings.ts` persists it to `localStorage`
@@ -135,103 +126,6 @@ Only five overlays are gated by capability, because each exists for one of them:
    `rustc-cfg`, and gate only the module that needs the symbols.
 7. Update this document and `docs/ARCHITECTURE.md`.
 
-## iRacing
-
-Still experimental: it is marked `experimental: true` in `CANDIDATES`, so only
-a build with `experimental-simulators` offers it. See *Shipping an unfinished
-simulator* below, and clear the flag once the overlays below are filled.
-
-The simulator publishes a memory-mapped file that only exists while it runs:
-a header, a table describing every telemetry variable, a small ring of value
-buffers and a YAML session string. Nothing is needed at build time, so
-`sim/iracing/` compiles on every Windows build and `available()` is simply
-whether that mapping opens.
-
-- `irsdk.rs` maps the file and reads it by documented byte offsets rather than a
-  `#[repr(C)]` mirror, bounds every read against the region size, and adopts a
-  value buffer only when its tick did not advance during the copy.
-- `yaml.rs` parses the restricted dialect the session string uses — block maps,
-  block sequences of maps and plain scalars — without a dependency.
-- `session.rs` reparses at most once a second and only when the generation
-  changes, because the string is large and is republished as results change.
-  It adapts the roster and session results into the same car-oriented identity
-  data consumed by the standings source.
-- `standings.rs` adapts iRacing's live `CarIdxLap` and `CarIdxLapDistPct`
-  arrays, with `SessionInfo` results as the initial/classification fallback,
-  into the shared `StandingEntry` contract. Class grouping, visible-row
-  selection and presentation remain in the simulator-agnostic
-  `standings_models` module, and GAP/INT progress math is shared with LMU.
-- `foreground.rs` answers whether the simulator owns the foreground window,
-  which the telemetry does not report and the overlay host needs.
-- `weather.rs` maps iRacing's live temperatures, rain, categorical wetness,
-  humidity, wind and sky variables into the shared Conditions contract.
-- `warnings.rs` gives SessionFlags their shared priority and infers a nearby
-  slow/off-track yellow culprit where the CarIdx roster supplies enough data;
-  it also arms Rejoin from pit/off-track/low-speed state and measures rear
-  traffic from lap distance and pace. Missing optional rival speed is treated
-  as non-closing.
-
-What it fills today is the session and car state the host uses to decide what to
-show, the Driving values (speed, gear, RPM against the published redline,
-throttle, brake, ABS, steering angle and wheel torque), the standings data
-needed by Standings and Relative, and the lap/time inputs consumed by the shared
-Delta and Timing models. Delta uses iRacing's valid `LapDeltaToBestLap` when it
-is published, while the common engine still owns reconstruction and stored
-references. Timing uses the current/last/best lap variables and the
-`SplitTimeInfo` sector boundaries. iRating is carried as the driver's rank and
-the iRacing license string as the safety rank; no gain estimate is invented.
-Traction control has no published state, so its indicator stays off rather than
-being inferred. Fuel uses `FuelLevel`/`FuelLevelPct`, observes completed clean
-laps for a five-sample session reference and feeds the shared fuel-only strategy
-model. Tires use the four live carcass-temperature triplets and tread-wear
-triplets, while brake temperature, compounds, damage and pit service remain
-unavailable.
-
-Conditions uses the live shared-memory weather variables. Flags and Rejoin use
-the shared-memory SessionFlags and CarIdx arrays, with no REST dependency. The
-Track Map keeps the full live roster and lap-distance sectors, but projects
-markers onto official/learned geometry or a circular fallback because iRacing's
-consumed interface does not provide authoritative world coordinates; it never
-learns geometry from those synthetic positions.
-
-Unsupported areas remain at their documented sentinels. Capabilities for those
-areas stay off, which keeps the control panel from offering an overlay that
-would stay empty. Landing an area means filling its fields, turning its
-capability on in the same change, and recording it here. The known shape of the
-remaining work:
-
-| Area | Source in the simulator |
-| --- | --- |
-| Track Map | full CarIdx roster projected by lap distance onto official/learned geometry or a circular fallback; iRacing does not publish authoritative world coordinates |
-| Fuel | `FuelLevel`/`FuelLevelPct` tracked across laps and used by the fuel-only strategy; there is no energy budget, so `virtual_energy_*` stays inactive |
-| Tyres | live per-corner wear and carcass temperature variables; brake temperature and compounds are not published reliably |
-| Conditions | `AirTemp`, `TrackTempCrew`, `Precipitation`, `TrackWetness`, `Skies`, `RelativeHumidity`, wind |
-| Flags, Rejoin | `SessionFlags` plus inferred culprit/rear traffic from the `CarIdx*` arrays and session results |
-| Damage, Forecast, Lift and coast, Pit stop | not published; these four stay capability-gated off permanently |
-
-## Shipping an unfinished simulator
-
-A simulator is rarely useful the day its source compiles: it fills the frame
-one overlay at a time, and until it is done a build that offers it shows empty
-overlays and a picker entry nobody should choose. `Candidate::experimental`
-marks such a simulator, and `shipped()` decides whether this build lets the
-user reach it:
-
-- **`npm run tauri:dev`** enables the `experimental-simulators` feature, so
-  every candidate appears in the picker and in automatic selection.
-- **`npm run tauri dev`** and **`npm run tauri build`** leave the feature off.
-  An experimental candidate is then absent from the picker, never chosen
-  automatically, and refused by `set_simulator_preference` — so a preference
-  pinned in a development build cannot resurrect it. The control panel drops
-  the picker entirely while a single simulator is offered.
-
-The filter is deliberately in `shipped()` rather than on the `CANDIDATES`
-declaration: the module stays compiled and its tests keep running in every
-configuration, so a simulator waiting to be finished cannot rot. `cargo test
---lib` covers the same 250 tests with and without the feature.
-
-Clear the flag when the simulator fills the overlays its capabilities claim.
-
 ## The guardrail
 
 `npm run check:overlays` (`tools/validate-overlays.mjs`) reads the simulator
@@ -248,15 +142,14 @@ are lifted from LMU's own interface and the name records where they came from.
 ## What is not prepared yet
 
 - **Settings are global.** Overlay preferences, profiles and the exported
-  configuration document are not namespaced per simulator, so switching now
-  carries one simulator's layout into the other. The migration is a
-  per-simulator prefix on the `localStorage` keys in `src/main.ts` plus a
-  `simulator` field in the configuration document with a `schemaVersion` bump.
-  A second simulator exists, so this is owed rather than hypothetical.
+  configuration document will need simulator namespacing if another simulator
+  is added. The migration is a per-simulator prefix on the `localStorage` keys
+  in `src/main.ts` plus a `simulator` field in the configuration document with a
+  `schemaVersion` bump.
 - **Learned data is keyed by track and car, not by simulator.** The delta
   records, the learned track outline and the consumption profiles share one
-  store. Two simulators are unlikely to agree on a track name, so today they
-  simply learn separate entries; a collision would mix them.
+  store. A future simulator could collide with LMU on a track name and mix the
+  learned entries.
 - **Renderers do not read capabilities.** Only the control-panel catalog does.
   An overlay that should show fewer columns for a given simulator still has to
   learn that itself.

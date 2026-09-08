@@ -95,7 +95,7 @@ calculated only for a visible native panel or connected `/fuel` route.
   Translate the leader's earliest timed/lap-limit finish into player-class
   crossings, preserving the player's fractional progress. Missing class or leader
   references fall back to the shared player-distance estimate. This adapts Kapps'
-  class/leader approach to LMU's telemetry, rather than reproducing its iRacing
+  class/leader approach to LMU's telemetry, rather than reproducing external
   results-table clock corrections.
 - Shared Timing/Standings headers retain the following player-distance contract;
   they are not the fuel plan's class/leader projection:

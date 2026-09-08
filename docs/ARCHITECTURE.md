@@ -86,13 +86,6 @@ Tauri events    analysis JSONL/strategy CSV    browser-source SSE
   - Holds `TelemetrySource`, `SourceDescriptor`, `SourceCapabilities`, the
     `CANDIDATES` table and the source that keeps following the running
     simulator. See `docs/SIMULATORS.md`.
-- `sim/iracing/irsdk.rs`, `sim/iracing/yaml.rs`, `sim/iracing/session.rs`
-  - Read the simulator's memory-mapped telemetry, parse its session string and
-    expose the track, car and schedule taken from it. No SDK is needed at build
-    time, so the module compiles on every Windows build.
-- `sim/iracing/source.rs`, `sim/iracing/foreground.rs`
-  - Assemble the frame and answer whether the simulator owns the foreground
-    window, which its telemetry does not report.
 - `browser_source.rs`
   - Optional localhost-only HTTP/SSE server at `127.0.0.1:47636`.
   - Serves OBS pages through Tauri's embedded `frontendDist` asset resolver; it

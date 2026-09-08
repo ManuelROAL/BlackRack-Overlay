@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Delta provides an iRacing-style signed time comparison while also establishing
+Delta provides a signed time comparison while also establishing
 the Rust-owned lap and stint record used by future overlays. Following Dox's
 visual behavior, the numeric value interpolates from green at -0.04 seconds
 through ice white at zero to red at +0.04 seconds, clamping beyond those stops.
@@ -47,16 +47,6 @@ and scales the bar. The normal native cadence is 50 Hz; the optional browser
 source follows the existing shared SSE publication cadence.
 Lap reconstruction and persistence continue in the shared source, but the live
 Delta view model is built only for a visible native panel or connected `/delta` route.
-
-## Simulator adapters
-
-The iRacing adapter supplies the same lap/time contract from its shared-memory
-variables: `LapCurrentLapTime`, `LapLastLapTime`, `LapBestLapTime`,
-`LapDistPct`, `LapCompleted` and the `SplitTimeInfo` sector boundaries. When
-available, `LapDeltaToBestLap` is used only while its `_OK` companion is true;
-the shared engine remains responsible for stored references and reconstructed
-traces. Negative official lap times in iRacing's valid duration range are kept
-as invalid results, while small negative sentinels are treated as unavailable.
 
 ## Modes
 

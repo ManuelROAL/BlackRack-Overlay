@@ -4,8 +4,7 @@
 
 - Entry: `rejoin.html`
 - Renderer/style: `src/rejoin.ts`, `src/rejoin.css`
-- Backend model: `src-tauri/src/telemetry/sim/lmu/source/warnings.rs` and
-  `src-tauri/src/telemetry/sim/iracing/warnings.rs`
+- Backend model: `src-tauri/src/telemetry/sim/lmu/source/warnings.rs`
 - OBS route: `/rejoin`
 - Cadence: 20 Hz while active; 250 ms while inactive
 
@@ -23,11 +22,6 @@ Rear-traffic scanning and arming state run only while the native panel or the
   closing, use the smallest physical time gap.
 - Instantaneous closing speed supplies arrival time. A non-closing car is always
   safe; otherwise distance and arrival time choose safe, caution or danger.
-- iRacing derives the roster from `CarIdxLapDistPct`, lap counts and session
-  results. If the optional rival speed array is absent, the rival is treated as
-  non-closing rather than as an artificially approaching car; an armed warning
-  can still report `CLEAR` when no eligible rear car is inside the window.
-
 ## Presentation
 
 - Display distance, arrival time, position and category.

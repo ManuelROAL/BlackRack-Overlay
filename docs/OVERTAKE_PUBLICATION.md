@@ -122,7 +122,7 @@ https://ko-fi.com/blackrack.
   sector colouring outside qualifying.
 - Reworked tyre semantics to use the compound mounted on each axle, match the
   game's surface-temperature colours and identify a detached rear wing.
-- Added clutch input to Trailing + Pedal for LMU and iRacing, and kept the
+- Added clutch input to Trailing + Pedal for LMU, and kept the
   Dashboard and pedal overlays on the same telemetry contract.
 - Expanded Fuel / Virtual Energy with independent visibility controls, lap-based
   references, configurable fuel and energy margins, fractional autonomy,
@@ -136,7 +136,7 @@ https://ko-fi.com/blackrack.
 - Centred the single-column Forecast view, hid strategy-only panels in spectator
   mode, improved onboarding/support diagnostics and expanded Spanish copy.
 - Improved yellow slow-car detection, session cache resets, LMU restart handling,
-  stalled iRacing mapping recovery, OBS/browser-source handling and durable Track
+  OBS/browser-source handling and durable Track
   Map learning.
 
 ### 0.7.9 — Configurable Timing and in-app updates

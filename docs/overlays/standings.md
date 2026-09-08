@@ -55,19 +55,10 @@ duplicate selection or timing semantics.
 
 ## Simulator adapters
 
-The renderer and the view-model selection are simulator-agnostic. Each source
-only adapts its native roster into the shared `StandingEntry` contract:
-
-- LMU keeps its existing shared-memory/REST enrichment and history pipeline.
-- iRacing reads identity and static results from `DriverInfo` and
-  `SessionInfo`, then orders live cars from `CarIdxLap` and
-  `CarIdxLapDistPct`. Its adapter lives under
-  `src-tauri/src/telemetry/sim/iracing/` and reuses `standings_models` for
-  class ordering, counts and visible-row selection.
-- iRacing maps iRating to the driver's-rank field and `LicString` to the
-  safety-rank field. It leaves unavailable history, pit, penalty, damage,
-  tyre and energy fields at their documented sentinels instead of fabricating
-  values or adding a second renderer path.
+The renderer and the view-model selection are simulator-agnostic. LMU adapts
+its native shared-memory and REST roster into the shared `StandingEntry`
+contract, while class ordering, counts and visible-row selection remain in the
+shared `standings_models` module.
 
 ## Timing and history semantics
 

@@ -11,9 +11,9 @@
 ## Telemetry semantics
 
 - Use the player's unfiltered throttle, brake and clutch for pedal traces.
-- LMU's `mUnfilteredClutch` and iRacing's `Clutch` are exposed as the shared
-  `TelemetryFrame.clutch` value. It represents driver input, not clutch slip or
-  the simulator's final engagement state.
+- LMU's `mUnfilteredClutch` is exposed as the shared `TelemetryFrame.clutch`
+  value. It represents driver input, not clutch slip or the simulator's final
+  engagement state.
 - LMU's explicit `mTCActive` and `mABSActive` fields are authoritative. Do not
   infer intervention from filtered pedals, which can reflect other controls.
 - Plot TC at the throttle trace height and ABS at the brake trace height for each
@@ -25,15 +25,6 @@
   nominal range instead of the active controller range; use its physical, then
   visual range only while the REST value is unavailable. Do not use
   `mFilteredSteering`, which can include vehicle steering processing.
-
-### Per simulator
-
-This is the first overlay iRacing feeds. Its values map directly: `Speed` in
-m/s, `Gear`, `RPM` against the session's published `DriverCarRedLine`,
-`Throttle`, `Brake`, `Clutch`, `SteeringWheelAngle` in radians and
-`SteeringWheelPctTorque` for the FFB bar. `BrakeABSactive` drives the ABS marks.
-It publishes no traction-control state, so the TC marks never appear there;
-inferring them from pedals and slip is exactly what the rule above forbids.
 
 ## Layout and configuration
 

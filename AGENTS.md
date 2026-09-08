@@ -3,8 +3,8 @@
 ## Project context
 
 BlackRack Overlay is a Windows-first Tauri 2 application with a Rust telemetry
-core and a TypeScript/Vite/plain HTML/CSS frontend. It supports Le Mans Ultimate,
-iRacing, and a mock source when no simulator is available.
+core and a TypeScript/Vite/plain HTML/CSS frontend. It supports Le Mans Ultimate
+and a mock source when no simulator is available.
 
 Keep simulator-specific behavior under `src-tauri/src/telemetry/sim/<id>/`.
 Rust owns telemetry and domain calculations; TypeScript owns presentation and

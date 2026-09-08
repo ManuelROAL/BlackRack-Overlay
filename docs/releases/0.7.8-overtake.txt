@@ -48,7 +48,7 @@
 
 [B][COLOR=#D8FF3E]TRAILING + PEDAL[/COLOR][/B]
 [LIST]
-[*]Clutch input is now available in the pedal trace for LMU and iRacing.
+[*]Clutch input is now available in the pedal trace for LMU.
 [/LIST]
 
 [B][COLOR=#D8FF3E]STINT HISTORY[/COLOR][/B]
@@ -74,7 +74,7 @@
 [LIST]
 [*]Flags now use LMU's sector-yellow mask and the correct circular track distance; Standings and Track Map also retain their preventive slow-car marker.
 [*]Session changes discard stale standings, weather and pit-stop data.
-[*]LMU session restarts, stalled iRacing telemetry and slow OBS/browser-source clients are handled more safely.
+[*]LMU session restarts and slow OBS/browser-source clients are handled more safely.
 [*]Track-map learning is saved atomically so an interrupted save does not lose the learned route.
 [/LIST]
 
@@ -136,7 +136,7 @@ BlackRack Overlay_0.7.8_x64-setup.exe
 
 [B][COLOR=#D8FF3E]TRAILING + PEDAL[/COLOR][/B]
 [LIST]
-[*]La traza de pedales incorpora el embrague para LMU e iRacing.
+[*]La traza de pedales incorpora el embrague para LMU.
 [/LIST]
 
 [B][COLOR=#D8FF3E]HISTORIAL DE STINT[/COLOR][/B]
@@ -162,7 +162,7 @@ BlackRack Overlay_0.7.8_x64-setup.exe
 [LIST]
 [*]Banderas usa la máscara de sector amarillo de LMU y la distancia circular correcta; Clasificación y Mapa del circuito mantienen también su marca preventiva de coche lento.
 [*]Al cambiar de sesión se descartan los datos antiguos de clasificación, clima y paradas.
-[*]Los reinicios de sesión de LMU, la telemetría de iRacing detenida y los clientes lentos de OBS/fuente de navegador se gestionan con más seguridad.
+[*]Los reinicios de sesión de LMU y los clientes lentos de OBS/fuente de navegador se gestionan con más seguridad.
 [*]El aprendizaje del mapa se guarda de forma atómica para no perder la ruta aprendida si se interrumpe el guardado.
 [/LIST]
 

@@ -15,7 +15,7 @@ on their runtime or source code.
 
 - Tauri control panel that selects independent overlay panels hosted together in
   one transparent WebView on the selected monitor.
-- iRacing-style delta bar with overall, session, stint and last-lap references,
+- Signed delta bar with overall, session, stint and last-lap references,
   backed by persistent lap/stint records.
 - Timing panel with selectable lap-time rows, three-sector feedback
   and recent laps.
@@ -59,11 +59,7 @@ on their runtime or source code.
    reliable or only exposed there (standings supplement, weather and strategy).
 3. RaceControl/RaceOS client endpoints, authenticated with LMU's local session
    ticket, for DR/SR profiles and the online-event split.
-4. iRacing's memory-mapped telemetry interface, read directly and needing
-   nothing at build time. It currently feeds Driving, Standings, Relative,
-   Delta, Timing, Conditions, Flags, Rejoin and a partial Track Map; the
-   remaining areas are tracked in `docs/SIMULATORS.md`.
-5. Mock telemetry when no simulator is available.
+4. Mock telemetry when no simulator is available.
 
 All optional REST/network integrations must degrade gracefully. Losing them may
 remove enrichment such as DR/SR or split data, but must not stop the overlays.
