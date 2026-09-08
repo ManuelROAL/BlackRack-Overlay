@@ -1,0 +1,79 @@
+BLACKRACK OVERLAY 0.7.8 - Windows x64
+====================================
+Overlays de telemetría gratuitos y configurables para Le Mans Ultimate.
+No necesitas instalar SimHub, Node.js, Rust ni Tauri.
+
+INSTALACIÓN Y PRIMEROS PASOS
+1. Extrae el ZIP y ejecuta BlackRack Overlay_0.7.8_x64-setup.exe.
+2. Abre la aplicación y elige el idioma y el monitor en General.
+3. En Overlays, activa los paneles que necesites y personaliza sus ajustes.
+4. En General > Aplicación, activa el modo edición para moverlos y cambiar
+   su tamaño.
+5. Vuelve al modo juego antes de conducir para dejar pasar los clics.
+6. Abre Le Mans Ultimate y sal a pista.
+
+El instalador incluye el asistente de Microsoft WebView2 y puede necesitar
+Internet si WebView2 no está instalado. No copies ninguna DLL de BlackRack
+en el juego: utiliza Plugins/LMU_SharedMemoryMapPlugin64.dll, incluido con LMU.
+
+NOVEDADES DE LA 0.7.8
+- Dashboard: selección sin límite de ocho campos, avisos temporales de ajustes
+  del coche, luces y limpias opcionales, icono SOC híbrido, campos según las
+  capacidades del coche, avisos de pit configurables y ancho estable al mostrar
+  tres cifras de velocidad.
+- Timing y Mapa del circuito: historial dinámico y colores de sectores
+  compartidos en clasificación; el mapa aprende también la geometría de boxes y
+  protege el aprendizaje durante el guardado.
+- Neumáticos y daños: compuesto del eje montado, colores de superficie como el
+  juego y aviso real de alerón trasero desprendido.
+- Previsión: la columna única de AHORA se centra. Trailing + Pedal incorpora el
+  embrague para LMU e iRacing.
+- Fuel / Energía virtual: visibilidad independiente, referencias de vueltas
+  completas, márgenes de combustible y energía, autonomía fraccionaria,
+  planificación paralela y estimaciones de llegada y recorrido por boxes.
+- Los controles de visibilidad de Trailing + Pedal, Relative y Neumáticos se
+  aplican correctamente y las nuevas opciones parten activadas.
+- Clasificación y Relative: visibilidad y colocación independientes de la
+  información de pit, además de distancia real del jugador y correcciones de
+  última parada separadas.
+- Historial de stint: SOC híbrido y energía regenerada, con combustible correcto
+  al repostar durante una vuelta con parada. Lift & Coast es compacto y admite
+  visibilidad solo cuando sus LED están activos, guardada en perfiles y copias.
+- En modo espectador se ocultan los paneles de estrategia sin perder sus
+  preferencias y ya no se hereda el estado de garaje del coche local. Mejoran el
+  onboarding, los diagnósticos y el texto español del Dashboard.
+- Banderas, cambios de sesión, reinicios de LMU, mappings de iRacing detenidos,
+  OBS/fuente de navegador y datos REST opcionales toleran mejor datos obsoletos o
+  clientes lentos.
+
+CONSEJOS
+- Consulta la Guía integrada para conocer cada overlay.
+- Los overlays pueden ocultarse automáticamente en el garaje o fuera del juego.
+- Atajos iniciales: Ctrl+Shift+O cambia entre juego y edición; Ctrl+Shift+M
+  muestra el panel. Puedes cambiarlos en General > Aplicación.
+- Crea perfiles personalizados en General y asígnalos al modo juego,
+  espectador o equipo, o a sesiones de práctica, clasificación y carrera.
+- Exporta la configuración en General > Copia de seguridad antes de actualizar.
+- Fluido, Equilibrado y Ahorro ajustan la cadencia de actualización visual.
+- La interfaz está disponible en español e inglés.
+
+OBS
+Activa la fuente de navegador local en Integraciones y añade las URL mostradas
+como fuentes de navegador en OBS en el mismo ordenador.
+
+SOPORTE
+Pulsa Copiar diagnóstico en Integraciones > Soporte y adjunta el resumen a tu
+consulta en https://discord.gg/VdT6Wncxup. Explica cómo reproducir el problema
+y añade una captura si ayuda. El resumen excluye registros, rutas personales
+y credenciales.
+
+Los datos disponibles dependen del simulador y de la sesión. Algunas estimaciones
+necesitan vueltas completas para aprender el consumo o el ritmo. La ausencia de
+datos online opcionales no interrumpe la telemetría principal.
+
+CONTENIDO
+Instalador de Windows, guías en inglés y español, novedades destacadas, texto
+BBCode para OverTake y SHA256SUMS.txt con sumas SHA-256 de estos archivos.
+
+Apoyo opcional al proyecto: https://ko-fi.com/blackrack
+Agradecimientos a https://www.twitch.tv/rastaracing

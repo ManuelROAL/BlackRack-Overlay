@@ -109,17 +109,34 @@ https://ko-fi.com/blackrack.
 - Moved WebView2 data to `%LOCALAPPDATA%\BlackRackOverlay`.
 - Preserved the optional Ko-fi choice on the NSIS finish page.
 
-### 0.7.8 — Hybrid data, cockpit controls and safer updates
+### 0.7.8 — Configurable endurance overlays and safer telemetry
 
-- Added optional Dashboard readouts for headlights and wipers, plus a visual
-  hybrid-battery SOC indicator with regeneration/deployment colours.
-- Added clutch input to Trailing + Pedal for LMU and iRacing.
-- Added hybrid SOC start/end and regenerated kWh to Stint history, and corrected
-  fuel accounting on pit-stop laps.
-- Added an active-only visibility mode to Lift & Coast, preserved in profiles
-  and configuration import/export.
-- Improved yellow slow-car detection, session cache resets, iRacing reconnects,
-  OBS/browser-source handling and durable Track Map learning.
+- Expanded Dashboard field selection beyond the old eight-field limit, added
+  temporary car-adjustment notices, optional headlights and wipers, a compact
+  hybrid-battery SOC indicator, capability-aware electronics and configurable
+  pit-warning placement. The speed cell also stays stable when it reaches three
+  digits.
+- Added dynamic Timing history and shared qualifying sector colours in Timing and
+  Track Map, with class-best purple, personal-best green, yellow priority and no
+  sector colouring outside qualifying.
+- Reworked tyre semantics to use the compound mounted on each axle, match the
+  game's surface-temperature colours and identify a detached rear wing.
+- Added clutch input to Trailing + Pedal for LMU and iRacing, and kept the
+  Dashboard and pedal overlays on the same telemetry contract.
+- Expanded Fuel / Virtual Energy with independent visibility controls, lap-based
+  references, configurable fuel and energy margins, fractional autonomy,
+  parallel-resource stop planning, leader/class finish projection and learned or
+  calibrated pit traversal.
+- Added independent pit-information visibility and placement to Standings and
+  Relative, including shared player-distance and final-stop corrections.
+- Added hybrid SOC and regenerated energy to Stint history, corrected fuel
+  accounting on pit-stop laps, and made Lift & Coast compact with an active-only
+  visibility mode preserved in profiles and configuration import/export.
+- Centred the single-column Forecast view, hid strategy-only panels in spectator
+  mode, improved onboarding/support diagnostics and expanded Spanish copy.
+- Improved yellow slow-car detection, session cache resets, LMU restart handling,
+  stalled iRacing mapping recovery, OBS/browser-source handling and durable Track
+  Map learning.
 
 ## Decisions required before submission
 
