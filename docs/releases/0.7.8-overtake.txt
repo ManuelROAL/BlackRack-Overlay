@@ -29,7 +29,7 @@
 
 [B][COLOR=#D8FF3E]FLAGS, TRACK MAP AND RELIABILITY[/COLOR][/B]
 [LIST]
-[*]Yellow slow-car detection now follows LMU's sector-yellow mask and uses the correct circular track distance.
+[*]Flags now use LMU's sector-yellow mask and the correct circular track distance; Standings and Track Map also retain their preventive slow-car marker.
 [*]Session changes discard stale standings, weather and pit-stop data.
 [*]LMU session restarts, stalled iRacing telemetry and slow OBS/browser-source clients are handled more safely.
 [*]Track-map learning is saved atomically so an interrupted save does not lose the learned route.
