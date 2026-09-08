@@ -6,8 +6,8 @@ other module — the frame, the 50 Hz loop, the domain models and the whole
 frontend — is simulator agnostic and must stay that way.
 
 Le Mans Ultimate is complete. iRacing is being built out one overlay at a time
-and currently feeds Driving, Standings and Relative; what it does and does not
-fill is recorded below.
+and currently feeds Driving, Standings, Relative, Delta and Timing; what it does
+and does not fill is recorded below.
 
 ## The contract
 
@@ -165,8 +165,12 @@ whether that mapping opens.
 
 What it fills today is the session and car state the host uses to decide what to
 show, the Driving values (speed, gear, RPM against the published redline,
-throttle, brake, ABS, steering angle and wheel torque), and the standings data
-needed by Standings and Relative. iRating is carried as the driver's rank and
+throttle, brake, ABS, steering angle and wheel torque), the standings data
+needed by Standings and Relative, and the lap/time inputs consumed by the shared
+Delta and Timing models. Delta uses iRacing's valid `LapDeltaToBestLap` when it
+is published, while the common engine still owns reconstruction and stored
+references. Timing uses the current/last/best lap variables and the
+`SplitTimeInfo` sector boundaries. iRating is carried as the driver's rank and
 the iRacing license string as the safety rank; no gain estimate is invented.
 Traction control has no published state, so its indicator stays off rather than
 being inferred. AVG 5, opponent fuel/tyres/damage, penalties and official track

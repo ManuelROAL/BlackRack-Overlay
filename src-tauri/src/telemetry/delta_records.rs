@@ -1784,7 +1784,8 @@ fn classify_delta_trend(previous_seconds: f64, current_seconds: f64) -> DeltaTre
 }
 
 fn native_session_delta(frame: &TelemetryFrame) -> Option<(f64, f64)> {
-    (frame.best_lap_seconds.is_finite()
+    (frame.lap_delta_available
+        && frame.best_lap_seconds.is_finite()
         && (20.0..900.0).contains(&frame.best_lap_seconds)
         && frame.lap_delta_seconds.is_finite())
     .then_some((frame.lap_delta_seconds, frame.best_lap_seconds))
@@ -2410,6 +2411,7 @@ mod tests {
         let mut frame = active_frame();
         frame.best_lap_seconds = 95.033;
         frame.lap_delta_seconds = -0.382;
+        frame.lap_delta_available = true;
         assert_eq!(native_session_delta(&frame), Some((-0.382, 95.033)));
 
         frame.best_lap_seconds = 0.0;

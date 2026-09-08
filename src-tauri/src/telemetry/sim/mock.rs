@@ -474,6 +474,7 @@ impl TelemetrySource for MockTelemetrySource {
             last_lap_valid: true,
             best_lap_seconds: 208.412,
             lap_delta_seconds: (elapsed * 0.31).sin() * 0.72,
+            lap_delta_available: true,
             delta_model: Default::default(),
             timing_model: Default::default(),
             stint_history_model: Default::default(),

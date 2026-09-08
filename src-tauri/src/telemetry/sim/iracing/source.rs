@@ -1,8 +1,8 @@
 //! Telemetry source backed by the simulator's shared memory.
 //!
 //! This source fills the session, car and standings state the overlay host
-//! needs, plus the Driving values. Other areas remain at their documented
-//! sentinel until they are validated against the simulator.
+//! needs, plus the Driving, Delta and Timing values. Other areas remain at
+//! their documented sentinel until they are validated against the simulator.
 
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
@@ -230,8 +230,13 @@ impl IracingTelemetrySource {
         frame.player_in_pits = on_pit_road;
         frame.lap_progress = lap_progress;
         frame.current_lap_seconds = sdk.number("LapCurrentLapTime").unwrap_or(0.0).max(0.0);
-        frame.last_lap_seconds = sdk.number("LapLastLapTime").unwrap_or(0.0).max(0.0);
-        frame.best_lap_seconds = sdk.number("LapBestLapTime").unwrap_or(0.0).max(0.0);
+        let (last_lap_seconds, last_lap_valid) = normalized_last_lap(sdk.number("LapLastLapTime"));
+        frame.last_lap_seconds = last_lap_seconds;
+        frame.last_lap_valid = last_lap_valid;
+        frame.best_lap_seconds = normalized_lap_time(sdk.number("LapBestLapTime"));
+        let (lap_delta_seconds, lap_delta_available) = native_lap_delta(sdk);
+        frame.lap_delta_seconds = lap_delta_seconds;
+        frame.lap_delta_available = lap_delta_available;
 
         frame.speed_kph = sdk.number("Speed").unwrap_or(0.0).max(0.0) * 3.6;
         frame.gear = sdk.integer("Gear").unwrap_or(0).clamp(-1, 9) as i8;
@@ -258,6 +263,48 @@ impl IracingTelemetrySource {
         frame.force_feedback = sdk.number("SteeringWheelPctTorque").unwrap_or(0.0);
         frame
     }
+}
+
+/// iRacing uses a negative official time for an invalid completed lap and a
+/// small negative sentinel before the first result exists. Preserve the time
+/// for Timing while only the real lap-time range can mark a result invalid.
+fn normalized_last_lap(value: Option<f64>) -> (f64, bool) {
+    let Some(value) = value.filter(|value| value.is_finite()) else {
+        return (0.0, true);
+    };
+    let absolute = value.abs();
+    if (20.0..900.0).contains(&absolute) {
+        (absolute, value >= 0.0)
+    } else {
+        (0.0, true)
+    }
+}
+
+fn normalized_lap_time(value: Option<f64>) -> f64 {
+    value
+        .filter(|value| value.is_finite() && (20.0..900.0).contains(value))
+        .unwrap_or(0.0)
+}
+
+/// `LapDeltaToBestLap` is the player's current-session comparison, matching
+/// the reference carried by `best_lap_seconds` and the shared Timing model.
+/// The companion `_OK` flag prevents a zero/uninitialised value from becoming
+/// a false live delta. Older sessions without the flag remain compatible when
+/// the delta itself is in the documented lap-time range.
+fn native_lap_delta(sdk: &Connection) -> (f64, bool) {
+    native_lap_delta_value(
+        sdk.number("LapDeltaToBestLap"),
+        sdk.flag("LapDeltaToBestLap_OK"),
+    )
+}
+
+fn native_lap_delta_value(value: Option<f64>, valid_flag: Option<bool>) -> (f64, bool) {
+    let Some(value) = value else {
+        return (0.0, false);
+    };
+    let finite = value.is_finite() && value.abs() < 900.0;
+    let valid = valid_flag.unwrap_or(true) && finite;
+    (if valid { value } else { 0.0 }, valid)
 }
 
 /// The frame numbers session phases the way the domain models read them: three
@@ -288,7 +335,10 @@ fn finite_duration(value: Option<f64>) -> f64 {
 
 #[cfg(test)]
 mod tests {
-    use super::{finite_duration, game_phase};
+    use super::{
+        finite_duration, game_phase, native_lap_delta_value, normalized_lap_time,
+        normalized_last_lap,
+    };
 
     #[test]
     fn maps_session_state_and_flags_to_phases() {
@@ -306,5 +356,28 @@ mod tests {
         assert_eq!(finite_duration(Some(604_800.0)), 0.0);
         assert_eq!(finite_duration(Some(-1.0)), 0.0);
         assert_eq!(finite_duration(None), 0.0);
+    }
+
+    #[test]
+    fn preserves_invalid_iracing_lap_time_without_treating_the_sentinel_as_a_result() {
+        assert_eq!(normalized_last_lap(Some(92.5)), (92.5, true));
+        assert_eq!(normalized_last_lap(Some(-92.5)), (92.5, false));
+        assert_eq!(normalized_last_lap(Some(-1.0)), (0.0, true));
+        assert_eq!(normalized_lap_time(Some(-92.5)), 0.0);
+        assert_eq!(normalized_lap_time(Some(0.0)), 0.0);
+    }
+
+    #[test]
+    fn only_uses_a_native_delta_when_iracing_marks_it_valid() {
+        assert_eq!(
+            native_lap_delta_value(Some(-0.42), Some(true)),
+            (-0.42, true)
+        );
+        assert_eq!(
+            native_lap_delta_value(Some(-0.42), Some(false)),
+            (0.0, false)
+        );
+        assert_eq!(native_lap_delta_value(Some(0.0), None), (0.0, true));
+        assert_eq!(native_lap_delta_value(None, Some(true)), (0.0, false));
     }
 }

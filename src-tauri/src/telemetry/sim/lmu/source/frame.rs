@@ -1011,6 +1011,9 @@ impl TelemetrySource for LmuTelemetrySource {
             last_lap_valid,
             best_lap_seconds: snapshot.best_lap_seconds.max(0.0),
             lap_delta_seconds: snapshot.lap_delta_seconds,
+            lap_delta_available: snapshot.best_lap_seconds.is_finite()
+                && snapshot.best_lap_seconds > 20.0
+                && snapshot.lap_delta_seconds.is_finite(),
             delta_model: Default::default(),
             timing_model: Default::default(),
             stint_history_model: Default::default(),

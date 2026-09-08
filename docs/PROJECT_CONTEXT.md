@@ -61,7 +61,8 @@ on their runtime or source code.
    ticket, for DR/SR profiles and the online-event split.
 4. iRacing's memory-mapped telemetry interface, read directly and needing
    nothing at build time. It currently feeds the Driving, Standings and Relative
-   overlays; the remaining areas are tracked in `docs/SIMULATORS.md`.
+   overlays; it also feeds the shared Delta and Timing models. The remaining
+   areas are tracked in `docs/SIMULATORS.md`.
 5. Mock telemetry when no simulator is available.
 
 All optional REST/network integrations must degrade gracefully. Losing them may

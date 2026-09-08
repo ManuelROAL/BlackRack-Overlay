@@ -23,6 +23,16 @@ El panel consume el ciclo base de 50 Hz y no construye clasificaciones.
 La reconstrucción y persistencia de vueltas continúa en la fuente compartida; el
 modelo visual de Timing sólo se construye con el panel nativo o `/timing` en uso.
 
+## Adaptador de iRacing
+
+iRacing reutiliza este modelo con sus tiempos de vuelta actuales, última y
+mejor vuelta, el contador de vueltas y los límites publicados en
+`SplitTimeInfo`. La reconstrucción y el historial siguen siendo comunes; si el
+simulador no publica un parcial actual, el cruce se cierra con el tiempo de
+vuelta observado por el adaptador. Los tiempos negativos dentro del rango de
+una vuelta real conservan la marca de inválida y los sentinelas pequeños no
+crean una vuelta ficticia.
+
 ## Comportamiento
 
 - S1, S2 y S3 usan los cruces de sector oficiales que LMU publica para el jugador.

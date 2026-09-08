@@ -807,6 +807,11 @@ pub struct TelemetryFrame {
     last_lap_valid: bool,
     best_lap_seconds: f64,
     lap_delta_seconds: f64,
+    /// Whether `lap_delta_seconds` is a native, currently valid comparison.
+    /// This stays internal because the shared Delta view model owns the public
+    /// presentation and otherwise the field is only a simulator adapter hint.
+    #[serde(skip)]
+    lap_delta_available: bool,
     delta_model: delta_records::DeltaViewModel,
     timing_model: delta_records::TimingViewModel,
     stint_history_model: delta_records::StintHistoryViewModel,
@@ -1098,6 +1103,7 @@ impl TelemetryFrame {
             last_lap_valid: true,
             best_lap_seconds: 0.0,
             lap_delta_seconds: 0.0,
+            lap_delta_available: false,
             delta_model: delta_records::DeltaViewModel::default(),
             timing_model: delta_records::TimingViewModel::default(),
             stint_history_model: delta_records::StintHistoryViewModel::default(),

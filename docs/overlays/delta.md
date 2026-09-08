@@ -48,6 +48,16 @@ source follows the existing shared SSE publication cadence.
 Lap reconstruction and persistence continue in the shared source, but the live
 Delta view model is built only for a visible native panel or connected `/delta` route.
 
+## Simulator adapters
+
+The iRacing adapter supplies the same lap/time contract from its shared-memory
+variables: `LapCurrentLapTime`, `LapLastLapTime`, `LapBestLapTime`,
+`LapDistPct`, `LapCompleted` and the `SplitTimeInfo` sector boundaries. When
+available, `LapDeltaToBestLap` is used only while its `_OK` companion is true;
+the shared engine remains responsible for stored references and reconstructed
+traces. Negative official lap times in iRacing's valid duration range are kept
+as invalid results, while small negative sentinels are treated as unavailable.
+
 ## Modes
 
 - Off.
