@@ -141,10 +141,12 @@ name = "blackrack-overlay"
 version = "0.7.8"
 dependencies = [
  "cc",
+ "hex",
  "reqwest 0.12.28",
  "rusqlite",
  "serde",
  "serde_json",
+ "sha2",
  "tauri",
  "tauri-build",
  "tauri-plugin-dialog",

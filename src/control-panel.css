@@ -887,6 +887,67 @@ select {
   font-size: 14px;
 }
 
+.global-setting-copy small {
+  color: #96a2ae;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.update-setting-group {
+  align-items: start;
+}
+
+.update-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: end;
+  gap: 7px;
+}
+
+.update-actions button {
+  padding: 9px 12px;
+  border: 1px solid rgb(216 255 62 / 32%);
+  border-radius: 5px;
+  color: #d8ff3e;
+  background: rgb(216 255 62 / 7%);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .07em;
+}
+
+.update-actions button:hover:not(:disabled) {
+  border-color: rgb(216 255 62 / 60%);
+  background: rgb(216 255 62 / 11%);
+}
+
+.update-actions button:disabled {
+  cursor: wait;
+  opacity: .55;
+}
+
+.update-details {
+  display: grid;
+  grid-column: 1 / -1;
+  gap: 5px;
+  padding-top: 4px;
+  border-top: 1px solid rgb(255 255 255 / 7%);
+  color: #c6d0d9;
+  font-size: 12px;
+}
+
+.update-details ul {
+  display: grid;
+  gap: 3px;
+  margin: 0;
+  padding-left: 18px;
+  color: #a6b3c0;
+}
+
+.update-details[hidden] {
+  display: none;
+}
+
 .paired-setting-group {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: start;
@@ -2626,8 +2687,13 @@ select {
   }
 
   .configuration-transfer-actions,
-  #open-kofi {
+  #open-kofi,
+  .update-actions {
     width: 100%;
+  }
+
+  .update-actions button {
+    flex: 1;
   }
 
   .configuration-transfer-actions button {

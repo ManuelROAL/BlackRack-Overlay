@@ -159,6 +159,20 @@ in `docs/overlays/` and should not be duplicated here.
   The app expects LMU's own shared-memory plugin and reports whether it is found.
 - Tauri embeds `frontendDist`; the installer does not deploy a duplicate `web/`
   directory.
+- Automatic update checks use one fixed HTTPS manifest and run from the control
+  panel, never from overlay or browser-source windows. The manifest is treated as
+  untrusted input: its version, HTTPS URLs, installer name and SHA-256 are
+  validated; the package is hashed while downloading and again in the detached
+  helper before NSIS is launched. The helper accepts only an installer in a
+  dedicated operation directory under the application's update cache, serializes
+  downloads and installations with a named process mutex, waits for the parent
+  process to exit, and starts the existing current-user installer with `/UPDATE /P /R`.
+  A copied `coordinator.exe` takes over before NSIS starts, keeps the active
+  installation marker until the installer exits and records a non-zero installer
+  result for the next application start.
+  Each download uses its own operation directory under the update cache so
+  separate app instances cannot overwrite one another's package.
+  Update failures are non-fatal and do not affect telemetry.
 - OBS browser source is localhost-only, optional and off by default.
 - OBS pages normally mirror the application locale. A supported `?lang=` query is
   deliberately page-local so scenes in different languages can coexist without

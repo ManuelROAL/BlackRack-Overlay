@@ -263,6 +263,26 @@ interface BrowserSourceStatus {
   error_detail: string | null;
 }
 
+interface UpdateInfo {
+  version: string;
+  releasePageUrl: string | null;
+  updateTitle: string | null;
+  fullTitle: string | null;
+  changelog: string[];
+}
+
+interface UpdateCheckResponse {
+  currentVersion: string;
+  available: UpdateInfo | null;
+}
+
+interface UpdateProgress {
+  stage: "downloading" | "verifying" | "installing";
+  downloadedBytes: number;
+  totalBytes: number | null;
+  percent: number | null;
+}
+
 interface OverlayConfigurationExport {
   format: "blackrack-overlay-configuration";
   schemaVersion: 20;
@@ -517,13 +537,173 @@ sessionStorage.removeItem(PENDING_CONTROL_VIEW_KEY);
 selectControlView(pendingControlView && controlViews.has(pendingControlView) ? pendingControlView : "general");
 
 const appVersion = document.getElementById("app-version");
-getVersion()
+
+const UPDATE_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
+const UPDATE_CHECK_STORAGE_KEY = "blackrack-overlay.last-update-check.v1";
+const UPDATE_AVAILABLE_STORAGE_KEY = "blackrack-overlay.available-update.v1";
+const updateCheckButton = document.getElementById("check-for-updates") as HTMLButtonElement | null;
+const installUpdateButton = document.getElementById("install-update") as HTMLButtonElement | null;
+const updateStatus = document.getElementById("update-status");
+const updateDetails = document.getElementById("update-details");
+const updateVersion = document.getElementById("update-version");
+const updateChangelog = document.getElementById("update-changelog");
+let updateRequestInFlight = false;
+
+const renderUpdateInfo = (info: UpdateInfo | null): void => {
+  if (!updateDetails || !updateVersion || !updateChangelog || !installUpdateButton) return;
+  updateChangelog.replaceChildren();
+  if (!info) {
+    updateDetails.hidden = true;
+    installUpdateButton.hidden = true;
+    return;
+  }
+  updateVersion.textContent = info.fullTitle || info.updateTitle || t("update.available", { version: info.version });
+  for (const entry of info.changelog) {
+    const item = document.createElement("li");
+    item.textContent = entry;
+    updateChangelog.append(item);
+  }
+  updateDetails.hidden = false;
+  installUpdateButton.hidden = false;
+}
+
+const setUpdateStatus = (message: string): void => {
+  if (updateStatus) updateStatus.textContent = message;
+};
+
+const readStoredUpdate = (): UpdateInfo | null => {
+  const raw = localStorage.getItem(UPDATE_AVAILABLE_STORAGE_KEY);
+  if (!raw) return null;
+  try {
+    const value: unknown = JSON.parse(raw);
+    if (value === null || typeof value !== "object") return null;
+    const record = value as Record<string, unknown>;
+    if (typeof record.version !== "string" || !Array.isArray(record.changelog)
+      || !record.changelog.every((entry) => typeof entry === "string")) return null;
+    return {
+      version: record.version,
+      releasePageUrl: typeof record.releasePageUrl === "string" ? record.releasePageUrl : null,
+      updateTitle: typeof record.updateTitle === "string" ? record.updateTitle : null,
+      fullTitle: typeof record.fullTitle === "string" ? record.fullTitle : null,
+      changelog: record.changelog as string[]
+    };
+  } catch {
+    return null;
+  }
+};
+
+const parseUpdateVersion = (value: string): number[] | null => {
+  const parts = value.split(".");
+  if (parts.length === 0 || parts.length > 4 || parts.some((part) => !/^\d+$/.test(part))) return null;
+  return parts.map((part) => Number(part));
+};
+
+const isNewerUpdateVersion = (candidate: string, current: string): boolean => {
+  const candidateParts = parseUpdateVersion(candidate);
+  const currentParts = parseUpdateVersion(current);
+  if (!candidateParts || !currentParts) return false;
+  for (let index = 0; index < 4; index += 1) {
+    const candidatePart = candidateParts[index] ?? 0;
+    const currentPart = currentParts[index] ?? 0;
+    if (candidatePart !== currentPart) return candidatePart > currentPart;
+  }
+  return false;
+};
+
+const restoreStoredUpdate = (currentVersion: string): void => {
+  const storedUpdate = readStoredUpdate();
+  if (storedUpdate && isNewerUpdateVersion(storedUpdate.version, currentVersion)) {
+    renderUpdateInfo(storedUpdate);
+    setUpdateStatus(t("update.available", { version: storedUpdate.version }));
+    return;
+  }
+  if (storedUpdate) localStorage.removeItem(UPDATE_AVAILABLE_STORAGE_KEY);
+  renderUpdateInfo(null);
+};
+
+const checkForUpdates = async (manual: boolean): Promise<void> => {
+  if (updateRequestInFlight) return;
+  updateRequestInFlight = true;
+  if (updateCheckButton) {
+    updateCheckButton.disabled = true;
+    if (manual) updateCheckButton.textContent = t("update.checking");
+  }
+  try {
+    const result = await invoke<UpdateCheckResponse>("check_for_update");
+    localStorage.setItem(UPDATE_CHECK_STORAGE_KEY, String(Date.now()));
+    if (result.available) {
+      localStorage.setItem(UPDATE_AVAILABLE_STORAGE_KEY, JSON.stringify(result.available));
+    } else {
+      localStorage.removeItem(UPDATE_AVAILABLE_STORAGE_KEY);
+    }
+    renderUpdateInfo(result.available);
+    setUpdateStatus(result.available
+      ? t("update.available", { version: result.available.version })
+      : t("update.current", { version: result.currentVersion }));
+  } catch (error) {
+    console.error("No se pudo comprobar si hay actualizaciones", error);
+    setUpdateStatus(t("update.unavailable"));
+  } finally {
+    updateRequestInFlight = false;
+    if (updateCheckButton) {
+      updateCheckButton.disabled = false;
+      if (manual) updateCheckButton.textContent = t("update.check");
+    }
+  }
+};
+
+const installUpdate = async (): Promise<void> => {
+  if (updateRequestInFlight || !installUpdateButton) return;
+  updateRequestInFlight = true;
+  installUpdateButton.disabled = true;
+  if (updateCheckButton) updateCheckButton.disabled = true;
+  setUpdateStatus(t("update.downloadingUnknown"));
+  try {
+    await invoke("download_and_install_update");
+  } catch (error) {
+    console.error("No se pudo instalar la actualización", error);
+    setUpdateStatus(t("update.failed"));
+    installUpdateButton.disabled = false;
+    if (updateCheckButton) updateCheckButton.disabled = false;
+  } finally {
+    updateRequestInFlight = false;
+  }
+};
+
+updateCheckButton?.addEventListener("click", () => void checkForUpdates(true));
+installUpdateButton?.addEventListener("click", () => void installUpdate());
+void listen<UpdateProgress>("update://progress", ({ payload }) => {
+  if (payload.stage === "downloading") {
+    setUpdateStatus(payload.percent === null
+      ? t("update.downloadingUnknown")
+      : t("update.downloading", { percent: payload.percent }));
+  } else if (payload.stage === "verifying") {
+    setUpdateStatus(t("update.verifying"));
+  } else {
+    setUpdateStatus(t("update.installing"));
+  }
+}).catch((error) => console.error("No se pudo escuchar el progreso de actualización", error));
+
+void getVersion()
   .then((version) => {
     if (appVersion) appVersion.textContent = `v${version}`;
+    restoreStoredUpdate(version);
   })
   .catch((error) => {
     console.error("No se pudo obtener la versión de la aplicación", error);
   });
+
+void invoke<string | null>("get_update_status")
+  .then((status) => {
+    if (status) setUpdateStatus(t("update.failed"));
+  })
+  .catch((error) => console.error("No se pudo leer el estado de actualización", error));
+
+const lastUpdateCheck = Number(localStorage.getItem(UPDATE_CHECK_STORAGE_KEY));
+if (!Number.isFinite(lastUpdateCheck) || Date.now() - lastUpdateCheck >= UPDATE_CHECK_INTERVAL_MS) {
+  window.setTimeout(() => void checkForUpdates(false), 2000);
+}
+window.setInterval(() => void checkForUpdates(false), UPDATE_CHECK_INTERVAL_MS);
 
 const supportButton = document.getElementById("open-kofi") as HTMLButtonElement | null;
 const supportStatus = document.getElementById("support-status");

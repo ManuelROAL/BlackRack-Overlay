@@ -78,6 +78,12 @@ remove enrichment such as DR/SR or split data, but must not stop the overlays.
   `src-tauri/tauri.conf.json`; keep all three synchronized.
 - Windows distribution uses a current-user NSIS installer and embeds the WebView2
   bootstrapper.
+- The control panel checks a fixed HTTPS update manifest at startup and at most
+  every six hours while it is open. A new installer is offered explicitly; Rust
+  downloads it, verifies the manifest's SHA-256, and uses a detached helper mode
+  to close the app before launching NSIS with update/relaunch flags. Installations
+  are serialized across app instances and helper failures are surfaced after the
+  next start. The check is optional and never participates in telemetry startup.
 - Web assets, icons, logos, flags, badges and Roboto Condensed are embedded in
   the executable through Tauri's `frontendDist`; the installer does not deploy a
   separate `web/` directory.

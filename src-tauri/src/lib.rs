@@ -2,6 +2,7 @@ mod app_paths;
 mod browser_source;
 mod startup_log;
 mod telemetry;
+mod updater;
 #[cfg(windows)]
 mod wheel_input;
 
@@ -1957,6 +1958,10 @@ fn set_shortcut(
 }
 
 pub fn run() {
+    if updater::run_helper_if_requested() {
+        return;
+    }
+
     let log_path = startup_log::initialize();
     startup_log::record(format!("startup log path={}", log_path.display()));
     startup_log::record("building Tauri application");
@@ -2008,6 +2013,9 @@ pub fn run() {
             get_simulator_status,
             set_simulator_preference,
             open_support_page,
+            updater::check_for_update,
+            updater::download_and_install_update,
+            updater::get_update_status,
             get_shortcut_settings,
             set_shortcut,
             export_overlay_configuration,

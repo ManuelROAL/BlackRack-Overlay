@@ -11,6 +11,29 @@ Crear `release/<version>/` con estos tres archivos:
 - `README.txt`, con requisitos, instalación, cambios y aviso de SmartScreen
 - `SHA256SUMS.txt`, con el hash SHA-256 del instalador
 
+La publicación que ya incluya el auto-actualizador debe servir también un
+`manifest.json` en la URL fija compilada en `src-tauri/src/updater.rs`. Debe usar
+el esquema siguiente y publicar el instalador con el mismo hash:
+
+```json
+{
+  "schemaVersion": 1,
+  "version": "0.7.9",
+  "packageUrl": "https://github.com/BlackRack/LMUOverlay/releases/download/v0.7.9/BlackRack%20Overlay_0.7.9_x64-setup.exe",
+  "sha256": "<64 hex characters>",
+  "fileName": "BlackRack Overlay_0.7.9_x64-setup.exe",
+  "releasePageUrl": "https://github.com/BlackRack/LMUOverlay/releases/tag/v0.7.9",
+  "updateTitle": "BlackRack Overlay 0.7.9",
+  "fullTitle": "BlackRack Overlay 0.7.9",
+  "changelog": ["Cambio visible para jugadores"]
+}
+```
+
+El primer instalador que contenga esta funcionalidad debe publicarse antes de
+que se anuncie una versión posterior en el manifiesto. El instalador sigue sin
+firma digital por ahora; HTTPS y la doble comprobación SHA-256 reducen el riesgo
+de una descarga incompleta o alterada, pero no sustituyen Authenticode.
+
 El README de usuario puede incluir `https://ko-fi.com/blackrack`; la donación debe
 seguir siendo opcional y nunca un requisito de instalación o funcionamiento.
 
