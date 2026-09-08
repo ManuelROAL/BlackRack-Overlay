@@ -3,6 +3,16 @@
 use super::*;
 
 impl LmuTelemetrySource {
+    const SESSION_RESTART_REGRESSION_SECONDS: f64 = 2.0;
+
+    pub(super) fn session_elapsed_regressed(previous: Option<f64>, current: f64) -> bool {
+        previous.is_some_and(|previous| {
+            previous.is_finite()
+                && current.is_finite()
+                && current + Self::SESSION_RESTART_REGRESSION_SECONDS < previous
+        })
+    }
+
     pub(super) fn is_qualifying(session_type: i32) -> bool {
         (5..=8).contains(&session_type)
     }
@@ -50,9 +60,7 @@ impl LmuTelemetrySource {
         self.car_histories.clear();
         self.starting_positions.clear();
         self.scored_finish_positions.clear();
-        if previous_session.is_some() {
-            self.local_rest.reset_session_history();
-        }
+        self.local_rest.reset_session_history();
         self.vehicle_identities.clear();
         self.driver_ranks.begin_session();
         self.rejoin_hold_frames = 0;

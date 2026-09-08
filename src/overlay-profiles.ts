@@ -4,6 +4,7 @@ import type { DashboardSettings } from "./dashboard-settings";
 import type { DeltaSettings } from "./delta-settings";
 import type { DrivingSettings } from "./driving-settings";
 import type { FuelSettings } from "./fuel-settings";
+import type { LiftCoastSettings } from "./liftcoast-settings";
 import type {
   OverlayFontSizeScope,
   OverlayId,
@@ -68,6 +69,8 @@ export interface OverlayProfileData {
    * simply falls back to the default configuration.
    */
   dashboard?: DashboardSettings;
+  /** Added after the first profile format; old profiles keep the default. */
+  liftCoast?: LiftCoastSettings;
 }
 
 export interface OverlayProfile {

@@ -33,6 +33,7 @@ const FLAG_CAUTION: u32 = 0x0000_4000 | 0x0000_8000;
 
 pub(super) struct IracingTelemetrySource {
     connection: Option<Connection>,
+    minimum_tick_after_reconnect: Option<i32>,
     reconnect_at: Instant,
     session: Session,
     session_parsed_at: Option<Instant>,
@@ -48,6 +49,7 @@ impl IracingTelemetrySource {
     pub(super) fn new() -> Self {
         Self {
             connection: None,
+            minimum_tick_after_reconnect: None,
             reconnect_at: Instant::now(),
             session: Session::new(),
             session_parsed_at: None,
@@ -66,6 +68,16 @@ impl IracingTelemetrySource {
         self.last_laps_completed = -1;
         self.lap_valid = true;
         self.observed_max_rpm = 0.0;
+    }
+
+    /// A new mapping is a new producer, even if iRacing reuses its session
+    /// generation counter. Invalidate the document cache before reading it
+    /// again from the reopened connection.
+    fn reset_connection(&mut self) {
+        self.reset();
+        self.session = Session::new();
+        self.session_parsed_at = None;
+        self.session_number = i32::MIN;
     }
 
     fn waiting(&self, connected: bool) -> TelemetryFrame {
@@ -100,14 +112,19 @@ impl TelemetrySource for IracingTelemetrySource {
                 return self.waiting(false);
             }
             self.reconnect_at = now + RECONNECT_INTERVAL;
-            self.connection = Connection::open();
+            self.connection = Connection::open_after_tick(self.minimum_tick_after_reconnect);
+            if self.connection.is_some() {
+                self.minimum_tick_after_reconnect = None;
+            }
         }
+        let last_tick_before_refresh = self.connection.as_ref().and_then(Connection::tick);
         if !self.connection.as_mut().is_some_and(Connection::refresh) {
             // The mapping outlives a session but not the process, so a silent
             // one is closed and reopened instead of polled forever.
+            self.minimum_tick_after_reconnect = last_tick_before_refresh;
             self.connection = None;
             self.reconnect_at = Instant::now() + RECONNECT_INTERVAL;
-            self.reset();
+            self.reset_connection();
             return self.waiting(false);
         }
         // Held outside `self` while the frame is assembled so the readers can
@@ -200,6 +217,7 @@ impl IracingTelemetrySource {
             .unwrap_or(1.0);
         frame.throttle = sdk.number("Throttle").unwrap_or(0.0).clamp(0.0, 1.0);
         frame.brake = sdk.number("Brake").unwrap_or(0.0).clamp(0.0, 1.0);
+        frame.clutch = sdk.number("Clutch").unwrap_or(0.0).clamp(0.0, 1.0);
         frame.brake_bias_percent = sdk.number("dcBrakeBias").unwrap_or(0.0);
         frame.abs_active = sdk.flag("BrakeABSactive").unwrap_or(false);
         // Traction control has no published state, so the indicator stays off

@@ -119,8 +119,6 @@ const migrateLegacyLearning = (key: string, trackName: string, trackLength: numb
     if (map?.version === 1 && Array.isArray(map.points)) points = map.points;
     if (pit?.version === 1 && Array.isArray(pit.samples)) pitTraversalSamples = pit.samples;
   } catch {
-    localStorage.removeItem(key);
-    localStorage.removeItem(pitKey);
     return;
   }
   if (!points.length && !pitTraversalSamples.length) return;
@@ -130,8 +128,8 @@ const migrateLegacyLearning = (key: string, trackName: string, trackLength: numb
     trackLength,
     points,
     pitTraversalSamples
-  }).then((handled) => {
-    if (handled) {
+  }).then((persisted) => {
+    if (persisted === true) {
       localStorage.removeItem(key);
       localStorage.removeItem(pitKey);
     }

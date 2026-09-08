@@ -284,6 +284,9 @@ pub(crate) struct StintHistoryEntryView {
     laps: u32,
     time_seconds: f64,
     resource_used: f64,
+    battery_start_percent: Option<f64>,
+    battery_end_percent: Option<f64>,
+    regeneration_kwh: Option<f64>,
     tire_wear_percent: f64,
     tire_compounds: [String; 4],
     delta_seconds: Option<f64>,
@@ -294,6 +297,7 @@ pub(crate) struct StintHistoryEntryView {
 pub(crate) struct StintHistoryViewModel {
     available: bool,
     uses_virtual_energy: bool,
+    hybrid_available: bool,
     entries: Vec<StintHistoryEntryView>,
 }
 
@@ -677,11 +681,18 @@ impl CurrentLap {
                 points: self.points,
                 official_sector_ends: self.official_sector_ends,
             },
-            fuel_used: (self.start_fuel - frame.fuel_liters).max(0.0),
-            energy_used: (frame.virtual_energy_last_lap.is_finite()
-                && frame.virtual_energy_last_lap > 0.0)
-                .then_some(frame.virtual_energy_last_lap)
-                .unwrap_or_else(|| (self.start_energy - frame.virtual_energy_percent).max(0.0)),
+            fuel_used: if frame.fuel_last_lap.is_finite() && frame.fuel_last_lap > 0.0 {
+                frame.fuel_last_lap
+            } else {
+                (self.start_fuel + frame.fuel_added_this_lap - frame.fuel_liters).max(0.0)
+            },
+            energy_used: if frame.virtual_energy_last_lap.is_finite()
+                && frame.virtual_energy_last_lap > 0.0
+            {
+                frame.virtual_energy_last_lap
+            } else {
+                (self.start_energy - frame.virtual_energy_percent).max(0.0)
+            },
             tire_used: if self.start_tire >= 0.0 && frame.player_tire_remaining_percent >= 0.0 {
                 (self.start_tire - frame.player_tire_remaining_percent).max(0.0)
             } else {
@@ -733,6 +744,10 @@ struct StintAccumulator {
     total_time: f64,
     fuel_used: f64,
     energy_used: f64,
+    battery_start_percent: Option<f64>,
+    battery_end_percent: Option<f64>,
+    regeneration_kwh: f64,
+    last_hybrid_sample_elapsed: Option<f64>,
     tire_used: f64,
     clean_lap_count: u32,
     clean_lap_time: f64,
@@ -744,6 +759,7 @@ struct StintAccumulator {
 impl StintAccumulator {
     fn new(number: u32, frame: &TelemetryFrame) -> Self {
         let tire_average = average_tire_remaining(frame);
+        let battery = battery_soc(frame);
         Self {
             number,
             started_lap: frame.lap_number,
@@ -753,6 +769,13 @@ impl StintAccumulator {
             total_time: 0.0,
             fuel_used: 0.0,
             energy_used: 0.0,
+            battery_start_percent: battery,
+            battery_end_percent: battery,
+            regeneration_kwh: 0.0,
+            last_hybrid_sample_elapsed: battery
+                .is_some()
+                .then_some(frame.session_elapsed_seconds)
+                .filter(|elapsed| elapsed.is_finite()),
             tire_used: 0.0,
             clean_lap_count: 0,
             clean_lap_time: 0.0,
@@ -763,6 +786,26 @@ impl StintAccumulator {
     }
 
     fn observe(&mut self, frame: &TelemetryFrame) {
+        if let Some(battery) = battery_soc(frame) {
+            if let Some(previous) = self.last_hybrid_sample_elapsed {
+                let elapsed = frame.session_elapsed_seconds - previous;
+                if (0.0..=1.0).contains(&elapsed)
+                    && frame.hybrid_motor_state == 3
+                    && frame.hybrid_regen_kw.is_finite()
+                    && frame.hybrid_regen_kw > 0.0
+                {
+                    self.regeneration_kwh += frame.hybrid_regen_kw * elapsed / 3_600.0;
+                }
+            }
+            self.battery_start_percent.get_or_insert(battery);
+            self.battery_end_percent = Some(battery);
+            self.last_hybrid_sample_elapsed = frame
+                .session_elapsed_seconds
+                .is_finite()
+                .then_some(frame.session_elapsed_seconds);
+        } else {
+            self.last_hybrid_sample_elapsed = None;
+        }
         if let Some(average) = average_tire_remaining(frame) {
             self.tire_start_average.get_or_insert(average);
             self.tire_current_average = Some(average);
@@ -815,6 +858,12 @@ impl StintAccumulator {
             } else {
                 self.fuel_used
             },
+            battery_start_percent: self.battery_start_percent,
+            battery_end_percent: self.battery_end_percent,
+            regeneration_kwh: self
+                .battery_start_percent
+                .is_some()
+                .then_some(self.regeneration_kwh),
             tire_wear_percent,
             tire_compounds: self.tire_compounds.clone(),
             delta_seconds,
@@ -1157,6 +1206,7 @@ impl DeltaEngine {
         StintHistoryViewModel {
             available: !entries.is_empty(),
             uses_virtual_energy: frame.virtual_energy_active,
+            hybrid_available: frame.hybrid_available,
             entries,
         }
     }
@@ -1691,6 +1741,11 @@ fn average_tire_remaining(frame: &TelemetryFrame) -> Option<f64> {
     (!values.is_empty()).then(|| values.iter().sum::<f64>() / values.len() as f64)
 }
 
+fn battery_soc(frame: &TelemetryFrame) -> Option<f64> {
+    (frame.hybrid_available && frame.battery_charge_percent.is_finite())
+        .then_some(frame.battery_charge_percent.clamp(0.0, 100.0))
+}
+
 fn timing_comparison(current: f64, previous: Option<f64>) -> Option<f64> {
     previous
         .filter(|value| current.is_finite() && current > 0.0 && value.is_finite() && *value > 0.0)
@@ -2147,6 +2202,33 @@ mod tests {
     }
 
     #[test]
+    fn stint_history_accumulates_regeneration_between_live_samples() {
+        let mut start = active_frame();
+        start.hybrid_available = true;
+        start.battery_charge_percent = 80.0;
+        start.hybrid_regen_kw = 720.0;
+        start.hybrid_motor_state = 3;
+        start.session_elapsed_seconds = 100.0;
+        let mut stint = StintAccumulator::new(1, &start);
+
+        let mut sample = start;
+        sample.session_elapsed_seconds = 100.5;
+        sample.battery_charge_percent = 79.0;
+        stint.observe(&sample);
+        sample.session_elapsed_seconds = 101.0;
+        sample.battery_charge_percent = 78.0;
+        stint.observe(&sample);
+        sample.session_elapsed_seconds = 103.0;
+        stint.observe(&sample);
+
+        let view = stint.history_view(true, false);
+
+        assert_eq!(view.battery_start_percent, Some(80.0));
+        assert_eq!(view.battery_end_percent, Some(78.0));
+        assert!((view.regeneration_kwh.unwrap() - 0.2).abs() < 1e-9);
+    }
+
+    #[test]
     fn timing_comparisons_keep_both_signed_directions_and_only_mark_real_improvements() {
         assert!((timing_comparison(99.495, Some(100.0)).unwrap() + 0.505).abs() < 1e-9);
         assert_eq!(timing_comparison(100.5, Some(100.0)), Some(0.5));
@@ -2245,6 +2327,22 @@ mod tests {
         let completed = lap.finish(&boundary, 1_000.0).unwrap();
 
         assert_eq!(completed.energy_used, 7.5);
+    }
+
+    #[test]
+    fn completed_pit_lap_counts_fuel_added_during_the_lap() {
+        let mut start = active_frame();
+        start.fuel_liters = 50.0;
+        let mut lap = CurrentLap::new(&start);
+        lap.points = linear_lap(100.0, 1_000.0).points;
+        let mut boundary = start;
+        boundary.last_lap_seconds = 100.0;
+        boundary.fuel_liters = 67.5;
+        boundary.fuel_added_this_lap = 20.0;
+
+        let completed = lap.finish(&boundary, 1_000.0).unwrap();
+
+        assert_eq!(completed.fuel_used, 2.5);
     }
 
     #[test]

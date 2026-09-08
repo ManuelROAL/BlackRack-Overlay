@@ -1,188 +1,84 @@
-# BlackRack Overlay agent guide
+# Codex project instructions
 
-## Project
+## Project context
 
-BlackRack Overlay is a Windows-first desktop telemetry overlay for sim racing.
-The current release line is `0.5.x`. It uses Tauri 2, Rust, TypeScript, Vite and
-plain HTML/CSS without a frontend framework. Le Mans Ultimate is read through its
-official shared-memory SDK and is complete; iRacing is read through its own
-memory-mapped interface and is being landed one overlay at a time. The active
-simulator is chosen at runtime, and a build with neither uses the mock source.
-See `docs/SIMULATORS.md`.
+BlackRack Overlay is a Windows-first Tauri 2 application with a Rust telemetry
+core and a TypeScript/Vite/plain HTML/CSS frontend. It supports Le Mans Ultimate,
+iRacing, and a mock source when no simulator is available.
 
-## Reading workflow
+Keep simulator-specific behavior under `src-tauri/src/telemetry/sim/<id>/`.
+Rust owns telemetry and domain calculations; TypeScript owns presentation and
+browser-only state. Preserve grouped telemetry delivery and the existing overlay
+motion/blur safeguards.
 
-Before changing code, read:
+Never log or persist authentication tickets or access tokens. Optional REST/RaceOS
+failures must not stop shared-memory telemetry. TinyPedal is a behavioral reference;
+do not copy GPL source.
 
-1. `docs/PROJECT_CONTEXT.md`
-2. `docs/DECISIONS.md`
-3. `docs/TODO.md`
-4. The relevant file from `docs/overlays/README.md` when an overlay is involved.
+## Task-scoped reading
 
-Read a cross-cutting document only when the task needs it:
+Use the smallest relevant documentation set:
 
-- Backend, data flow, persistence or windows: `docs/ARCHITECTURE.md`
-- Shared telemetry, REST or RaceOS infrastructure: `docs/TELEMETRY.md`
-- The telemetry source contract or adding a simulator: `docs/SIMULATORS.md`
-- Shared overlay host, control panel or visual behavior: `docs/OVERLAYS.md`
-- Profiling or optimization: `docs/PERFORMANCE.md`
+- Read relevant sections of `docs/PROJECT_CONTEXT.md` and `docs/DECISIONS.md` for
+  code changes.
+- Read the affected file under `docs/overlays/` for an overlay change.
+- Read `docs/ARCHITECTURE.md`, `docs/TELEMETRY.md`, `docs/SIMULATORS.md`,
+  `docs/OVERLAYS.md`, or `docs/PERFORMANCE.md` only when the task crosses that
+  concern.
 
-The implementation and tests are the final source of truth when documentation is
-stale. Update the owning overlay document whenever its behavior changes. Update a
-central document only for a genuinely shared contract; do not copy an overlay rule
-back into this file.
+Update the owning documentation when behavior or a shared contract changes.
+Do not perform a full repository tour for a localized change.
 
-When creating a new overlay, create `docs/overlays/<overlay-id>.md` in the same
-change and add it to `docs/overlays/README.md`. That file becomes the authoritative
-record for the overlay's files, sources, cadence, behavior, invariants and focused
-verification. Keep adding the rules and decisions that arise in the overlay's
-dedicated task/chat to that file instead of growing `AGENTS.md` or a central
-document.
+## Orchestration
 
-## Context and concurrency efficiency
+Use the `astra-orchestrator` skill for repository coding work. Work solo by
+default. Delegate only a substantial, bounded task when separate context or
+parallel work provides a concrete benefit. Use independent review for a concrete
+correctness, security, data-integrity, concurrency, or compatibility risk.
 
-- Work solo by default. Use subagents only when the user explicitly requests
-  them; give each a bounded task and only the context it needs.
-- For small, clear tasks, proceed directly without a formal plan or repeated
-  summaries. Keep exploration and edits within the requested scope.
-- Locate relevant documentation sections with headings or scoped searches before
-  reading long documents. Read the applicable sections and shared constraints;
-  expand only when a dependency or uncertainty requires it. Documentation-only
-  tasks need only the instructions and documents relevant to the edit.
-- Use a dedicated Git worktree for every concurrent implementation task. Keep the
-  local checkout for one foreground task, integration or read-only coordination;
-  do not start parallel writers in the same checkout when a worktree is available.
-- Keep command output proportional to the question. Start with `rg -n`, scoped
-  paths/globs, `git status --short`, `git diff --stat` or `git diff --name-only`;
-  inspect detailed content only for the relevant matches and task-owned files.
-- Do not concatenate several large files, repository-wide searches or full diffs
-  into one command. Read focused ranges, normally no more than 100-200 lines at a
-  time, and narrow the next query when an output limit is reached.
-- Read each required authoritative document once per task. Do not reread unchanged
-  files or repeat searches whose result is already present in the current context.
-- Never print the complete diff of a dirty shared worktree merely to identify task
-  changes. Compare only the explicit task paths and use compact summaries first.
-- Use modest tool-output limits. If output is truncated, rerun a narrower command
-  instead of requesting the same broad output with a larger limit.
-- Batch related edits before verification. Do not repeat a successful build or test
-  without an intervening relevant change; preserve full failure diagnostics, but
-  keep successful and repetitive output concise when the tool permits it.
-- A lock failure, changed `HEAD` or overlapping task path is a concurrency signal,
-  not a reason for repeated broad status/diff/retry loops. Re-evaluate ownership,
-  move the task to a worktree when possible, or use the bounded fallback below.
+The root owns requirements, architecture, routing, integration, and final
+verification. Define file ownership before delegation. Subagents must preserve
+other contributors' edits, stay within their scope, and must not delegate further
+unless explicitly assigned.
 
-## Common engineering rules
+## Verification and completion
 
-- Preserve unrelated user changes.
-- Use UTF-8 for text files and keep the frontend framework-free.
-- Keep overlay-specific CSS in its own file. Use `src/fonts.css` and
-  `src/styles.css` only for genuinely shared rules.
-- Native composite overlays must repaint only from bounded telemetry/UI updates.
-  Do not add continuous CSS animations, long transitions or backdrop filters
-  that make WebView2 present at the monitor refresh rate. Preserve the shared
-  `composite-embed` motion/blur safeguard; use cadence-driven state changes for
-  native warnings and keep decorative motion limited to standalone/OBS pages.
-- Keep `src/telemetry-types.ts` synchronized with serialized Rust frame fields.
-- Keep every simulator-specific detail inside `telemetry/sim/<id>/`. The
-  frame, the loop, the domain models and the frontend name no simulator; they
-  read the source contract and the capability set instead. Visible copy takes
-  the simulator as a `{simulator}` parameter.
-- Keep domain calculations and roster selection in Rust. TypeScript owns
-  presentation and browser-only state, not duplicated telemetry semantics.
-- Prefer cached DOM nodes and changed-value updates in hot render paths. Do not
-  move heavy work into the 50 Hz telemetry loop without measurements.
-- Preserve grouped `telemetry://batch` delivery. Composite hosts forward only
-  locally mounted targets and project reused overlay field allowlists through
-  same-origin `postMessage`.
-- Keep one transparent host WebView on the selected overlay monitor. Configure
-  both the native window and WebView with transparent RGBA backgrounds.
-- Start in click-through game mode. Embedded overlay documents remain inert;
-  edit-mode input is reserved for panel movement and proportional resize.
-- Do not set `color-scheme: dark` on an embedded overlay document root.
-- Preserve independent general/per-overlay transparency and monitor values.
-- Keep reset actions scoped and use the in-panel confirmation dialog.
-- Import/export one validated, versioned configuration document. Exclude learned
-  telemetry, session data, logs and credentials.
-- Keep `dist/` embedded only through Tauri `frontendDist`. Keep every OBS route
-  and mirrored browser preference synchronized with its overlay.
-- Production JavaScript keeps stable serialized, DOM and settings property names,
-  emits no source maps/comments, and disables DevTools. Rust release builds keep
-  fat LTO, one codegen unit and symbol stripping.
-- Keep the MSVC static-VCRuntime placeholder repair in `build.rs` while the Tauri
-  2.6.x/MSVC 14.44 combination requires it.
-- Never log or persist authentication tickets or access tokens. Do not add private
-  server keys. Optional LMU REST and RaceOS failures must not stop shared-memory
-  telemetry.
-- TinyPedal may be used as a behavioral reference but GPL source must not be
-  copied. Use `https://deepwiki.com/s-victor/TinyPedal` as an additional guide
-  to its architecture and data flow; because its index may lag behind, treat the
-  local TinyPedal source as authoritative. Dox and Go Fast are visual or
-  behavioral references only.
-- Keep bundled logos, flags, badges and Roboto Condensed available in production
-  and OBS browser pages.
+- Frontend or UI change: `npm.cmd run build`.
+- Rust/backend change: `cargo fmt --manifest-path src-tauri\Cargo.toml`, then
+  `cargo test --manifest-path src-tauri\Cargo.toml --lib`.
+- Run `npm.cmd run build` when Rust serialization or frontend behavior is affected.
+- Documentation or instruction-only change: inspect the changed text and run
+  `git diff --check`; do not run application builds by default.
+- Do not run release packaging unless the user explicitly requests a release
+  artifact.
+- For UI changes, inspect a local preview or screenshot when visual behavior is
+  part of acceptance and the required browser capability is available. Otherwise
+  report the visual-validation limitation.
+- If a required check fails, classify it as introduced, pre-existing, or
+  environment-related; perform one focused diagnostic/retry, then report exact
+  evidence and stop if the next step requires user input or broader authority.
+- A task is complete only when the requested change is implemented, proportional
+  verification is recorded, and material gaps are reported.
 
-## Commands
+## Git and release history
 
-Run from the repository root on Windows and prefer `npm.cmd`:
+- When a task changes any file, create a Git commit after the requested
+  verification passes. Commit only the files belonging to the current task and
+  preserve unrelated user changes already present in the worktree.
+- Write concise, specific, release-note-ready commit messages. Describe the
+  user-visible change and its relevant area or simulator; avoid generic
+  messages such as `update`, `fixes` or `miscellaneous`.
+- Use the commit history as input when reviewing a new version and drafting its
+  release-news text, so each commit should communicate a coherent change.
+- Do not push, publish or rewrite history unless the user explicitly requests
+  that exact action.
 
-```powershell
-npm.cmd install
-npm.cmd run dev
-npm.cmd run tauri:dev
-npm.cmd run build
-cargo fmt --manifest-path src-tauri\Cargo.toml
-cargo test --manifest-path src-tauri\Cargo.toml --lib
-npm.cmd run tauri build
-```
+## Authority boundaries
 
-`npm.cmd run tauri:dev` runs the app with the simulators that are still being
-filled in; plain `npm.cmd run tauri dev` and `npm.cmd run tauri build` leave
-them out, so anything handed to a tester never offers one. See
-`docs/SIMULATORS.md`.
+Workspace write access does not authorize production access, external messages,
+credential changes, commits, pushes, publishing, deployment, or deletion outside
+the requested scope. Perform those actions only when the user explicitly requests
+that exact action and the target is known.
 
-`npm.cmd run tauri build` creates the Windows installer. Do not run it unless the
-user explicitly requests a release/build artifact or a production performance
-capture requires it.
-
-## Verification
-
-For Rust/backend changes:
-
-1. `cargo fmt --manifest-path src-tauri\Cargo.toml`
-2. `cargo test --manifest-path src-tauri\Cargo.toml --lib`
-3. `npm.cmd run build` when serialized fields or frontend behavior changed
-
-For frontend-only changes, run `npm.cmd run build`. For performance work, also
-collect a comparable race/replay sample as described in `docs/PERFORMANCE.md`;
-successful compilation alone is not performance evidence.
-
-For documentation/instruction-only changes, review the changed text and run
-`git diff --check` on the edited paths; do not run application builds or tests.
-For code changes, run the required checks above once after batching edits. Add
-further checks only for a concrete risk, failure or subsequent relevant change.
-
-## Completion
-
-- A change is complete only after its implementation, proportional verification
-  and owning documentation are all up to date.
-- If a required verification cannot run, report that explicitly instead of
-  presenting the work as fully complete.
-- Concurrent implementation sessions should use separate worktrees. If a task is
-  already running in a shared checkout, unrelated staged changes are not a reason
-  to wait: create the task commit with a temporary alternate `GIT_INDEX_FILE` and
-  stage only explicit task paths there. Never use interactive `git add -p`, print a
-  repository-wide diff or alter unrelated real-index entries. Recheck `HEAD` before
-  committing; if it changed, rebuild the temporary index once from the new `HEAD`.
-  If it changes again or task paths overlap, stop committing and report the
-  collision instead of entering another repair loop. After a successful commit,
-  synchronize only the committed task paths into the real index.
-- After completing and verifying a change, create the Git commit directly with a
-  concise message that summarizes only the work completed in the current task.
-  Do not include copy-ready commit messages in the handoff. Preserve unrelated
-  user changes and never include them in the commit.
-
-## Verbosidad
-
-- Sé extremadamente conciso. Respuestas de 1-2 líneas salvo que se pida detalle.
-- Resumenes muy breves.
-- Solo da explicaciones cuando el usuario las pida explícitamente.
+User instructions take precedence. Preserve unrelated edits and never claim a
+review, test, or delegated result that was not actually observed.

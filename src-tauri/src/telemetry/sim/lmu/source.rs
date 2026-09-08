@@ -238,6 +238,7 @@ struct LmuSnapshot {
     max_rpm: f64,
     throttle: f64,
     brake: f64,
+    clutch: f64,
     brake_bias_percent: f64,
     track_limits_steps: u32,
     track_limits_steps_per_penalty: u32,
@@ -356,6 +357,7 @@ impl Default for LmuSnapshot {
             max_rpm: 1.0,
             throttle: 0.0,
             brake: 0.0,
+            clutch: 0.0,
             brake_bias_percent: 0.0,
             track_limits_steps: 0,
             track_limits_steps_per_penalty: 0,
@@ -951,6 +953,7 @@ impl CarHistory {
 
 pub struct LmuTelemetrySource {
     current_session: Option<i32>,
+    last_session_elapsed_seconds: Option<f64>,
     last_lap: i32,
     fuel_at_lap_start: Option<f64>,
     fuel_previous_sample: Option<f64>,
@@ -1282,6 +1285,7 @@ impl LmuTelemetrySource {
     pub fn with_profile_directory(profile_directory: Option<std::path::PathBuf>) -> Self {
         Self {
             current_session: None,
+            last_session_elapsed_seconds: None,
             last_lap: -1,
             fuel_at_lap_start: None,
             fuel_previous_sample: None,

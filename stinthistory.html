@@ -6,7 +6,7 @@
     <title data-i18n="title.stintHistory">Historial de stint</title>
   </head>
   <body class="stint-history-body">
-    <main id="stint-history-card" class="overlay-shell stint-history-card" data-state="waiting" data-tauri-drag-region>
+    <main id="stint-history-card" class="overlay-shell stint-history-card" data-state="waiting" data-hybrid="false" data-tauri-drag-region>
       <header class="stint-history-header">
         <span data-i18n="stinthistory.title">HISTORIAL DE STINT</span>
         <b id="stint-history-count">--</b>
@@ -17,6 +17,8 @@
           <span role="columnheader" data-i18n="stinthistory.laps">VUELTAS</span>
           <span role="columnheader" data-i18n="stinthistory.time">TIEMPO</span>
           <span id="stint-history-resource-label" role="columnheader" data-i18n="stinthistory.fuel">FUEL</span>
+          <span class="stint-history-hybrid-column" role="columnheader" data-i18n="stinthistory.soc">SOC</span>
+          <span class="stint-history-hybrid-column" role="columnheader" data-i18n="stinthistory.regen">REG</span>
           <span role="columnheader" data-i18n="stinthistory.tire">NEUM.</span>
           <span role="columnheader" data-i18n="stinthistory.wear">DESG.</span>
           <span role="columnheader" data-i18n="stinthistory.delta">DELTA</span>

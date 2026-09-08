@@ -5,6 +5,7 @@ export type DashboardFieldId =
   | "tc"
   | "delta"
   | "energy"
+  | "headlights"
   | "liftcoast"
   | "limiter"
   | "revs"
@@ -23,7 +24,8 @@ export type DashboardFieldId =
   | "speed"
   | "lap"
   | "predicted"
-  | "laps";
+  | "laps"
+  | "wipers";
 
 export interface DashboardSettings {
   visible: Record<DashboardFieldId, boolean>;
@@ -44,6 +46,7 @@ export const DASHBOARD_FIELDS = [
   { id: "tc", labelKey: "dashboard.tc", default: false },
   { id: "delta", labelKey: "dashboard.delta", default: false },
   { id: "energy", labelKey: "dashboard.energy", default: false },
+  { id: "headlights", labelKey: "dashboard.headlights", default: false },
   { id: "liftcoast", labelKey: "dashboard.liftcoast", default: true },
   { id: "limiter", labelKey: "dashboard.limiter", default: true },
   { id: "revs", labelKey: "dashboard.revs", default: true },
@@ -62,7 +65,8 @@ export const DASHBOARD_FIELDS = [
   { id: "speed", labelKey: "dashboard.speed", default: true },
   { id: "lap", labelKey: "dashboard.lap", default: false },
   { id: "predicted", labelKey: "dashboard.predicted", default: false },
-  { id: "laps", labelKey: "dashboard.laps", default: false }
+  { id: "laps", labelKey: "dashboard.laps", default: false },
+  { id: "wipers", labelKey: "dashboard.wipers", default: false }
 ] as const satisfies readonly {
   id: DashboardFieldId;
   labelKey: string;

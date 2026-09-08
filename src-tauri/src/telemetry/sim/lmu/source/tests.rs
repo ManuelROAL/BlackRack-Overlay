@@ -1294,7 +1294,7 @@ fn standings_marks_slow_cars_without_waiting_for_a_sector_yellow() {
     };
 
     let slow = LmuTelemetrySource::slow_yellow_vehicles(&snapshot);
-    assert_eq!(slow, HashSet::from([10]));
+    assert_eq!(slow, HashSet::from([10, 30, 50]));
 }
 
 #[test]
@@ -1824,6 +1824,36 @@ fn session_change_resets_average_and_last_but_keeps_qualifying_phases() {
     source.update_session(1);
     assert_eq!(source.fuel_qualifying_lap, None);
     assert_eq!(source.energy_qualifying_lap, None);
+}
+
+#[test]
+fn disconnecting_then_reentering_the_same_session_type_resets_session_state() {
+    let mut source = LmuTelemetrySource::new();
+    source.update_session(10);
+    source.fuel_per_lap = Some(11.0);
+    source.energy_per_lap = Some(8.0);
+    source.current_session = None;
+    source.local_rest.reset_session_history();
+    source.update_session(10);
+
+    assert_eq!(source.fuel_per_lap, None);
+    assert_eq!(source.energy_per_lap, None);
+}
+
+#[test]
+fn a_backward_session_clock_marks_an_in_place_restart() {
+    assert!(!LmuTelemetrySource::session_elapsed_regressed(
+        Some(120.0),
+        119.0
+    ));
+    assert!(LmuTelemetrySource::session_elapsed_regressed(
+        Some(120.0),
+        0.0
+    ));
+    assert!(!LmuTelemetrySource::session_elapsed_regressed(
+        Some(f64::NAN),
+        0.0
+    ));
 }
 
 #[test]

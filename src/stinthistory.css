@@ -14,6 +14,9 @@ html, body { width: fit-content; min-width: 100%; min-height: 100%; margin: 0; o
   font-variant-numeric: tabular-nums;
   text-rendering: optimizeLegibility;
 }
+.stint-history-card[data-hybrid="true"] { width: 660px; }
+.stint-history-card[data-hybrid="false"] .stint-history-hybrid-column,
+.stint-history-card[data-hybrid="false"] .stint-history-hybrid-cell { display: none; }
 .stint-history-card::before { position: absolute; z-index: 2; inset: 0 auto auto 0; width: 2px; height: 100%; background: #d8ff3e; content: ""; opacity: .82; }
 .stint-history-card * { pointer-events: none; }
 .stint-history-header { display: flex; min-height: 25px; align-items: center; justify-content: space-between; padding: 0 5px 4px; border-bottom: 1px solid rgb(255 255 255 / 9%); line-height: 1; }
@@ -22,8 +25,15 @@ html, body { width: fit-content; min-width: 100%; min-height: 100%; margin: 0; o
 .stint-history-table { margin-top: 4px; }
 .stint-history-columns,
 .stint-history-row { display: grid; grid-template-columns: 44px 48px 70px 68px 48px 58px 66px 62px; column-gap: 2px; align-items: center; text-align: center; }
+.stint-history-card[data-hybrid="true"] .stint-history-columns,
+.stint-history-card[data-hybrid="true"] .stint-history-row {
+  grid-template-columns: 52px 60px 68px 64px 70px 70px 50px 56px 62px 58px;
+}
 .stint-history-columns { min-height: calc(16px * var(--overlay-font-height-expansion, 1)); color: #7f8a96; font-size: calc(8px * var(--overlay-font-scale, 1)); font-weight: 900; letter-spacing: .07em; line-height: 1; }
+.stint-history-columns > span,
+.stint-history-row > * { min-width: 0; padding: 0 2px; }
 .stint-history-columns span + span { border-left: 1px solid rgb(255 255 255 / 8%); }
+.stint-history-row > * + * { border-left: 1px solid rgb(255 255 255 / 6%); }
 .stint-history-rows { display: grid; gap: 3px; }
 .stint-history-row { position: relative; min-height: calc(25px * var(--overlay-font-height-expansion, 1)); overflow: hidden; border-radius: 3px; background: rgb(5 8 12 / calc(var(--overlay-background-opacity) * .78)); box-shadow: inset 0 1px rgb(255 255 255 / 7%), inset 0 -1px rgb(255 255 255 / 6%); }
 .stint-history-row.current { background: linear-gradient(90deg, rgb(216 255 62 / 14%), transparent 42%), rgb(5 8 12 / calc(var(--overlay-background-opacity) * .78)); box-shadow: inset 2px 0 #d8ff3e, inset 0 1px rgb(255 255 255 / 7%), inset 0 -1px rgb(255 255 255 / 7%); }

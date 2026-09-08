@@ -27,6 +27,10 @@
   design surface is 190 × 32 px, with 2 px outer padding and a minimal frame.
 - The panel remains mounted while inactive so its configured position is stable;
   inactive lamps are deliberately dim.
+- The control panel can switch between the current always-mounted display and an
+  active-only mode. In active-only mode, the panel is hidden while all five
+  official lamps are off and appears as soon as any lamp is lit. The default is
+  the current always-mounted behavior.
 - Preserve proportional resize, general/per-overlay transparency and text size,
   click-through game mode, composite embedding and the `/liftcoast` OBS route.
 - Do not add continuous animation, blur or transitions. Repaint only when the
@@ -38,3 +42,5 @@
 - In LMU, compare the overlay with the cockpit lamps using Target Laps `+1` and
   `+2`; record any value above five before changing the mapping.
 - Check native composite placement, reset, import/export and `/liftcoast` OBS.
+- Check both display modes, including the transition from zero to a lit official
+  value and back to zero.

@@ -47,7 +47,8 @@ on their runtime or source code.
 - Dashboard strip with the gear, the rev lights and freely selected readouts chosen
   from a flat list: speed, revs, class position, lap, session time, delta,
   last/best/predicted lap, fuel, virtual energy, range, hybrid battery, engine
-  map, traction control, ABS, brake bias and air/track temperature.
+  map, traction control, ABS, brake bias, lights, wipers and air/track
+  temperature.
 - Startup diagnostics for failures on other computers.
 
 ## Current data sources

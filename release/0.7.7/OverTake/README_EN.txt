@@ -33,7 +33,7 @@ as Browser Sources in OBS on the same computer.
 
 SUPPORT
 Use Integrations > Support > Copy diagnostics. Include the summary with your
-report on the BlackRack Overlay page on OverTake, together with the steps to
+report on https://discord.gg/VdT6Wncxup, together with the steps to
 reproduce the issue and a screenshot if useful. The summary excludes logs,
 personal paths and credentials.
 
@@ -46,3 +46,4 @@ Windows installer, English and Spanish guides, release highlights and
 SHA256SUMS.txt with SHA-256 checksums for these files.
 
 Optional project support: https://ko-fi.com/blackrack
+Acknowledgments to https://www.twitch.tv/rastaracing

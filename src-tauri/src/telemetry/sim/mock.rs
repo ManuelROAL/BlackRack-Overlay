@@ -66,6 +66,7 @@ impl TelemetrySource for MockTelemetrySource {
         let elapsed = self.started_at.elapsed().as_secs_f64();
         let throttle = ((elapsed * 0.72).sin() * 0.48 + 0.52).clamp(0.0, 1.0);
         let brake = (((elapsed * 0.39).sin() - 0.58) * 2.1).clamp(0.0, 1.0);
+        let clutch = (((elapsed * 1.6).sin() * 0.5 + 0.5) * 0.35).clamp(0.0, 1.0);
         let speed_kph = (72.0 + throttle * 245.0 - brake * 105.0).clamp(0.0, 340.0);
         let gear = match speed_kph {
             speed if speed < 5.0 => 0,
@@ -253,7 +254,7 @@ impl TelemetrySource for MockTelemetrySource {
             } else {
                 0
             },
-            yellow_sectors: if (elapsed as u64 / 8) % 2 == 0 {
+            yellow_sectors: if (elapsed as u64 / 8).is_multiple_of(2) {
                 1 << 2
             } else {
                 0
@@ -270,6 +271,7 @@ impl TelemetrySource for MockTelemetrySource {
             max_rpm: 9_200.0,
             throttle,
             brake,
+            clutch,
             brake_bias_percent: 56.5,
             track_limits_steps: 4,
             track_limits_steps_per_penalty: 17,
@@ -477,7 +479,7 @@ impl TelemetrySource for MockTelemetrySource {
             stint_history_model: Default::default(),
             flag_warning: if !include_flag_warning {
                 FlagWarning::default()
-            } else if (elapsed as u64 / 8) % 2 == 0 {
+            } else if (elapsed as u64 / 8).is_multiple_of(2) {
                 FlagWarning {
                     kind: "yellow",
                     active: true,
@@ -497,7 +499,7 @@ impl TelemetrySource for MockTelemetrySource {
             rejoin_warning: if include_rejoin_warning {
                 RejoinWarning {
                     active: true,
-                    reason: if (elapsed as u64 / 8) % 2 == 0 {
+                    reason: if (elapsed as u64 / 8).is_multiple_of(2) {
                         "rejoin"
                     } else {
                         "pit_exit"
@@ -603,8 +605,8 @@ impl TelemetrySource for MockTelemetrySource {
                     last_lap_valid: true,
                     average_lap_seconds: 209.507,
                     virtual_energy_active: true,
-                    virtual_energy_percent: virtual_energy_percent,
-                    virtual_energy_per_lap: virtual_energy_per_lap,
+                    virtual_energy_percent,
+                    virtual_energy_per_lap,
                     damage_percent: 6.0,
                     track_limits_steps: Some(5),
                     pit_stops: 2,

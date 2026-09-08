@@ -82,6 +82,7 @@ struct LmuSnapshot {
     double max_rpm;
     double throttle;
     double brake;
+    double clutch;
     double brake_bias_percent;
     uint32_t track_limits_steps;
     uint32_t track_limits_steps_per_penalty;
@@ -546,6 +547,7 @@ extern "C" int lmu_read_snapshot(LmuSnapshot* output, int32_t spectator_vehicle_
     output->max_rpm = vehicle.mEngineMaxRPM;
     output->throttle = vehicle.mUnfilteredThrottle;
     output->brake = vehicle.mUnfilteredBrake;
+    output->clutch = vehicle.mUnfilteredClutch;
     output->brake_bias_percent = (1.0 - vehicle.mRearBrakeBias) * 100.0;
     output->track_limits_steps = static_cast<uint32_t>(vehicle.mTrackLimitsSteps);
     output->tc_active = vehicle.mTCActive ? 1u : 0u;

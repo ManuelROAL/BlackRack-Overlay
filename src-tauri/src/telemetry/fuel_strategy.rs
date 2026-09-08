@@ -259,6 +259,7 @@ impl FuelStrategies {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(super) fn calculate_stint_targets(
     input: ResourceStrategyInput,
     lap_seconds: f64,

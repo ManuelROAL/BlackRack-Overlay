@@ -25,15 +25,16 @@ Candidate scanning and warning inference run only while the native panel or the
 ## Yellow semantics
 
 The consumed official shared-memory subset does not expose exact yellow
-causation, so describe the result honestly as a stabilized inference.
+causation, so describe the result honestly as a speed-based inference that is
+gated by LMU's official sector-yellow mask.
 
-- Standings may always flag the likely slow-car culprit using the preventive
-  below-8-m/s rule, independent of player proximity.
+- Standings and trackmap may always flag the likely slow-car culprit using the
+  below-8-m/s rule, independent of player proximity. As in TinyPedal, cars in
+  pit lane count as candidates; only cars in the garage are excluded.
 - This dedicated overlay additionally requires an LMU sector yellow and a nearby
   relevant candidate: up to 500 m ahead, otherwise up to 50 m behind.
-- Stabilize candidate evidence for about one second to avoid treating normal
-  braking as an incident.
-- Exclude cars in pitlane.
+- The nearest candidate ahead has priority over candidates behind, and distances
+  use signed circular track position: positive is ahead and negative behind.
 
 ## Verification focus
 

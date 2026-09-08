@@ -33,6 +33,13 @@ One pill-shaped strip, not a cluster:
 - Everything else is a uniform label-over-value pair in a single row. Class
   position carries the accent colour, since it is the one value read as a
   standing rather than as a measurement.
+- The optional hybrid battery readout uses the bundled battery SVG. Its interior
+  fill shows SOC without a percentage label; regeneration/charge is green and
+  propulsion/discharge is cyan. Neutral or unavailable hybrid state uses the
+  muted fill, and no state explanation text is shown.
+- Lights and wipers are optional readouts. Lights show `ON` or `OFF`; wipers show
+  `OFF`, `AUTO`, `SLOW`/`LENTO` or `FAST`/`RÁPIDO`, following LMU's published
+  wiper states.
 - The two warnings add nothing to the strip. They blink something already on
   screen — the gear ring, or the shell's border and background when the strip is
   configured without the gear, so a warning never depends on which readouts the
@@ -66,6 +73,8 @@ fields may be enabled, including all of them. The strip grows with its content.
   readouts.
 - The three traction-control trims are separate fields: level (`mTC`), slip
   target (`mTCSlip`) and cut (`mTCCut`). Each is gated on its own maximum.
+- Headlights and wipers are gated by the source's car-electronics capability;
+  they remain opt-in so adding them does not change existing strip layouts.
 - `normalizeDashboardSettings` preserves every selected known field when loading
   settings, profiles or imported configuration, validates booleans and supplies
   defaults for missing fields.
@@ -92,6 +101,10 @@ fields may be enabled, including all of them. The strip grows with its content.
   `mBatteryChargeFraction`. The two do not share a scale — the fraction is
   documented as 0..1 while the state of charge has been seen as a percentage —
   so the bridge normalises whichever one is present and clamps it to 0..100.
+- The battery SVG uses that normalised SOC and `hybrid_motor_state` values 2
+  (propulsion/discharge) and 3 (regeneration/charge) to choose its fill colour.
+  Virtual-energy percentage remains a separate readout and is never used as the
+  battery fill.
 - Position prefers the class position, which is what a multiclass grid is
   actually raced on, and falls back to the overall place. Both are counted in
   the bridge, the class one over the scoring class name, which is filled for
@@ -118,8 +131,9 @@ fields may be enabled, including all of them. The strip grows with its content.
   Identity detection is limited to those published fields; cars with identical
   names cannot be distinguished here. Preview values never seed live notices.
 - Notices preserve layout and transparency, hide underlying text for readability,
-  and expire on telemetry updates without animations or an independent timer.
-  Native field projection includes the same context used by the OBS renderer.
+  keep the gear and rev lights visible, and expire on telemetry updates without
+  animations or an independent timer. Native field projection includes the same
+  context used by the OBS renderer.
 
 - The design surface follows the content on **both** axes through
   `fitOverlayToContentBox`, and the shell is `width: max-content`. Turning a

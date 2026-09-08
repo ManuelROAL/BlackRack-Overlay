@@ -21,6 +21,11 @@
   place-items: center;
 }
 
+.liftcoast-card[data-display-mode="active"][data-active="false"] {
+  visibility: hidden;
+  pointer-events: none;
+}
+
 .liftcoast-lights {
   display: grid;
   width: 100%;

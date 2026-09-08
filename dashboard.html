@@ -11,6 +11,10 @@
       <div class="dash-readout" data-tauri-drag-region>
         <div id="dashboard-revs" class="dash-revs" data-dashboard-field="revs" data-rev="normal"></div>
         <dl id="dashboard-fields" class="dash-fields">
+          <div id="dashboard-adjustment" class="dash-adjustment" role="status" hidden>
+            <span id="dashboard-adjustment-label"></span>
+            <strong id="dashboard-adjustment-value"></strong>
+          </div>
           <div data-dashboard-field="speed"><dt data-i18n="dashboard.speedShort">VEL</dt><dd id="dashboard-speed">--</dd></div>
           <div data-dashboard-field="rpm"><dt data-i18n="dashboard.rpmShort">RPM</dt><dd id="dashboard-rpm">--</dd></div>
           <div data-dashboard-field="position"><dt data-i18n="dashboard.positionShort">POS</dt><dd id="dashboard-position">--</dd></div>
@@ -22,8 +26,17 @@
           <div data-dashboard-field="predicted"><dt data-i18n="dashboard.predictedShort">PREV.</dt><dd id="dashboard-predicted">--:--.---</dd></div>
           <div data-dashboard-field="fuel"><dt data-i18n="dashboard.fuelShort">COMB.</dt><dd id="dashboard-fuel">--</dd></div>
           <div data-dashboard-field="energy"><dt data-i18n="dashboard.energyShort">ENERGÍA</dt><dd id="dashboard-energy">--</dd></div>
+          <div data-dashboard-field="headlights"><dt data-i18n="dashboard.headlightsShort">LUCES</dt><dd id="dashboard-headlights">--</dd></div>
           <div data-dashboard-field="laps"><dt data-i18n="dashboard.lapsShort">VUELTAS</dt><dd id="dashboard-laps">--</dd></div>
-          <div data-dashboard-field="battery"><dt data-i18n="dashboard.batteryShort">BATERÍA</dt><dd id="dashboard-battery">--</dd></div>
+          <div data-dashboard-field="battery" data-hybrid-state="off">
+            <dt data-i18n="dashboard.batteryShort">BATERÍA</dt>
+            <dd class="dash-battery-readout">
+              <span class="dash-hybrid-visual" aria-hidden="true">
+                <span id="dashboard-battery-fill" class="dash-hybrid-fill"></span>
+                <img class="dash-hybrid-outline" alt="" />
+              </span>
+            </dd>
+          </div>
           <div data-dashboard-field="map"><dt data-i18n="dashboard.mapShort">MAPA</dt><dd id="dashboard-map">--</dd></div>
           <div data-dashboard-field="tc"><dt data-i18n="dashboard.tcShort">TC</dt><dd id="dashboard-tc">--</dd></div>
           <div data-dashboard-field="tcslip"><dt data-i18n="dashboard.tcSlipShort">TC DESL.</dt><dd id="dashboard-tcslip">--</dd></div>
@@ -32,13 +45,10 @@
           <div data-dashboard-field="bias"><dt data-i18n="dashboard.biasShort">REPARTO</dt><dd id="dashboard-bias">--</dd></div>
           <div data-dashboard-field="air"><dt data-i18n="dashboard.airShort">AIRE</dt><dd id="dashboard-air">--</dd></div>
           <div data-dashboard-field="track"><dt data-i18n="dashboard.trackShort">PISTA</dt><dd id="dashboard-track">--</dd></div>
+          <div data-dashboard-field="wipers"><dt data-i18n="dashboard.wipersShort">LIMPIAS</dt><dd id="dashboard-wipers">--</dd></div>
         </dl>
       </div>
       <p id="dashboard-empty" class="dash-empty" data-i18n="dashboard.waiting">SIN DATOS DEL COCHE</p>
-      <div id="dashboard-adjustment" class="dash-adjustment" role="status" hidden>
-        <span id="dashboard-adjustment-label"></span>
-        <strong id="dashboard-adjustment-value"></strong>
-      </div>
     </main>
     <script type="module" src="/src/dashboard.ts"></script>
   </body>

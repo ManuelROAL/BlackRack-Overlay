@@ -906,6 +906,10 @@ Section Uninstall
     DeleteRegKey /ifempty HKCU "${MANUKEY}"
 
     SetShellVarContext current
+    ; Current data directories from src/app_paths.rs
+    RmDir /r "$APPDATA\BlackRack Overlay"
+    RmDir /r "$LOCALAPPDATA\BlackRackOverlay"
+    ; Keep removing the old bundle-id directories for existing installations
     RmDir /r "$APPDATA\${BUNDLEID}"
     RmDir /r "$LOCALAPPDATA\${BUNDLEID}"
   ${EndIf}

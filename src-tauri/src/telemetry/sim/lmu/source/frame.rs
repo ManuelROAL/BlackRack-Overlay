@@ -58,6 +58,9 @@ impl TelemetrySource for LmuTelemetrySource {
         let rest_us = rest_started.elapsed().as_micros();
 
         if snapshot.connected == 0 {
+            self.current_session = None;
+            self.last_session_elapsed_seconds = None;
+            self.local_rest.reset_session_history();
             self.last_lap = -1;
             self.fuel_at_lap_start = None;
             self.fuel_previous_sample = None;
@@ -78,8 +81,20 @@ impl TelemetrySource for LmuTelemetrySource {
             return TelemetryFrame::waiting_for_simulator(false);
         }
 
+        if self.current_session == Some(snapshot.session_type)
+            && Self::session_elapsed_regressed(
+                self.last_session_elapsed_seconds,
+                snapshot.session_elapsed_seconds,
+            )
+        {
+            self.current_session = None;
+        }
         let session_started = Instant::now();
         self.update_session(snapshot.session_type);
+        self.last_session_elapsed_seconds = snapshot
+            .session_elapsed_seconds
+            .is_finite()
+            .then_some(snapshot.session_elapsed_seconds);
         self.session_split.refresh();
         // Standings sigue el criterio preventivo de TinyPedal. El overlay de
         // banderas exige además una amarilla sectorial y proximidad.
@@ -380,7 +395,7 @@ impl TelemetrySource for LmuTelemetrySource {
             fuel_full_stint_laps
         };
         let tire_life_model = include_tire_life
-            .then(|| full_stint_laps)
+            .then_some(full_stint_laps)
             .flatten()
             .and_then(|stint_laps| {
                 self.tire_wear_tracker
@@ -787,6 +802,7 @@ impl TelemetrySource for LmuTelemetrySource {
             max_rpm: snapshot.max_rpm.max(1.0),
             throttle: snapshot.throttle.clamp(0.0, 1.0),
             brake: snapshot.brake.clamp(0.0, 1.0),
+            clutch: snapshot.clutch.clamp(0.0, 1.0),
             brake_bias_percent: snapshot.brake_bias_percent.clamp(0.0, 100.0),
             track_limits_steps: snapshot.track_limits_steps,
             track_limits_steps_per_penalty: snapshot.track_limits_steps_per_penalty,

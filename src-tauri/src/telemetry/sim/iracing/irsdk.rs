@@ -13,6 +13,7 @@
 
 use std::collections::HashMap;
 use std::ffi::c_void;
+use std::time::{Duration, Instant};
 
 use windows_sys::Win32::Foundation::{CloseHandle, HANDLE};
 use windows_sys::Win32::System::Memory::{
@@ -40,6 +41,9 @@ const VAR_NAME_LENGTH: usize = 32;
 const MAX_BUFFERS: usize = 4;
 const MAX_VARIABLES: usize = 4_096;
 const MAX_SESSION_LENGTH: usize = 4 * 1024 * 1024;
+/// A connected mapping that stops advancing is no longer usable telemetry.
+/// Allow normal low-rate publishers a little slack before forcing a reopen.
+const TICK_STALL_TIMEOUT: Duration = Duration::from_secs(2);
 /// Smallest mapping that can carry a complete header.
 const MINIMUM_LENGTH: usize = HEADER_VAR_BUF + MAX_BUFFERS * VAR_BUF_STRIDE;
 const STATUS_CONNECTED: i32 = 1;
@@ -85,12 +89,19 @@ struct Snapshot {
     session_generation: i32,
     session_text: String,
     values: Vec<u8>,
+    last_tick: Option<(i32, Instant)>,
+    minimum_tick: Option<i32>,
 }
 
 impl Snapshot {
     fn new() -> Self {
+        Self::with_minimum_tick(None)
+    }
+
+    fn with_minimum_tick(minimum_tick: Option<i32>) -> Self {
         Self {
             session_generation: i32::MIN,
+            minimum_tick,
             ..Self::default()
         }
     }
@@ -101,6 +112,7 @@ impl Snapshot {
     fn refresh(&mut self, mapping: &[u8]) -> bool {
         if !connected(mapping) {
             self.values.clear();
+            self.last_tick = None;
             return false;
         }
         self.refresh_variables(mapping);
@@ -224,6 +236,24 @@ impl Snapshot {
         if header(mapping, entry) != Some(tick) {
             return !self.values.is_empty();
         }
+        if self.minimum_tick == Some(tick) {
+            self.values.clear();
+            return false;
+        }
+        self.minimum_tick = None;
+        let now = Instant::now();
+        if let Some((last_tick, last_advanced_at)) = self.last_tick {
+            if last_tick == tick && now.duration_since(last_advanced_at) >= TICK_STALL_TIMEOUT {
+                self.values.clear();
+                return false;
+            }
+        }
+        if self
+            .last_tick
+            .is_none_or(|(last_tick, _)| last_tick != tick)
+        {
+            self.last_tick = Some((tick, now));
+        }
         self.values = copied;
         true
     }
@@ -303,6 +333,10 @@ fn wide(value: &str) -> Vec<u16> {
 
 impl Connection {
     pub(super) fn open() -> Option<Self> {
+        Self::open_after_tick(None)
+    }
+
+    pub(super) fn open_after_tick(minimum_tick: Option<i32>) -> Option<Self> {
         let name = wide(MAPPING_NAME);
         let mapping = unsafe { OpenFileMappingW(FILE_MAP_READ, 0, name.as_ptr()) };
         if mapping.is_null() {
@@ -331,11 +365,15 @@ impl Connection {
             }
             return None;
         }
+        let snapshot = match minimum_tick {
+            Some(tick) => Snapshot::with_minimum_tick(Some(tick)),
+            None => Snapshot::new(),
+        };
         Some(Self {
             mapping,
             view: view.Value as *const u8,
             length,
-            snapshot: Snapshot::new(),
+            snapshot,
         })
     }
 
@@ -346,6 +384,10 @@ impl Connection {
     pub(super) fn refresh(&mut self) -> bool {
         let region = unsafe { std::slice::from_raw_parts(self.view, self.length) };
         self.snapshot.refresh(region)
+    }
+
+    pub(super) fn tick(&self) -> Option<i32> {
+        self.snapshot.last_tick.map(|(tick, _)| tick)
     }
 
     pub(super) fn session_text(&self) -> &str {
@@ -380,9 +422,10 @@ mod tests {
     use super::{
         Snapshot, HEADER_BUF_LEN, HEADER_NUM_BUF, HEADER_NUM_VARS, HEADER_SESSION_LEN,
         HEADER_SESSION_OFFSET, HEADER_SESSION_UPDATE, HEADER_STATUS, HEADER_VAR_BUF,
-        HEADER_VAR_HEADER_OFFSET, MINIMUM_LENGTH, TYPE_BOOL, TYPE_DOUBLE, TYPE_FLOAT, TYPE_INT,
-        VAR_BUF_STRIDE, VAR_HEADER_NAME, VAR_HEADER_STRIDE, VAR_NAME_LENGTH,
+        HEADER_VAR_HEADER_OFFSET, MINIMUM_LENGTH, TICK_STALL_TIMEOUT, TYPE_BOOL, TYPE_DOUBLE,
+        TYPE_FLOAT, TYPE_INT, VAR_BUF_STRIDE, VAR_HEADER_NAME, VAR_HEADER_STRIDE, VAR_NAME_LENGTH,
     };
+    use std::time::Instant;
 
     struct Value {
         name: &'static str,
@@ -538,6 +581,32 @@ mod tests {
         write(&mut bytes, HEADER_STATUS, 0);
         assert!(!snapshot.refresh(&bytes));
         assert_eq!(snapshot.integer("Lap"), None);
+    }
+
+    #[test]
+    fn rejects_a_connected_mapping_that_stops_advancing_its_tick() {
+        let values = [integer("Lap", 3)];
+        let bytes = mapping(&values, "", &[(1, 0)]);
+        let mut snapshot = Snapshot::new();
+        assert!(snapshot.refresh(&bytes));
+        snapshot.last_tick = Some((1, Instant::now().checked_sub(TICK_STALL_TIMEOUT).unwrap()));
+
+        assert!(!snapshot.refresh(&bytes));
+        assert_eq!(snapshot.integer("Lap"), None);
+    }
+
+    #[test]
+    fn reopened_mapping_must_advance_past_the_stalled_tick() {
+        let values = [integer("Lap", 3)];
+        let mut bytes = mapping(&values, "", &[(1, 0)]);
+        let mut snapshot = Snapshot::with_minimum_tick(Some(1));
+
+        assert!(!snapshot.refresh(&bytes));
+        assert_eq!(snapshot.integer("Lap"), None);
+
+        write(&mut bytes, HEADER_VAR_BUF, 2);
+        assert!(snapshot.refresh(&bytes));
+        assert_eq!(snapshot.integer("Lap"), Some(3));
     }
 
     #[test]

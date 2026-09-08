@@ -27,8 +27,8 @@ impl LmuTelemetrySource {
         }
 
         // TinyPedal solo enseña el aviso si LMU confirma una amarilla sectorial.
-        // Busca primero un coche lento hasta 500 m por delante y, si no existe,
-        // uno hasta 50 m por detrás.
+        // Busca primero el coche lento más cercano hasta 500 m por delante y,
+        // si no existe, el más cercano hasta 50 m por detrás.
         if snapshot.yellow_sectors != 0 {
             let ahead = raw
                 .iter()
@@ -36,14 +36,14 @@ impl LmuTelemetrySource {
                 .map(|entry| {
                     (
                         entry.vehicle_id,
-                        Self::track_distance(
+                        Self::signed_track_distance(
                             player.lap_distance,
                             entry.lap_distance,
                             snapshot.track_length,
                         ),
                     )
                 })
-                .filter(|(_, distance)| *distance <= 500.0)
+                .filter(|(_, distance)| (0.0..=500.0).contains(distance))
                 .min_by(|left, right| left.1.total_cmp(&right.1));
 
             if let Some((vehicle_id, distance)) = ahead {
@@ -56,19 +56,19 @@ impl LmuTelemetrySource {
                 .map(|entry| {
                     (
                         entry.vehicle_id,
-                        Self::track_distance(
-                            entry.lap_distance,
+                        Self::signed_track_distance(
                             player.lap_distance,
+                            entry.lap_distance,
                             snapshot.track_length,
                         ),
                     )
                 })
-                .filter(|(_, distance)| *distance <= 50.0)
-                .min_by(|left, right| left.1.total_cmp(&right.1));
+                .filter(|(_, distance)| (-50.0..=0.0).contains(distance))
+                .max_by(|left, right| left.1.total_cmp(&right.1));
 
             if let Some((vehicle_id, distance)) = behind {
                 // Igual que TinyPedal: positivo indica delante y negativo detrás.
-                return Self::warning_for_car("yellow", vehicle_id, -distance, snapshot);
+                return Self::warning_for_car("yellow", vehicle_id, distance, snapshot);
             }
         }
 

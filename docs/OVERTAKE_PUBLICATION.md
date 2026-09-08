@@ -11,12 +11,12 @@ SimHub package.
 ## Resource fields
 
 - Title: `BlackRack Overlay`
-- Version: `0.7.0`
+- Version: `0.7.8`
 - Category: `Le Mans Ultimate`
 - Tag line: `Lightweight, configurable LMU telemetry overlays — no SimHub required.`
 - Tags: `le mans ultimate`, `lmu`, `overlay`, `standings`, `relative`,
   `delta bar`, `fuel calculator`, `virtual energy`, `track map`, `obs`
-- Download: `release/0.7.0/BlackRack Overlay_0.7.0_x64-setup.exe`
+- Download: `release/0.7.8/BlackRack Overlay_0.7.8_x64-setup.exe`
 - Support URL: `https://ko-fi.com/blackrack`
 
 ## Overview copy
@@ -42,9 +42,13 @@ optional service is unavailable, the overlays keep running.
 - Fuel / Virtual Energy — endurance strategy, consumption, autonomy, pit demand
   and achievable saving references.
 - Trailing + Pedal — live inputs and driving traces.
+- Lift & Coast — the official five-lamp energy-saving cue, with optional
+  active-only visibility.
 - Damage + Tyres — compact tyre, brake and damage status.
 - Detailed Damage — expanded vehicle and corner damage information.
 - Pit-stop Estimate — LMU's official service total and repair breakdown.
+- Stint history — recent stint laps, resource use, tyres, pace and consistency.
+- Dashboard — compact gear, shift lights and configurable car readouts.
 - Track Map — learned circuit path with live multiclass vehicle positions.
 - Flags — yellow, blue and checkered flag notifications.
 - Safe Rejoin — approaching-car and pit-exit warnings.
@@ -65,7 +69,7 @@ optional service is unavailable, the overlays keep running.
 
 ### Installation
 
-1. Download and run `BlackRack Overlay_0.7.0_x64-setup.exe`.
+1. Download and run `BlackRack Overlay_0.7.8_x64-setup.exe`.
 2. Start Le Mans Ultimate in windowed or borderless-windowed mode.
 3. Open BlackRack Overlay and enable the panels you want to use.
 
@@ -105,6 +109,18 @@ https://ko-fi.com/blackrack.
 - Moved WebView2 data to `%LOCALAPPDATA%\BlackRackOverlay`.
 - Preserved the optional Ko-fi choice on the NSIS finish page.
 
+### 0.7.8 — Hybrid data, cockpit controls and safer updates
+
+- Added optional Dashboard readouts for headlights and wipers, plus a visual
+  hybrid-battery SOC indicator with regeneration/deployment colours.
+- Added clutch input to Trailing + Pedal for LMU and iRacing.
+- Added hybrid SOC start/end and regenerated kWh to Stint history, and corrected
+  fuel accounting on pit-stop laps.
+- Added an active-only visibility mode to Lift & Coast, preserved in profiles
+  and configuration import/export.
+- Improved yellow slow-car detection, session cache resets, iRacing reconnects,
+  OBS/browser-source handling and durable Track Map learning.
+
 ## Decisions required before submission
 
 Choose and insert the resource's usage terms. Do not inherit the doX listing's
@@ -124,7 +140,7 @@ Prepare at least one real in-game hero image before publishing. Recommended set:
 
 ## Final checklist
 
-- [x] Version synchronized at `0.7.0` in npm, Cargo and Tauri.
+- [x] Version synchronized at `0.7.8` in npm, Cargo and Tauri.
 - [x] Frontend production build and localization checks pass.
 - [x] Rust library tests pass with the official LMU SDK detected.
 - [x] Production NSIS installer generated under the BlackRack name.

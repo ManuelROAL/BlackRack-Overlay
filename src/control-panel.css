@@ -1549,6 +1549,16 @@ select {
   padding-bottom: 12px;
 }
 
+[data-settings-for="liftcoast"] > .liftcoast-display-mode-field {
+  max-width: 260px;
+  margin: 0 16px 14px;
+}
+
+[data-settings-for="liftcoast"] .liftcoast-display-mode-field select {
+  width: 100%;
+  min-width: 0;
+}
+
 .column-order-button:hover:not(:disabled) {
   border-color: rgb(216 255 62 / 45%);
   color: #d8ff3e;

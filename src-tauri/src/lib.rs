@@ -412,8 +412,8 @@ fn clamped_host_bounds(
     let monitor_height = monitor_height.min(i32::MAX as u32) as i32;
     let left = (bounds.x.floor() as i64).clamp(0, monitor_width as i64 - 1) as i32;
     let top = (bounds.y.floor() as i64).clamp(0, monitor_height as i64 - 1) as i32;
-    let right = ((bounds.x + bounds.width).ceil() as i64).clamp(left as i64 + 1, monitor_width as i64)
-        as i32;
+    let right = ((bounds.x + bounds.width).ceil() as i64)
+        .clamp(left as i64 + 1, monitor_width as i64) as i32;
     let bottom = ((bounds.y + bounds.height).ceil() as i64)
         .clamp(top as i64 + 1, monitor_height as i64) as i32;
     Some((left, top, (right - left) as u32, (bottom - top) as u32))
@@ -431,7 +431,10 @@ mod host_bounds_tests {
             width: 100.3,
             height: 50.2,
         };
-        assert_eq!(clamped_host_bounds(&bounds, 1920, 1080), Some((10, 20, 101, 51)));
+        assert_eq!(
+            clamped_host_bounds(&bounds, 1920, 1080),
+            Some((10, 20, 101, 51))
+        );
     }
 
     #[test]
@@ -442,7 +445,10 @@ mod host_bounds_tests {
             width: 4000.0,
             height: 4000.0,
         };
-        assert_eq!(clamped_host_bounds(&bounds, 1920, 1080), Some((0, 0, 1920, 1080)));
+        assert_eq!(
+            clamped_host_bounds(&bounds, 1920, 1080),
+            Some((0, 0, 1920, 1080))
+        );
     }
 
     #[test]
@@ -453,7 +459,10 @@ mod host_bounds_tests {
             width: 10.0,
             height: 10.0,
         };
-        assert_eq!(clamped_host_bounds(&bounds, 1920, 1080), Some((1919, 1079, 1, 1)));
+        assert_eq!(
+            clamped_host_bounds(&bounds, 1920, 1080),
+            Some((1919, 1079, 1, 1))
+        );
     }
 
     #[test]
@@ -1386,7 +1395,7 @@ fn migrate_legacy_track_map_learning(
     track_length: f64,
     points: Vec<telemetry::LearnedTrackPoint>,
     pit_traversal_samples: Vec<f64>,
-) -> bool {
+) -> Result<bool, String> {
     telemetry::migrate_legacy_track_map_learning(
         &cache_key,
         track_name,

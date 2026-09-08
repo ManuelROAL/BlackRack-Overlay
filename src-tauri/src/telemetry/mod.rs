@@ -413,7 +413,7 @@ impl PerformanceMonitor {
 /// instead, which makes WebView2 present the transparent host at close to the
 /// monitor refresh rate even when each overlay changes far less often.
 const fn cycle_due(cycle: u64, period: u64) -> bool {
-    period == 0 || cycle % period == 0
+    period == 0 || cycle.is_multiple_of(period)
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -662,6 +662,7 @@ pub struct TelemetryFrame {
     max_rpm: f64,
     throttle: f64,
     brake: f64,
+    clutch: f64,
     brake_bias_percent: f64,
     track_limits_steps: u32,
     track_limits_steps_per_penalty: u32,
@@ -970,6 +971,7 @@ impl TelemetryFrame {
             max_rpm: 1.0,
             throttle: 0.0,
             brake: 0.0,
+            clutch: 0.0,
             brake_bias_percent: 0.0,
             track_limits_steps: 0,
             track_limits_steps_per_penalty: 0,

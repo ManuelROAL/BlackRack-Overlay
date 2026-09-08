@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::fs;
+use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, OnceLock};
 
@@ -43,7 +44,7 @@ struct LearnedTrack {
     revision: u64,
 }
 
-#[derive(Default, Deserialize, Serialize)]
+#[derive(Clone, Default, Deserialize, Serialize)]
 struct StoredTracks {
     version: u32,
     tracks: HashMap<String, LearnedTrack>,
@@ -58,6 +59,7 @@ static STORE: OnceLock<Mutex<TrackStore>> = OnceLock::new();
 
 pub(crate) fn configure_track_map_storage(app_data_directory: &Path) {
     let path = app_data_directory.join("track-map-learning.json");
+    let _ = recover_persisted_backup(&path);
     let data = fs::read(&path)
         .ok()
         .and_then(|contents| serde_json::from_slice::<StoredTracks>(&contents).ok())
@@ -78,17 +80,109 @@ fn with_store<R>(callback: impl FnOnce(&mut TrackStore) -> R) -> Option<R> {
     })
 }
 
-fn persist(store: &TrackStore) {
-    if let Some(parent) = store.path.parent() {
-        let _ = fs::create_dir_all(parent);
+fn persist(store: &TrackStore) -> Result<(), String> {
+    let parent = store
+        .path
+        .parent()
+        .ok_or_else(|| "track_map_storage_parent_missing".to_owned())?;
+    fs::create_dir_all(parent)
+        .map_err(|error| format!("track_map_storage_directory_failed: {error}"))?;
+
+    let contents = serde_json::to_vec_pretty(&store.data)
+        .map_err(|error| format!("track_map_storage_encode_failed: {error}"))?;
+    let temporary = store.path.with_extension("json.tmp");
+    let mut file = fs::File::create(&temporary)
+        .map_err(|error| format!("track_map_storage_temp_create_failed: {error}"))?;
+    file.write_all(&contents)
+        .and_then(|_| file.sync_all())
+        .map_err(|error| format!("track_map_storage_temp_sync_failed: {error}"))?;
+    drop(file);
+
+    if let Err(error) = replace_persisted_file(&temporary, &store.path) {
+        let _ = fs::remove_file(&temporary);
+        return Err(format!("track_map_storage_replace_failed: {error}"));
     }
-    if let Ok(contents) = serde_json::to_vec_pretty(&store.data) {
-        let temporary = store.path.with_extension("json.tmp");
-        if fs::write(&temporary, contents).is_ok() {
-            let _ = fs::remove_file(&store.path);
-            let _ = fs::rename(temporary, &store.path);
+
+    sync_persisted_file(&store.path)
+        .map_err(|error| format!("track_map_storage_sync_failed: {error}"))?;
+    sync_storage_directory(parent)
+        .map_err(|error| format!("track_map_storage_directory_sync_failed: {error}"))
+}
+
+/// A process interrupted after moving the old file aside must recover that
+/// file before the next launch. This is intentionally conservative: if the
+/// primary file exists, it remains authoritative and the replacement path
+/// below is responsible for its backup lifecycle.
+fn recover_persisted_backup(destination: &Path) -> io::Result<bool> {
+    if destination.exists() {
+        return Ok(false);
+    }
+    let backup = destination.with_extension("json.bak");
+    if !backup.is_file() {
+        return Ok(false);
+    }
+    fs::rename(backup, destination)?;
+    Ok(true)
+}
+
+fn replace_persisted_file(temporary: &Path, destination: &Path) -> io::Result<()> {
+    #[cfg(not(windows))]
+    {
+        fs::rename(temporary, destination)
+    }
+
+    #[cfg(windows)]
+    {
+        if fs::rename(temporary, destination).is_ok() {
+            return Ok(());
+        }
+
+        if !destination.is_file() {
+            return fs::rename(temporary, destination);
+        }
+
+        let backup = destination.with_extension("json.bak");
+        if backup.exists() {
+            return Err(io::Error::new(
+                io::ErrorKind::AlreadyExists,
+                "persistent track map backup already exists",
+            ));
+        }
+        fs::rename(destination, &backup)?;
+        match fs::rename(temporary, destination) {
+            Ok(()) => {
+                let _ = fs::remove_file(backup);
+                Ok(())
+            }
+            Err(error) => match fs::rename(&backup, destination) {
+                Ok(()) => Err(error),
+                Err(restore_error) => Err(io::Error::new(
+                    error.kind(),
+                    format!("{error}; persistent track map backup restore failed: {restore_error}"),
+                )),
+            },
         }
     }
+}
+
+#[cfg(unix)]
+fn sync_persisted_file(path: &Path) -> io::Result<()> {
+    fs::File::open(path)?.sync_all()
+}
+
+#[cfg(not(unix))]
+fn sync_persisted_file(_path: &Path) -> io::Result<()> {
+    Ok(())
+}
+
+#[cfg(unix)]
+fn sync_storage_directory(path: &Path) -> io::Result<()> {
+    fs::File::open(path)?.sync_all()
+}
+
+#[cfg(not(unix))]
+fn sync_storage_directory(_path: &Path) -> io::Result<()> {
+    Ok(())
 }
 
 pub(crate) fn learned_track_points(cache_key: &str) -> Option<(Vec<LearnedTrackPoint>, f64)> {
@@ -149,6 +243,7 @@ pub(super) fn learned_pit_speed(track_name: &str, track_length: f64) -> f64 {
 pub(super) fn save_pit_speed(track_name: &str, track_length: f64, speed: f64) {
     let key = track_map_cache_key(track_name, track_length);
     let _ = with_store(|store| {
+        let previous_data = store.data.clone();
         let track = store.data.tracks.entry(key).or_default();
         if track
             .pit_speed_ms
@@ -159,7 +254,9 @@ pub(super) fn save_pit_speed(track_name: &str, track_length: f64, speed: f64) {
         track.track_name = track_name.to_owned();
         track.track_length = track_length;
         track.pit_speed_ms = Some(speed);
-        persist(store);
+        if persist(store).is_err() {
+            store.data = previous_data;
+        }
     });
 }
 
@@ -169,9 +266,9 @@ pub(crate) fn migrate_legacy_track_map_learning(
     track_length: f64,
     points: Vec<LearnedTrackPoint>,
     pit_traversal_samples: Vec<f64>,
-) -> bool {
+) -> Result<bool, String> {
     if cache_key.trim().is_empty() || !track_length.is_finite() || track_length <= 100.0 {
-        return false;
+        return Ok(false);
     }
     let valid_points = points.len() >= 40
         && points
@@ -195,6 +292,7 @@ pub(crate) fn migrate_legacy_track_map_learning(
         .collect::<Vec<_>>();
     let has_valid_samples = !samples.is_empty();
     with_store(|store| {
+        let previous_data = store.data.clone();
         let track = store.data.tracks.entry(cache_key.to_owned()).or_default();
         let mut changed = false;
         if valid_points && track.points.len() < 40 {
@@ -214,11 +312,14 @@ pub(crate) fn migrate_legacy_track_map_learning(
             || (valid_points && track.points.len() >= 40)
             || (has_valid_samples && !track.pit_traversal_samples.is_empty());
         if changed {
-            persist(store);
+            if let Err(error) = persist(store) {
+                store.data = previous_data;
+                return Err(error);
+            }
         }
-        handled
+        Ok(handled)
     })
-    .unwrap_or(false)
+    .unwrap_or_else(|| Err("track_map_storage_not_configured".to_owned()))
 }
 
 pub(crate) fn track_map_cache_key(track_name: &str, track_length: f64) -> String {
@@ -391,12 +492,15 @@ impl TrackMapModelState {
             {
                 let points = self.samples.clone();
                 let _ = with_store(|store| {
+                    let previous_data = store.data.clone();
                     let track = store.data.tracks.entry(self.cache_key.clone()).or_default();
                     track.track_name.clone_from(&frame.track_name);
                     track.track_length = frame.track_length_meters;
                     track.points = points;
                     track.revision = track.revision.saturating_add(1).max(1);
-                    persist(store);
+                    if persist(store).is_err() {
+                        store.data = previous_data;
+                    }
                 });
             }
             self.recording_lap = Some(player.total_laps);
@@ -527,6 +631,7 @@ impl TrackMapModelState {
             return;
         }
         let _ = with_store(|store| {
+            let previous_data = store.data.clone();
             let track = store.data.tracks.entry(self.cache_key.clone()).or_default();
             track.track_name.clone_from(&frame.track_name);
             track.track_length = frame.track_length_meters;
@@ -544,7 +649,9 @@ impl TrackMapModelState {
             }) {
                 track.pit_entry_distance = Some(distance.rem_euclid(frame.track_length_meters));
             }
-            persist(store);
+            if persist(store).is_err() {
+                store.data = previous_data;
+            }
         });
     }
 
@@ -571,8 +678,8 @@ impl TrackMapModelState {
     /// paint directly: the best of the player's class, and a personal best.
     fn sector_highlights(&self) -> (u32, u32) {
         let (mut class_best, mut personal_best) = (0, 0);
-        for index in 0..3 {
-            match self.sector_results[index] {
+        for (index, result) in self.sector_results.iter().enumerate() {
+            match *result {
                 "overall" => {
                     class_best |= 1 << SECTOR_BITS[index];
                     personal_best |= 1 << SECTOR_BITS[index];
@@ -726,6 +833,21 @@ fn observe_pit_progress(state: &mut PitVehicleState, progress: Option<f64>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::atomic::{AtomicU64, Ordering};
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    static TEST_PATH_COUNTER: AtomicU64 = AtomicU64::new(0);
+
+    fn test_storage_path() -> PathBuf {
+        let suffix = TEST_PATH_COUNTER.fetch_add(1, Ordering::Relaxed);
+        std::env::temp_dir().join(format!(
+            "blackrack-overlay-track-map-test-{}-{suffix}",
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ))
+    }
 
     fn sector_vehicle(sector: i32, lap_distance: f64) -> TrackMapVehicle {
         TrackMapVehicle {
@@ -789,6 +911,65 @@ mod tests {
     fn median_uses_the_middle_of_the_persisted_samples() {
         assert_eq!(median(&[31.0, 27.0, 29.0]), 29.0);
         assert_eq!(median(&[27.0, 29.0]), 28.0);
+    }
+
+    #[test]
+    fn failed_replace_keeps_the_existing_persistent_path() {
+        let root = test_storage_path();
+        fs::create_dir_all(&root).unwrap();
+        let destination = root.join("track-map-learning.json");
+        fs::create_dir(&destination).unwrap();
+        let store = TrackStore {
+            path: destination.clone(),
+            data: StoredTracks {
+                version: 1,
+                tracks: HashMap::new(),
+            },
+        };
+
+        assert!(persist(&store).is_err());
+        assert!(destination.is_dir());
+        assert!(!destination.with_extension("json.tmp").exists());
+
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn successful_replace_keeps_the_new_persistent_contents() {
+        let root = test_storage_path();
+        fs::create_dir_all(&root).unwrap();
+        let destination = root.join("track-map-learning.json");
+        fs::write(&destination, br#"{"version":1,"tracks":{}}"#).unwrap();
+        let store = TrackStore {
+            path: destination.clone(),
+            data: StoredTracks {
+                version: 1,
+                tracks: HashMap::new(),
+            },
+        };
+
+        let result = persist(&store);
+        assert!(result.is_ok(), "{result:?}");
+        let stored =
+            serde_json::from_slice::<StoredTracks>(&fs::read(destination).unwrap()).unwrap();
+        assert_eq!(stored.version, 1);
+
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn recovers_a_backup_when_the_primary_file_is_missing() {
+        let root = test_storage_path();
+        fs::create_dir_all(&root).unwrap();
+        let destination = root.join("track-map-learning.json");
+        let backup = destination.with_extension("json.bak");
+        fs::write(&backup, br#"{"version":1,"tracks":{}}"#).unwrap();
+
+        assert!(recover_persisted_backup(&destination).unwrap());
+        assert!(destination.is_file());
+        assert!(!backup.exists());
+
+        fs::remove_dir_all(root).unwrap();
     }
 
     #[test]

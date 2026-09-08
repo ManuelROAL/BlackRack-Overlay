@@ -5,7 +5,7 @@ use reqwest::blocking::Client;
 use serde::de::DeserializeOwned;
 use serde::Deserialize;
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicU8, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering};
 #[cfg(not(test))]
 use std::sync::mpsc;
 use std::sync::mpsc::Receiver;
@@ -337,6 +337,7 @@ pub(super) struct RestWeatherMetric {
 
 #[derive(Default)]
 struct SupplementUpdate {
+    generation: u64,
     pit_stop: Option<RestPitStopEstimate>,
     compound_conditions: Option<Vec<RestCompoundCondition>>,
     vehicle_damage: Option<RestVehicleDamage>,
@@ -349,15 +350,22 @@ struct SupplementUpdate {
 
 #[derive(Default)]
 struct StandingsUpdate {
+    generation: u64,
     standings: Vec<RestStanding>,
     history: Option<HashMap<String, Vec<RestStandingHistory>>>,
+}
+
+struct WeatherUpdate {
+    generation: u64,
+    session: String,
+    weather: RestWeatherSession,
 }
 
 #[derive(Default)]
 pub(super) struct LocalRestResolver {
     standings_receiver: Option<Receiver<StandingsUpdate>>,
     supplement_receiver: Option<Receiver<SupplementUpdate>>,
-    weather_receiver: Option<Receiver<(String, RestWeatherSession)>>,
+    weather_receiver: Option<Receiver<WeatherUpdate>>,
     weather_session: Arc<Mutex<String>>,
     standings_by_slot: HashMap<i32, RestStanding>,
     standings_by_name: HashMap<String, RestStanding>,
@@ -375,29 +383,52 @@ pub(super) struct LocalRestResolver {
     team_driver_names: Vec<String>,
     team_name: String,
     team_vehicle_name: String,
-    supplement_received_at: Option<Instant>,
+    pit_stop_received_at: Option<Instant>,
     weather_nodes: RestWeatherSession,
     weather_received_at: Option<Instant>,
     demand: Arc<AtomicU8>,
+    session_generation: Arc<AtomicU64>,
+    stop: Arc<AtomicBool>,
+    #[cfg(not(test))]
+    workers: Vec<thread::JoinHandle<()>>,
+}
+
+impl Drop for LocalRestResolver {
+    fn drop(&mut self) {
+        self.stop.store(true, Ordering::Relaxed);
+        #[cfg(not(test))]
+        for worker in self.workers.drain(..) {
+            let _ = worker.join();
+        }
+    }
 }
 
 impl LocalRestResolver {
     #[cfg(not(test))]
     pub(super) fn discover() -> Self {
         let demand = Arc::new(AtomicU8::new(0));
+        let session_generation = Arc::new(AtomicU64::new(0));
+        let stop = Arc::new(AtomicBool::new(false));
+        let mut workers = Vec::with_capacity(3);
         let (standings_sender, standings_receiver) = mpsc::channel();
         let standings_demand = Arc::clone(&demand);
-        thread::spawn(move || {
+        let standings_generation = Arc::clone(&session_generation);
+        let standings_stop = Arc::clone(&stop);
+        workers.push(thread::spawn(move || {
             let Some(client) = http_client() else {
                 return;
             };
             let mut history_received_at: Option<Instant> = None;
             loop {
+                if standings_stop.load(Ordering::Relaxed) {
+                    break;
+                }
                 if standings_demand.load(Ordering::Relaxed) & STANDINGS_DEMAND == 0 {
                     thread::sleep(Duration::from_secs(1));
                     continue;
                 }
                 let started = Instant::now();
+                let generation = standings_generation.load(Ordering::Acquire);
                 if let Some(standings) = fetch_tracked(&client, "/rest/watch/standings") {
                     let history = if history_received_at
                         .is_none_or(|received| received.elapsed() >= HISTORY_INTERVAL)
@@ -411,7 +442,11 @@ impl LocalRestResolver {
                         None
                     };
                     if standings_sender
-                        .send(StandingsUpdate { standings, history })
+                        .send(StandingsUpdate {
+                            generation,
+                            standings,
+                            history,
+                        })
                         .is_err()
                     {
                         break;
@@ -419,22 +454,28 @@ impl LocalRestResolver {
                 }
                 sleep_remaining(started, STANDINGS_INTERVAL);
             }
-        });
+        }));
 
         let (supplement_sender, supplement_receiver) = mpsc::channel();
         let supplement_demand = Arc::clone(&demand);
-        thread::spawn(move || {
+        let supplement_generation = Arc::clone(&session_generation);
+        let supplement_stop = Arc::clone(&stop);
+        workers.push(thread::spawn(move || {
             let Some(client) = http_client() else {
                 return;
             };
             let mut garage_received_at: Option<Instant> = None;
             let mut compounds_received_at: Option<Instant> = None;
             loop {
+                if supplement_stop.load(Ordering::Relaxed) {
+                    break;
+                }
                 if supplement_demand.load(Ordering::Relaxed) & SUPPLEMENT_DEMAND == 0 {
                     thread::sleep(Duration::from_secs(1));
                     continue;
                 }
                 let started = Instant::now();
+                let generation = supplement_generation.load(Ordering::Acquire);
                 let steering_range_degrees = if garage_received_at
                     .is_none_or(|received| received.elapsed() >= GARAGE_INTERVAL)
                 {
@@ -478,6 +519,7 @@ impl LocalRestResolver {
                     })
                 });
                 let update = SupplementUpdate {
+                    generation,
                     pit_stop: fetch_tracked(&client, "/rest/strategy/pitstop-estimate"),
                     compound_conditions,
                     vehicle_damage: repair_and_refuel
@@ -499,17 +541,22 @@ impl LocalRestResolver {
                 }
                 sleep_remaining(started, SUPPLEMENT_INTERVAL);
             }
-        });
+        }));
 
         let (weather_sender, weather_receiver) = mpsc::channel();
         let weather_demand = Arc::clone(&demand);
+        let weather_generation = Arc::clone(&session_generation);
         let weather_session = Arc::new(Mutex::new(String::new()));
         let weather_session_slot = Arc::clone(&weather_session);
-        thread::spawn(move || {
+        let weather_stop = Arc::clone(&stop);
+        workers.push(thread::spawn(move || {
             let Some(client) = http_client() else {
                 return;
             };
             loop {
+                if weather_stop.load(Ordering::Relaxed) {
+                    break;
+                }
                 if weather_demand.load(Ordering::Relaxed) & WEATHER_DEMAND == 0 {
                     thread::sleep(Duration::from_secs(1));
                     continue;
@@ -523,30 +570,40 @@ impl LocalRestResolver {
                     continue;
                 }
                 let started = Instant::now();
+                let generation = weather_generation.load(Ordering::Acquire);
                 if let Some(weather_sessions) = fetch_tracked::<HashMap<String, RestWeatherSession>>(
                     &client,
                     "/rest/sessions/weather",
                 ) {
                     if let Some(weather) = weather_sessions.get(&session) {
-                        if weather_sender.send((session, weather.clone())).is_err() {
+                        if weather_sender
+                            .send(WeatherUpdate {
+                                generation,
+                                session,
+                                weather: weather.clone(),
+                            })
+                            .is_err()
+                        {
                             break;
                         }
                     }
                 }
                 sleep_remaining(started, WEATHER_INTERVAL);
             }
-        });
+        }));
 
         // Everything except the worker handles starts empty, so only the fields
         // wired to the threads spawned above are named here.
-        Self {
-            standings_receiver: Some(standings_receiver),
-            supplement_receiver: Some(supplement_receiver),
-            weather_receiver: Some(weather_receiver),
-            weather_session,
-            demand,
-            ..Default::default()
-        }
+        let mut resolver = Self::default();
+        resolver.standings_receiver = Some(standings_receiver);
+        resolver.supplement_receiver = Some(supplement_receiver);
+        resolver.weather_receiver = Some(weather_receiver);
+        resolver.weather_session = weather_session;
+        resolver.demand = demand;
+        resolver.session_generation = session_generation;
+        resolver.stop = stop;
+        resolver.workers = workers;
+        resolver
     }
 
     #[cfg(test)]
@@ -585,9 +642,11 @@ impl LocalRestResolver {
             .as_ref()
             .map(|receiver| receiver.try_iter().collect::<Vec<_>>())
             .unwrap_or_default();
-        for (session, nodes) in weather_updates {
-            if session == weather_session {
-                self.weather_nodes = nodes;
+        for update in weather_updates {
+            if update.generation == self.session_generation.load(Ordering::Acquire)
+                && update.session == weather_session
+            {
+                self.weather_nodes = update.weather;
                 self.weather_received_at = Some(Instant::now());
             }
         }
@@ -597,6 +656,9 @@ impl LocalRestResolver {
             .map(|receiver| receiver.try_iter().collect::<Vec<_>>())
             .unwrap_or_default();
         for update in standings_updates {
+            if update.generation != self.session_generation.load(Ordering::Acquire) {
+                continue;
+            }
             self.standings_by_slot.clear();
             self.standings_by_name.clear();
             for standing in update.standings {
@@ -621,10 +683,12 @@ impl LocalRestResolver {
             .map(|receiver| receiver.try_iter().collect::<Vec<_>>())
             .unwrap_or_default();
         for update in supplement_updates {
-            let mut received = false;
+            if update.generation != self.session_generation.load(Ordering::Acquire) {
+                continue;
+            }
             if let Some(pit_stop) = update.pit_stop {
                 self.pit_stop = pit_stop;
-                received = true;
+                self.pit_stop_received_at = Some(Instant::now());
             }
             if let Some(compound_conditions) = update.compound_conditions {
                 self.compound_conditions = compound_conditions;
@@ -643,18 +707,13 @@ impl LocalRestResolver {
             if let Some(fuel_ratio_assigned) = update.fuel_ratio_assigned {
                 self.fuel_ratio_assigned = fuel_ratio_assigned;
                 self.pit_menu_received_at = Some(Instant::now());
-                received = true;
             }
             if let Some(pit_refill_targets) = update.pit_refill_targets {
                 self.pit_refill_targets = pit_refill_targets;
                 self.pit_menu_received_at = Some(Instant::now());
-                received = true;
             }
             if let Some(steering_range_degrees) = update.steering_range_degrees {
                 self.steering_range_degrees = Some(steering_range_degrees);
-            }
-            if received {
-                self.supplement_received_at = Some(Instant::now());
             }
         }
         if !connected {
@@ -720,6 +779,10 @@ impl LocalRestResolver {
     }
 
     pub(super) fn reset_session_history(&mut self) {
+        self.session_generation.fetch_add(1, Ordering::AcqRel);
+        self.standings_by_slot.clear();
+        self.standings_by_name.clear();
+        self.standings_received_at = None;
         self.history_by_slot.clear();
         self.history_by_name.clear();
         self.session_max_time_seconds = 0.0;
@@ -727,6 +790,8 @@ impl LocalRestResolver {
         self.fuel_ratio_assigned = 0.0;
         self.pit_refill_targets = RestPitRefillTargets::default();
         self.pit_menu_received_at = None;
+        self.pit_stop = RestPitStopEstimate::default();
+        self.pit_stop_received_at = None;
         self.team_driver_names.clear();
         self.team_name.clear();
         self.team_vehicle_name.clear();
@@ -833,7 +898,7 @@ impl LocalRestResolver {
     }
 
     pub(super) fn pit_stop(&self) -> Option<&RestPitStopEstimate> {
-        is_fresh(self.supplement_received_at, SUPPLEMENT_MAX_AGE).then_some(&self.pit_stop)
+        is_fresh(self.pit_stop_received_at, SUPPLEMENT_MAX_AGE).then_some(&self.pit_stop)
     }
 
     /// The car's compounds in `mCompoundType` index order, empty until the
@@ -1048,9 +1113,11 @@ mod tests {
         rest_demand, steering_range, team_info_for_player, LocalRestResolver, RestGarageData,
         RestPitStopEstimate, RestRepairAndRefuel, RestSessionInfo, RestStanding,
         RestStandingHistory, RestTeamInfo, RestTireManagement, RestVehicleDamage,
-        RestWeatherSession, STANDINGS_DEMAND, SUPPLEMENT_DEMAND, WEATHER_DEMAND,
+        RestWeatherSession, StandingsUpdate, STANDINGS_DEMAND, SUPPLEMENT_DEMAND,
+        SUPPLEMENT_MAX_AGE, WEATHER_DEMAND,
     };
     use std::collections::HashMap;
+    use std::time::{Duration, Instant};
 
     #[test]
     fn rest_workers_follow_independent_connected_demands() {
@@ -1102,6 +1169,72 @@ mod tests {
         let pit: RestPitStopEstimate =
             serde_json::from_str(r#"{"fuel":5.0,"tires":12.0,"total":17.0,"ve":3.0}"#).unwrap();
         assert_eq!(pit.total, 17.0);
+    }
+
+    #[test]
+    fn pit_stop_freshness_is_independent_from_the_fuel_menu() {
+        let mut resolver = LocalRestResolver::empty();
+        resolver.pit_stop = RestPitStopEstimate {
+            total: 17.0,
+            ..RestPitStopEstimate::default()
+        };
+        resolver.pit_stop_received_at = Some(
+            Instant::now()
+                .checked_sub(SUPPLEMENT_MAX_AGE + Duration::from_secs(1))
+                .unwrap(),
+        );
+        resolver.pit_menu_received_at = Some(Instant::now());
+
+        assert!(resolver.pit_stop().is_none());
+
+        resolver.pit_stop_received_at = Some(Instant::now());
+        assert_eq!(
+            resolver.pit_stop().map(|estimate| estimate.total),
+            Some(17.0)
+        );
+    }
+
+    #[test]
+    fn session_reset_discards_standings_and_pit_stop_cache() {
+        let mut resolver = LocalRestResolver::empty();
+        resolver.seed_standings(vec![RestStanding {
+            slot_id: 4,
+            ..RestStanding::default()
+        }]);
+        resolver.pit_stop = RestPitStopEstimate {
+            total: 17.0,
+            ..RestPitStopEstimate::default()
+        };
+        resolver.pit_stop_received_at = Some(Instant::now());
+
+        resolver.reset_session_history();
+
+        assert!(resolver.standing(4, "").is_none());
+        assert!(resolver.pit_stop().is_none());
+    }
+
+    #[test]
+    fn session_reset_discards_a_queued_update_from_the_previous_generation() {
+        let mut resolver = LocalRestResolver::empty();
+        let (sender, receiver) = std::sync::mpsc::channel();
+        resolver.standings_receiver = Some(receiver);
+        sender
+            .send(StandingsUpdate {
+                generation: 0,
+                standings: vec![RestStanding {
+                    slot_id: 42,
+                    driver_name: "Old Session".to_owned(),
+                    ..RestStanding::default()
+                }],
+                history: None,
+            })
+            .unwrap();
+
+        resolver.reset_session_history();
+        resolver.refresh(true, true, true, false, false, "");
+
+        assert!(resolver.standings_by_slot.is_empty());
+        assert!(resolver.standings_by_name.is_empty());
     }
 
     #[test]

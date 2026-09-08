@@ -1,4 +1,6 @@
 import "./dashboard.css";
+import batteryIconUrl from "./assets/lmu-icons/battery-empty-svgrepo-com.svg";
+import { t } from "./i18n";
 import type { TelemetryFrame } from "./telemetry-types";
 import { fitOverlayToContentBox } from "./overlay-fit";
 import { bindOverlayInteractionMode } from "./overlay-interaction";
@@ -32,6 +34,10 @@ const fields = Object.fromEntries(
 const value = (id: string): HTMLElement => document.getElementById(`dashboard-${id}`)!;
 const gear = value("gear");
 const revs = value("revs");
+const batteryField = fields.battery;
+const batteryFill = document.getElementById("dashboard-battery-fill")!;
+const batteryOutline = document.querySelector<HTMLImageElement>(".dash-hybrid-outline")!;
+batteryOutline.src = batteryIconUrl;
 const readout = document.querySelector<HTMLElement>(".dash-readout")!;
 const row = value("fields");
 const empty = value("empty");
@@ -62,6 +68,7 @@ for (let index = 0; index < REV_LIGHTS; index += 1) {
 const synchronizeOverlaySize = fitOverlayToContentBox(shell);
 
 let settings = readDashboardSettings();
+let lastFrame: TelemetryFrame | null = null;
 
 const setText = (element: HTMLElement, text: string): void => {
   if (element.textContent !== text) element.textContent = text;
@@ -84,6 +91,25 @@ const level = (current: number, max: number): string =>
 
 const rounded = (input: number, digits = 0, suffix = ""): string =>
   Number.isFinite(input) && input >= 0 ? `${input.toFixed(digits)}${suffix}` : UNKNOWN;
+
+const wiperStateLabel = (state: number): string => {
+  switch (state) {
+    case 0: return t("dashboard.wipersOff");
+    case 1: return t("dashboard.wipersAuto");
+    case 2: return t("dashboard.wipersSlow");
+    case 3: return t("dashboard.wipersFast");
+    default: return UNKNOWN;
+  }
+};
+
+type HybridVisualState = "off" | "deploy" | "regen";
+
+const hybridVisualState = (frame: TelemetryFrame): HybridVisualState => {
+  if (!frame.hybrid_available) return "off";
+  if (frame.hybrid_motor_state === 3) return "regen";
+  if (frame.hybrid_motor_state === 2) return "deploy";
+  return "off";
+};
 
 const lapTime = (seconds: number): string => {
   if (!Number.isFinite(seconds) || seconds <= 0) return UNKNOWN_LAP;
@@ -141,6 +167,7 @@ const available = (id: DashboardFieldId, frame: TelemetryFrame): boolean => {
       return frame.car_electronics_available && frame.traction_control_cut_max > 0;
     case "abs": return frame.car_electronics_available && frame.anti_lock_brakes_max > 0;
     case "battery": return frame.hybrid_available;
+    case "headlights": case "wipers": return frame.capabilities.car_electronics;
     case "energy": return frame.virtual_energy_active;
     case "delta": return frame.delta_model.available;
     case "lastlap": case "bestlap": case "predicted": return frame.timing_model.available;
@@ -187,9 +214,15 @@ const renderValues = (frame: TelemetryFrame): void => {
 
   setText(value("fuel"), rounded(frame.fuel_liters, 1));
   setText(value("energy"), rounded(frame.virtual_energy_percent, 0, "%"));
+  setText(value("headlights"), frame.headlights_on ? t("dashboard.statusOn") : t("dashboard.statusOff"));
   const range = frame.resource_autonomy.range_laps;
   setText(value("laps"), range == null ? "--" : rounded(range, 1));
-  setText(value("battery"), rounded(frame.battery_charge_percent, 0, "%"));
+  const batteryPercent = Number.isFinite(frame.battery_charge_percent)
+    ? Math.max(0, Math.min(100, frame.battery_charge_percent))
+    : 0;
+  batteryFill.style.width = `${(62.5 * batteryPercent / 100).toFixed(2)}%`;
+  const state = hybridVisualState(frame);
+  setState(batteryField, "hybridState", state);
 
   setText(value("map"), level(frame.engine_map, frame.engine_map_max));
   setText(value("tc"), level(frame.traction_control_level, frame.traction_control_max));
@@ -199,6 +232,7 @@ const renderValues = (frame: TelemetryFrame): void => {
   setText(value("bias"), `${frame.brake_bias_percent.toFixed(1)}%`);
   setText(value("air"), rounded(frame.ambient_temperature_c, 0, "°"));
   setText(value("track"), rounded(frame.track_temperature_c, 0, "°"));
+  setText(value("wipers"), wiperStateLabel(frame.wiper_state));
 };
 
 const renderAdjustment = (frame: TelemetryFrame): void => {
@@ -232,6 +266,7 @@ const renderAdjustment = (frame: TelemetryFrame): void => {
 };
 
 const render = (frame: TelemetryFrame): void => {
+  lastFrame = frame;
   const live = frame.player_active;
   if (live) renderValues(frame);
   renderAdjustment(frame);
@@ -265,6 +300,10 @@ const render = (frame: TelemetryFrame): void => {
 
 const applySettings = (next: DashboardSettings): void => {
   settings = next;
+  if (lastFrame) {
+    render(lastFrame);
+    return;
+  }
   for (const { id } of DASHBOARD_FIELDS) {
     if (fields[id]) toggle(fields[id], settings.visible[id]);
   }
@@ -274,6 +313,7 @@ const applySettings = (next: DashboardSettings): void => {
 applySettings(settings);
 
 const previewFrame = {
+  capabilities: { car_electronics: true },
   player_active: true,
   gear: 6,
   speed_kph: 255,
@@ -290,9 +330,13 @@ const previewFrame = {
   resource_autonomy: { fuel_laps: 17.5, energy_laps: 15.2, range_laps: 15.2 },
   virtual_energy_active: true,
   virtual_energy_percent: 58,
+  headlights_on: true,
+  wiper_state: 2,
   estimated_virtual_energy_laps: 15.2,
   hybrid_available: true,
   battery_charge_percent: 62,
+  hybrid_regen_kw: 84,
+  hybrid_motor_state: 3,
   lift_and_coast_progress: 0,
   car_electronics_available: true,
   engine_map: 6,

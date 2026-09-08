@@ -73,7 +73,7 @@ const telemetryFields: Record<OverlayId, readonly (keyof TelemetryFrame)[]> = {
   timing: ["timing_model"],
   stinthistory: ["stint_history_model"],
   driving: [
-    "speed_kph", "gear", "throttle", "brake", "tc_active", "abs_active",
+    "speed_kph", "gear", "throttle", "brake", "clutch", "tc_active", "abs_active",
     "steering_angle_degrees", "force_feedback", "rpm", "max_rpm"
   ],
   liftcoast: ["lift_and_coast_progress"],
@@ -131,20 +131,20 @@ const telemetryFields: Record<OverlayId, readonly (keyof TelemetryFrame)[]> = {
     "weather_forecast"
   ],
   dashboard: [
-    "source", "track_name", "player_vehicle_name", "session_type",
+    "capabilities", "source", "track_name", "player_vehicle_name", "session_type",
     "player_active", "gear", "speed_kph", "rpm", "max_rpm",
     "player_position", "player_class_position",
     "lap_number", "session_max_laps", "session_time_remaining",
     "delta_model", "timing_model",
     "fuel_liters", "resource_autonomy",
     "virtual_energy_active", "virtual_energy_percent",
-    "hybrid_available", "battery_charge_percent",
+    "hybrid_available", "battery_charge_percent", "hybrid_motor_state",
     "car_electronics_available", "engine_map", "engine_map_max",
     "traction_control_level", "traction_control_max",
     "traction_control_slip", "traction_control_slip_max",
     "traction_control_cut", "traction_control_cut_max",
     "anti_lock_brakes_level", "anti_lock_brakes_max", "brake_bias_percent",
-    "speed_limiter_active", "lift_and_coast_progress",
+    "speed_limiter_active", "headlights_on", "wiper_state", "lift_and_coast_progress",
     "ambient_temperature_c", "track_temperature_c"
   ]
 };
@@ -576,6 +576,7 @@ for (const event of [
   "tires://settings",
   "conditions://settings",
   "dashboard://settings",
+  "liftcoast://settings",
   "overlay://background-transparency",
   "overlay://font-size",
   "performance://logging"

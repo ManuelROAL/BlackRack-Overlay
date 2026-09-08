@@ -33,7 +33,7 @@ como fuentes de navegador en OBS en el mismo ordenador.
 
 SOPORTE
 Pulsa Copiar diagnóstico en Integraciones > Soporte y adjunta el resumen a tu
-consulta en la página de BlackRack Overlay en OverTake. Explica cómo reproducir
+consulta en https://discord.gg/VdT6Wncxup. Explica cómo reproducir
 el problema y añade una captura si ayuda. El resumen excluye registros, rutas
 personales y credenciales.
 
@@ -46,3 +46,4 @@ Instalador de Windows, guías en inglés y español, novedades destacadas y
 SHA256SUMS.txt con sumas SHA-256 de estos archivos.
 
 Apoyo opcional al proyecto: https://ko-fi.com/blackrack
+Agradecimientos a https://www.twitch.tv/rastaracing

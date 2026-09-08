@@ -212,8 +212,7 @@ const applySettings = (next: DrivingSettings): void => {
 const render = (frame: TelemetryFrame): void => {
   const throttle = Math.max(0, Math.min(1, frame.throttle));
   const brake = Math.max(0, Math.min(1, frame.brake));
-  // The shared-memory contract does not expose clutch input yet.
-  const clutch = 0;
+  const clutch = Math.max(0, Math.min(1, frame.clutch));
   push(history.throttle, throttle);
   push(history.brake, brake);
   push(history.clutch, clutch);

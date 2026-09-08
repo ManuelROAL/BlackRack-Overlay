@@ -4,13 +4,18 @@ import { fitOverlay } from "./overlay-fit";
 import { bindOverlayInteractionMode } from "./overlay-interaction";
 import { createOverlayPerformanceTracker } from "./overlay-performance";
 import { bindOverlayTransparency } from "./overlay-appearance";
+import {
+  readLiftCoastSettings,
+  type LiftCoastSettings
+} from "./liftcoast-settings";
 import type { TelemetryFrame } from "./telemetry-types";
-import { listenTelemetry } from "./runtime-events";
+import { isTauriRuntime, listenRuntimeEvent, listenTelemetry } from "./runtime-events";
 
 const SEGMENT_COUNT = 5;
 const card = document.getElementById("liftcoast-card")!;
 const segments = Array.from(document.querySelectorAll<HTMLElement>("[data-segment]"));
 const renderPerformance = createOverlayPerformanceTracker("liftcoast");
+let settings: LiftCoastSettings = readLiftCoastSettings();
 
 fitOverlay({ width: 190, height: 32 });
 bindOverlayTransparency("liftcoast");
@@ -27,6 +32,8 @@ const render = (frame: TelemetryFrame): void => {
   const lit = visibleSegments(frame.lift_and_coast_progress);
   const active = lit > 0;
   const activeValue = String(active);
+  const displayMode = settings.displayMode;
+  if (card.dataset.displayMode !== displayMode) card.dataset.displayMode = displayMode;
   if (card.dataset.active !== activeValue) card.dataset.active = activeValue;
   for (let index = 0; index < segments.length; index += 1) {
     const next = String(index < lit);
@@ -34,8 +41,20 @@ const render = (frame: TelemetryFrame): void => {
   }
 };
 
+const applySettings = (next: LiftCoastSettings): void => {
+  settings = next;
+  if (card.dataset.displayMode !== settings.displayMode) {
+    card.dataset.displayMode = settings.displayMode;
+  }
+};
+
+applySettings(settings);
+
 void listenTelemetry((frame) => renderPerformance.measure(() => render(frame)));
 bindOverlayInteractionMode();
+if (isTauriRuntime()) {
+  void listenRuntimeEvent<LiftCoastSettings>("liftcoast://settings", applySettings);
+}
 
 if (import.meta.env.DEV) {
   const preview = Number(new URLSearchParams(window.location.search).get("preview"));

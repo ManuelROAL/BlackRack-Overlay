@@ -553,9 +553,9 @@ impl LmuTelemetrySource {
     }
 
     /// TinyPedal considera que un coche está provocando (o a punto de provocar)
-    /// una amarilla cuando circula a menos de 8 m/s. En standings el indicador
-    /// es deliberadamente preventivo: no depende de que LMU ya haya activado la
-    /// bandera sectorial.
+    /// una amarilla cuando circula a menos de 8 m/s fuera del garaje. La entrada
+    /// de pit lane sí cuenta; el filtro equivalente a `inPaddock != 2` excluye
+    /// únicamente los coches dentro del garaje.
     pub(super) fn slow_yellow_vehicles(snapshot: &LmuSnapshot) -> HashSet<i32> {
         const YELLOW_SPEED_THRESHOLD_KPH: f64 = 8.0 * 3.6;
         let count = (snapshot.standings_count as usize).min(MAX_VEHICLES);
@@ -564,9 +564,7 @@ impl LmuTelemetrySource {
             .iter()
             .filter(|entry| {
                 entry.vehicle_id != 0
-                    && entry.in_pits == 0
                     && entry.in_garage == 0
-                    && entry.pit_state < 2
                     && entry.speed_kph.is_finite()
                     && entry.speed_kph < YELLOW_SPEED_THRESHOLD_KPH
             })
@@ -647,5 +645,20 @@ impl LmuTelemetrySource {
             return 0.0;
         }
         (to - from).rem_euclid(track_length)
+    }
+
+    pub(super) fn signed_track_distance(from: f64, to: f64, track_length: f64) -> f64 {
+        if !from.is_finite() || !to.is_finite() || track_length <= 1.0 {
+            return 0.0;
+        }
+        let mut distance = to - from;
+        if distance.abs() > track_length * 0.5 {
+            if to > from {
+                distance -= track_length;
+            } else if to < from {
+                distance += track_length;
+            }
+        }
+        distance
     }
 }

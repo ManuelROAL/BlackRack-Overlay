@@ -481,6 +481,21 @@
           </label>
         </article>
 
+        <section class="standings-settings-section" data-settings-for="liftcoast" hidden>
+          <header class="settings-section-heading">
+            <span data-i18n="settings.liftcoast">CONFIGURACIÓN DE LIFT &amp; COAST</span>
+            <strong data-i18n="settings.liftcoastSub">Visibilidad del indicador</strong>
+          </header>
+          <label class="select-field liftcoast-display-mode-field">
+            <span data-i18n="settings.liftcoastMode">MOSTRAR INDICADOR</span>
+            <select id="liftcoast-display-mode" data-i18n-aria-label="settings.liftcoastMode">
+              <option value="always" data-i18n="settings.liftcoastAlways">Siempre (modo actual)</option>
+              <option value="active" data-i18n="settings.liftcoastActive">Sólo cuando se enciende un LED</option>
+            </select>
+          </label>
+          <p class="settings-note" data-i18n="settings.liftcoastNote">El modo activo oculta el panel cuando las cinco lámparas están apagadas.</p>
+        </section>
+
         <article class="overlay-option" data-overlay-card="tires" data-overlay-category="car">
           <div class="overlay-icon">N</div>
           <div class="overlay-copy">
@@ -752,7 +767,7 @@
             <strong data-i18n="settings.visible">Elementos visibles</strong>
           </header>
           <div id="dashboard-options" class="standings-columns" aria-label="Valores visibles del dashboard" data-i18n-aria-label="settings.dashboardAria"></div>
-          <label class="select-field">
+          <label class="select-field liftcoast-display-mode-field">
             <span data-i18n="settings.dashboardPitTarget">Mostrar aviso de pit en</span>
             <select id="dashboard-pit-warning-target">
               <option value="gear" data-i18n="settings.dashboardPitGear">Sólo la marcha</option>

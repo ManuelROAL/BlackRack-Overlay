@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::io::{Read, Write};
+use std::io::{ErrorKind, Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, AtomicUsize, Ordering};
@@ -26,6 +26,9 @@ const ALLOWED_HOSTS: [&str; 4] = [
 const ALLOWED_ORIGINS: [&str; 2] = ["http://127.0.0.1:47636", "http://localhost:47636"];
 const MAX_SUBSCRIBERS: usize = 32;
 const MAX_REQUEST_HEAD_BYTES: usize = 16 * 1024;
+const MAX_ACCEPTS_PER_ITERATION: usize = 2;
+const REQUEST_READ_ATTEMPTS: usize = 8;
+const REQUEST_READ_TIMEOUT: Duration = Duration::from_millis(50);
 const HTML_SECURITY_POLICY: &str = "default-src 'self'; connect-src 'self' ws://localhost:6398 ws://127.0.0.1:6398; img-src 'self' data:; style-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'self'; object-src 'none'";
 const BROWSER_OVERLAYS: [(&str, &str); 17] = [
     ("standings", "standings.html"),
@@ -342,15 +345,25 @@ fn server_loop(
     };
 
     let mut subscribers = Vec::<Subscriber>::new();
-    loop {
+    'server: loop {
         if shutdown.try_recv().is_ok() {
             break;
         }
         let mut served_request = false;
-        while let Ok((mut stream, _)) = listener.accept() {
+        for _ in 0..MAX_ACCEPTS_PER_ITERATION {
+            if shutdown.try_recv().is_ok() {
+                break 'server;
+            }
+            let (mut stream, _) = match listener.accept() {
+                Ok(connection) => connection,
+                Err(error) if error.kind() == ErrorKind::WouldBlock => break,
+                Err(_) => break,
+            };
             served_request = true;
-            let Some(head) = read_request_head(&mut stream) else {
-                continue;
+            let head = match read_request_head(&mut stream, &shutdown) {
+                Ok(Some(head)) => head,
+                Ok(None) => continue,
+                Err(()) => break 'server,
             };
             if !head.host_allowed || !head.origin_allowed {
                 write_error(&mut stream, 403, "Forbidden");
@@ -361,7 +374,9 @@ fn server_loop(
             if path == "/api/events" {
                 if subscribers.len() >= MAX_SUBSCRIBERS {
                     write_error(&mut stream, 503, "Too many browser source clients");
-                } else if write_sse_headers(&mut stream).is_ok() {
+                } else if write_sse_headers(&mut stream).is_ok()
+                    && stream.set_nonblocking(true).is_ok()
+                {
                     subscribers.push(Subscriber {
                         stream,
                         overlay_demand: event_overlay_demand(&target),
@@ -449,16 +464,28 @@ fn is_safe_asset_path(relative: &str) -> bool {
         && !relative.starts_with('/')
 }
 
-fn read_request_head(stream: &mut TcpStream) -> Option<RequestHead> {
-    let _ = stream.set_read_timeout(Some(Duration::from_millis(500)));
+fn read_request_head(
+    stream: &mut TcpStream,
+    shutdown: &mpsc::Receiver<()>,
+) -> Result<Option<RequestHead>, ()> {
+    let _ = stream.set_read_timeout(Some(REQUEST_READ_TIMEOUT));
     let _ = stream.set_write_timeout(Some(Duration::from_millis(100)));
     // Header bytes can be split across TCP segments, so keep reading until the
     // blank line that ends the head. The attempt and size caps stop a slow or
     // oversized client from holding up the single-threaded accept loop.
     let mut buffer = Vec::with_capacity(2_048);
     let mut chunk = [0_u8; 2_048];
-    for _ in 0..8 {
-        let length = stream.read(&mut chunk).ok()?;
+    for _ in 0..REQUEST_READ_ATTEMPTS {
+        if shutdown.try_recv().is_ok() {
+            return Err(());
+        }
+        let length = match stream.read(&mut chunk) {
+            Ok(length) => length,
+            Err(error) if matches!(error.kind(), ErrorKind::WouldBlock | ErrorKind::TimedOut) => {
+                continue;
+            }
+            Err(_) => return Ok(None),
+        };
         if length == 0 {
             break;
         }
@@ -470,11 +497,20 @@ fn read_request_head(stream: &mut TcpStream) -> Option<RequestHead> {
         }
     }
 
-    let request = std::str::from_utf8(&buffer).ok()?;
+    if !buffer.windows(4).any(|window| window == b"\r\n\r\n") {
+        return Ok(None);
+    }
+    let request = match std::str::from_utf8(&buffer) {
+        Ok(request) => request,
+        Err(_) => return Ok(None),
+    };
     let mut lines = request.split("\r\n");
-    let mut parts = lines.next()?.split_whitespace();
-    if parts.next()? != "GET" {
-        return None;
+    let Some(request_line) = lines.next() else {
+        return Ok(None);
+    };
+    let mut parts = request_line.split_whitespace();
+    if parts.next() != Some("GET") {
+        return Ok(None);
     }
     let target = parts.next().unwrap_or("/").to_string();
 
@@ -497,11 +533,11 @@ fn read_request_head(stream: &mut TcpStream) -> Option<RequestHead> {
         }
     }
 
-    Some(RequestHead {
+    Ok(Some(RequestHead {
         target,
         host_allowed,
         origin_allowed,
-    })
+    }))
 }
 
 fn serve_track_map(stream: &mut TcpStream, target: &str) {
@@ -538,7 +574,7 @@ fn serve_request(stream: &mut TcpStream, request_path: &str, app: &AppHandle) {
             .unwrap_or_else(|| serde_json::json!({}));
         let json = serde_json::to_string(&settings).unwrap_or_else(|_| "{}".into());
         let script = format!(
-            "(()=>{{const p={json},q=new URLSearchParams(location.search).get('lang'),valid=l=>typeof l==='string'&&Array.isArray(p.supportedLocales)&&p.supportedLocales.includes(l);if(valid(q))document.documentElement.dataset.localeOverride=q;else if(valid(p.locale))localStorage.setItem('blackrack-overlay.locale.v1',p.locale);if(p.standings)localStorage.setItem('blackrack-overlay.standings.v1',JSON.stringify(p.standings));if(p.relative)localStorage.setItem('blackrack-overlay.relative.v1',JSON.stringify(p.relative));if(p.driving)localStorage.setItem('blackrack-overlay.driving.v1',JSON.stringify(p.driving));if(p.delta)localStorage.setItem('blackrack-overlay.delta.v1',JSON.stringify(p.delta));if(p.timing)localStorage.setItem('blackrack-overlay.timing.v1',JSON.stringify(p.timing));if(p.trackMap)localStorage.setItem('blackrack-overlay.track-map-settings.v1',JSON.stringify(p.trackMap));if(p.transparency)localStorage.setItem('blackrack-overlay.background-transparency.v1',JSON.stringify(p.transparency));if(p.fontSize)localStorage.setItem('blackrack-overlay.font-size.v1',JSON.stringify(p.fontSize));if(p.fuel)localStorage.setItem('blackrack-overlay.fuel-strategy.v1',JSON.stringify(p.fuel));if(p.tires)localStorage.setItem('blackrack-overlay.tires.v1',JSON.stringify(p.tires));if(p.conditions)localStorage.setItem('blackrack-overlay.conditions.v1',JSON.stringify(p.conditions));if(p.dashboard)localStorage.setItem('blackrack-overlay.dashboard.v1',JSON.stringify(p.dashboard));document.documentElement.dataset.browserSource='true';}})();"
+            "(()=>{{const p={json},q=new URLSearchParams(location.search).get('lang'),valid=l=>typeof l==='string'&&Array.isArray(p.supportedLocales)&&p.supportedLocales.includes(l);if(valid(q))document.documentElement.dataset.localeOverride=q;else if(valid(p.locale))localStorage.setItem('blackrack-overlay.locale.v1',p.locale);if(p.standings)localStorage.setItem('blackrack-overlay.standings.v1',JSON.stringify(p.standings));if(p.relative)localStorage.setItem('blackrack-overlay.relative.v1',JSON.stringify(p.relative));if(p.driving)localStorage.setItem('blackrack-overlay.driving.v1',JSON.stringify(p.driving));if(p.delta)localStorage.setItem('blackrack-overlay.delta.v1',JSON.stringify(p.delta));if(p.timing)localStorage.setItem('blackrack-overlay.timing.v1',JSON.stringify(p.timing));if(p.trackMap)localStorage.setItem('blackrack-overlay.track-map-settings.v1',JSON.stringify(p.trackMap));if(p.transparency)localStorage.setItem('blackrack-overlay.background-transparency.v1',JSON.stringify(p.transparency));if(p.fontSize)localStorage.setItem('blackrack-overlay.font-size.v1',JSON.stringify(p.fontSize));if(p.fuel)localStorage.setItem('blackrack-overlay.fuel-strategy.v1',JSON.stringify(p.fuel));if(p.tires)localStorage.setItem('blackrack-overlay.tires.v1',JSON.stringify(p.tires));if(p.conditions)localStorage.setItem('blackrack-overlay.conditions.v1',JSON.stringify(p.conditions));if(p.dashboard)localStorage.setItem('blackrack-overlay.dashboard.v1',JSON.stringify(p.dashboard));if(p.liftCoast)localStorage.setItem('blackrack-overlay.liftcoast.v1',JSON.stringify(p.liftCoast));document.documentElement.dataset.browserSource='true';}})();"
         );
         write_response(
             stream,

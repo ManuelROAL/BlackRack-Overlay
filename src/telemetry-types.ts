@@ -140,6 +140,9 @@ export interface StintHistoryEntryView {
   laps: number;
   time_seconds: number;
   resource_used: number;
+  battery_start_percent: number | null;
+  battery_end_percent: number | null;
+  regeneration_kwh: number | null;
   tire_wear_percent: number;
   tire_compounds: [string, string, string, string];
   delta_seconds: number | null;
@@ -149,6 +152,7 @@ export interface StintHistoryEntryView {
 export interface StintHistoryViewModel {
   available: boolean;
   uses_virtual_energy: boolean;
+  hybrid_available: boolean;
   entries: StintHistoryEntryView[];
 }
 
@@ -228,6 +232,7 @@ export interface TelemetryFrame {
   max_rpm: number;
   throttle: number;
   brake: number;
+  clutch: number;
   brake_bias_percent: number;
   track_limits_steps: number;
   track_limits_steps_per_penalty: number;

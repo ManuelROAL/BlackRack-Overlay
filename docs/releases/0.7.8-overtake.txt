@@ -1,0 +1,45 @@
+[CENTER][B][SIZE=6][COLOR=#D8FF3E]BLACKRACK OVERLAY 0.7.8[/COLOR][/SIZE][/B]
+[COLOR=#AEB9C4]Lightweight, configurable LMU telemetry overlays — no SimHub required.[/COLOR][/CENTER]
+
+[B][COLOR=#B86BFF]WHAT'S NEW IN 0.7.8[/COLOR][/B]
+
+[B][COLOR=#D8FF3E]DASHBOARD[/COLOR][/B]
+[LIST]
+[*]Optional [COLOR=#D8FF3E]headlights[/COLOR] and [COLOR=#D8FF3E]wipers[/COLOR] readouts. Headlights show ON/OFF; wipers show OFF, AUTO, SLOW or FAST.
+[*]The hybrid battery can be shown as a compact icon with a live SOC fill: [COLOR=#8FE04F]green[/COLOR] while regenerating and [COLOR=#00EAFF]cyan[/COLOR] while deploying power.
+[*]Car-electronics readouts appear only when the car publishes those values.
+[/LIST]
+
+[B][COLOR=#D8FF3E]TRAILING + PEDAL[/COLOR][/B]
+[LIST]
+[*]Clutch input is now available in the pedal trace for LMU and iRacing.
+[/LIST]
+
+[B][COLOR=#D8FF3E]STINT HISTORY[/COLOR][/B]
+[LIST]
+[*]Hybrid cars now show starting/ending SOC and accumulated regenerated energy in kWh.
+[*]Fuel used on a pit-stop lap is calculated correctly even when fuel was added during that lap.
+[/LIST]
+
+[B][COLOR=#D8FF3E]LIFT & COAST[/COLOR][/B]
+[LIST]
+[*]Choose whether the indicator stays mounted or appears only when one of its five lamps is lit.
+[*]The setting is saved with profiles and included in configuration export/import.
+[/LIST]
+
+[B][COLOR=#D8FF3E]FLAGS, TRACK MAP AND RELIABILITY[/COLOR][/B]
+[LIST]
+[*]Yellow slow-car detection now follows LMU's sector-yellow mask and uses the correct circular track distance.
+[*]Session changes discard stale standings, weather and pit-stop data.
+[*]LMU session restarts, stalled iRacing telemetry and slow OBS/browser-source clients are handled more safely.
+[*]Track-map learning is saved atomically so an interrupted save does not lose the learned route.
+[/LIST]
+
+[B][COLOR=#B86BFF]REQUIREMENTS[/COLOR][/B]
+64-bit Windows 10 or 11, Le Mans Ultimate and its official
+[COLOR=#D8FF3E]LMU_SharedMemoryMapPlugin64.dll[/COLOR][COLOR=#AEB9C4]. SimHub is not required.[/COLOR]
+
+[B][COLOR=#B86BFF]DOWNLOAD[/COLOR][/B]
+BlackRack Overlay_0.7.8_x64-setup.exe
+
+[COLOR=#AEB9C4]The installer is not digitally signed, so Windows SmartScreen may warn on first run. Optional support: https://ko-fi.com/blackrack[/COLOR]

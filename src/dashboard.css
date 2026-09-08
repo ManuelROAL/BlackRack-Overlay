@@ -43,21 +43,35 @@ body.dashboard-body {
 }
 
 .dash-adjustment {
+  /* Keep the gear and rev lights outside this layer; only the readout row is
+     covered while the changed electronics value is being shown. */
   position: absolute;
-  inset: 3px;
+  inset: 2px;
   z-index: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: clamp(1px, 1.5cqh, 4px);
   overflow: hidden;
-  border-radius: inherit;
-  background: rgb(12 16 22 / var(--overlay-background-opacity));
+  box-sizing: border-box;
+  padding: clamp(3px, 2.5cqh, 8px) clamp(10px, 4cqw, 20px);
+  border: 1px solid rgb(216 255 62 / 22%);
+  border-radius: calc(26px - 2px);
+  background: linear-gradient(
+    145deg,
+    rgb(18 24 29 / var(--overlay-background-opacity)),
+    rgb(7 10 14 / var(--overlay-background-opacity))
+  );
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 7%),
+    inset 0 -12px 20px rgb(0 0 0 / 14%),
+    0 0 14px rgb(216 255 62 / 8%);
   pointer-events: none;
   container-type: size;
 }
 
-.dashboard-shell:has(.dash-adjustment:not([hidden])) > :not(.dash-adjustment) {
+.dashboard-shell:has(.dash-adjustment:not([hidden])) .dash-fields > div:not(.dash-adjustment) {
   visibility: hidden;
 }
 
@@ -65,16 +79,23 @@ body.dashboard-body {
   max-width: 100%;
   overflow: hidden;
   white-space: nowrap;
-  color: #dce3ea;
-  font-size: min(calc(11px * var(--overlay-font-scale, 1)), 18cqw, 30cqh);
+  color: #aeb9c4;
+  font-size: min(calc(10px * var(--overlay-font-scale, 1)), 16cqw, 26cqh);
   font-weight: 800;
+  letter-spacing: .14em;
+  line-height: 1;
+  text-align: center;
 }
 
 .dash-adjustment strong {
+  max-width: 100%;
+  overflow: hidden;
   color: #d8ff3e;
-  font-size: min(calc(28px * var(--overlay-font-scale, 1)), 24cqw, 60cqh);
-  line-height: 1;
+  font-size: min(calc(30px * var(--overlay-font-scale, 1)), 28cqw, 60cqh);
   font-weight: 900;
+  line-height: .92;
+  text-align: center;
+  text-shadow: 0 0 12px rgb(216 255 62 / 18%);
 }
 
 /* The accent lives on the gear ring rather than on a left edge bar: a pill has
@@ -168,6 +189,7 @@ body.dashboard-body {
   margin: 0;
   min-width: 0;
   padding: 0 2px;
+  position: relative;
 }
 
 .dash-fields > div {
@@ -194,6 +216,50 @@ body.dashboard-body {
   font-weight: 900;
   line-height: 1;
   white-space: nowrap;
+}
+
+.dash-battery-readout {
+  display: flex;
+  align-items: center;
+  width: calc(30px * var(--overlay-font-scale, 1));
+  height: calc(19px * var(--overlay-font-scale, 1));
+}
+
+.dash-hybrid-visual {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  flex: 0 0 auto;
+}
+
+.dash-hybrid-fill {
+  position: absolute;
+  top: 29.1667%;
+  left: 16.6667%;
+  width: 0;
+  max-width: 62.5%;
+  height: 41.6667%;
+  border-radius: 1.5px;
+  background: #687481;
+}
+
+[data-hybrid-state="regen"] .dash-hybrid-fill {
+  background: #8fe04f;
+}
+
+[data-hybrid-state="deploy"] .dash-hybrid-fill {
+  background: #00eaff;
+}
+
+.dash-hybrid-outline {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  filter: invert(1);
+  opacity: .82;
 }
 
 /* Position is the one value read as a standing rather than as a measurement,
