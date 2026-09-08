@@ -45,7 +45,21 @@
         </button>
       </nav>
 
-      <section class="general-settings-section general-settings-lead general-settings-accent" data-view-section="general">
+      <details id="getting-started" class="general-settings-section getting-started" data-view-section="general">
+        <summary data-i18n="start.title">Bienvenido a BlackRack Overlay</summary>
+        <ol>
+          <li data-i18n="start.screen">Elige el idioma y el monitor en General.</li>
+          <li data-i18n="start.profile">Activa los paneles que necesites en Overlays y personaliza sus ajustes.</li>
+          <li data-i18n="start.layout">Activa el modo edición en General → Aplicación para mover y redimensionar los overlays. Vuelve al modo juego antes de conducir.</li>
+          <li data-i18n="start.drive">Abre el simulador y entra en pista. Los overlays pueden ocultarse automáticamente en el garaje o fuera del juego.</li>
+        </ol>
+        <div class="getting-started-actions">
+          <button id="start-guide" type="button" data-i18n="guide.open">Guía</button>
+          <button id="start-done" type="button" data-i18n="start.done">ENTENDIDO</button>
+        </div>
+      </details>
+
+      <section class="general-settings-section general-settings-accent" data-view-section="general">
         <div class="global-setting-group update-setting-group">
           <div class="global-setting-copy">
             <span data-i18n="update.heading">ACTUALIZACIONES</span>
@@ -91,21 +105,7 @@
         <p id="overlay-filter-empty" class="overlay-filter-empty" hidden data-i18n="filter.empty">No hay overlays que coincidan.</p>
       </section>
 
-      <details id="getting-started" class="general-settings-section getting-started" data-view-section="general">
-        <summary data-i18n="start.title">Bienvenido a BlackRack Overlay</summary>
-        <ol>
-          <li data-i18n="start.screen">Elige el idioma y el monitor en General.</li>
-          <li data-i18n="start.profile">Activa los paneles que necesites en Overlays y personaliza sus ajustes.</li>
-          <li data-i18n="start.layout">Activa el modo edición en General → Aplicación para mover y redimensionar los overlays. Vuelve al modo juego antes de conducir.</li>
-          <li data-i18n="start.drive">Abre el simulador y entra en pista. Los overlays pueden ocultarse automáticamente en el garaje o fuera del juego.</li>
-        </ol>
-        <div class="getting-started-actions">
-          <button id="start-guide" type="button" data-i18n="guide.open">Guía</button>
-          <button id="start-done" type="button" data-i18n="start.done">ENTENDIDO</button>
-        </div>
-      </details>
-
-      <section class="general-settings-section general-settings-lead" data-view-section="general" aria-label="Pantalla y apariencia" data-i18n-aria-label="display.aria">
+      <section class="general-settings-section" data-view-section="general" aria-label="Pantalla y apariencia" data-i18n-aria-label="display.aria">
         <header class="settings-section-heading">
           <span data-i18n="display.heading">PANTALLA</span>
           <strong data-i18n="display.title">Dónde y cómo se ven los overlays</strong>
