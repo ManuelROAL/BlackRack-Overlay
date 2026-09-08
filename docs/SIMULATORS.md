@@ -173,20 +173,23 @@ references. Timing uses the current/last/best lap variables and the
 `SplitTimeInfo` sector boundaries. iRating is carried as the driver's rank and
 the iRacing license string as the safety rank; no gain estimate is invented.
 Traction control has no published state, so its indicator stays off rather than
-being inferred. AVG 5, opponent fuel/tyres/damage, penalties and official track
-geometry remain unavailable until their sources are validated.
+being inferred. Fuel uses `FuelLevel`/`FuelLevelPct`, observes completed clean
+laps for a five-sample session reference and feeds the shared fuel-only strategy
+model. Tires use the four live carcass-temperature triplets and tread-wear
+triplets, while brake temperature, compounds, damage and pit service remain
+unavailable.
 
-Everything else in the frame is still at its documented sentinel. Apart from
-the now-supported driver ranks, capabilities for the remaining areas stay off,
-which keeps the control panel from offering an overlay that would stay empty.
-Landing an area means filling its fields, turning its capability on in the same
-change, and recording it here. The known shape of the remaining work:
+Everything else in the frame is still at its documented sentinel. Capabilities
+for unsupported areas stay off, which keeps the control panel from offering an
+overlay that would stay empty. Landing an area means filling its fields, turning
+its capability on in the same change, and recording it here. The known shape of
+the remaining work:
 
 | Area | Source in the simulator |
 | --- | --- |
 | Track Map | the player's own position can support a learned outline; iRacing does not publish authoritative world coordinates for the other cars |
-| Fuel | `FuelLevel` tracked across laps; there is no energy budget, so `virtual_energy_*` stays inactive |
-| Tyres | the per-corner wear and carcass temperature variables |
+| Fuel | `FuelLevel`/`FuelLevelPct` tracked across laps and used by the fuel-only strategy; there is no energy budget, so `virtual_energy_*` stays inactive |
+| Tyres | live per-corner wear and carcass temperature variables; brake temperature and compounds are not published reliably |
 | Conditions | `AirTemp`, `TrackTempCrew`, `Precipitation`, `TrackWetness`, `Skies`, wind |
 | Damage, Forecast, Lift and coast, Pit stop | not published; these four stay capability-gated off permanently |
 

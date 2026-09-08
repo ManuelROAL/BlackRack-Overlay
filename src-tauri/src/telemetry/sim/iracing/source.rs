@@ -1,8 +1,9 @@
 //! Telemetry source backed by the simulator's shared memory.
 //!
 //! This source fills the session, car and standings state the overlay host
-//! needs, plus the Driving, Delta and Timing values. Other areas remain at
-//! their documented sentinel until they are validated against the simulator.
+//! needs, plus the Driving, Delta, Timing, fuel and player-tyre values. Other
+//! areas remain at their documented sentinel until they are validated against
+//! the simulator.
 
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
@@ -12,6 +13,10 @@ use super::irsdk::Connection;
 use super::session::{self, Session};
 use super::standings;
 use super::{foreground, DESCRIPTOR};
+use crate::telemetry::fuel_strategy::{
+    calculate_lap_reference_strategy, projected_consumption, FuelStrategies, LapConsumptionWindow,
+    ResourceAutonomy, ResourceStrategyInput,
+};
 use crate::telemetry::{TelemetryDemand, TelemetryFrame};
 
 /// How long to wait before reopening a mapping that stopped answering, so a
@@ -30,6 +35,19 @@ const SURFACE_OFF_TRACK: i32 = 0;
 /// Full-course caution bits, which the frame reports as its own phase.
 const FLAG_CAUTION: u32 = 0x0000_4000 | 0x0000_8000;
 
+const TIRE_TEMP_NAMES: [[&str; 3]; 4] = [
+    ["LFtempCL", "LFtempCM", "LFtempCR"],
+    ["RFtempCL", "RFtempCM", "RFtempCR"],
+    ["LRtempCL", "LRtempCM", "LRtempCR"],
+    ["RRtempCL", "RRtempCM", "RRtempCR"],
+];
+const TIRE_WEAR_NAMES: [[&str; 3]; 4] = [
+    ["LFwearL", "LFwearM", "LFwearR"],
+    ["RFwearL", "RFwearM", "RFwearR"],
+    ["LRwearL", "LRwearM", "LRwearR"],
+    ["RRwearL", "RRwearM", "RRwearR"],
+];
+
 pub(super) struct IracingTelemetrySource {
     connection: Option<Connection>,
     minimum_tick_after_reconnect: Option<i32>,
@@ -39,6 +57,12 @@ pub(super) struct IracingTelemetrySource {
     session_number: i32,
     last_laps_completed: i32,
     lap_valid: bool,
+    fuel_at_lap_start: Option<f64>,
+    fuel_previous_sample: Option<f64>,
+    fuel_added_this_lap: f64,
+    fuel_last_lap: Option<f64>,
+    fuel_qualifying_lap: Option<f64>,
+    fuel_consumption: LapConsumptionWindow,
     observed_max_rpm: f64,
     foreground: bool,
     foreground_checked_at: Option<Instant>,
@@ -56,6 +80,12 @@ impl IracingTelemetrySource {
             session_number: i32::MIN,
             last_laps_completed: -1,
             lap_valid: true,
+            fuel_at_lap_start: None,
+            fuel_previous_sample: None,
+            fuel_added_this_lap: 0.0,
+            fuel_last_lap: None,
+            fuel_qualifying_lap: None,
+            fuel_consumption: LapConsumptionWindow::default(),
             observed_max_rpm: 0.0,
             foreground: false,
             foreground_checked_at: None,
@@ -68,6 +98,12 @@ impl IracingTelemetrySource {
     fn reset(&mut self) {
         self.last_laps_completed = -1;
         self.lap_valid = true;
+        self.fuel_at_lap_start = None;
+        self.fuel_previous_sample = None;
+        self.fuel_added_this_lap = 0.0;
+        self.fuel_last_lap = None;
+        self.fuel_qualifying_lap = None;
+        self.fuel_consumption = LapConsumptionWindow::default();
         self.observed_max_rpm = 0.0;
         self.starting_positions.clear();
     }
@@ -167,6 +203,9 @@ impl IracingTelemetrySource {
             .unwrap_or(SURFACE_NOT_IN_WORLD);
         let lap_progress = sdk.number("LapDistPct").unwrap_or(0.0).clamp(0.0, 1.0);
         let laps_completed = sdk.integer("LapCompleted").unwrap_or(0).max(0);
+        let lap_changed = laps_completed != self.last_laps_completed;
+        let previous_lap_known = self.last_laps_completed >= 0;
+        let previous_lap_valid = self.lap_valid && !on_pit_road;
 
         // A lap is not marked invalid by the simulator, so it is tracked from
         // the surface the car has been on since the last crossing.
@@ -261,8 +300,247 @@ impl IracingTelemetrySource {
             .map(f64::to_degrees)
             .unwrap_or(0.0);
         frame.force_feedback = sdk.number("SteeringWheelPctTorque").unwrap_or(0.0);
+
+        let fuel_capacity = fuel_capacity(&self.session, sdk);
+        let fuel_level = fuel_level(sdk, fuel_capacity);
+        let _fuel_used_current_lap = self.observe_fuel(
+            fuel_level,
+            lap_changed,
+            previous_lap_known,
+            previous_lap_valid,
+            frame.game_phase == 5,
+            frame.session_type == 5,
+        );
+        let fuel_average = self.fuel_consumption.average().unwrap_or(0.0);
+        let fuel_last = self.fuel_last_lap.unwrap_or(0.0);
+        let fuel_qualifying = self.fuel_qualifying_lap.unwrap_or(0.0);
+        let fuel_per_lap =
+            projected_consumption([fuel_average, fuel_last, fuel_qualifying, 0.0, 0.0]);
+        let lap_seconds = [
+            frame.last_lap_seconds,
+            frame.best_lap_seconds,
+            frame.current_lap_seconds,
+        ]
+        .into_iter()
+        .find(|value| value.is_finite() && *value > 0.0)
+        .unwrap_or(0.0);
+        let session_laps_remaining = remaining_laps(
+            schedule.as_ref(),
+            frame.session_time_remaining,
+            laps_completed,
+            lap_progress,
+            lap_seconds,
+            frame.game_phase,
+        );
+        let strategy_input = |consumption| ResourceStrategyInput {
+            current: fuel_level.unwrap_or(0.0),
+            capacity: fuel_capacity,
+            consumption,
+            laps_remaining: session_laps_remaining,
+            lap_progress,
+            completed_laps: laps_completed,
+            pit_cycle_consumption: 0.0,
+            pit_out_consumption: 0.0,
+            pit_out_lap: false,
+            pit_requested: false,
+        };
+        let strategy = |consumption| {
+            fuel_level
+                .is_some()
+                .then(|| {
+                    calculate_lap_reference_strategy(
+                        strategy_input(consumption),
+                        lap_seconds,
+                        0,
+                        crate::telemetry::fuel_refuel_margin(),
+                    )
+                })
+                .flatten()
+        };
+        let active_strategy = strategy(fuel_per_lap);
+        let fuel_strategies = FuelStrategies {
+            active: active_strategy,
+            fuel: active_strategy,
+            average: strategy(fuel_average),
+            qualifying: strategy(fuel_qualifying),
+            last: strategy(fuel_last),
+            ..FuelStrategies::default()
+        }
+        .with_qualifying_guidance();
+        let resource_autonomy =
+            ResourceAutonomy::calculate(fuel_level, fuel_per_lap, None, 0.0, false);
+        let tire_temperatures = read_wheel_values(sdk, &TIRE_TEMP_NAMES);
+        let tire_wear = read_wheel_values(sdk, &TIRE_WEAR_NAMES);
+        let oil_temperature = optional_value(sdk.number("OilTemp"));
+        let water_temperature = optional_value(sdk.number("WaterTemp"));
+        let engine_warnings = sdk.bits("EngineWarnings");
+
+        frame.fuel_liters = fuel_level.unwrap_or(-1.0);
+        frame.fuel_added_this_lap = self.fuel_added_this_lap;
+        frame.fuel_capacity_liters = fuel_capacity;
+        frame.fuel_per_lap = fuel_per_lap;
+        frame.fuel_last_lap = fuel_last;
+        frame.fuel_qualifying_lap = fuel_qualifying;
+        frame.fuel_reference_per_lap = fuel_per_lap;
+        frame.fuel_projected_lap = fuel_per_lap;
+        frame.estimated_fuel_laps = fuel_level
+            .zip((fuel_per_lap > 0.0).then_some(fuel_per_lap))
+            .map_or(0.0, |(level, consumption)| level / consumption);
+        frame.session_laps_remaining = session_laps_remaining;
+        frame.session_laps_remaining_estimated = session_laps_remaining;
+        frame.session_lap_equivalents_remaining = session_laps_remaining;
+        frame.session_total_laps_estimated =
+            laps_completed as f64 + lap_progress + session_laps_remaining;
+        frame.fuel_needed_liters = fuel_per_lap * session_laps_remaining;
+        frame.fuel_to_add_liters = active_strategy.map_or(0.0, |plan| plan.total_additional);
+        frame.resource_autonomy = resource_autonomy;
+        frame.fuel_strategies = fuel_strategies;
+        frame.player_damage_percent = -1.0;
+        frame.player_suspension_damage_percent = -1.0;
+        frame.player_suspension_damage_by_wheel_percent = [-1.0; 4];
+        frame.player_body_damage_percent = -1.0;
+        frame.player_tire_temperature_c =
+            std::array::from_fn(|index| average_value(tire_temperatures[index]));
+        frame.player_tire_temperature_by_zone_c = tire_temperatures;
+        frame.player_tire_remaining_by_wheel_percent =
+            std::array::from_fn(|index| minimum_value(tire_wear[index]));
+        frame.player_tire_flat_spot_percent = [-1.0; 4];
+        frame.player_brake_temperature_c = [-1.0; 4];
+        frame.player_tire_sliding_fraction = [0.0; 4];
+        frame.player_engine_oil_temperature_c = oil_temperature;
+        frame.player_engine_water_temperature_c = water_temperature;
+        frame.player_engine_overheating = engine_warnings & 0x0000_0001 != 0;
         frame
     }
+
+    fn observe_fuel(
+        &mut self,
+        fuel_level: Option<f64>,
+        lap_changed: bool,
+        previous_lap_known: bool,
+        previous_lap_valid: bool,
+        previous_lap_green: bool,
+        qualifying: bool,
+    ) -> f64 {
+        let Some(level) = fuel_level else {
+            return 0.0;
+        };
+        if let Some(previous) = self.fuel_previous_sample {
+            if level > previous {
+                self.fuel_added_this_lap += level - previous;
+            }
+        }
+        if self.fuel_at_lap_start.is_none() {
+            self.fuel_at_lap_start = Some(level);
+        }
+        if lap_changed && previous_lap_known {
+            let used = self
+                .fuel_at_lap_start
+                .map(|start| start + self.fuel_added_this_lap - level)
+                .unwrap_or(0.0)
+                .max(0.0);
+            self.fuel_last_lap = (used > 0.0).then_some(used);
+            if previous_lap_valid && previous_lap_green && used > 0.0 {
+                self.fuel_consumption.push(used);
+                if qualifying {
+                    self.fuel_qualifying_lap = Some(
+                        self.fuel_qualifying_lap
+                            .map_or(used, |current| current.min(used)),
+                    );
+                }
+            }
+            self.fuel_at_lap_start = Some(level);
+            self.fuel_added_this_lap = 0.0;
+        }
+        self.fuel_previous_sample = Some(level);
+        self.fuel_at_lap_start
+            .map(|start| (start + self.fuel_added_this_lap - level).max(0.0))
+            .unwrap_or(0.0)
+    }
+}
+
+fn fuel_capacity(session: &Session, sdk: &Connection) -> f64 {
+    let configured = session.fuel_capacity_liters;
+    if configured > 0.0 {
+        return configured;
+    }
+    let percent = sdk.number("FuelLevelPct").and_then(normalized_percent);
+    let level = sdk
+        .number("FuelLevel")
+        .filter(|value| value.is_finite() && *value >= 0.0);
+    level
+        .zip(percent)
+        .and_then(|(level, percent)| (percent > 0.0).then_some(level / percent))
+        .filter(|capacity| capacity.is_finite() && *capacity > 0.0)
+        .unwrap_or(-1.0)
+}
+
+fn fuel_level(sdk: &Connection, capacity: f64) -> Option<f64> {
+    sdk.number("FuelLevel")
+        .filter(|value| value.is_finite() && *value >= 0.0)
+        .or_else(|| {
+            sdk.number("FuelLevelPct")
+                .and_then(normalized_percent)
+                .zip((capacity > 0.0).then_some(capacity))
+                .map(|(percent, capacity)| percent * capacity)
+        })
+}
+
+fn normalized_percent(value: f64) -> Option<f64> {
+    if !value.is_finite() || value < 0.0 {
+        return None;
+    }
+    Some(if value <= 1.0 { value } else { value / 100.0 }.clamp(0.0, 1.0))
+}
+
+fn remaining_laps(
+    schedule: Option<&super::session::Schedule>,
+    time_remaining: f64,
+    completed_laps: i32,
+    progress: f64,
+    lap_seconds: f64,
+    phase: u32,
+) -> f64 {
+    if phase >= 8 {
+        return (1.0 - progress).max(0.0);
+    }
+    if let Some(laps) = schedule.map(|entry| entry.laps).filter(|laps| *laps > 0) {
+        return (f64::from(laps - completed_laps) - progress).max(0.0);
+    }
+    if time_remaining > 0.0 && lap_seconds > 0.0 {
+        return (time_remaining / lap_seconds + progress).ceil() - progress;
+    }
+    0.0
+}
+
+fn read_wheel_values(sdk: &Connection, names: &[[&str; 3]; 4]) -> [[f64; 3]; 4] {
+    std::array::from_fn(|wheel| {
+        std::array::from_fn(|zone| optional_value(sdk.number(names[wheel][zone])))
+    })
+}
+
+fn optional_value(value: Option<f64>) -> f64 {
+    value
+        .filter(|value| value.is_finite() && *value >= 0.0)
+        .unwrap_or(-1.0)
+}
+
+fn average_value(values: [f64; 3]) -> f64 {
+    let (sum, count) = values
+        .into_iter()
+        .filter(|value| *value >= 0.0)
+        .fold((0.0, 0), |(sum, count), value| (sum + value, count + 1));
+    (count > 0)
+        .then_some(sum / f64::from(count))
+        .unwrap_or(-1.0)
+}
+
+fn minimum_value(values: [f64; 3]) -> f64 {
+    values
+        .into_iter()
+        .filter(|value| *value >= 0.0)
+        .min_by(f64::total_cmp)
+        .unwrap_or(-1.0)
 }
 
 /// iRacing uses a negative official time for an invalid completed lap and a
@@ -335,9 +613,10 @@ fn finite_duration(value: Option<f64>) -> f64 {
 
 #[cfg(test)]
 mod tests {
+    use super::super::session::Schedule;
     use super::{
-        finite_duration, game_phase, native_lap_delta_value, normalized_lap_time,
-        normalized_last_lap,
+        finite_duration, game_phase, minimum_value, native_lap_delta_value, normalized_lap_time,
+        normalized_last_lap, normalized_percent, remaining_laps, IracingTelemetrySource,
     };
 
     #[test]
@@ -379,5 +658,48 @@ mod tests {
         );
         assert_eq!(native_lap_delta_value(Some(0.0), None), (0.0, true));
         assert_eq!(native_lap_delta_value(None, Some(true)), (0.0, false));
+    }
+
+    #[test]
+    fn normalizes_fuel_percent_from_fraction_or_percent_units() {
+        assert_eq!(normalized_percent(0.5), Some(0.5));
+        assert_eq!(normalized_percent(50.0), Some(0.5));
+        assert_eq!(normalized_percent(-1.0), None);
+        assert_eq!(normalized_percent(f64::NAN), None);
+    }
+
+    #[test]
+    fn uses_fixed_lap_target_and_caution_finish_distance() {
+        let schedule = Schedule {
+            laps: 25,
+            ..Schedule::default()
+        };
+        assert!((remaining_laps(Some(&schedule), 0.0, 7, 0.25, 100.0, 5) - 17.75).abs() < 1e-9);
+        assert!((remaining_laps(None, 0.0, 7, 0.25, 100.0, 8) - 0.75).abs() < 1e-9);
+    }
+
+    #[test]
+    fn records_fuel_used_at_the_next_lap_boundary() {
+        let mut source = IracingTelemetrySource::new();
+        assert_eq!(
+            source.observe_fuel(Some(50.0), true, false, true, true, false),
+            0.0
+        );
+        assert_eq!(
+            source.observe_fuel(Some(48.0), false, true, true, true, false),
+            2.0
+        );
+        assert_eq!(
+            source.observe_fuel(Some(40.0), true, true, true, true, false),
+            0.0
+        );
+        assert_eq!(source.fuel_last_lap, Some(10.0));
+        assert_eq!(source.fuel_consumption.average(), Some(10.0));
+    }
+
+    #[test]
+    fn tire_wear_uses_the_lowest_remaining_band() {
+        assert_eq!(minimum_value([91.0, 84.0, 88.0]), 84.0);
+        assert_eq!(minimum_value([-1.0, -1.0, -1.0]), -1.0);
     }
 }

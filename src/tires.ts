@@ -66,6 +66,10 @@ const damageNameKeys: TranslationKey[] = [
 ];
 
 const render = (frame: TelemetryFrame): void => {
+  const brakeTemperatureAvailable = frame.capabilities?.brake_temperatures !== false;
+  for (const element of brakeTemperatures) {
+    element.hidden = !settings.showBrakeTemperature || !brakeTemperatureAvailable;
+  }
   for (let index = 0; index < 4; index += 1) {
     const temperature = frame.player_tire_temperature_c[index];
     const zoneTemperatures = frame.player_tire_temperature_by_zone_c[index]
@@ -167,11 +171,13 @@ const render = (frame: TelemetryFrame): void => {
     value: readable(frame.player_engine_water_temperature_c, 0, " °C")
   }));
 
-  const aggregateDamage = Math.round(frame.player_damage_percent);
-  setText(damageValue, `${aggregateDamage}%`);
-  setData(damageSummary, "state", frame.player_part_detached || aggregateDamage >= 50
+  const aggregateDamageAvailable = Number.isFinite(frame.player_damage_percent)
+    && frame.player_damage_percent >= 0;
+  const aggregateDamage = aggregateDamageAvailable ? Math.round(frame.player_damage_percent) : 0;
+  setText(damageValue, aggregateDamageAvailable ? `${aggregateDamage}%` : "--");
+  setData(damageSummary, "state", frame.player_part_detached || (aggregateDamageAvailable && aggregateDamage >= 50)
     ? "critical"
-    : aggregateDamage > 0 ? "warning" : "normal");
+    : aggregateDamageAvailable && aggregateDamage > 0 ? "warning" : "normal");
 
 };
 

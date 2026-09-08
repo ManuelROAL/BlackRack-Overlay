@@ -27,13 +27,15 @@ mod yaml;
 /// What this source reports today. A capability is turned on when the source
 /// actually fills the frame fields behind it, so the control panel never offers
 /// an overlay that would stay empty. The simulator has no virtual energy, no
-/// per-part damage and no authoritative track outline, so those stay off.
+/// per-part damage, live brake temperatures or authoritative track outline, so
+/// those stay off.
 #[cfg(target_os = "windows")]
 pub(super) const DESCRIPTOR: SourceDescriptor = SourceDescriptor {
     id: "iracing",
     display_name: "iRacing",
     capabilities: SourceCapabilities {
         driver_ranks: true,
+        tire_temperatures: true,
         ..SourceCapabilities::NONE
     },
     official_geometry: None,

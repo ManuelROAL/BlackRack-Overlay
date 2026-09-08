@@ -78,6 +78,7 @@ const telemetryFields: Record<OverlayId, readonly (keyof TelemetryFrame)[]> = {
   ],
   liftcoast: ["lift_and_coast_progress"],
   tires: [
+    "capabilities",
     "player_damage_percent", "player_aero_damage_percent", "player_damage_severity",
     "player_engine_overheating", "player_engine_oil_temperature_c",
     "player_engine_water_temperature_c",
