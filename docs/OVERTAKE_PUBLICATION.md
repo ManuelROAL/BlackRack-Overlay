@@ -169,8 +169,8 @@ Prepare at least one real in-game hero image before publishing. Recommended set:
 - [x] Version synchronized at `0.7.9` in npm, Cargo and Tauri.
 - [x] Frontend production build and localization checks pass.
 - [x] Rust library tests pass with the official LMU SDK detected.
-- [ ] Production NSIS installer generated under the BlackRack name.
-- [ ] SHA-256 generated and matched to the release installer.
+- [x] Production NSIS installer generated under the BlackRack name.
+- [x] SHA-256 generated and matched to the release installer.
 - [ ] Comparable moving race/replay performance capture completed.
 - [ ] Clean-machine installation and functional smoke test completed.
 - [ ] Real in-game publication images selected.
