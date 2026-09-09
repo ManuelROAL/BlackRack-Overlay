@@ -457,6 +457,7 @@ const classColor = (vehicleClass: string): string => {
   if (value.includes("LMP2")) return "#3988ed";
   if (value.includes("LMP3")) return "#8065ed";
   if (value.includes("GT3")) return "#35c969";
+  if (value.includes("GTE")) return "#e2b93b";
   return "#d8dde2";
 };
 

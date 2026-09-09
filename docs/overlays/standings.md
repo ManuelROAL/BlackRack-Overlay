@@ -24,9 +24,10 @@ duplicate selection or timing semantics.
   hidden.
 - For the player's class, select the first three plus the closest cars around the
   player until the limit is reached. Other classes show their leading rows.
-- Order classes by performance: Hypercar/GTP, LMP2, LMP3, LMGT3, then other.
-- Preserve LMU-compatible category colors: Hypercar red, LMP2 blue, LMP3 purple
-  and LMGT3 green.
+- Order classes by performance: Hypercar/GTP, LMP2, LMP3, LMGT3, GTE, then
+  other.
+- Preserve LMU-compatible category colors: Hypercar red, LMP2 blue, LMP3 purple,
+  LMGT3 green and GTE yellow-gold.
 - Normalize LMU's abbreviated `Hyper` class label to the `HYPERCAR` heading and
   Hypercar red tone, consistently with longer Hypercar names and GTP aliases.
 - Columns are position, assigned number, manufacturer, badge, driver, DR/SR,

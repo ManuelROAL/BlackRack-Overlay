@@ -135,8 +135,10 @@ fn class_priority(vehicle_class: &str) -> u8 {
         2
     } else if normalized.contains("LMGT3") || normalized.contains("GT3") {
         3
-    } else {
+    } else if normalized.contains("GTE") {
         4
+    } else {
+        5
     }
 }
 
@@ -150,6 +152,8 @@ fn display_class(vehicle_class: &str) -> String {
         "LMP3".into()
     } else if normalized.contains("LMGT3") || normalized.contains("GT3") {
         "LMGT3".into()
+    } else if normalized.contains("GTE") {
+        "GTE".into()
     } else {
         vehicle_class.trim().to_owned()
     }
@@ -161,6 +165,7 @@ fn class_tone(vehicle_class: &str) -> String {
         1 => "lmp2",
         2 => "lmp3",
         3 => "lmgt3",
+        4 => "gte",
         _ => "other",
     }
     .into()
@@ -467,6 +472,7 @@ mod tests {
             entry(1, 1, "LMGT3", false),
             entry(2, 1, "Hypercar", true),
             entry(3, 1, "LMP2", false),
+            entry(4, 1, "GTE", false),
         ];
         let all = prepare_standings(&entries, StandingsModelSettings::default(), 10);
         assert_eq!(
@@ -474,7 +480,7 @@ mod tests {
                 .iter()
                 .map(|group| group.class_tone.as_str())
                 .collect::<Vec<_>>(),
-            vec!["hypercar", "lmp2", "lmgt3"]
+            vec!["hypercar", "lmp2", "lmgt3", "gte"]
         );
         let own = prepare_standings(
             &entries,
@@ -498,6 +504,14 @@ mod tests {
 
         assert_eq!(model.groups[0].display_class, "HYPERCAR");
         assert_eq!(model.groups[0].class_tone, "hypercar");
+    }
+
+    #[test]
+    fn gte_alias_uses_lmgt3_order_and_tone() {
+        assert_eq!(class_priority("GTE"), 4);
+        assert_eq!(display_class("GTE"), "GTE");
+        assert_eq!(class_tone("GTE"), "gte");
+        assert_eq!(class_tone("LMGT3"), "lmgt3");
     }
 
     #[test]

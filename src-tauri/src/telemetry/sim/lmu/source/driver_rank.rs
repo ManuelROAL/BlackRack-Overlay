@@ -11,8 +11,10 @@ impl LmuTelemetrySource {
             1
         } else if normalized.contains("LMGT3") || normalized.contains("GT3") {
             2
-        } else {
+        } else if normalized.contains("GTE") {
             3
+        } else {
+            4
         }
     }
 

@@ -282,6 +282,7 @@ const classTone = (vehicleClass: string): string => {
   if (value.includes("LMP2")) return "lmp2";
   if (value.includes("LMP3")) return "lmp3";
   if (value.includes("LMGT3") || value.includes("GT3")) return "lmgt3";
+  if (value.includes("GTE")) return "gte";
   return "other";
 };
 

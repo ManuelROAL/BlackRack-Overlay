@@ -190,6 +190,10 @@ body[data-overlay-fit="true"].relative-body .standings-shell {
   --class-color: #58dc78;
 }
 
+.standings-class[data-class-tone="gte"] {
+  --class-color: #e2b93b;
+}
+
 .standings-class[data-class-tone="relative"] {
   --class-color: #98a5b3;
 }
@@ -302,6 +306,10 @@ body[data-overlay-fit="true"].relative-body .standings-shell {
 
 .relative-body .standing-row[data-class-tone="lmgt3"] {
   --row-class-color: #58dc78;
+}
+
+.relative-body .standing-row[data-class-tone="gte"] {
+  --row-class-color: #e2b93b;
 }
 
 .relative-body .standing-row::before {

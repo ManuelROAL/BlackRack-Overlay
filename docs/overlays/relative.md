@@ -90,8 +90,8 @@ the prepared vehicle IDs and formats them; it must not repeat domain selection.
 - Use one neutral outlined physical-order table with a framed header and separated
   row cards. Do not split it into class groups.
 - Keep each row's official class accent and short gradient aligned with Standings.
-  Use Hypercar red, LMP2 blue, LMP3 purple and LMGT3 green. Preserve distinct
-  player and pit layers, including LMGT3 contrast.
+  Use Hypercar red, LMP2 blue, LMP3 purple, LMGT3 green and GTE yellow-gold.
+  Preserve distinct player and pit layers, including LMGT3 contrast.
 - Derive design width from active columns with a compact 344 px minimum. New and
   reset configurations enable every column and header option. Existing saved
   selections remain unchanged, and all optional fields can still be hidden. Reserve

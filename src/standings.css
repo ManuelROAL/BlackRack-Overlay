@@ -209,6 +209,10 @@ body[data-overlay-fit="true"].standings-body .standings-shell {
   --class-color: #58dc78;
 }
 
+.standings-class[data-class-tone="gte"] {
+  --class-color: #e2b93b;
+}
+
 .class-table-header {
   position: relative;
   display: grid;
@@ -436,6 +440,10 @@ body[data-overlay-fit="true"].standings-body .standings-shell {
 
 .standings-body .standing-row[data-class-tone="lmgt3"] {
   --row-class-color: #58dc78;
+}
+
+.standings-body .standing-row[data-class-tone="gte"] {
+  --row-class-color: #e2b93b;
 }
 
 .standings-body .standing-row::before {
