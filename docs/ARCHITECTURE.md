@@ -73,7 +73,7 @@ Tauri events    analysis JSONL/strategy CSV    browser-source SSE
   - Owns the shared-memory layout, the per-car trackers and the source struct;
     the models are split into `lmu/` child modules that read those private
     types directly, under `source/`: `frame.rs` assembles a frame and the rest hold one family
-    each (`standings.rs`, `warnings.rs`, `session.rs`, `fuel.rs`,
+    each (`chat.rs`, `standings.rs`, `warnings.rs`, `session.rs`, `fuel.rs`,
     `driver_rank.rs`, `vehicle.rs`, `weather.rs`, `tests.rs`).
 - `sim/lmu/rest.rs`
   - Polls local REST on background threads and exposes only fresh cached values.

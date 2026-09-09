@@ -43,6 +43,10 @@ documented cadence in `docs/overlays/README.md`:
   cycles reuse the constructed roster.
 - Track Map receives a stripped coordinate-only batch and never requests enriched
   standings.
+- Chat reads LMU's active local trace only while its native panel or browser route
+  has demand. It polls the file at most every 250 ms and emits the bounded message
+  list at 4 Hz; the optional reader never participates in shared-memory access or
+  network/credential flows.
 - Browser-source SSE clients declare their overlay route. Only Standings and
   Relative routes request the enriched roster; legacy clients without a route
   retain full demand for compatibility.

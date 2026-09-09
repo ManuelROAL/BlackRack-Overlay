@@ -42,7 +42,8 @@ export default defineConfig({
         trackmap: "trackmap.html",
         forecast: "forecast.html",
         conditions: "conditions.html",
-        dashboard: "dashboard.html"
+        dashboard: "dashboard.html",
+        chat: "chat.html"
       }
     }
   },

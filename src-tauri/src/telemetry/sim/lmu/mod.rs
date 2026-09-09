@@ -15,6 +15,8 @@ use super::{SourceCapabilities, SourceDependency, SourceDescriptor};
 mod install;
 
 #[cfg(all(target_os = "windows", lmu_sdk))]
+mod chat;
+#[cfg(all(target_os = "windows", lmu_sdk))]
 mod driver_ranks;
 #[cfg(all(target_os = "windows", lmu_sdk))]
 mod event_split;
@@ -47,6 +49,7 @@ pub(super) const DESCRIPTOR: SourceDescriptor = SourceDescriptor {
         lift_and_coast: true,
         car_electronics: true,
         session_splits: true,
+        chat: true,
     },
     official_geometry: Some(trackmap::official_geometry),
     dependency: Some(plugin_dependency),

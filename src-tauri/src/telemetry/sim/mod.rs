@@ -77,6 +77,8 @@ pub struct SourceCapabilities {
     pub(crate) car_electronics: bool,
     /// Multi-split events, where the field is divided across sessions.
     pub(crate) session_splits: bool,
+    /// Chat messages read from the simulator's local session trace.
+    pub(crate) chat: bool,
 }
 
 impl SourceCapabilities {
@@ -97,6 +99,7 @@ impl SourceCapabilities {
         lift_and_coast: false,
         car_electronics: false,
         session_splits: false,
+        chat: false,
     };
 }
 
