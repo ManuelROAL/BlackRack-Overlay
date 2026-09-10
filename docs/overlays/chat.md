@@ -4,7 +4,7 @@
 
 - Entry: `chat.html`
 - Renderer/style: `src/chat.ts`, `src/chat.css`
-- Source: the optional `LMU_BlackRackChatBridge.dll` callback through
+- Source: the optional `LMU_BlackRackPlugin.dll` callback through
   `src-tauri/src/telemetry/sim/lmu/chat.rs`, with LMU's active
   `UserData/Log/trace*.txt` file as an automatic fallback
 - Capability: `chat`; the control-panel card is disabled when the simulator
@@ -17,7 +17,7 @@
 ## Behavior
 
 The overlay shows the most recent 24 chat lines. When
-`LMU_BlackRackChatBridge.dll` is loaded by LMU, it receives chat through
+`LMU_BlackRackPlugin.dll` is loaded by LMU, it receives chat through
 `InternalsPlugin::WantsToDisplayMessage` and sends it through a private,
 bounded shared-memory queue. When the plugin is absent or inactive, the source
 falls back to LMU's `NetComm::PushToChats` trace, reading it incrementally and
@@ -32,10 +32,10 @@ If LMU has no active trace or the log format changes, the overlay remains empty
 and the rest of telemetry continues normally. The log path is discovered from
 the same installed LMU locations used by the shared-memory dependency probe.
 
-The optional bridge is built from the repository root with
-`powershell -ExecutionPolicy Bypass -File .\build-lmu-chat-bridge.ps1`. Copy
-`dist/LMU_BlackRackChatBridge.dll` to LMU's `Plugins` directory and enable
-`"LMU_BlackRackChatBridge.dll": { " Enabled": 1 }` in
+The optional plugin is built from the repository root with
+`powershell -ExecutionPolicy Bypass -File .\build-lmu-plugin.ps1`. Copy
+`dist/LMU_BlackRackPlugin.dll` to LMU's `Plugins` directory and enable
+`"LMU_BlackRackPlugin.dll": { " Enabled": 1 }` in
 `UserData/player/CustomPluginVariables.JSON`. LMU must be restarted after the
 DLL is installed. The plugin does not write chat messages into the game or
 persist chat contents.

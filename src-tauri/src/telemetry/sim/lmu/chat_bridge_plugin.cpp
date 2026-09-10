@@ -151,7 +151,7 @@ private:
 } // namespace
 
 extern "C" __declspec(dllexport) const char *__cdecl GetPluginName() {
-    return "BlackRackChatBridge";
+    return "BlackRackPlugin";
 }
 
 extern "C" __declspec(dllexport) PluginObjectType __cdecl GetPluginType() {

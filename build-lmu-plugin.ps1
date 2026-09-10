@@ -22,10 +22,10 @@ if (-not $vsDevCmd) {
 
 New-Item -ItemType Directory -Force -Path $OutputDirectory | Out-Null
 $source = Join-Path $PSScriptRoot "src-tauri\src\telemetry\sim\lmu\chat_bridge_plugin.cpp"
-$outputDll = Join-Path $OutputDirectory "LMU_BlackRackChatBridge.dll"
-$outputLib = Join-Path $OutputDirectory "LMU_BlackRackChatBridge.lib"
-$outputPdb = Join-Path $OutputDirectory "LMU_BlackRackChatBridge.pdb"
-$outputObj = Join-Path $OutputDirectory "LMU_BlackRackChatBridge.obj"
+$outputDll = Join-Path $OutputDirectory "LMU_BlackRackPlugin.dll"
+$outputLib = Join-Path $OutputDirectory "LMU_BlackRackPlugin.lib"
+$outputPdb = Join-Path $OutputDirectory "LMU_BlackRackPlugin.pdb"
+$outputObj = Join-Path $OutputDirectory "LMU_BlackRackPlugin.obj"
 
 $clCommand = @(
     "cl.exe /nologo /LD /std:c++17 /EHsc /W4 /WX /wd4100 /wd4201 /MT",
@@ -36,7 +36,7 @@ $command = "call `"$vsDevCmd`" -arch=x64 && $clCommand"
 
 & cmd.exe /d /s /c $command
 if ($LASTEXITCODE -ne 0) {
-    throw "La compilación de LMU_BlackRackChatBridge.dll falló ($LASTEXITCODE)"
+    throw "La compilación de LMU_BlackRackPlugin.dll falló ($LASTEXITCODE)"
 }
 
 Write-Output $outputDll

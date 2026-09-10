@@ -43,7 +43,7 @@ documented cadence in `docs/overlays/README.md`:
   cycles reuse the constructed roster.
 - Track Map receives a stripped coordinate-only batch and never requests enriched
   standings.
-- Chat reads the native `LMU_BlackRackChatBridge.dll` queue while it is active,
+- Chat reads the native `LMU_BlackRackPlugin.dll` queue while it is active,
   falling back to LMU's local trace when the optional plugin is absent. The
   trace is polled at most every 250 ms and the bounded message list is emitted
   at 4 Hz while its native panel or browser route has demand. The optional chat
