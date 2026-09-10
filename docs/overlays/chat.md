@@ -10,19 +10,20 @@
 - Capability: `chat`; the control-panel card is disabled when the simulator
   cannot expose a local chat trace
 - OBS route: `/chat`
-- Cadence: 4 Hz while the overlay or its browser source is active. The native
-  bridge avoids LMU's delayed trace flush; the fallback trace is polled at most
-  every 250 ms.
+- Cadence: 50 Hz while the overlay or its browser source is active. The trace
+  fallback is polled at most every 20 ms, so the overlay does not add a separate
+  250 ms polling delay after LMU flushes a complete line.
 
 ## Behavior
 
 The overlay shows the most recent 24 chat lines. When
-`LMU_BlackRackPlugin.dll` is loaded by LMU, it receives chat through
-`InternalsPlugin::WantsToDisplayMessage` and sends it through a private,
-bounded shared-memory queue. When the plugin is absent or inactive, the source
-falls back to LMU's `NetComm::PushToChats` trace, reading it incrementally and
-starting with a bounded tail. System lines without a sender separator are
-labelled `RACE CONTROL`.
+`LMU_BlackRackPlugin.dll` is loaded by LMU, the source checks its private,
+bounded shared-memory queue. The public `InternalsPlugin::WantsToDisplayMessage`
+callback is an optional path and is not a guaranteed feed of incoming network
+chat in the current LMU build. When that queue has not delivered a message,
+the source falls back to LMU's `NetComm::PushToChats` trace, reading it
+incrementally and starting with a bounded tail. System lines without a sender
+separator are labelled `RACE CONTROL`.
 
 An active bridge mapping is not treated as proof that callbacks are arriving:
 the trace fallback remains available until the bridge delivers its first

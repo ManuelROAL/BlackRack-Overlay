@@ -1138,6 +1138,7 @@ pub fn spawn_source(app: AppHandle) {
         // that already repaint the fast overlays.
         const WEATHER_CYCLES: u64 = 24;
         const IDLE_WARNING_CYCLES: u64 = 12;
+        const CHAT_CYCLES: u64 = 1;
         const VISIBILITY_CYCLES: u64 = 12;
         const CONTROL_CYCLES: u64 = 24;
 
@@ -1158,7 +1159,7 @@ pub fn spawn_source(app: AppHandle) {
             let standings_due = cycle_due(cycle, tuning.standings_cycles);
             let relative_due = cycle_due(cycle, tuning.relative_cycles);
             let track_map_due = cycle_due(cycle, tuning.track_map_cycles);
-            let chat_due = cycle_due(cycle, IDLE_WARNING_CYCLES);
+            let chat_due = cycle_due(cycle, CHAT_CYCLES);
             let standings_visible = super::overlay_is_active(&app, "standings");
             let relative_visible = super::overlay_is_active(&app, "relative");
             let track_map_visible = super::overlay_is_active(&app, "trackmap");

@@ -12,7 +12,10 @@ const CHAT_BRIDGE_TEXT_BYTES: usize = 128;
 const CHAT_BRIDGE_MAPPING: &str = "Local\\BlackRackOverlay_LMUChat_v1";
 
 const CHAT_MARKER: &str = "[NETLOG] NetComm::PushToChats : ";
-const CHAT_POLL_INTERVAL: Duration = Duration::from_millis(250);
+// The source loop runs at 50 Hz. Keep the file fallback on that same cadence
+// so the overlay does not add another quarter-second wait after LMU flushes a
+// complete line.
+const CHAT_POLL_INTERVAL: Duration = Duration::from_millis(20);
 const CHAT_PATH_REFRESH_INTERVAL: Duration = Duration::from_secs(2);
 const CHAT_HISTORY_BYTES: u64 = 128 * 1024;
 const MAX_CHAT_MESSAGES: usize = 24;
