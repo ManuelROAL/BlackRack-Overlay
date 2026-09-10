@@ -24,6 +24,11 @@ falls back to LMU's `NetComm::PushToChats` trace, reading it incrementally and
 starting with a bounded tail. System lines without a sender separator are
 labelled `RACE CONTROL`.
 
+An active bridge mapping is not treated as proof that callbacks are arriving:
+the trace fallback remains available until the bridge delivers its first
+message, so another plugin or an LMU callback variation cannot leave the panel
+empty.
+
 The source is read-only. No chat contents are persisted by BlackRack Overlay,
 sent to a remote service or accepted as HTML; the frontend inserts both sender
 and message as text.

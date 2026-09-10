@@ -48,19 +48,25 @@ impl Default for ChatLog {
 impl ChatLog {
     pub(super) fn update(&mut self) -> Vec<ChatMessage> {
         if let Some(messages) = self.bridge.update() {
-            if !self.using_bridge {
-                self.using_bridge = true;
-                self.path = None;
-                self.position = 0;
-                self.messages.clear();
-            }
-            for message in messages {
-                self.messages.push_back(message);
-                while self.messages.len() > MAX_CHAT_MESSAGES {
-                    self.messages.pop_front();
+            // A live mapping only proves that the optional plugin started. It
+            // may still be unable to receive chat callbacks (for example when
+            // another plugin owns that path), so keep the trace fallback until
+            // the bridge has actually delivered a message.
+            if !messages.is_empty() || self.using_bridge {
+                if !self.using_bridge {
+                    self.using_bridge = true;
+                    self.path = None;
+                    self.position = 0;
+                    self.messages.clear();
                 }
+                for message in messages {
+                    self.messages.push_back(message);
+                    while self.messages.len() > MAX_CHAT_MESSAGES {
+                        self.messages.pop_front();
+                    }
+                }
+                return self.messages.iter().cloned().collect();
             }
-            return self.messages.iter().cloned().collect();
         }
         self.using_bridge = false;
 
