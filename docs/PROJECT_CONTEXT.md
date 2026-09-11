@@ -89,10 +89,8 @@ remove enrichment such as DR/SR or split data, but must not stop the overlays.
   panel and every dynamically created overlay host.
 - Rust release builds use fat LTO, one code-generation unit and strip symbols
   from the final binaries. Debug and development profiles remain unchanged.
-- The low-latency LMU chat path is optional: users may copy the project-built
-  `LMU_BlackRackPlugin.dll` into LMU's `Plugins` directory. Without it, the
-  application falls back to LMU's local trace. The application still expects
-  LMU's own `Plugins/LMU_SharedMemoryMapPlugin64.dll` for telemetry.
+- The application expects LMU's own `Plugins/LMU_SharedMemoryMapPlugin64.dll`
+  for telemetry.
 - Release artifacts and checksums live under `release/<version>/`.
 
 ## Current optimization state

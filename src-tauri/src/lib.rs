@@ -22,7 +22,7 @@ use tauri::{
 };
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 
-const OVERLAY_LABELS: [&str; 18] = [
+const OVERLAY_LABELS: [&str; 17] = [
     "delta",
     "timing",
     "stinthistory",
@@ -40,7 +40,6 @@ const OVERLAY_LABELS: [&str; 18] = [
     "forecast",
     "conditions",
     "dashboard",
-    "chat",
 ];
 
 const TRANSPARENT_BACKGROUND: Color = Color(0, 0, 0, 0);
@@ -86,7 +85,7 @@ const WEBVIEW_BROWSER_ARGUMENTS: &str = concat!(
 );
 
 /// Guard for privileged commands that must only ever run on behalf of the
-/// control panel. Overlay webviews render live session data (driver names, chat,
+/// control panel. Overlay webviews render live session data (driver names,
 /// race control) and are also served over the local network by the browser
 /// source, so they must not be able to reach filesystem, shell or configuration
 /// commands even if their content were ever compromised.
@@ -1191,7 +1190,6 @@ fn default_overlay_geometry(label: &str) -> (f64, f64, f64, f64) {
         "forecast" => (1020.0, 530.0, 366.0, 112.0),
         "conditions" => (1020.0, 410.0, 390.0, 90.0),
         "dashboard" => (620.0, 640.0, 362.0, 54.0),
-        "chat" => (1420.0, 20.0, 420.0, 270.0),
         _ => (20.0, 20.0, 360.0, 180.0),
     }
 }

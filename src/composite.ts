@@ -62,7 +62,7 @@ interface TelemetryBatch {
 const overlayIds: OverlayId[] = [
   "delta", "timing", "stinthistory", "driving", "liftcoast", "tires", "damage", "standings",
   "relative", "fuel", "pitstop", "flags", "rejoin", "trackmap",
-  "forecast", "conditions", "dashboard", "chat"
+  "forecast", "conditions", "dashboard"
 ];
 // Projected into every overlay on top of its own allowlist: an overlay has to
 // know what the active simulator can report before it decides what to draw.
@@ -147,14 +147,13 @@ const telemetryFields: Record<OverlayId, readonly (keyof TelemetryFrame)[]> = {
     "anti_lock_brakes_level", "anti_lock_brakes_max", "brake_bias_percent",
     "speed_limiter_active", "headlights_on", "wiper_state", "lift_and_coast_progress",
     "ambient_temperature_c", "track_temperature_c"
-  ],
-  chat: ["chat"]
+  ]
 };
 const overlayTitleKeys: Record<OverlayId, import("./i18n").TranslationKey> = {
   delta: "card.delta", timing: "card.timing", stinthistory: "card.stintHistory", driving: "card.driving", liftcoast: "card.liftcoast", tires: "card.tires",
   damage: "card.damage", standings: "card.standings", relative: "card.relative", fuel: "card.fuel",
   pitstop: "card.pitstop", flags: "card.flags", rejoin: "card.rejoin", trackmap: "card.trackmap",
-  forecast: "card.forecast", conditions: "card.conditions", dashboard: "card.dashboard", chat: "card.chat"
+  forecast: "card.forecast", conditions: "card.conditions", dashboard: "card.dashboard"
 };
 const overlayTitle = (overlay: OverlayId): string => t(overlayTitleKeys[overlay]).toLocaleUpperCase(getLocale());
 

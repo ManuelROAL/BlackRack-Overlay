@@ -149,10 +149,8 @@ in `docs/overlays/` and should not be duplicated here.
 
 ## Distribution and diagnostics
 
-- Users install the application normally. The optional low-latency LMU plugin
-  is a separately built `LMU_BlackRackPlugin.dll` that can be copied into
-  LMU's `Plugins` directory; chat falls back to the local trace when it is not
-  installed.
+- Users install the application normally. The application expects LMU's own
+  `Plugins/LMU_SharedMemoryMapPlugin64.dll` for telemetry.
 - Distribution is installer-only. The control panel may link to the fixed project
   Ko-fi page in the system browser, but it does not embed remote donation content,
   accept arbitrary URLs or make Ko-fi part of telemetry and startup behavior.

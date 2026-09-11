@@ -585,12 +585,6 @@ pub struct StandingEntry {
     is_player: bool,
 }
 
-#[derive(Clone, Default, Serialize)]
-pub struct ChatMessage {
-    sender: String,
-    text: String,
-}
-
 #[derive(Clone, Serialize)]
 pub struct TrackMapVehicle {
     vehicle_id: i32,
@@ -634,7 +628,6 @@ pub struct TelemetryFrame {
     session_split_count: u32,
     track_name: String,
     player_vehicle_name: String,
-    chat: Vec<ChatMessage>,
     #[serde(skip)]
     player_vehicle_livery_name: String,
     rest_weather_available: bool,
@@ -915,7 +908,6 @@ struct TelemetryDemand {
     include_rest_standings: bool,
     include_rest_supplement: bool,
     include_rest_weather: bool,
-    include_chat: bool,
 }
 
 impl TelemetryFrame {
@@ -954,7 +946,6 @@ impl TelemetryFrame {
             session_split_count: 0,
             track_name: String::new(),
             player_vehicle_name: String::new(),
-            chat: Vec::new(),
             player_vehicle_livery_name: String::new(),
             rest_weather_available: false,
             ambient_temperature_c: 0.0,
@@ -1138,7 +1129,6 @@ pub fn spawn_source(app: AppHandle) {
         // that already repaint the fast overlays.
         const WEATHER_CYCLES: u64 = 24;
         const IDLE_WARNING_CYCLES: u64 = 12;
-        const CHAT_CYCLES: u64 = 1;
         const VISIBILITY_CYCLES: u64 = 12;
         const CONTROL_CYCLES: u64 = 24;
 
@@ -1159,14 +1149,12 @@ pub fn spawn_source(app: AppHandle) {
             let standings_due = cycle_due(cycle, tuning.standings_cycles);
             let relative_due = cycle_due(cycle, tuning.relative_cycles);
             let track_map_due = cycle_due(cycle, tuning.track_map_cycles);
-            let chat_due = cycle_due(cycle, CHAT_CYCLES);
             let standings_visible = super::overlay_is_active(&app, "standings");
             let relative_visible = super::overlay_is_active(&app, "relative");
             let track_map_visible = super::overlay_is_active(&app, "trackmap");
             let browser_standings = crate::browser_source::overlay_has_clients("standings");
             let browser_relative = crate::browser_source::overlay_has_clients("relative");
             let browser_track_map = crate::browser_source::overlay_has_clients("trackmap");
-            let browser_chat = crate::browser_source::overlay_has_clients("chat");
             let standings_requested = (standings_due
                 && (standings_visible
                     || browser_standings
@@ -1211,7 +1199,6 @@ pub fn spawn_source(app: AppHandle) {
                 || spectator_mode();
             let rest_weather_requested =
                 overlay_requested("forecast") || overlay_requested("conditions");
-            let chat_requested = overlay_requested("chat");
             let mut frame = source.next_frame(TelemetryDemand {
                 include_standings: standings_requested,
                 include_track_map: track_map_requested,
@@ -1222,7 +1209,6 @@ pub fn spawn_source(app: AppHandle) {
                 include_rest_standings: rest_standings_requested,
                 include_rest_supplement: rest_supplement_requested,
                 include_rest_weather: rest_weather_requested,
-                include_chat: chat_requested,
             });
             frame.spectator_mode = observer_mode();
             frame.performance_profile = tuning.profile.name();
@@ -1286,7 +1272,7 @@ pub fn spawn_source(app: AppHandle) {
                     performance.emitted_relative += 1;
                 }
             }
-            if standings_due || (chat_due && browser_chat) {
+            if standings_due {
                 crate::browser_source::publish_frame(&frame);
             }
             frame.standings.clear();
@@ -1311,7 +1297,6 @@ pub fn spawn_source(app: AppHandle) {
             let emit_conditions = secondary_due && super::overlay_is_active(&app, "conditions");
             let emit_dashboard = driving_due && super::overlay_is_active(&app, "dashboard");
             let emit_fuel = driving_due && super::overlay_is_active(&app, "fuel");
-            let emit_chat = chat_due && super::overlay_is_active(&app, "chat");
             // An active warning follows the fast cadence so its response never
             // depends on a separate timer landing between repaint cycles.
             let flag_cycles = if frame.flag_warning.active {
@@ -1344,9 +1329,8 @@ pub fn spawn_source(app: AppHandle) {
                 ("forecast", emit_forecast),
                 ("conditions", emit_conditions),
                 ("dashboard", emit_dashboard),
-                ("chat", emit_chat),
             ];
-            let mut base_targets = [""; 15];
+            let mut base_targets = [""; 14];
             let mut base_target_count = 0;
             for (label, should_emit) in base_emissions {
                 if should_emit {

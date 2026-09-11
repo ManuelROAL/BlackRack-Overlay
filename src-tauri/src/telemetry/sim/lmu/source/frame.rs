@@ -18,7 +18,6 @@ impl TelemetrySource for LmuTelemetrySource {
             include_rest_standings,
             include_rest_supplement,
             include_rest_weather,
-            include_chat,
         } = demand;
         const TRANSIENT_SNAPSHOT_HOLD: Duration = Duration::from_secs(2);
         const STANDINGS_STATE_INTERVAL: Duration = Duration::from_millis(200);
@@ -57,12 +56,6 @@ impl TelemetrySource for LmuTelemetrySource {
             Self::weather_session_key(snapshot.session_type),
         );
         let rest_us = rest_started.elapsed().as_micros();
-        let chat = if include_chat {
-            self.chat_log.update()
-        } else {
-            Vec::new()
-        };
-
         if snapshot.connected == 0 {
             self.current_session = None;
             self.last_session_elapsed_seconds = None;
@@ -776,7 +769,6 @@ impl TelemetrySource for LmuTelemetrySource {
             session_split_count: session_split.count,
             track_name,
             player_vehicle_name: vehicle_name,
-            chat,
             player_vehicle_livery_name: vehicle_livery_name,
             rest_weather_available: snapshot.ambient_temperature_c.is_finite()
                 && snapshot.track_temperature_c.is_finite(),

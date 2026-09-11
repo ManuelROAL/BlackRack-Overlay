@@ -179,12 +179,6 @@ export interface SourceCapabilities {
   lift_and_coast: boolean;
   car_electronics: boolean;
   session_splits: boolean;
-  chat: boolean;
-}
-
-export interface ChatMessage {
-  sender: string;
-  text: string;
 }
 
 export interface TelemetryFrame {
@@ -209,7 +203,6 @@ export interface TelemetryFrame {
   session_split_count: number;
   track_name: string;
   player_vehicle_name: string;
-  chat: ChatMessage[];
   rest_weather_available: boolean;
   ambient_temperature_c: number;
   track_temperature_c: number;

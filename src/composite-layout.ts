@@ -39,7 +39,7 @@ export const clampPanelCoordinate = (
 const overlayIds: OverlayId[] = [
   "delta", "timing", "stinthistory", "driving", "liftcoast", "tires", "damage", "standings",
   "relative", "fuel", "pitstop", "flags", "rejoin", "trackmap",
-  "forecast", "conditions", "dashboard", "chat"
+  "forecast", "conditions", "dashboard"
 ];
 
 let layoutPromise: Promise<CompositeLayout> | null = null;

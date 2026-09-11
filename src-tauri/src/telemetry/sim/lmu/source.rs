@@ -10,7 +10,6 @@ use std::ffi::{c_char, c_int};
 use std::time::{Duration, Instant};
 
 use super::super::{SourceDescriptor, TelemetrySource};
-use super::chat::ChatLog;
 use super::driver_ranks::DriverRankResolver;
 use super::event_split::{DriverRankSettings, SessionSplitResolver};
 use super::rest::{
@@ -1003,7 +1002,6 @@ pub struct LmuTelemetrySource {
     driver_rank_race_sequence: u64,
     driver_rank_validation: Option<DriverRankValidationState>,
     source_stage_performance: SourceStagePerformance,
-    chat_log: ChatLog,
 }
 
 #[derive(Default)]
@@ -1345,7 +1343,6 @@ impl LmuTelemetrySource {
             driver_rank_race_sequence: 0,
             driver_rank_validation: None,
             source_stage_performance: SourceStagePerformance::new(),
-            chat_log: ChatLog::default(),
         }
     }
 }
