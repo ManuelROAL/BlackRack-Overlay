@@ -17,8 +17,7 @@
 
 # Root / orchestrator
 model = "gpt-5.6-luna"
-# Deja el esfuerzo sin fijar para poder cambiarlo desde Codex o por prompt.
-# model_reasoning_effort = "max"
+#model_reasoning_effort = "max"
 
 # Safe interactive defaults. Change if your workflow needs otherwise.
 approval_policy = "on-request"
@@ -29,7 +28,7 @@ enabled = true
 
 # Number of child agent threads Codex may keep open concurrently.
 # Keep this low on Plus: every concurrent subagent re-reads its own context.
-max_concurrent_threads_per_session = 2
+max_concurrent_threads_per_session = 4
 
 # Default for any spawned subagent that does not explicitly choose a model.
 default_subagent_model = "gpt-5.6-luna"
