@@ -227,8 +227,13 @@ body.dashboard-body {
 .dash-battery-readout {
   display: flex;
   align-items: center;
-  width: calc(30px * var(--overlay-font-scale, 1));
+  width: 100%;
   height: calc(19px * var(--overlay-font-scale, 1));
+}
+
+.dash-fields > div[data-dashboard-field="battery"] {
+  width: max-content;
+  align-items: stretch;
 }
 
 .dash-hybrid-visual {
@@ -266,6 +271,20 @@ body.dashboard-body {
   height: 100%;
   filter: invert(1);
   opacity: .82;
+}
+
+.dash-battery-percent {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #f0f4f8;
+  font-size: calc(9px * var(--overlay-font-scale, 1));
+  font-weight: 900;
+  line-height: 1;
+  text-shadow: 0 1px 2px rgb(0 0 0 / 80%);
 }
 
 /* Position is the one value read as a standing rather than as a measurement,

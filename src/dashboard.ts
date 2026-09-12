@@ -36,6 +36,7 @@ const gear = value("gear");
 const revs = value("revs");
 const batteryField = fields.battery;
 const batteryFill = document.getElementById("dashboard-battery-fill")!;
+const batteryPercentLabel = document.getElementById("dashboard-battery-percent")!;
 const batteryOutline = document.querySelector<HTMLImageElement>(".dash-hybrid-outline")!;
 batteryOutline.src = batteryIconUrl;
 const readout = document.querySelector<HTMLElement>(".dash-readout")!;
@@ -221,6 +222,7 @@ const renderValues = (frame: TelemetryFrame): void => {
     ? Math.max(0, Math.min(100, frame.battery_charge_percent))
     : 0;
   batteryFill.style.width = `${(62.5 * batteryPercent / 100).toFixed(2)}%`;
+  setText(batteryPercentLabel, `${Math.round(batteryPercent)}%`);
   const state = hybridVisualState(frame);
   setState(batteryField, "hybridState", state);
 

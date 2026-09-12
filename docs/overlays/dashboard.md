@@ -35,10 +35,13 @@ One pill-shaped strip, not a cluster:
   standing rather than as a measurement.
 - The speed cell reserves room for three digits, so crossing 100 km/h does not
   resize the strip.
-- The optional hybrid battery readout uses the bundled battery SVG. Its interior
-  fill shows SOC without a percentage label; regeneration/charge is green and
-  propulsion/discharge is cyan. Neutral or unavailable hybrid state uses the
-  muted fill, and no state explanation text is shown.
+- The optional hybrid battery readout uses the bundled battery SVG at the same
+  height as the other values and spans the full width of its localized
+  `BATERÍA`/`BATTERY` label.
+  Its interior fill shows SOC and carries the percentage centered inside the
+  battery; regeneration/charge is green and propulsion/discharge is cyan.
+  Neutral or unavailable hybrid state uses the muted fill, and no state
+  explanation text is shown.
 - Lights and wipers are optional readouts. Lights show `ON` or `OFF`; wipers show
   `OFF`, `AUTO`, `SLOW`/`LENTO` or `FAST`/`RÁPIDO`, following LMU's published
   wiper states.
@@ -104,7 +107,9 @@ fields may be enabled, including all of them. The strip grows with its content.
   documented as 0..1 while the state of charge has been seen as a percentage —
   so the bridge normalises whichever one is present and clamps it to 0..100.
 - The battery SVG uses that normalised SOC and `hybrid_motor_state` values 2
-  (propulsion/discharge) and 3 (regeneration/charge) to choose its fill colour.
+  (propulsion/discharge) and 3 (regeneration/charge) to choose its fill colour;
+  the same SOC is rounded to a whole percentage for the label inside the
+  battery.
   Virtual-energy percentage remains a separate readout and is never used as the
   battery fill.
 - Position prefers the class position, which is what a multiclass grid is
@@ -170,7 +175,9 @@ compact gear-only layouts, text scaling, transparency and OBS as well.
 
 Check a Hypercar and an LMP2 in the same session: the battery, the engine map
 and ABS must appear for one and be absent for the other, and the strip must
-shorten accordingly. Confirm both warnings start and stop with their own
+shorten accordingly. Confirm the battery spans its label, keeps the percentage
+readable from 0% to 100% and updates the fill with it. Confirm both warnings
+start and stop with their own
 state — the limiter entering and leaving the pits, the purple cue with Lift &
 Coast's own segments — that they fall back to the shell with the gear turned
 off, that the limiter wins while both are engaged, and that each traction-control
