@@ -33,8 +33,8 @@ One pill-shaped strip, not a cluster:
 - Everything else is a uniform label-over-value pair in a single row. Class
   position carries the accent colour, since it is the one value read as a
   standing rather than as a measurement.
-- The speed cell reserves room for three digits, so crossing 100 km/h does not
-  resize the strip.
+- The speed cell reserves room for two digits and grows to three digits from
+  100 km/h, so the strip is narrower below 100 and expands when needed.
 - The optional hybrid battery readout uses the bundled battery SVG. Its interior
   fill shows SOC without a percentage label; regeneration/charge is green and
   propulsion/discharge is cyan. Neutral or unavailable hybrid state uses the

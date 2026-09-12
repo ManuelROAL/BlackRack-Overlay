@@ -218,9 +218,9 @@ body.dashboard-body {
   white-space: nowrap;
 }
 
-/* Keep the strip stable when speed crosses the 100 km/h boundary. */
+/* Reserve room for normal two-digit speeds, but let the cell grow for 100+. */
 .dash-fields > div[data-dashboard-field="speed"] dd {
-  min-width: 3ch;
+  min-width: 2ch;
   text-align: center;
 }
 
