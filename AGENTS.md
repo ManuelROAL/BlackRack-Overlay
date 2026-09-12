@@ -27,19 +27,6 @@ Use the smallest relevant documentation set:
   concern.
 
 Update the owning documentation when behavior or a shared contract changes.
-Do not perform a full repository tour for a localized change.
-
-## Orchestration
-
-Use the `astra-orchestrator` skill for repository coding work. Work solo by
-default. Delegate only a substantial, bounded task when separate context or
-parallel work provides a concrete benefit. Use independent review for a concrete
-correctness, security, data-integrity, concurrency, or compatibility risk.
-
-The root owns requirements, architecture, routing, integration, and final
-verification. Define file ownership before delegation. Subagents must preserve
-other contributors' edits, stay within their scope, and must not delegate further
-unless explicitly assigned.
 
 ## Verification and completion
 
@@ -55,10 +42,11 @@ unless explicitly assigned.
   part of acceptance and the required browser capability is available. Otherwise
   report the visual-validation limitation.
 - If a required check fails, classify it as introduced, pre-existing, or
-  environment-related; perform one focused diagnostic/retry, then report exact
-  evidence and stop if the next step requires user input or broader authority.
-- A task is complete only when the requested change is implemented, proportional
-  verification is recorded, and material gaps are reported.
+  environment-related, then fix and re-run checks for issues introduced by the
+  change when safe. Report exact evidence for unresolved failures.
+- For implementation tasks, continue through implementation and relevant
+  validation until the requested behavior works and material introduced issues
+  are resolved, or a decision genuinely requires user input.
 
 ## Git and release history
 
@@ -76,9 +64,10 @@ unless explicitly assigned.
 ## Authority boundaries
 
 Workspace write access does not authorize production access, external messages,
-credential changes, commits, pushes, publishing, deployment, or deletion outside
-the requested scope. Perform those actions only when the user explicitly requests
-that exact action and the target is known.
+credential changes, pushes, publishing, deployment, or deletion outside the
+requested scope. The repository workflow above authorizes a scoped commit for
+an in-scope file change after verification; all other commits and external or
+irreversible actions require an explicit request and a known target.
 
 User instructions take precedence. Preserve unrelated edits and never claim a
 review, test, or delegated result that was not actually observed.
