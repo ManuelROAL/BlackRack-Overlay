@@ -1,8 +1,163 @@
 //! Driver rank estimation and the diagnostics that validate it.
 
 use super::*;
+use crate::telemetry::sim::lmu::event_split::SessionSplit;
+
+#[cfg(test)]
+mod tests;
+
+/// Only the event inputs used by DR; do not retain a second profile roster.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub(super) struct DriverRankEventContext {
+    pub(super) event_id: String,
+    pub(super) number: u32,
+    pub(super) count: u32,
+    pub(super) driver_rank_settings: DriverRankSettings,
+}
+
+impl From<&SessionSplit> for DriverRankEventContext {
+    fn from(split: &SessionSplit) -> Self {
+        Self {
+            event_id: split.event_id.clone(),
+            number: split.number,
+            count: split.count,
+            driver_rank_settings: split.driver_rank_settings,
+        }
+    }
+}
+
+/// DR survives generic telemetry resets and the stopped-session frames LMU
+/// exposes after a race. Neither represents another rated result.
+#[derive(Default)]
+pub(super) struct DriverRankRaceState {
+    session_type: Option<i32>,
+    game_phase: Option<u32>,
+    elapsed_seconds: Option<f64>,
+    event: DriverRankEventContext,
+    event_confirmed: bool,
+    event_request_baseline: u64,
+    track_name: Option<[c_char; 64]>,
+    track_length: Option<f64>,
+}
+
+impl DriverRankRaceState {
+    fn is_race(&self) -> bool {
+        self.session_type
+            .is_some_and(|session| (10..=13).contains(&session))
+    }
+
+    fn update(
+        &mut self,
+        snapshot: &LmuSnapshot,
+        split: &SessionSplit,
+        request_revision: u64,
+        resolved_request_revision: u64,
+    ) -> bool {
+        if snapshot.game_phase >= 9 {
+            self.game_phase = Some(snapshot.game_phase);
+            return false;
+        }
+
+        let is_race = (10..=13).contains(&snapshot.session_type);
+        // LMU's fixed-size C string may retain arbitrary bytes after its NUL.
+        let mut track_name = snapshot.track_name;
+        if let Some(end) = track_name.iter().position(|byte| *byte == 0) {
+            track_name[end..].fill(0);
+        }
+        let known_track_name = track_name[0] != 0;
+        let known_track_length = snapshot.track_length.is_finite() && snapshot.track_length > 1.0;
+        let track_changed = (known_track_name
+            && self.track_name.is_some_and(|name| name != track_name))
+            || (known_track_length
+                && self
+                    .track_length
+                    .is_some_and(|length| (length - snapshot.track_length).abs() > 1.0));
+        let new_race = is_race
+            && (self.session_type != Some(snapshot.session_type)
+                || (snapshot.game_phase < 8
+                    && (track_changed
+                        || self.game_phase.is_some_and(|phase| phase >= 8)
+                        || LmuTelemetrySource::session_elapsed_regressed(
+                            self.elapsed_seconds,
+                            snapshot.session_elapsed_seconds,
+                        ))));
+        if new_race {
+            self.event = DriverRankEventContext::from(split);
+            self.event_confirmed = false;
+            self.event_request_baseline = request_revision;
+        } else if is_race
+            && !self.event_confirmed
+            && snapshot.game_phase < 8
+            && resolved_request_revision > self.event_request_baseline
+            && !split.event_id.is_empty()
+        {
+            // A response to a request already in flight at race entry may still
+            // describe the previous event. Require a request started afterwards,
+            // including when a legitimate new heat keeps the same event ID.
+            self.event = DriverRankEventContext::from(split);
+            self.event_confirmed = true;
+        } else if is_race
+            && self.event_confirmed
+            && self.event.event_id.eq_ignore_ascii_case(&split.event_id)
+        {
+            // Resolve late metadata for this race, but never adopt the event
+            // the player has registered for while the old race is still visible.
+            if split.number > 0 {
+                self.event.number = split.number;
+            }
+            if split.count > 0 {
+                self.event.count = split.count;
+            }
+            self.event.driver_rank_settings = split.driver_rank_settings;
+        }
+        if !is_race || snapshot.game_phase < 8 {
+            if known_track_name {
+                self.track_name = Some(track_name);
+            }
+            if known_track_length {
+                self.track_length = Some(snapshot.track_length);
+            }
+        }
+        self.session_type = Some(snapshot.session_type);
+        self.game_phase = Some(snapshot.game_phase);
+        self.elapsed_seconds = snapshot
+            .session_elapsed_seconds
+            .is_finite()
+            .then_some(snapshot.session_elapsed_seconds);
+        new_race
+    }
+}
 
 impl LmuTelemetrySource {
+    pub(super) fn update_driver_rank_session(&mut self, snapshot: &LmuSnapshot) {
+        let was_race = self.driver_rank_race.is_race();
+        let (requested, resolved) = self.session_split.request_revisions();
+        if self
+            .driver_rank_race
+            .update(snapshot, self.session_split.value(), requested, resolved)
+        {
+            self.scored_finish_positions.clear();
+            self.driver_rank_race_sequence = self.driver_rank_race_sequence.saturating_add(1);
+            self.race_qualifying_positions.clear();
+            if was_race {
+                self.driver_rank_prerace_scores.clear();
+            }
+        }
+    }
+
+    pub(super) fn driver_rank_event_context(&self, session_type: i32) -> DriverRankEventContext {
+        if (10..=13).contains(&session_type) {
+            self.driver_rank_race.event.clone()
+        } else {
+            DriverRankEventContext::from(self.session_split.value())
+        }
+    }
+
+    pub(super) fn driver_rank_event_ready(&self, session_type: i32, game_phase: u32) -> bool {
+        game_phase < 9
+            && (!(10..=13).contains(&session_type) || self.driver_rank_race.event_confirmed)
+    }
+
     pub(super) fn class_rank(class_name: &str) -> u8 {
         let normalized = class_name.to_ascii_uppercase();
         if normalized.contains("HYPER") || normalized.contains("GTP") {
@@ -91,6 +246,16 @@ impl LmuTelemetrySource {
     }
 
     pub(super) fn update_driver_rank_validation(&mut self, input: DriverRankValidationInput<'_>) {
+        if crate::telemetry::dr_estimate_log::enabled() {
+            self.apply_driver_rank_validation(input, crate::telemetry::dr_estimate_log::queue);
+        }
+    }
+
+    fn apply_driver_rank_validation(
+        &mut self,
+        input: DriverRankValidationInput<'_>,
+        mut emit: impl FnMut(serde_json::Value),
+    ) {
         let DriverRankValidationInput {
             session_type,
             game_phase,
@@ -100,7 +265,9 @@ impl LmuTelemetrySource {
             player_raw_elo,
             refresh_revision,
         } = input;
-        if !crate::telemetry::dr_estimate_log::enabled() {
+        // Phase 9 can reset the clock and scramble the roster. Keep the final
+        // prediction pending for a fresh profile in a later session.
+        if game_phase >= 9 {
             return;
         }
 
@@ -115,7 +282,7 @@ impl LmuTelemetrySource {
                 .is_none_or(|state| state.race_sequence != self.driver_rank_race_sequence)
             {
                 if let Some(previous) = self.driver_rank_validation.take() {
-                    crate::telemetry::dr_estimate_log::queue(serde_json::json!({
+                    emit(serde_json::json!({
                         "event": "driver_rank_validation",
                         "log_schema_version": DRIVER_RANK_LOG_SCHEMA_VERSION,
                         "formula_version": DRIVER_RANK_FORMULA_VERSION,
@@ -187,7 +354,7 @@ impl LmuTelemetrySource {
                 return;
             }
             state.final_logged_signature = Some(signature);
-            crate::telemetry::dr_estimate_log::queue(serde_json::json!({
+            emit(serde_json::json!({
                 "event": "driver_rank_race_final",
                 "log_schema_version": DRIVER_RANK_LOG_SCHEMA_VERSION,
                 "formula_version": DRIVER_RANK_FORMULA_VERSION,
@@ -236,7 +403,7 @@ impl LmuTelemetrySource {
             return;
         };
         let error = actual_gain - estimated_gain;
-        crate::telemetry::dr_estimate_log::queue(serde_json::json!({
+        emit(serde_json::json!({
             "event": "driver_rank_validation",
             "log_schema_version": DRIVER_RANK_LOG_SCHEMA_VERSION,
             "formula_version": DRIVER_RANK_FORMULA_VERSION,

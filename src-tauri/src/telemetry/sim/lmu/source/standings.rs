@@ -377,7 +377,7 @@ impl LmuTelemetrySource {
         let qualifying_class_positions =
             Self::scored_class_positions(&entries, &driver_qualifying_overall_positions);
         let is_race = (10..=13).contains(&snapshot.session_type);
-        if is_race {
+        if is_race && snapshot.game_phase < 9 {
             Self::latch_race_qualifying_positions(
                 &mut self.race_qualifying_positions,
                 &qualifying_class_positions,
@@ -403,14 +403,20 @@ impl LmuTelemetrySource {
         let latest_scored_positions =
             Self::scored_class_positions(&entries, &scored_overall_positions);
         self.scored_finish_positions.extend(latest_scored_positions);
-        let driver_rank_diagnostic = Self::update_driver_rank_estimates(
-            &mut entries,
-            &driver_rank_scores,
-            &driver_qualifying_positions,
-            &self.scored_finish_positions,
-            snapshot.session_type,
-            self.session_split.value().driver_rank_settings,
-        );
+        let dr_event = self.driver_rank_event_context(snapshot.session_type);
+        let driver_rank_diagnostic =
+            if self.driver_rank_event_ready(snapshot.session_type, snapshot.game_phase) {
+                Self::update_driver_rank_estimates(
+                    &mut entries,
+                    &driver_rank_scores,
+                    &driver_qualifying_positions,
+                    &self.scored_finish_positions,
+                    snapshot.session_type,
+                    dr_event.driver_rank_settings,
+                )
+            } else {
+                None
+            };
 
         let authenticated_player_elo = self.driver_ranks.authenticated_player_elo();
         let authenticated_elo_revision = self.driver_ranks.authenticated_player_elo_revision();
@@ -430,7 +436,7 @@ impl LmuTelemetrySource {
         }
 
         if log_driver_rank_sample {
-            let split = self.session_split.value();
+            let split = &dr_event;
             if let Some(sample) = driver_rank_diagnostic.as_ref() {
                 if (0..=8).contains(&snapshot.session_type) {
                     crate::telemetry::dr_estimate_log::queue(serde_json::json!({
@@ -512,12 +518,11 @@ impl LmuTelemetrySource {
             }
         }
 
-        let split = self.session_split.value().clone();
         self.update_driver_rank_validation(DriverRankValidationInput {
             session_type: snapshot.session_type,
             game_phase: snapshot.game_phase,
-            event_id: &split.event_id,
-            split_number: split.number,
+            event_id: &dr_event.event_id,
+            split_number: dr_event.number,
             sample: driver_rank_diagnostic.as_ref(),
             player_raw_elo: validation_player_elo,
             refresh_revision: player_rank_refresh_revision,

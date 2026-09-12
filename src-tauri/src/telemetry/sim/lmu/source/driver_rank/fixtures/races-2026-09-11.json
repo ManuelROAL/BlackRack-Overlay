@@ -1,0 +1,292 @@
+[
+  {
+    "name": "gt3",
+    "settings": {
+      "distance": 400,
+      "k": 60,
+      "logarithm": 10,
+      "multiplier": 1
+    },
+    "next_event_settings": {
+      "distance": 400,
+      "k": 45,
+      "logarithm": 10,
+      "multiplier": 1
+    },
+    "expected_gain": -4.179076526774258,
+    "contaminated_gain": -3.1343073950806932,
+    "player": {
+      "vehicle_id": 17,
+      "visual_score": 480,
+      "race_position": 11,
+      "qualifying_position": 16
+    },
+    "opponents": [
+      {
+        "vehicle_id": 14,
+        "visual_score": 490,
+        "race_position": 1,
+        "qualifying_position": 3
+      },
+      {
+        "vehicle_id": 28,
+        "visual_score": 460,
+        "race_position": 2,
+        "qualifying_position": 2
+      },
+      {
+        "vehicle_id": 19,
+        "visual_score": 480,
+        "race_position": 3,
+        "qualifying_position": 4
+      },
+      {
+        "vehicle_id": 12,
+        "visual_score": 490,
+        "race_position": 4,
+        "qualifying_position": 8
+      },
+      {
+        "vehicle_id": 29,
+        "visual_score": 460,
+        "race_position": 5,
+        "qualifying_position": 9
+      },
+      {
+        "vehicle_id": 30,
+        "visual_score": 460,
+        "race_position": 6,
+        "qualifying_position": 5
+      },
+      {
+        "vehicle_id": 32,
+        "visual_score": 460,
+        "race_position": 7,
+        "qualifying_position": 7
+      },
+      {
+        "vehicle_id": 10,
+        "visual_score": 500,
+        "race_position": 8,
+        "qualifying_position": 12
+      },
+      {
+        "vehicle_id": 11,
+        "visual_score": 490,
+        "race_position": 9,
+        "qualifying_position": 11
+      },
+      {
+        "vehicle_id": 36,
+        "visual_score": 450,
+        "race_position": 10,
+        "qualifying_position": 13
+      },
+      {
+        "vehicle_id": 7,
+        "visual_score": 500,
+        "race_position": 12,
+        "qualifying_position": 1
+      },
+      {
+        "vehicle_id": 13,
+        "visual_score": 490,
+        "race_position": 13,
+        "qualifying_position": 6
+      },
+      {
+        "vehicle_id": 23,
+        "visual_score": 470,
+        "race_position": 14,
+        "qualifying_position": 14
+      },
+      {
+        "vehicle_id": 31,
+        "visual_score": 460,
+        "race_position": 16,
+        "qualifying_position": 18
+      },
+      {
+        "vehicle_id": 26,
+        "visual_score": 470,
+        "race_position": 17,
+        "qualifying_position": 17
+      },
+      {
+        "vehicle_id": 34,
+        "visual_score": 450,
+        "race_position": 18,
+        "qualifying_position": 10
+      },
+      {
+        "vehicle_id": 6,
+        "visual_score": 500,
+        "race_position": 19,
+        "qualifying_position": 15
+      },
+      {
+        "vehicle_id": 25,
+        "visual_score": 470,
+        "race_position": 15,
+        "qualifying_position": 19
+      }
+    ]
+  },
+  {
+    "name": "lmp2",
+    "settings": {
+      "distance": 400,
+      "k": 45,
+      "logarithm": 10,
+      "multiplier": 1
+    },
+    "next_event_settings": {
+      "distance": 500,
+      "k": 30,
+      "logarithm": 10,
+      "multiplier": 1
+    },
+    "expected_gain": 2.632643809310233,
+    "contaminated_gain": 1.400206150713172,
+    "player": {
+      "vehicle_id": 19,
+      "visual_score": 470,
+      "race_position": 12,
+      "qualifying_position": 18
+    },
+    "opponents": [
+      {
+        "vehicle_id": 4,
+        "visual_score": 560,
+        "race_position": 1,
+        "qualifying_position": 2
+      },
+      {
+        "vehicle_id": 10,
+        "visual_score": 520,
+        "race_position": 2,
+        "qualifying_position": 4
+      },
+      {
+        "vehicle_id": 2,
+        "visual_score": 600,
+        "race_position": 3,
+        "qualifying_position": 5
+      },
+      {
+        "vehicle_id": 3,
+        "visual_score": 590,
+        "race_position": 4,
+        "qualifying_position": 3
+      },
+      {
+        "vehicle_id": 5,
+        "visual_score": 560,
+        "race_position": 5,
+        "qualifying_position": 21
+      },
+      {
+        "vehicle_id": 22,
+        "visual_score": 470,
+        "race_position": 6,
+        "qualifying_position": 10
+      },
+      {
+        "vehicle_id": 17,
+        "visual_score": 480,
+        "race_position": 7,
+        "qualifying_position": 12
+      },
+      {
+        "vehicle_id": 20,
+        "visual_score": 470,
+        "race_position": 8,
+        "qualifying_position": 13
+      },
+      {
+        "vehicle_id": 1,
+        "visual_score": 640,
+        "race_position": 9,
+        "qualifying_position": 1
+      },
+      {
+        "vehicle_id": 28,
+        "visual_score": 450,
+        "race_position": 10,
+        "qualifying_position": 16
+      },
+      {
+        "vehicle_id": 23,
+        "visual_score": 460,
+        "race_position": 11,
+        "qualifying_position": 8
+      },
+      {
+        "vehicle_id": 15,
+        "visual_score": 490,
+        "race_position": 13,
+        "qualifying_position": 11
+      },
+      {
+        "vehicle_id": 18,
+        "visual_score": 470,
+        "race_position": 14,
+        "qualifying_position": 15
+      },
+      {
+        "vehicle_id": 12,
+        "visual_score": 510,
+        "race_position": 15,
+        "qualifying_position": 19
+      },
+      {
+        "vehicle_id": 13,
+        "visual_score": 510,
+        "race_position": 16,
+        "qualifying_position": 6
+      },
+      {
+        "vehicle_id": 16,
+        "visual_score": 490,
+        "race_position": 17,
+        "qualifying_position": 20
+      },
+      {
+        "vehicle_id": 8,
+        "visual_score": 540,
+        "race_position": 18,
+        "qualifying_position": 9
+      },
+      {
+        "vehicle_id": 25,
+        "visual_score": 460,
+        "race_position": 19,
+        "qualifying_position": 23
+      },
+      {
+        "vehicle_id": 26,
+        "visual_score": 440,
+        "race_position": 20,
+        "qualifying_position": 14
+      },
+      {
+        "vehicle_id": 21,
+        "visual_score": 470,
+        "race_position": 21,
+        "qualifying_position": 22
+      },
+      {
+        "vehicle_id": 9,
+        "visual_score": 520,
+        "race_position": 22,
+        "qualifying_position": 7
+      },
+      {
+        "vehicle_id": 6,
+        "visual_score": 540,
+        "race_position": 23,
+        "qualifying_position": 17
+      }
+    ]
+  }
+]

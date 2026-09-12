@@ -125,6 +125,15 @@ shared `standings_models` module.
 - The DR estimate is same-class and event-parameter aware. Compare drivers on
   the three-times internal rating scale, then normalize the visible gain with
   `multiplier * K / (2 * rated opponents)`.
+- Bind the event ID, split and DR parameters to the active race. Accept late
+  metadata for that same event; registering for another event must not change
+  the running race's estimate, final prediction or diagnostic event ID. If no
+  event was resolved before the finish, do not attach a newly discovered event
+  to that finished race. The next actual race acquires its own event context.
+  At race entry, withhold DR estimates until a successful event lookup started
+  after that entry confirms the event, even for another heat of the same event.
+  Cached results, older in-flight requests and failed/empty resolutions cannot
+  confirm it. This uses the existing resolver cadence and retry policy.
 - Freeze each driver's latest pre-race visual score for the race estimate. A
   driver first discovered during the race is frozen when their rank becomes
   available, so asynchronous profile refreshes cannot rewrite earlier inputs.
@@ -155,6 +164,19 @@ shared `standings_models` module.
   sources. This lets post-race penalties and classification changes correct the
   final estimate without adding REST lag to the live race. Latch each complete
   scored class order until the session changes, while accepting later corrections.
+- DR race sequencing follows the observed session, circuit, race phases and live clock
+  restarts independently of generic telemetry resets. Phase 9 (stopped) does not
+  open a race, calculate/log another estimate or overwrite its pending final
+  validation. Preserve the qualifying and scored finish orders through generic
+  resets after the flag; clear them for the next actual race. Phase 8 still
+  accepts scored classification corrections, and a later fresh profile can
+  settle the preserved final result. Preserve known circuit identity across
+  disconnects and missing metadata, so rejoining another circuit starts a new
+  DR race even when its session type is unchanged and its clock is higher.
+- Regression fixtures from the 2026-09-11 DR captures reproduce the GT3 and LMP2
+  finals that changed from -4.179 to -3.134 and +2.633 to +1.400 after registering
+  for another event. The fix retains the original event parameters; it does not
+  recalibrate the formula against the coarse visible-rank deltas in those logs.
 - SOF uses resolved continuous DR and reports partial coverage. Do not calculate or
   display SOF in practice.
 

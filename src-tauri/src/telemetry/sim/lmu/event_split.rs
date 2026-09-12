@@ -72,6 +72,8 @@ pub(super) struct SessionSplitResolver {
     last_attempt: Option<Instant>,
     last_event_id: String,
     failures: u32,
+    request_revision: u64,
+    resolved_request_revision: u64,
 }
 
 impl SessionSplitResolver {
@@ -82,6 +84,8 @@ impl SessionSplitResolver {
             last_attempt: None,
             last_event_id: String::new(),
             failures: 0,
+            request_revision: 0,
+            resolved_request_revision: 0,
         }
     }
 
@@ -106,6 +110,7 @@ impl SessionSplitResolver {
         }
 
         self.last_attempt = Some(now);
+        self.request_revision = self.request_revision.saturating_add(1);
         let (sender, receiver) = mpsc::channel();
         self.receiver = Some(receiver);
         let current = self.current.clone();
@@ -149,6 +154,10 @@ impl SessionSplitResolver {
         &self.current
     }
 
+    pub(super) fn request_revisions(&self) -> (u64, u64) {
+        (self.request_revision, self.resolved_request_revision)
+    }
+
     fn receive_result(&mut self) {
         let Some(receiver) = self.receiver.as_ref() else {
             return;
@@ -161,6 +170,10 @@ impl SessionSplitResolver {
 
         match attempt.result {
             Ok(split) => {
+                // Only one request can be in flight; refresh receives it before
+                // incrementing request_revision for the next request. This is
+                // the revision at request start, not a count of responses.
+                self.resolved_request_revision = self.request_revision;
                 if split != self.current {
                     crate::telemetry::queue_analysis_event(serde_json::json!({
                         "event": "session_split",
@@ -713,6 +726,24 @@ mod tests {
 
         assert!(resolver.receiver.is_some());
         assert!(resolver.last_attempt.is_some());
+        assert_eq!(resolver.request_revisions().0, 1);
+    }
+
+    #[test]
+    fn resolution_revision_identifies_the_successful_request_not_failed_responses() {
+        let mut resolver = SessionSplitResolver::empty();
+        for (revision, attempt, expected_resolved) in [
+            (1, settled_attempt("old-event"), 1),
+            (2, failed_attempt("new-event"), 1),
+            (3, settled_attempt("new-event"), 3),
+        ] {
+            let (sender, receiver) = std::sync::mpsc::channel();
+            resolver.receiver = Some(receiver);
+            resolver.request_revision = revision;
+            sender.send(attempt).unwrap();
+            resolver.receive_result();
+            assert_eq!(resolver.request_revisions(), (revision, expected_resolved));
+        }
     }
 
     #[test]

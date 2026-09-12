@@ -95,6 +95,7 @@ impl TelemetrySource for LmuTelemetrySource {
             .is_finite()
             .then_some(snapshot.session_elapsed_seconds);
         self.session_split.refresh();
+        self.update_driver_rank_session(&snapshot);
         // Standings sigue el criterio preventivo de TinyPedal. El overlay de
         // banderas exige además una amarilla sectorial y proximidad.
         let standings_yellow_culprits =

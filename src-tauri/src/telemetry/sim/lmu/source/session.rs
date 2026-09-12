@@ -29,12 +29,6 @@ impl LmuTelemetrySource {
         }
 
         let previous_session = self.current_session.replace(session_type);
-        if (10..=13).contains(&session_type)
-            && previous_session.is_none_or(|previous| !(10..=13).contains(&previous))
-        {
-            self.driver_rank_race_sequence = self.driver_rank_race_sequence.saturating_add(1);
-            self.race_qualifying_positions.clear();
-        }
         self.last_lap = -1;
         self.fuel_at_lap_start = None;
         self.fuel_previous_sample = None;
@@ -59,7 +53,9 @@ impl LmuTelemetrySource {
         self.consumption_profiler.reset_lap();
         self.car_histories.clear();
         self.starting_positions.clear();
-        self.scored_finish_positions.clear();
+        if !(10..=13).contains(&session_type) {
+            self.scored_finish_positions.clear();
+        }
         self.local_rest.reset_session_history();
         self.vehicle_identities.clear();
         self.driver_ranks.begin_session();
