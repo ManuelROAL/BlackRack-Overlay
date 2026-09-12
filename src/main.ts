@@ -147,9 +147,14 @@ import {
   getDefaultCompositeLayout,
   getOverlayDisplays,
   readCompositeLayout,
+  refreshOverlayDisplays,
   resetOverlayPlacement,
   resolveOverlayMonitor,
-  setOverlayMonitor
+  setOverlayMonitor,
+  setOverlayMonitorPreference,
+  setOverlayPlacementMonitor,
+  synchronizeOverlayHosts,
+  type OverlayDisplay
 } from "./composite-layout";
 import {
   DEFAULT_PERFORMANCE_PROFILE,
@@ -285,7 +290,7 @@ interface UpdateProgress {
 
 interface OverlayConfigurationExport {
   format: "blackrack-overlay-configuration";
-  schemaVersion: 20;
+  schemaVersion: 21;
   exportedAt: string;
   ui: { locale: Locale };
   profiles: OverlayProfile[];
@@ -484,7 +489,7 @@ if (localeSelect) {
   });
 }
 
-const CURRENT_CONFIGURATION_SCHEMA = 20;
+const CURRENT_CONFIGURATION_SCHEMA = 21;
 const CURRENT_CONFIGURATION_FORMAT = "blackrack-overlay-configuration";
 const LEGACY_CONFIGURATION_FORMAT = "lmu-overlay-configuration";
 const overlayIds: OverlayId[] = ["delta", "timing", "stinthistory", "driving", "liftcoast", "tires", "damage", "standings", "relative", "fuel", "pitstop", "flags", "rejoin", "trackmap", "forecast", "conditions", "dashboard"];
@@ -1229,6 +1234,7 @@ const setOverlay = async (id: OverlayId, visible: boolean): Promise<void> => {
     preferences[id] = blocked ? visible : actual;
     setCardState(id, actual);
     persist();
+    await synchronizeOverlayHosts();
   } catch (error) {
     console.error(`No se pudo cambiar la ventana ${id}:`, error);
     setCardState(id, preferences[id]);
@@ -1469,8 +1475,9 @@ const publishOverlayConfigurationReset = async (
 
 /**
  * Overlay profiles. A profile owns the overlay-facing configuration only;
- * monitor, performance profile, locale, shortcuts and the browser source stay
- * global so switching mode never moves the host or changes cadence.
+ * performance profile, locale, shortcuts and the browser source stay global.
+ * The general monitor control moves every placement together; per-overlay
+ * monitor assignments remain part of the profile layout.
  */
 const layoutIsComplete = (layout: unknown): layout is CompositeLayout =>
   layout !== null && typeof layout === "object"
@@ -2088,6 +2095,46 @@ const resetAllOverlayPositions = async (): Promise<void> => {
 resetAllConfigurationButton?.addEventListener("click", () => void resetAllOverlayConfigurations());
 resetAllPositionButton?.addEventListener("click", () => void resetAllOverlayPositions());
 
+const overlayMonitorSelectors = new Map<OverlayId, HTMLSelectElement>();
+const selectedOverlayMonitors = new Map<OverlayId, number>();
+let selectedMonitor = 0;
+let monitorInventorySignature = "";
+let monitorInventoryRefresh: Promise<void> | null = null;
+
+const monitorDisplaySignature = (displays: readonly OverlayDisplay[]): string => displays
+  .map((display) => [
+    display.index,
+    display.label,
+    display.name,
+    display.x,
+    display.y,
+    display.width,
+    display.height,
+    display.scaleFactor
+  ].join(":"))
+  .join("|");
+
+const renderMonitorOptions = (
+  select: HTMLSelectElement,
+  displays: readonly OverlayDisplay[],
+  selected: number,
+  fallback: number
+): number => {
+  const available = new Set(displays.map(({ index }) => index));
+  const resolved = available.has(selected) ? selected : fallback;
+  const fragment = document.createDocumentFragment();
+  for (const display of displays) {
+    const option = document.createElement("option");
+    option.value = String(display.index);
+    option.textContent = `${display.name} · ${display.width}×${display.height}`;
+    fragment.append(option);
+  }
+  select.replaceChildren(fragment);
+  select.value = String(resolved);
+  select.disabled = displays.length === 0;
+  return resolved;
+};
+
 for (const id of overlayIds) {
   const input = inputFor(id);
   setCardState(id, preferences[id]);
@@ -2158,6 +2205,18 @@ for (const id of overlayIds) {
     const resetActions = document.createElement("div");
     resetActions.className = "overlay-reset-actions";
     resetActions.setAttribute("aria-label", t("overlay.resetActions"));
+
+    const monitorControl = document.createElement("label");
+    monitorControl.className = "overlay-monitor-control";
+    const monitorCaption = document.createElement("span");
+    monitorCaption.textContent = t("overlay.monitor");
+    const monitorSelect = document.createElement("select");
+    monitorSelect.className = "overlay-monitor-select";
+    monitorSelect.setAttribute("aria-label", t("overlay.monitorAria", { overlay: overlayDisplayName(id) }));
+    monitorControl.append(monitorCaption, monitorSelect);
+    resetActions.append(monitorControl);
+    overlayMonitorSelectors.set(id, monitorSelect);
+
     const resetLabel = document.createElement("span");
     resetLabel.className = "overlay-reset-label";
     resetLabel.textContent = t("overlay.resetActions");
@@ -2251,21 +2310,96 @@ const bindMonitorSelector = async (): Promise<void> => {
   const [displays, monitor] = await Promise.all([getOverlayDisplays(), resolveOverlayMonitor()]);
   const select = document.getElementById("overlay-monitor") as HTMLSelectElement | null;
   if (!select) return;
-  for (const display of displays) {
-    const option = document.createElement("option");
-    option.value = String(display.index);
-    option.textContent = `${display.name} · ${display.width}×${display.height}`;
-    select.append(option);
-  }
-  select.value = String(monitor);
+  selectedMonitor = renderMonitorOptions(select, displays, monitor, displays[0]?.index ?? 0);
+  monitorInventorySignature = monitorDisplaySignature(displays);
   select.addEventListener("change", () => {
     select.disabled = true;
-    void setOverlayMonitor(Number(select.value)).catch(() => {
-      select.value = String(monitor);
+    void setOverlayMonitor(Number(select.value)).then((result) => {
+      selectedMonitor = result;
+      for (const overlaySelect of overlayMonitorSelectors.values()) {
+        overlaySelect.value = String(result);
+      }
+      for (const overlay of overlayMonitorSelectors.keys()) selectedOverlayMonitors.set(overlay, result);
+    }).catch(() => {
+      select.value = String(selectedMonitor);
     }).finally(() => {
       select.disabled = false;
     });
   });
+};
+
+const bindOverlayMonitorSelectors = async (): Promise<void> => {
+  const [displays, layout, fallback] = await Promise.all([
+    getOverlayDisplays(),
+    ensureCompositeLayout(),
+    resolveOverlayMonitor()
+  ]);
+  for (const [overlay, select] of overlayMonitorSelectors) {
+    const selected = layout[overlay]?.monitor ?? fallback;
+    selectedOverlayMonitors.set(
+      overlay,
+      renderMonitorOptions(select, displays, selected, displays[0]?.index ?? 0)
+    );
+    select.addEventListener("change", () => {
+      const next = Number(select.value);
+      select.disabled = true;
+      void setOverlayPlacementMonitor(overlay, next)
+        .then(() => {
+          selectedOverlayMonitors.set(overlay, next);
+        })
+        .catch(() => {
+          select.value = String(selectedOverlayMonitors.get(overlay) ?? fallback);
+        })
+        .finally(() => {
+          select.disabled = false;
+        });
+    });
+  }
+};
+
+const refreshMonitorInventory = async (): Promise<void> => {
+  if (monitorInventoryRefresh) return monitorInventoryRefresh;
+  monitorInventoryRefresh = (async () => {
+    const displays = await refreshOverlayDisplays();
+    const signature = monitorDisplaySignature(displays);
+    if (signature === monitorInventorySignature) return;
+    monitorInventorySignature = signature;
+
+    const fallback = displays[0]?.index ?? 0;
+    const monitor = await resolveOverlayMonitor();
+    selectedMonitor = renderMonitorOptions(
+      document.getElementById("overlay-monitor") as HTMLSelectElement,
+      displays,
+      monitor,
+      fallback
+    );
+    const layout = readCompositeLayout() ?? await ensureCompositeLayout();
+    for (const [overlay, select] of overlayMonitorSelectors) {
+      const selected = layout[overlay]?.monitor
+        ?? selectedOverlayMonitors.get(overlay)
+        ?? selectedMonitor;
+      selectedOverlayMonitors.set(overlay, renderMonitorOptions(select, displays, selected, fallback));
+    }
+
+    await synchronizeOverlayHosts();
+
+    // Synchronization may have reassigned panels from a disconnected monitor.
+    const latestLayout = readCompositeLayout() ?? layout;
+    const latestMonitor = await resolveOverlayMonitor();
+    selectedMonitor = renderMonitorOptions(
+      document.getElementById("overlay-monitor") as HTMLSelectElement,
+      displays,
+      latestMonitor,
+      fallback
+    );
+    for (const [overlay, select] of overlayMonitorSelectors) {
+      const selected = latestLayout[overlay]?.monitor ?? selectedMonitor;
+      selectedOverlayMonitors.set(overlay, renderMonitorOptions(select, displays, selected, fallback));
+    }
+  })().finally(() => {
+    monitorInventoryRefresh = null;
+  });
+  await monitorInventoryRefresh;
 };
 
 document.getElementById("show-all")?.addEventListener("click", () => void setAll(true));
@@ -2381,12 +2515,12 @@ const parseOverlayConfiguration = (
   if (numericSchemaVersion < 3) {
     visibility.delta = false;
     transparencyValues.delta = 5;
-    layout.delta = { overlay: "delta", x: 610, y: 20, width: 420, height: 72 };
+    layout.delta = { overlay: "delta", monitor, x: 610, y: 20, width: 420, height: 72 };
   }
   if (numericSchemaVersion < 4) {
     visibility.timing = false;
     transparencyValues.timing = 5;
-    layout.timing = { overlay: "timing", x: 610, y: 110, width: 250, height: 292 };
+    layout.timing = { overlay: "timing", monitor, x: 610, y: 110, width: 250, height: 292 };
   }
   const completeBooleanRecord = (value: unknown, keys: string[]): boolean => {
     const record = configurationObject(value);
@@ -2569,6 +2703,9 @@ const parseOverlayConfiguration = (
       || ![placement.x, placement.y, placement.width, placement.height]
         .every((value) => typeof value === "number" && Number.isFinite(value))
       || Number(placement.width) <= 0 || Number(placement.height) <= 0
+      || (placement.monitor !== undefined
+        && (typeof placement.monitor !== "number"
+          || !Number.isInteger(placement.monitor) || Number(placement.monitor) < 0))
       || (placement.scale !== undefined
         && (typeof placement.scale !== "number"
           || !Number.isFinite(placement.scale) || placement.scale <= 0))) {
@@ -2577,7 +2714,7 @@ const parseOverlayConfiguration = (
   }
   const cleanedLayout = Object.fromEntries(overlayIds.map((id) => {
     const placement: Record<string, unknown> = { ...(layout[id] as Record<string, unknown>) };
-    delete placement.monitor;
+    if (placement.monitor === undefined || numericSchemaVersion < 21) placement.monitor = monitor;
     return [id, placement];
   })) as unknown as OverlayConfigurationExport["overlays"]["layout"];
   const normalized = parsed as OverlayConfigurationExport;
@@ -2699,7 +2836,31 @@ const normalizeImportedMonitor = async (
   const monitor = availableMonitors.has(configuration.overlays.monitor)
     ? configuration.overlays.monitor
     : primaryMonitor;
-  return { ...configuration, overlays: { ...configuration.overlays, monitor } };
+  const normalizeLayout = (layout: CompositeLayout): CompositeLayout =>
+    Object.fromEntries(overlayIds.map((id) => {
+      const placement = layout[id];
+      if (!placement) return [id, placement];
+      const assigned = placement.monitor;
+      const placementMonitor = Number.isInteger(assigned)
+        && assigned !== undefined
+        && availableMonitors.has(assigned)
+        ? assigned
+        : monitor;
+      return [id, { ...placement, monitor: placementMonitor }];
+    })) as CompositeLayout;
+  const profiles = configuration.profiles.map((profile) => ({
+    ...profile,
+    data: { ...profile.data, layout: normalizeLayout(profile.data.layout) }
+  }));
+  return {
+    ...configuration,
+    profiles,
+    overlays: {
+      ...configuration.overlays,
+      monitor,
+      layout: normalizeLayout(configuration.overlays.layout)
+    }
+  };
 };
 
 const applyImportedConfiguration = (configuration: OverlayConfigurationExport): void => {
@@ -2850,7 +3011,7 @@ importConfigurationButton?.addEventListener("click", () => {
       return;
     }
     applyImportedConfiguration(configuration);
-    await setOverlayMonitor(configuration.overlays.monitor).catch(() => undefined);
+    await setOverlayMonitorPreference(configuration.overlays.monitor).catch(() => undefined);
     if (exportConfigurationStatus) {
       exportConfigurationStatus.textContent = t("config.imported");
       exportConfigurationStatus.title = selectedPath;
@@ -3521,6 +3682,7 @@ const restoreWindows = async (): Promise<void> => {
   }
   const states = await invoke<OverlayState[]>("get_overlay_states");
   for (const state of states) setCardState(state.label, state.visible);
+  await synchronizeOverlayHosts();
 };
 
 /**
@@ -3642,6 +3804,12 @@ document.getElementById("toggle-interaction-mode")?.addEventListener("click", ()
 
 void restoreWindows().catch(reportInitializationError("overlay visibility"));
 void bindMonitorSelector().catch(reportInitializationError("monitor selector"));
+void bindOverlayMonitorSelectors().catch(reportInitializationError("overlay monitor selectors"));
+window.setInterval(() => {
+  void refreshMonitorInventory().catch((error) => {
+    console.warn("No se pudo actualizar la topología de monitores:", error);
+  });
+}, 2000);
 syncBrowserSourcePreferences();
 void invoke<BrowserSourceStatus>("get_browser_source_status")
   .then(renderBrowserSourceStatus)

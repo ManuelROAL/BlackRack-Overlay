@@ -15,6 +15,8 @@ export interface OverlayDisplay {
 
 export interface OverlayPlacement {
   overlay: OverlayId;
+  /** Monitor index in the current Tauri monitor ordering. */
+  monitor?: number;
   x: number;
   y: number;
   width: number;
@@ -44,6 +46,7 @@ const overlayIds: OverlayId[] = [
 
 let layoutPromise: Promise<CompositeLayout> | null = null;
 let displaysPromise: Promise<OverlayDisplay[]> | null = null;
+let monitorPromise: Promise<number> | null = null;
 
 const validPlacement = (value: unknown, overlay: OverlayId): value is OverlayPlacement => {
   if (!value || typeof value !== "object") return false;
@@ -51,6 +54,9 @@ const validPlacement = (value: unknown, overlay: OverlayId): value is OverlayPla
   return placement.overlay === overlay
     && [placement.x, placement.y, placement.width, placement.height]
       .every((number) => typeof number === "number" && Number.isFinite(number))
+    && (placement.monitor === undefined
+      || (typeof placement.monitor === "number"
+        && Number.isInteger(placement.monitor) && placement.monitor >= 0))
     && (placement.scale === undefined
       || (typeof placement.scale === "number" && Number.isFinite(placement.scale) && placement.scale > 0));
 };
@@ -132,9 +138,22 @@ const readStoredLayout = (): Partial<CompositeLayout> | null => {
   }
 };
 
-export const getOverlayDisplays = (): Promise<OverlayDisplay[]> => {
-  displaysPromise ??= invoke<OverlayDisplay[]>("get_overlay_displays");
-  return displaysPromise;
+const loadOverlayDisplays = (): Promise<OverlayDisplay[]> => {
+  const request = invoke<OverlayDisplay[]>("get_overlay_displays");
+  displaysPromise = request;
+  void request.catch(() => {
+    if (displaysPromise === request) displaysPromise = null;
+  });
+  return request;
+};
+
+export const getOverlayDisplays = (): Promise<OverlayDisplay[]> =>
+  displaysPromise ?? loadOverlayDisplays();
+
+/** Refresh the native monitor inventory after a display topology change. */
+export const refreshOverlayDisplays = (): Promise<OverlayDisplay[]> => {
+  monitorPromise = null;
+  return loadOverlayDisplays();
 };
 
 const LEGACY_MONITOR_SELECTION_KEY = "blackrack-overlay.monitor-selection.v1";
@@ -157,7 +176,9 @@ const readLegacyMonitorSelection = (): number | null => {
   }
 };
 
-let monitorPromise: Promise<number> | null = null;
+const resetOverlayMonitorResolution = (): void => {
+  monitorPromise = null;
+};
 
 export const resolveOverlayMonitor = (): Promise<number> => {
   monitorPromise ??= (async () => {
@@ -178,20 +199,45 @@ export const resolveOverlayMonitor = (): Promise<number> => {
   return monitorPromise;
 };
 
-export const setOverlayMonitor = (index: number): Promise<number> => {
-  monitorPromise = null;
+export const setOverlayMonitor = async (index: number): Promise<number> => {
+  const result = await setOverlayMonitorPreference(index);
+  const layout = readCompositeLayout() ?? await ensureCompositeLayout();
+  for (const overlay of overlayIds) {
+    if (layout[overlay]) layout[overlay] = { ...layout[overlay], monitor: result };
+  }
+  localStorage.setItem(COMPOSITE_LAYOUT_KEY, JSON.stringify(layout));
+  layoutPromise = Promise.resolve(layout);
+  await emit("overlay://layout", { monitor: result });
+  await synchronizeOverlayHosts(layout);
+  return result;
+};
+
+/** Persist the general monitor without changing per-overlay assignments. */
+export const setOverlayMonitorPreference = async (index: number): Promise<number> => {
+  resetOverlayMonitorResolution();
   return invoke<number>("set_overlay_monitor", { index });
 };
 
 export const ensureCompositeLayout = async (): Promise<CompositeLayout> => {
   layoutPromise ??= (async () => {
     const monitor = await resolveOverlayMonitor();
+    const displays = await getOverlayDisplays();
+    const available = new Set(displays.map(({ index }) => index));
+    const fallback = available.has(monitor) ? monitor : displays[0]?.index ?? 0;
     const stored = readStoredLayout();
-    const seed = await invoke<OverlayPlacement[]>("get_composite_layout_seed", { monitor });
+    const seed = await invoke<OverlayPlacement[]>("get_composite_layout_seed", { monitor: fallback });
     const layout = {
       ...Object.fromEntries(seed.map((placement) => [placement.overlay, placement])),
       ...stored
     } as CompositeLayout;
+    for (const overlay of overlayIds) {
+      const placement = layout[overlay];
+      if (!placement) continue;
+      const assigned = placement.monitor;
+      placement.monitor = Number.isInteger(assigned) && assigned !== undefined && available.has(assigned)
+        ? assigned
+        : fallback;
+    }
     localStorage.setItem(COMPOSITE_LAYOUT_KEY, JSON.stringify(layout));
     return layout;
   })();
@@ -201,7 +247,10 @@ export const ensureCompositeLayout = async (): Promise<CompositeLayout> => {
 export const getDefaultCompositeLayout = async (): Promise<CompositeLayout> => {
   const monitor = await resolveOverlayMonitor();
   const seed = await invoke<OverlayPlacement[]>("get_composite_layout_seed", { monitor });
-  return Object.fromEntries(seed.map((placement) => [placement.overlay, placement])) as CompositeLayout;
+  return Object.fromEntries(seed.map((placement) => [placement.overlay, {
+    ...placement,
+    monitor
+  }])) as CompositeLayout;
 };
 
 export const readCompositeLayout = (): CompositeLayout | null => {
@@ -214,16 +263,99 @@ export const readCompositeLayout = (): CompositeLayout | null => {
 export const saveOverlayPlacement = async (placement: OverlayPlacement): Promise<void> => {
   const initializedLayout = await ensureCompositeLayout();
   const currentLayout = readCompositeLayout() ?? initializedLayout;
-  currentLayout[placement.overlay] = placement;
-  initializedLayout[placement.overlay] = placement;
+  const next = {
+    ...placement,
+    monitor: placement.monitor ?? initializedLayout[placement.overlay]?.monitor
+      ?? await resolveOverlayMonitor()
+  } satisfies OverlayPlacement;
+  currentLayout[placement.overlay] = next;
+  initializedLayout[placement.overlay] = next;
   localStorage.setItem(COMPOSITE_LAYOUT_KEY, JSON.stringify(currentLayout));
-  await emit("overlay://layout", placement);
+  await emit("overlay://layout", next);
+};
+
+interface OverlayVisibilityState {
+  label: OverlayId;
+  visible: boolean;
+}
+
+let overlayHostSyncQueue: Promise<void> = Promise.resolve();
+
+/**
+ * Keep native overlay hosts proportional to the monitors that actually have
+ * visible panels. The control panel is the only caller: composite hosts only
+ * render the layout they receive and must not be able to create windows.
+ */
+export const synchronizeOverlayHosts = async (providedLayout?: CompositeLayout): Promise<void> => {
+  const sync = overlayHostSyncQueue.then(async () => {
+    // Read the state after earlier reconciliations have completed. This makes a
+    // rapid sequence of visibility/layout edits converge on the latest storage
+    // instead of allowing an older queued snapshot to close a needed host.
+    const initialLayout = readCompositeLayout() ?? providedLayout ?? await ensureCompositeLayout();
+    const states = await invoke<OverlayVisibilityState[]>("get_overlay_states");
+    resetOverlayMonitorResolution();
+    const [displays, fallbackMonitor] = await Promise.all([
+      refreshOverlayDisplays(),
+      resolveOverlayMonitor()
+    ]);
+    // A placement can be edited while the native queries above are pending.
+    // Re-read storage before normalizing so a topology refresh cannot overwrite
+    // a newer position or monitor assignment.
+    const layout = readCompositeLayout() ?? initialLayout;
+    const available = new Set(displays.map(({ index }) => index));
+    const fallback = available.has(fallbackMonitor) ? fallbackMonitor : displays[0]?.index ?? 0;
+    let normalized = false;
+    for (const overlay of overlayIds) {
+      const placement = layout[overlay];
+      if (!placement) continue;
+      const assigned = placement.monitor;
+      if (!Number.isInteger(assigned) || assigned === undefined || !available.has(assigned)) {
+        placement.monitor = fallback;
+        normalized = true;
+      }
+    }
+    if (normalized) {
+      localStorage.setItem(COMPOSITE_LAYOUT_KEY, JSON.stringify(layout));
+      layoutPromise = Promise.resolve(layout);
+    }
+    const monitors = new Set<number>();
+    for (const state of states) {
+      if (!state.visible) continue;
+      const monitor = layout[state.label]?.monitor;
+      monitors.add(Number.isInteger(monitor) && monitor !== undefined ? monitor : fallback);
+    }
+    await invoke("sync_overlay_hosts", { monitors: [...monitors] });
+  });
+  overlayHostSyncQueue = sync.catch(() => undefined);
+  await sync;
+};
+
+export const setOverlayPlacementMonitor = async (
+  overlay: OverlayId,
+  monitor: number
+): Promise<OverlayPlacement> => {
+  const displays = await getOverlayDisplays();
+  if (!displays.some(({ index }) => index === monitor)) throw new Error("monitor_unavailable");
+  const layout = readCompositeLayout() ?? await ensureCompositeLayout();
+  const current = layout[overlay];
+  if (!current) throw new Error(`Missing placement for ${overlay}`);
+  const next = { ...current, monitor } satisfies OverlayPlacement;
+  layout[overlay] = next;
+  localStorage.setItem(COMPOSITE_LAYOUT_KEY, JSON.stringify(layout));
+  layoutPromise = Promise.resolve(layout);
+  await emit("overlay://layout", next);
+  await synchronizeOverlayHosts(layout);
+  return next;
 };
 
 export const resetOverlayPlacement = async (overlay: OverlayId): Promise<OverlayPlacement> => {
+  const layout = readCompositeLayout() ?? await ensureCompositeLayout();
+  const monitor = layout[overlay]?.monitor ?? await resolveOverlayMonitor();
   const placement = await invoke<OverlayPlacement>("get_default_overlay_placement", {
-    label: overlay
+    label: overlay,
+    monitor
   });
+  placement.monitor = monitor;
   await saveOverlayPlacement(placement);
   return placement;
 };

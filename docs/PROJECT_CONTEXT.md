@@ -14,7 +14,7 @@ on their runtime or source code.
 ## Current feature set
 
 - Tauri control panel that selects independent overlay panels hosted together in
-  one transparent WebView on the selected monitor.
+  one transparent WebView per monitor that has visible overlays.
 - Signed delta bar with overall, session, stint and last-lap references,
   backed by persistent lap/stint records.
 - Timing panel with selectable lap-time rows, three-sector feedback
@@ -30,7 +30,8 @@ on their runtime or source code.
 - Compact Lift & Coast lamps driven by LMU's official shared-memory progress.
 - Background transparency selectable as one general value or per overlay.
 - Text size selectable from 75% to 200% as one general value or per overlay.
-- All overlays share one host on a single selected monitor.
+- Visible overlays assigned to the same monitor share one host; hosts are created
+  on demand only for monitors that currently have visible overlays.
 - Optional telemetry/performance analysis logging.
 - Optional per-lap strategy CSV with consumption, tyre wear and track conditions.
 - Named overlay configuration profiles, with one bound to each of game,
@@ -114,10 +115,12 @@ General settings provide Smooth, Balanced and Efficiency performance profiles.
 They reduce overlay delivery/rendering cadence while keeping the complete Track
 Map roster, telemetry source and critical calculations intact.
 
-Tauri creates one transparent full-monitor host WebView on the selected monitor
-and moves it when the selection changes. Active overlays are mounted inside that
-host and removed when disabled, so renderer count stays at one host. Layout is
-migrated from the former native-window geometry on first use.
+Tauri creates one transparent composite host WebView per active monitor. Active
+overlays assigned to that monitor are mounted inside it, while hosts with no
+visible overlays are closed. Moving one overlay therefore does not create a
+renderer per panel, and putting every overlay on one monitor still uses one
+composite host. Layout is migrated from the former native-window geometry on
+first use.
 
 ## Repository map
 

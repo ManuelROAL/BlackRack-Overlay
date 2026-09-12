@@ -15,7 +15,7 @@ sim/lmu/bridge.cpp -> LmuSnapshot -> LmuTelemetrySource <- async/cached enrichme
                   |                   |                   |
 Tauri events    analysis JSONL/strategy CSV    browser-source SSE
                    |                                       |
-        one composite host on the selected monitor      OBS browser
+        one composite host per active monitor           OBS browser
                    |
         delta/standings/fuel/flags/rejoin panels
 ```
@@ -23,13 +23,13 @@ Tauri events    analysis JSONL/strategy CSV    browser-source SSE
 ## Backend ownership
 
 - `src-tauri/src/lib.rs`
-  - Creates one borderless transparent overlay host on the selected monitor and
-    moves/resizes it when the selection changes; monitors without the host
+  - Creates one borderless transparent overlay host per monitor that has visible
+    overlays. Hosts are created and closed on demand; monitors without a host
     contribute no composed surface.
   - Provides the initial composite layout seed and single-panel reset geometry,
-    fitted to the logical size of the selected monitor so authored defaults never
+    fitted to the logical size of the assigned monitor so authored defaults never
     seed off-screen on a smaller or scaled display; the frontend then persists
-    panel geometry in `localStorage`.
+    panel geometry and monitor assignment in `localStorage`.
   - Forces both the native window and WebView backgrounds to transparent RGBA;
     this is explicit because release WebView2 builds must not fall back to an
     opaque black surface.
@@ -200,9 +200,10 @@ blocking HTTP calls into `next_frame()`.
   `%APPDATA%\BlackRack Overlay`. Windows' synthetic minimized position is never
   persisted or restored, so closing the application while minimized cannot make
   the panel unreachable on the next launch.
-- Overlay position and size: composite-layout `localStorage`. The selected
-  overlay monitor index persists as `overlay-monitor.json` under the application
-  config directory.
+- Overlay position, size and per-overlay monitor assignment: composite-layout
+  `localStorage`. The general monitor selection persists as
+  `overlay-monitor.json` under the application config directory and acts as the
+  target for the “move all overlays” control.
 - Browser source and shortcuts: JSON under the application config directory.
 - Overlay choices, columns, transparency and text size: WebView `localStorage`.
   Transparency and text size store individual values separately from their
@@ -214,9 +215,10 @@ blocking HTTP calls into `next_frame()`.
   9 exports it with overlay settings and reapplies it to the Rust scheduler.
 - Overlay profiles and their game/spectator/team bindings: WebView `localStorage` under
   `blackrack-overlay.profiles.v1` and `blackrack-overlay.profile-bindings.v1`.
-  A profile stores overlay visibility, layout, transparency, text size and the
-  per-overlay settings; monitor, performance profile, locale, shortcuts and the
-  browser source stay global. The live keys above remain authoritative for the
+  A profile stores overlay visibility, layout (including each overlay's monitor),
+  transparency, text size and the per-overlay settings; the general monitor
+  fallback, performance profile, locale, shortcuts and the browser source stay
+  global. The live keys above remain authoritative for the
   active profile, which is refreshed from them on a short debounce and flushed
   before switching mode, session, profile or exporting. Configuration schema 17
   exports both, and a document below that version becomes one profile bound to

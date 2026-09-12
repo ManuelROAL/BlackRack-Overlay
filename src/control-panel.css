@@ -1944,6 +1944,34 @@ select {
   opacity: 0.55;
 }
 
+.overlay-monitor-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #a6b3c0;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+.overlay-monitor-control select {
+  min-width: 110px;
+  max-width: 180px;
+  min-height: 26px;
+  padding: 3px 5px;
+  border: 1px solid rgb(255 255 255 / 12%);
+  border-radius: 4px;
+  color: #dce5ed;
+  background: rgb(0 0 0 / 24%);
+  font: inherit;
+  letter-spacing: normal;
+}
+
+.overlay-monitor-control select:focus {
+  border-color: rgb(216 255 62 / 55%);
+  outline: none;
+}
+
 .reset-confirmation {
   width: min(390px, calc(100vw - 36px));
   padding: 0;

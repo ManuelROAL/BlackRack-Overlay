@@ -134,6 +134,19 @@ removes that surface entirely.
 A controlled A/B capture comparing this build with the previous release on the
 180 Hz / 60 Hz two-monitor setup is still pending.
 
+## Demand-driven per-monitor hosts — 2026-09-12
+
+The former single-host limitation is replaced by demand-driven grouping. The
+control panel persists a monitor on each layout placement, and Tauri creates one
+composite host for every monitor that currently has visible overlays. Moving all
+overlays to one monitor still creates one host; splitting them across two
+monitors creates two hosts; monitors with no visible overlays create none.
+
+This restores independent monitor placement without returning to one native
+window/WebView per overlay. It has not yet been performance-captured, so the
+next A/B run must verify mixed-refresh game FPS, host count, renderer/GPU memory
+and CPU against the single-host baseline above.
+
 ## Track Map GPU diagnosis — 2026-08-13
 
 Continuous 110 ms marker transitions kept WebView2's GPU process around 1.67% CPU

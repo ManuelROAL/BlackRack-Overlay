@@ -33,10 +33,12 @@ telemetry semantics and file ownership live under `docs/overlays/`; use
 
 ## Host and interaction
 
-- Tauri hosts all panels in one transparent WebView on the selected monitor and
-  moves that host when the selection changes. Monitors without the host
-  contribute no composed surface. Both the native host and WebView use explicit
-  transparent RGBA backgrounds.
+- Tauri groups panels by their assigned monitor. Each monitor with at least one
+  visible panel gets one transparent WebView host, while monitors without visible
+  panels have no host and contribute no composed surface. The general monitor
+  control moves every panel together; the per-overlay setting changes one panel's
+  assignment. Both the native host and WebView use explicit transparent RGBA
+  backgrounds.
 - In game mode the host covers only the bounding box of the visible panels plus a
   24 px margin, not the whole display: the transparent surface the compositor
   puts over the game costs the game on every present. Edit mode restores the full
@@ -46,8 +48,10 @@ telemetry semantics and file ownership live under `docs/overlays/`; use
   backend returns the monitor in CSS pixels with every bounds update and the
   composite offsets its stage by the same rounded origin the host was moved to,
   so panel coordinates stay monitor coordinates.
-- Explicit deactivation removes the panel document. LMU-driven automatic
-  visibility hides or shows the host without rebuilding active panels.
+- Explicit deactivation removes the panel document. When the last visible panel
+  leaves a monitor, its host is closed; when the first panel arrives, the host is
+  created on demand. LMU-driven automatic visibility hides or shows existing
+  hosts without rebuilding active panels.
 - Every run starts in click-through game mode. Edit mode is entered explicitly
   from the control panel or global shortcut.
 - On Windows, edit-mode hit testing follows the global cursor independently on

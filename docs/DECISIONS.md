@@ -13,13 +13,14 @@ in `docs/overlays/` and should not be duplicated here.
 - Windows is the primary platform. Linux UI support remains desired, while live
   telemetry under Proton still needs validation.
 - Information density and legibility while driving take priority over decoration.
-- Overlays remain independently selectable/configurable but share one transparent
-  host WebView on the selected monitor to reduce renderer cost.
+- Overlays remain independently selectable/configurable. Overlays assigned to the
+  same monitor share one transparent host WebView, so moving panels between
+  monitors does not create one renderer per overlay.
 - Game mode is click-through and every run starts there. Edit mode is explicit.
   Escape is not intercepted because it conflicts with LMU controls.
-- Positions, proportional sizes, the selected monitor and user preferences
-  persist. A panel may be deliberately cropped at the monitor edge while
-  retaining a recoverable strip.
+- Positions, proportional sizes, each overlay's monitor assignment, the general
+  monitor fallback and user preferences persist. A panel may be deliberately
+  cropped at the monitor edge while retaining a recoverable strip.
 - Roboto Condensed and all required flags, logos and badges remain bundled.
   Flags and manufacturer logos are pre-rasterised to small PNGs by
   `tools/rasterize-icons.mjs` and committed, because the overlays draw them into
@@ -89,10 +90,10 @@ in `docs/overlays/` and should not be duplicated here.
   one configuration. A session kind is bound only when the user asks for it and
   otherwise follows game mode, so the per-mode behavior is unchanged by default
   and the panel never has to guess before telemetry arrives.
-  A profile owns only overlay-facing state: visibility, layout, transparency,
-  text size and per-overlay settings. Monitor, performance profile, locale,
-  shortcuts and the browser source stay global, so changing mode never moves the
-  host or alters cadence.
+  A profile owns only overlay-facing state: visibility, layout (including
+  per-overlay monitor assignments), transparency, text size and per-overlay
+  settings. The general monitor fallback, performance profile, locale, shortcuts
+  and browser source stay global, so changing mode does not alter cadence.
 - The active profile is the live configuration rather than a copy: the existing
   `localStorage` keys stay authoritative and the profile store is refreshed from
   them. Overlays and OBS routes therefore need no knowledge of profiles, and
@@ -102,16 +103,20 @@ in `docs/overlays/` and should not be duplicated here.
 - General/per-overlay text size preserves its independent saved values while a
   common value is active. Increasing text may expand the reported design surface
   so compact panels do not clip while preserving the user's visual scale.
-- All overlays share one host on a single selected monitor. Per-overlay monitor
-  assignment was removed because an empty transparent host on a secondary monitor
-  forced DWM alpha-composition at that monitor's refresh rate and degraded game
-  FPS with mixed-refresh displays.
+- Hosts are grouped by monitor: every monitor with at least one visible overlay
+  gets one transparent composite host, and monitors without visible overlays get
+  none. The general monitor control moves every overlay together, while each
+  overlay can be assigned independently in its settings. This keeps the renderer
+  count proportional to active monitors rather than overlay count and avoids the
+  empty-host composition cost that originally motivated removing per-overlay
+  assignment.
 - Per-overlay configuration and position resets are scoped and never affect
   visibility or another overlay.
 - Import/export is a single validated versioned document covering UI preferences
   and geometry, not learned telemetry, diagnostics, session data or credentials.
 - Disabled panels remove their documents. Automatic LMU visibility hides/shows
-  hosts without rebuilding active panels.
+  hosts without rebuilding active panels; host windows are created or closed only
+  when the set of active monitor assignments changes.
 
 ## Data and performance ownership
 

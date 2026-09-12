@@ -11,14 +11,14 @@ use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Mutex;
 #[cfg(windows)]
 use std::sync::OnceLock;
+use std::sync::{mpsc, Mutex};
 #[cfg(windows)]
 use std::time::Duration;
 use tauri::{
     window::Color, AppHandle, Emitter, EventTarget, Manager, PhysicalPosition, PhysicalSize,
-    Position, Size, State, WebviewUrl, WebviewWindow, WebviewWindowBuilder,
+    Position, Size, State, WebviewUrl, WebviewWindow, WebviewWindowBuilder, WindowEvent,
 };
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 
@@ -247,14 +247,6 @@ struct OverlayHostViewport {
     width: f64,
     height: f64,
     scale_factor: f64,
-}
-
-#[derive(Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct OverlayHostState {
-    label: String,
-    monitor: usize,
-    visible: bool,
 }
 
 #[cfg(windows)]
@@ -666,14 +658,6 @@ fn monitor_index_for_host(app: &AppHandle, window: &WebviewWindow) -> usize {
         .unwrap_or_else(|| load_overlay_monitor_index(app))
 }
 
-fn overlay_host_state(window: &WebviewWindow, monitor: usize) -> OverlayHostState {
-    OverlayHostState {
-        label: window.label().to_string(),
-        monitor,
-        visible: window.is_visible().unwrap_or(false),
-    }
-}
-
 /// Shrink the transparent host to the rectangle the visible panels occupy, or
 /// restore the whole monitor with `None`.
 ///
@@ -1028,13 +1012,29 @@ fn create_overlay_host(app: &AppHandle, monitor_index: usize) -> Result<WebviewW
     Ok(window)
 }
 
-fn ensure_overlay_host(app: &AppHandle, monitor: usize) -> Result<OverlayHostState, String> {
-    let window = create_overlay_host(app, monitor)?;
-    Ok(overlay_host_state(&window, monitor))
+fn close_overlay_host(host: WebviewWindow) -> Option<mpsc::Receiver<()>> {
+    let (sender, receiver) = mpsc::channel();
+    host.on_window_event(move |event| {
+        if matches!(event, WindowEvent::Destroyed) {
+            let _ = sender.send(());
+        }
+    });
+    host.close().ok().map(|_| receiver)
+}
+
+async fn wait_for_overlay_hosts(hosts: Vec<WebviewWindow>) {
+    let waits = hosts
+        .into_iter()
+        .filter_map(|host| close_overlay_host(host))
+        .map(|receiver| tauri::async_runtime::spawn_blocking(move || receiver.recv()))
+        .collect::<Vec<_>>();
+    for wait in waits {
+        let _ = wait.await;
+    }
 }
 
 #[tauri::command]
-fn sync_overlay_hosts(
+async fn sync_overlay_hosts(
     app: AppHandle,
     window: WebviewWindow,
     monitors: Vec<usize>,
@@ -1053,30 +1053,26 @@ fn sync_overlay_hosts(
     }
 
     for &index in &requested {
-        ensure_overlay_host(&app, index)?;
+        create_overlay_host(&app, index)?;
+    }
+
+    if !app
+        .state::<OverlayControl>()
+        .auto_hidden
+        .load(Ordering::Relaxed)
+    {
+        for_each_overlay_host(&app, |host| {
+            let _ = host.show();
+        });
     }
 
     let requested_set = requested.iter().copied().collect();
-    remove_overlay_hosts_except(&app, &requested_set);
+    remove_overlay_hosts_except(&app, &requested_set).await;
 
     Ok(requested)
 }
 
-fn remove_overlay_hosts(app: &AppHandle) {
-    let windows: Vec<_> = app
-        .webview_windows()
-        .into_iter()
-        .filter(|(label, _)| label.starts_with(OVERLAY_HOST_PREFIX))
-        .map(|(_, window)| window)
-        .collect();
-    for window in windows {
-        #[cfg(windows)]
-        unregister_native_overlay_host(&window);
-        let _ = window.close();
-    }
-}
-
-fn remove_overlay_hosts_except(app: &AppHandle, keep: &HashSet<usize>) {
+async fn remove_overlay_hosts_except(app: &AppHandle, keep: &HashSet<usize>) {
     let windows: Vec<_> = app
         .webview_windows()
         .into_iter()
@@ -1087,63 +1083,11 @@ fn remove_overlay_hosts_except(app: &AppHandle, keep: &HashSet<usize>) {
             (!keep.contains(&index)).then_some(host)
         })
         .collect();
-    for host in windows {
+    for host in &windows {
         #[cfg(windows)]
-        unregister_native_overlay_host(&host);
-        let _ = host.close();
+        unregister_native_overlay_host(host);
     }
-}
-
-#[tauri::command]
-fn ensure_overlay_host_command(
-    app: AppHandle,
-    window: WebviewWindow,
-    monitor: usize,
-) -> Result<OverlayHostState, String> {
-    require_control_window(&window)?;
-    ensure_overlay_host(&app, monitor)
-}
-
-#[tauri::command]
-fn show_overlay_hosts(
-    app: AppHandle,
-    window: WebviewWindow,
-    monitor: Option<usize>,
-) -> Result<Vec<OverlayHostState>, String> {
-    require_control_window(&window)?;
-    let monitor = monitor.unwrap_or_else(|| load_overlay_monitor_index(&app));
-    ensure_overlay_host(&app, monitor)?;
-    let mut states = Vec::new();
-    for (label, host) in app.webview_windows() {
-        if !label.starts_with(OVERLAY_HOST_PREFIX) {
-            continue;
-        }
-        host.show()
-            .map_err(|error| startup_log::command_error("overlay_host_visibility_failed", error))?;
-        let index = label
-            .strip_prefix(OVERLAY_HOST_PREFIX)
-            .and_then(|value| value.parse().ok())
-            .unwrap_or(monitor);
-        states.push(overlay_host_state(&host, index));
-    }
-    Ok(states)
-}
-
-#[tauri::command]
-fn hide_overlay_hosts(
-    app: AppHandle,
-    window: WebviewWindow,
-    remove: Option<bool>,
-) -> Result<(), String> {
-    require_control_window(&window)?;
-    if remove.unwrap_or(true) {
-        remove_overlay_hosts(&app);
-    } else {
-        for_each_overlay_host(&app, |host| {
-            let _ = host.hide();
-        });
-    }
-    Ok(())
+    wait_for_overlay_hosts(windows).await;
 }
 
 #[tauri::command]
@@ -1163,9 +1107,6 @@ fn set_overlay_monitor(app: AppHandle, index: usize) -> Result<usize, String> {
         return Err("monitor_unavailable".into());
     }
     save_overlay_monitor_index(&app, index)?;
-    ensure_overlay_host(&app, index)?;
-    let keep = [index].into_iter().collect();
-    remove_overlay_hosts_except(&app, &keep);
     startup_log::record(format!("overlay monitor changed to {index}"));
     Ok(index)
 }
@@ -1247,7 +1188,6 @@ pub(crate) fn update_overlay_auto_visibility(app: &AppHandle, frame: &telemetry:
         .unwrap_or_else(|poisoned| poisoned.into_inner())
         .is_empty();
     if has_desired_overlays {
-        let _ = ensure_overlay_host(app, load_overlay_monitor_index(app));
         for_each_overlay_host(app, |window| {
             let _ = window.show();
         });
@@ -1290,12 +1230,9 @@ async fn set_overlay_visible(
             .unwrap_or_else(|poisoned| poisoned.into_inner())
             .is_empty();
         if has_desired_overlays {
-            let _ = ensure_overlay_host(&app, load_overlay_monitor_index(&app));
             for_each_overlay_host(&app, |window| {
                 let _ = window.show();
             });
-        } else {
-            remove_overlay_hosts(&app);
         }
     }
 
@@ -2145,9 +2082,6 @@ pub fn run() {
             set_overlay_interaction_regions,
             set_overlay_host_bounds,
             sync_overlay_hosts,
-            ensure_overlay_host_command,
-            show_overlay_hosts,
-            hide_overlay_hosts,
             toggle_interaction_mode_command,
             get_telemetry_logging,
             set_telemetry_logging,
@@ -2215,8 +2149,7 @@ pub fn run() {
                 startup_log::record("warning: control window not found during setup");
             }
 
-            create_overlay_host(app.handle(), load_overlay_monitor_index(app.handle()))?;
-            startup_log::record("overlay host created");
+            startup_log::record("overlay hosts will be created on demand");
             #[cfg(debug_assertions)]
             register_devtools_shortcut(app.handle());
             if let Some(panel) = app.get_webview_window("control") {

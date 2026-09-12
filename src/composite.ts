@@ -170,6 +170,13 @@ const BRIDGE_COMMANDS: ReadonlySet<string> = new Set([
 ]);
 
 const stage = document.getElementById("overlay-stage") as HTMLElement;
+const requestedHostMonitor = Number(new URLSearchParams(window.location.search).get("monitor"));
+// Hosts are created by the control panel with an explicit monitor query. Keep
+// the fallback for a manually opened/debug composite page and for old cached
+// URLs; the backend still remains the authority for native geometry.
+const hostMonitor = Number.isInteger(requestedHostMonitor) && requestedHostMonitor >= 0
+  ? requestedHostMonitor
+  : 0;
 const panels = new Map<OverlayId, HTMLElement>();
 const frames = new Map<OverlayId, HTMLIFrameElement>();
 const latestFrames = new Map<OverlayId, TelemetryFrame>();
@@ -533,6 +540,11 @@ const synchronizePanels = async (): Promise<void> => {
       if (!placement) continue;
       layout[overlay] = placement;
       normalized = true;
+    }
+    const assignedMonitor = placement.monitor ?? hostMonitor;
+    if (assignedMonitor !== hostMonitor) {
+      removePanel(overlay);
+      continue;
     }
     const fitted = fitPlacementToMonitor(placement);
     normalized ||= fitted.x !== placement.x || fitted.y !== placement.y

@@ -159,6 +159,21 @@ Do not change any argument or lifetime before one of these two says which.
 
 These are hypotheses, not approved changes.
 
+## Demand-driven per-monitor hosts
+
+The composite architecture now creates one transparent host for each monitor
+that has at least one visible overlay. A host is closed when its last visible
+overlay moves away or is disabled. Multiple overlays on one monitor therefore
+continue to share one WebView2 renderer, while independent monitor placement
+adds only one renderer per active monitor. Empty secondary hosts are never kept
+alive, preserving the mixed-refresh safeguard from the earlier single-host
+decision.
+
+This is an implementation change, not performance evidence. The next warm
+capture must compare one-host and two-host layouts with the same overlays,
+content, refresh rates and five-minute memory warm-up, recording host count,
+game FPS, CPU, GPU process and overlay renderer memory.
+
 ## Principles
 
 - Measure before and after with the same workload, and with both runs equally
