@@ -183,6 +183,64 @@ SharedMemoryLayout* shared_memory = nullptr;
 std::optional<SharedMemoryLock> shared_memory_lock;
 SharedMemoryObjectOut copied_memory{};
 
+// The SDK helper copies counts and stream sizes supplied by the game without
+// checking them against the fixed-size arrays in SharedMemoryObjectOut. A
+// transient or incompatible shared-memory frame must not be allowed to write
+// past copied_memory, because that would corrupt the process long before the
+// resulting failure is reported by Windows as STATUS_HEAP_CORRUPTION.
+void copy_shared_memory_bounded(SharedMemoryObjectOut& destination,
+                                const SharedMemoryObjectOut& source) {
+    std::memcpy(&destination.generic, &source.generic, sizeof(SharedMemoryGeneric));
+
+    if (source.generic.events[SME_UPDATE_SCORING]) {
+        std::memcpy(&destination.scoring.scoringInfo,
+                    &source.scoring.scoringInfo,
+                    sizeof(ScoringInfoV01));
+
+        const auto requested_vehicle_count = source.scoring.scoringInfo.mNumVehicles;
+        const size_t vehicle_count = requested_vehicle_count <= 0
+            ? 0
+            : std::min(static_cast<size_t>(requested_vehicle_count), MAX_VEHICLES);
+        std::memcpy(destination.scoring.vehScoringInfo,
+                    source.scoring.vehScoringInfo,
+                    vehicle_count * sizeof(VehicleScoringInfoV01));
+        destination.scoring.scoringInfo.mNumVehicles =
+            static_cast<decltype(destination.scoring.scoringInfo.mNumVehicles)>(vehicle_count);
+
+        const size_t stream_capacity = sizeof(destination.scoring.scoringStream);
+        const size_t stream_size = std::min(
+            source.scoring.scoringStreamSize,
+            stream_capacity - 1);
+        std::memcpy(destination.scoring.scoringStream,
+                    source.scoring.scoringStream,
+                    stream_size);
+        destination.scoring.scoringStreamSize = stream_size;
+        destination.scoring.scoringStream[stream_size] = '\0';
+        destination.scoring.scoringInfo.mVehicle = &destination.scoring.vehScoringInfo[0];
+        destination.scoring.scoringInfo.mResultsStream = &destination.scoring.scoringStream[0];
+    }
+
+    if (source.generic.events[SME_UPDATE_TELEMETRY]) {
+        const size_t vehicle_count = std::min(
+            static_cast<size_t>(source.telemetry.activeVehicles),
+            MAX_VEHICLES);
+        destination.telemetry.activeVehicles = static_cast<uint8_t>(vehicle_count);
+        destination.telemetry.playerHasVehicle = source.telemetry.playerHasVehicle;
+        destination.telemetry.playerVehicleIdx = source.telemetry.playerVehicleIdx;
+        std::memcpy(destination.telemetry.telemInfo,
+                    source.telemetry.telemInfo,
+                    vehicle_count * sizeof(TelemInfoV01));
+    }
+
+    if (source.generic.events[SME_ENTER]
+        || source.generic.events[SME_EXIT]
+        || source.generic.events[SME_SET_ENVIRONMENT]) {
+        std::memcpy(&destination.paths,
+                    &source.paths,
+                    sizeof(SharedMemoryPathData));
+    }
+}
+
 void close_reader() {
     if (shared_memory) {
         UnmapViewOfFile(shared_memory);
@@ -241,7 +299,7 @@ extern "C" int lmu_read_snapshot(LmuSnapshot* output, int32_t spectator_vehicle_
     if (!shared_memory_lock->Lock(10)) {
         return 0;
     }
-    CopySharedMemoryObj(copied_memory, shared_memory->data);
+    copy_shared_memory_bounded(copied_memory, shared_memory->data);
     shared_memory_lock->Unlock();
 
     HWND game_window = copied_memory.generic.appInfo.mAppWindow;
