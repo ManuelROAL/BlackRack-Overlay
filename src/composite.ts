@@ -61,7 +61,7 @@ interface TelemetryBatch {
 
 const overlayIds: OverlayId[] = [
   "delta", "timing", "stinthistory", "driving", "liftcoast", "tires", "damage", "standings",
-  "relative", "fuel", "pitstop", "flags", "rejoin", "trackmap",
+  "relative", "rivals", "fuel", "pitstop", "flags", "rejoin", "trackmap",
   "forecast", "conditions", "dashboard"
 ];
 // Projected into every overlay on top of its own allowlist: an overlay has to
@@ -105,6 +105,9 @@ const telemetryFields: Record<OverlayId, readonly (keyof TelemetryFrame)[]> = {
     "game_time_of_day_seconds", "rest_weather_available", "ambient_temperature_c", "track_temperature_c",
     "brake_bias_percent", "track_limits_steps", "track_limits_steps_per_penalty",
     "relative_model", "standings"
+  ],
+  rivals: [
+    "session_type", "lap_number", "standings"
   ],
   fuel: [
     "connected", "player_active",
@@ -153,7 +156,7 @@ const telemetryFields: Record<OverlayId, readonly (keyof TelemetryFrame)[]> = {
 };
 const overlayTitleKeys: Record<OverlayId, import("./i18n").TranslationKey> = {
   delta: "card.delta", timing: "card.timing", stinthistory: "card.stintHistory", driving: "card.driving", liftcoast: "card.liftcoast", tires: "card.tires",
-  damage: "card.damage", standings: "card.standings", relative: "card.relative", fuel: "card.fuel",
+  damage: "card.damage", standings: "card.standings", relative: "card.relative", rivals: "card.rivals", fuel: "card.fuel",
   pitstop: "card.pitstop", flags: "card.flags", rejoin: "card.rejoin", trackmap: "card.trackmap",
   forecast: "card.forecast", conditions: "card.conditions", dashboard: "card.dashboard"
 };
@@ -583,6 +586,7 @@ void listen<TelemetryBatch>("telemetry://batch", ({ payload }) => {
 for (const event of [
   "standings://settings",
   "relative://settings",
+  "rivals://settings",
   "driving://settings",
   "delta://settings",
   "timing://settings",

@@ -30,6 +30,13 @@ export const OVERLAY_GUIDE: Record<OverlayId, OverlayGuideEntry> = {
     reading: "guide.relative.reading",
     tip: "guide.relative.tip"
   },
+  rivals: {
+    icon: "V",
+    title: "card.rivals",
+    purpose: "guide.rivals.purpose",
+    reading: "guide.rivals.reading",
+    tip: "guide.rivals.tip"
+  },
   fuel: {
     icon: "F",
     title: "card.fuel",
@@ -144,6 +151,7 @@ export const OVERLAY_GUIDE: Record<OverlayId, OverlayGuideEntry> = {
 export const OVERLAY_GUIDE_ORDER = [
   "standings",
   "relative",
+  "rivals",
   "fuel",
   "driving",
   "liftcoast",

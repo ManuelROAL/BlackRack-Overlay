@@ -1161,14 +1161,18 @@ pub fn spawn_source(app: AppHandle) {
             let track_map_due = cycle_due(cycle, tuning.track_map_cycles);
             let standings_visible = super::overlay_is_active(&app, "standings");
             let relative_visible = super::overlay_is_active(&app, "relative");
+            let rivals_visible = super::overlay_is_active(&app, "rivals");
             let track_map_visible = super::overlay_is_active(&app, "trackmap");
             let browser_standings = crate::browser_source::overlay_has_clients("standings");
             let browser_relative = crate::browser_source::overlay_has_clients("relative");
+            let browser_rivals = crate::browser_source::overlay_has_clients("rivals");
             let browser_track_map = crate::browser_source::overlay_has_clients("trackmap");
             let standings_requested = (standings_due
                 && (standings_visible
                     || browser_standings
                     || browser_relative
+                    || rivals_visible
+                    || browser_rivals
                     || dr_estimate_log::enabled()))
                 || (relative_due && relative_visible);
             let source_started = Instant::now();
@@ -1192,6 +1196,7 @@ pub fn spawn_source(app: AppHandle) {
                     "timing",
                     "dashboard",
                     "relative",
+                    "rivals",
                     "fuel",
                     "tires",
                     "driving",
@@ -1205,6 +1210,8 @@ pub fn spawn_source(app: AppHandle) {
                 || relative_visible
                 || browser_standings
                 || browser_relative
+                || rivals_visible
+                || browser_rivals
                 || dr_estimate_log::enabled()
                 || spectator_mode();
             let rest_weather_requested =
@@ -1242,7 +1249,7 @@ pub fn spawn_source(app: AppHandle) {
             );
             standings_models::prepare_overlay_models(
                 &mut frame,
-                standings_visible || browser_standings,
+                standings_visible || browser_standings || rivals_visible || browser_rivals,
                 relative_visible || browser_relative,
             );
             if track_map_requested {
@@ -1260,7 +1267,8 @@ pub fn spawn_source(app: AppHandle) {
             let emission_started = Instant::now();
             let emit_standings = standings_due && standings_visible;
             let emit_relative = relative_due && relative_visible;
-            let mut standings_targets = [""; 2];
+            let emit_rivals = standings_due && rivals_visible;
+            let mut standings_targets = [""; 3];
             let mut standings_target_count = 0;
             if emit_standings {
                 standings_targets[standings_target_count] = "standings";
@@ -1268,6 +1276,10 @@ pub fn spawn_source(app: AppHandle) {
             }
             if emit_relative {
                 standings_targets[standings_target_count] = "relative";
+                standings_target_count += 1;
+            }
+            if emit_rivals {
+                standings_targets[standings_target_count] = "rivals";
                 standings_target_count += 1;
             }
             if super::emit_overlay_frames(

@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title data-i18n="title.rivals">Rivals</title>
+  </head>
+  <body class="rivals-body">
+    <main class="overlay-shell rivals-shell" data-tauri-drag-region>
+      <header class="rivals-header" data-tauri-drag-region>
+        <strong data-rivals-session>—</strong>
+        <span data-rivals-lap>—</span>
+      </header>
+      <section id="rivals-list" class="rivals-list" aria-label="Rivales cercanos" data-i18n-aria-label="rivals.aria">
+        <p class="empty-state" data-i18n="rivals.waiting">Esperando datos de la sesión…</p>
+      </section>
+    </main>
+    <script type="module" src="/src/rivals.ts"></script>
+  </body>
+</html>
