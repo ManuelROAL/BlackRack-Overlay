@@ -237,7 +237,16 @@ const renderValues = (frame: TelemetryFrame): void => {
 
 const renderAdjustment = (frame: TelemetryFrame): void => {
   const context = JSON.stringify([
-    frame.source, frame.track_name, frame.player_vehicle_name, frame.session_type
+    frame.source,
+    frame.track_name,
+    frame.track_length_meters,
+    frame.player_vehicle_name,
+    frame.player_vehicle_class,
+    frame.player_vehicle_livery_name,
+    frame.session_type,
+    frame.game_phase,
+    frame.session_max_laps,
+    frame.session_max_time_seconds
   ]);
   const reset = !frame.player_active || context !== adjustmentContext;
   if (reset) {

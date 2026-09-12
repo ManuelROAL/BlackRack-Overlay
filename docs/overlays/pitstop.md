@@ -15,6 +15,9 @@
   driver swap and penalties may overlap, so never sum service rows.
 - Repairs combine damage, brakes and brake ducts. Penalties remain a separate
   optional row.
+- Show a compact `Cambios`/`Changes` block only when the LMU pit menu reports a
+  non-default selection. Each changed menu item shows its label and selected
+  value; an empty or stale menu does not render the block.
 - Use virtual energy for the resource row when the player's active strategy uses
   it, otherwise fuel.
 - All values become unavailable when the estimate is missing or stale.

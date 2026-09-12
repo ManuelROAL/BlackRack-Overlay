@@ -26,8 +26,7 @@ NOVEDADES DE LA 0.7.8
   protege el aprendizaje durante el guardado.
 - Neumáticos y daños: compuesto del eje montado, colores de superficie como el
   juego y aviso real de alerón trasero desprendido.
-- Previsión: la columna única de AHORA se centra. Trailing + Pedal incorpora el
-  embrague para LMU e iRacing.
+- Previsión: la columna única de AHORA se centra.
 - Fuel / Energía virtual: visibilidad independiente, referencias de vueltas
   completas, márgenes de combustible y energía, autonomía fraccionaria,
   planificación paralela y estimaciones de llegada y recorrido por boxes.
@@ -42,7 +41,7 @@ NOVEDADES DE LA 0.7.8
 - En modo espectador se ocultan los paneles de estrategia sin perder sus
   preferencias y ya no se hereda el estado de garaje del coche local. Mejoran el
   onboarding, los diagnósticos y el texto español del Dashboard.
-- Banderas, cambios de sesión, reinicios de LMU, mappings de iRacing detenidos,
+- Banderas, cambios de sesión, reinicios de LMU,
   OBS/fuente de navegador y datos REST opcionales toleran mejor datos obsoletos o
   clientes lentos.
 

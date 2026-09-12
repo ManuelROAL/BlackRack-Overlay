@@ -363,6 +363,7 @@ impl LmuTelemetrySource {
                 is_player: entry.is_player != 0,
             });
         }
+
         let player_lap_times = player_entry
             .and_then(|player| self.car_histories.get(&player.vehicle_id))
             .map(CarHistory::delta_lap_times)
@@ -372,7 +373,6 @@ impl LmuTelemetrySource {
                 entry.last_lap_delta_seconds = history.last_lap_delta_seconds(player_lap_times);
             }
         }
-
 
         let qualifying_class_positions =
             Self::scored_class_positions(&entries, &driver_qualifying_overall_positions);

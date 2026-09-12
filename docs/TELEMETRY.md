@@ -56,6 +56,12 @@ restore per-overlay native listeners or direct cross-realm object events.
 
 - Cache static vehicle identity but refresh it on driver swaps and clear
   session-scoped state at session boundaries.
+- The LMU source also keeps a compact context key made from the selected
+  vehicle model and entry/livery, circuit name and rounded length, session type,
+  lap limit and configured time limit. If any known part changes while LMU keeps
+  the same numeric session type, session-scoped calculations and REST caches are
+  reset instead of leaking fuel, tyre, standings or pit data into the new
+  context. Unknown values do not overwrite a known identity during startup.
 - In spectator mode, if LMU no longer exposes a locally controlled vehicle, use
   the fresh `focus`/`hasFocus` identity from local REST standings and match its
   normalized driver name to shared-memory scoring before selecting the telemetry

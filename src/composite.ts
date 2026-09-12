@@ -118,7 +118,8 @@ const telemetryFields: Record<OverlayId, readonly (keyof TelemetryFrame)[]> = {
   pitstop: [
     "virtual_energy_active", "pit_stop_estimate_available", "pit_stop_estimate_seconds",
     "pit_stop_fuel_seconds", "pit_stop_energy_seconds", "pit_stop_tire_seconds",
-    "pit_stop_damage_seconds", "pit_stop_penalty_seconds", "pit_stop_driver_swap_seconds"
+    "pit_stop_damage_seconds", "pit_stop_penalty_seconds", "pit_stop_driver_swap_seconds",
+    "pit_stop_menu_changes"
   ],
   flags: ["flag_warning"],
   rejoin: ["rejoin_warning"],
@@ -132,8 +133,9 @@ const telemetryFields: Record<OverlayId, readonly (keyof TelemetryFrame)[]> = {
     "weather_forecast"
   ],
   dashboard: [
-    "capabilities", "source", "track_name", "player_vehicle_name", "session_type",
-    "player_active", "gear", "speed_kph", "rpm", "max_rpm",
+    "capabilities", "source", "track_name", "track_length_meters", "player_vehicle_name",
+    "player_vehicle_class", "player_vehicle_livery_name", "session_type", "game_phase",
+    "session_max_laps", "session_max_time_seconds", "player_active", "gear", "speed_kph", "rpm", "max_rpm",
     "player_position", "player_class_position",
     "lap_number", "session_max_laps", "session_time_remaining",
     "delta_model", "timing_model",

@@ -605,6 +605,12 @@ pub struct TrackMapVehicle {
 }
 
 #[derive(Clone, Serialize)]
+struct PitStopMenuChange {
+    label: String,
+    value: String,
+}
+
+#[derive(Clone, Serialize)]
 pub struct TelemetryFrame {
     source: &'static str,
     source_name: &'static str,
@@ -629,7 +635,7 @@ pub struct TelemetryFrame {
     session_split_count: u32,
     track_name: String,
     player_vehicle_name: String,
-    #[serde(skip)]
+    player_vehicle_class: String,
     player_vehicle_livery_name: String,
     rest_weather_available: bool,
     ambient_temperature_c: f64,
@@ -784,6 +790,7 @@ pub struct TelemetryFrame {
     pit_stop_damage_seconds: f64,
     pit_stop_penalty_seconds: f64,
     pit_stop_driver_swap_seconds: f64,
+    pit_stop_menu_changes: Vec<PitStopMenuChange>,
     lap_progress: f64,
     track_length_meters: f64,
     track_map_vehicles: Vec<TrackMapVehicle>,
@@ -947,6 +954,7 @@ impl TelemetryFrame {
             session_split_count: 0,
             track_name: String::new(),
             player_vehicle_name: String::new(),
+            player_vehicle_class: String::new(),
             player_vehicle_livery_name: String::new(),
             rest_weather_available: false,
             ambient_temperature_c: 0.0,
@@ -1090,6 +1098,7 @@ impl TelemetryFrame {
             pit_stop_damage_seconds: 0.0,
             pit_stop_penalty_seconds: 0.0,
             pit_stop_driver_swap_seconds: 0.0,
+            pit_stop_menu_changes: Vec::new(),
             lap_progress: 0.0,
             track_length_meters: 0.0,
             track_map_vehicles: Vec::new(),

@@ -58,6 +58,7 @@ impl TelemetrySource for LmuTelemetrySource {
         let rest_us = rest_started.elapsed().as_micros();
         if snapshot.connected == 0 {
             self.current_session = None;
+            self.current_context = None;
             self.last_session_elapsed_seconds = None;
             self.local_rest.reset_session_history();
             self.last_lap = -1;
@@ -88,8 +89,18 @@ impl TelemetrySource for LmuTelemetrySource {
         {
             self.current_session = None;
         }
+        let (vehicle_name, vehicle_livery_name) = Self::player_vehicle_names(&snapshot);
+        let track_name = Self::string_from_chars(&snapshot.track_name);
+        self.update_session_context(SessionContext::from_values(
+            snapshot.session_type,
+            vehicle_name.clone(),
+            vehicle_livery_name.clone(),
+            track_name.clone(),
+            snapshot.track_length,
+            snapshot.max_laps,
+            self.local_rest.session_max_time_seconds(),
+        ));
         let session_started = Instant::now();
-        self.update_session(snapshot.session_type);
         self.last_session_elapsed_seconds = snapshot
             .session_elapsed_seconds
             .is_finite()
@@ -244,12 +255,17 @@ impl TelemetrySource for LmuTelemetrySource {
             .map(|start| start + self.energy_added_this_lap - virtual_energy_percent)
             .unwrap_or(0.0)
             .max(0.0);
-        let (vehicle_name, vehicle_livery_name) = Self::player_vehicle_names(&snapshot);
-        let track_name = Self::string_from_chars(&snapshot.track_name);
+        let player_vehicle_class = snapshot
+            .standings
+            .iter()
+            .find(|entry| entry.is_player != 0)
+            .map(|entry| Self::string_from_chars(&entry.vehicle_class))
+            .unwrap_or_default();
         let (tc_active, abs_active) = Self::driver_assists(&snapshot);
         let (steering_angle_degrees, force_feedback) =
             Self::steering_and_force(&snapshot, self.local_rest.steering_range_degrees());
         let rest_pit_stop = self.local_rest.pit_stop().cloned();
+        let rest_pit_menu_changes = self.local_rest.pit_menu_changes().unwrap_or(&[]);
         let rest_aero_damage = self.local_rest.aero_damage();
         let rest_suspension_damage = self.local_rest.suspension_damage();
         let rest_compound_conditions = self.local_rest.compound_conditions().to_vec();
@@ -770,6 +786,7 @@ impl TelemetrySource for LmuTelemetrySource {
             session_split_count: session_split.count,
             track_name,
             player_vehicle_name: vehicle_name,
+            player_vehicle_class,
             player_vehicle_livery_name: vehicle_livery_name,
             rest_weather_available: snapshot.ambient_temperature_c.is_finite()
                 && snapshot.track_temperature_c.is_finite(),
@@ -997,6 +1014,13 @@ impl TelemetrySource for LmuTelemetrySource {
                 .as_ref()
                 .map(|estimate| estimate.driver_swap.max(0.0))
                 .unwrap_or(0.0),
+            pit_stop_menu_changes: rest_pit_menu_changes
+                .iter()
+                .map(|change| PitStopMenuChange {
+                    label: change.label.clone(),
+                    value: change.value.clone(),
+                })
+                .collect(),
             lap_progress: profile_estimate.lap_progress,
             track_length_meters: snapshot.track_length.max(0.0),
             track_map_vehicles,

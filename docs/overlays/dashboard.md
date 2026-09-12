@@ -128,10 +128,11 @@ fields may be enabled, including all of them. The strip grows with its content.
   change replaces the previous notice (simultaneous changes follow field order,
   with brake bias taking precedence). Values are compared at their displayed
   precision so sub-display brake-bias noise does not trigger a notice.
-- Initial telemetry, inactive players, a changed source/track/vehicle name/session
-  type and newly available electronics establish a baseline without a notice.
-  Identity detection is limited to those published fields; cars with identical
-  names cannot be distinguished here. Preview values never seed live notices.
+- Initial telemetry, inactive players, a changed source/track/vehicle identity,
+  circuit length, session phase/type or session limit and newly available
+  electronics establish a baseline without a notice. The context includes the
+  vehicle model, class and entry/livery, so two cars with the same model name
+  do not share an adjustment notice. Preview values never seed live notices.
 - Notices preserve layout and transparency, hide underlying text for readability,
   keep the gear and rev lights visible, and expire on telemetry updates without
   animations or an independent timer. Native field projection includes the same

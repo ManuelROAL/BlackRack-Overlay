@@ -2,7 +2,7 @@ use super::{
     fuel_energy_ratio, lmu_snapshot_size, rear_wing_detached, suspension_damage_by_wheel_percent,
     suspension_damage_percent, synchronized_lap_progress, CarHistory, LmuSnapshot,
     LmuStandingEntry, LmuTelemetrySource, PlayerLapDistanceEstimator, PlayerLapDistanceSample,
-    PlayerLapTimeHistory, TireWearTracker,
+    PlayerLapTimeHistory, SessionContext, TireWearTracker,
 };
 use crate::telemetry::sim::lmu::event_split::DriverRankSettings;
 use crate::telemetry::sim::lmu::rest::{RestCompoundCondition, RestStanding};
@@ -1851,6 +1851,68 @@ fn disconnecting_then_reentering_the_same_session_type_resets_session_state() {
 
     assert_eq!(source.fuel_per_lap, None);
     assert_eq!(source.energy_per_lap, None);
+}
+
+#[test]
+fn context_changes_reset_state_even_when_session_type_stays_the_same() {
+    let mut source = LmuTelemetrySource::new();
+    let context = |track: &str, max_time: f64| {
+        SessionContext::from_values(
+            10,
+            "Porsche 963".into(),
+            "Porsche 963 #6".into(),
+            track.into(),
+            13_626.0,
+            0,
+            max_time,
+        )
+    };
+
+    source.update_session_context(context("Circuit de la Sarthe", 3_600.0));
+    source.fuel_per_lap = Some(11.0);
+    source.energy_per_lap = Some(8.0);
+
+    // LMU may keep mSession == 10 while loading another circuit or changing
+    // the race limit. Those changes must not inherit the previous estimates.
+    source.update_session_context(context("Sebring International Raceway", 7_200.0));
+
+    assert_eq!(source.current_session, Some(10));
+    assert_eq!(source.fuel_per_lap, None);
+    assert_eq!(source.energy_per_lap, None);
+}
+
+#[test]
+fn unknown_context_values_do_not_replace_known_identity() {
+    let mut source = LmuTelemetrySource::new();
+    source.update_session_context(SessionContext::from_values(
+        10,
+        "Porsche 963".into(),
+        "Porsche 963 #6".into(),
+        "Circuit de la Sarthe".into(),
+        13_626.0,
+        0,
+        3_600.0,
+    ));
+    source.fuel_per_lap = Some(11.0);
+
+    source.update_session_context(SessionContext::from_values(
+        10,
+        String::new(),
+        String::new(),
+        String::new(),
+        0.0,
+        0,
+        0.0,
+    ));
+
+    assert_eq!(source.fuel_per_lap, Some(11.0));
+    assert_eq!(
+        source
+            .current_context
+            .as_ref()
+            .map(|context| context.track_name.as_str()),
+        Some("Circuit de la Sarthe")
+    );
 }
 
 #[test]

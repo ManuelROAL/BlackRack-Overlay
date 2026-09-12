@@ -24,8 +24,7 @@ WHAT'S NEW IN 0.7.8
   the map also learns pit geometry and protects learned data during saving.
 - Tyres and Damage: compounds from the mounted axle, game-matching surface
   colours and a real detached-rear-wing warning.
-- Forecast: the single NOW column is centred. Trailing + Pedal adds clutch input
-  for LMU and iRacing.
+- Forecast: the single NOW column is centred.
 - Fuel / Virtual Energy: independent visibility controls, completed-lap
   references, fuel and energy margins, fractional autonomy, parallel-resource
   planning, leader/class finish estimates and learned or calibrated pit travel.
@@ -39,7 +38,7 @@ WHAT'S NEW IN 0.7.8
 - Spectator mode hides strategy-only panels while retaining preferences and no
   longer inherits the local car's garage state. Onboarding, diagnostics and
   Spanish Dashboard copy are improved.
-- Flags, session reset, LMU restart, stalled iRacing mapping, OBS/browser-source
+- Flags, session reset, LMU restart, OBS/browser-source
   handling and optional REST data are more resilient to stale or slow data.
 
 TIPS

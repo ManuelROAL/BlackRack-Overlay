@@ -234,6 +234,8 @@ struct RestPitMenu {
 struct RestPitMenuItem {
     name: String,
     current_setting: usize,
+    #[serde(rename = "default")]
+    default_setting: Option<usize>,
     settings: Vec<RestPitMenuSetting>,
 }
 
@@ -241,6 +243,12 @@ struct RestPitMenuItem {
 #[serde(default)]
 struct RestPitMenuSetting {
     text: String,
+}
+
+#[derive(Clone, Debug, Default)]
+pub(super) struct RestPitMenuChange {
+    pub(super) label: String,
+    pub(super) value: String,
 }
 
 #[derive(Clone, Debug, Default, Deserialize)]
@@ -339,6 +347,7 @@ pub(super) struct RestWeatherMetric {
 struct SupplementUpdate {
     generation: u64,
     pit_stop: Option<RestPitStopEstimate>,
+    pit_menu_changes: Option<Vec<RestPitMenuChange>>,
     compound_conditions: Option<Vec<RestCompoundCondition>>,
     vehicle_damage: Option<RestVehicleDamage>,
     fuel_ratio_assigned: Option<f64>,
@@ -379,6 +388,7 @@ pub(super) struct LocalRestResolver {
     steering_range_degrees: Option<f64>,
     fuel_ratio_assigned: f64,
     pit_refill_targets: RestPitRefillTargets,
+    pit_menu_changes: Vec<RestPitMenuChange>,
     pit_menu_received_at: Option<Instant>,
     team_driver_names: Vec<String>,
     team_name: String,
@@ -521,6 +531,7 @@ impl LocalRestResolver {
                 let update = SupplementUpdate {
                     generation,
                     pit_stop: fetch_tracked(&client, "/rest/strategy/pitstop-estimate"),
+                    pit_menu_changes: repair_and_refuel.as_ref().map(pit_menu_changes),
                     compound_conditions,
                     vehicle_damage: repair_and_refuel
                         .as_ref()
@@ -708,6 +719,10 @@ impl LocalRestResolver {
                 self.fuel_ratio_assigned = fuel_ratio_assigned;
                 self.pit_menu_received_at = Some(Instant::now());
             }
+            if let Some(pit_menu_changes) = update.pit_menu_changes {
+                self.pit_menu_changes = pit_menu_changes;
+                self.pit_menu_received_at = Some(Instant::now());
+            }
             if let Some(pit_refill_targets) = update.pit_refill_targets {
                 self.pit_refill_targets = pit_refill_targets;
                 self.pit_menu_received_at = Some(Instant::now());
@@ -789,6 +804,7 @@ impl LocalRestResolver {
         self.steering_range_degrees = None;
         self.fuel_ratio_assigned = 0.0;
         self.pit_refill_targets = RestPitRefillTargets::default();
+        self.pit_menu_changes.clear();
         self.pit_menu_received_at = None;
         self.pit_stop = RestPitStopEstimate::default();
         self.pit_stop_received_at = None;
@@ -945,6 +961,11 @@ impl LocalRestResolver {
         }
     }
 
+    pub(super) fn pit_menu_changes(&self) -> Option<&[RestPitMenuChange]> {
+        is_fresh(self.pit_menu_received_at, SUPPLEMENT_MAX_AGE)
+            .then_some(self.pit_menu_changes.as_slice())
+    }
+
     pub(super) fn weather_forecast(&self) -> Option<&RestWeatherSession> {
         is_fresh(self.weather_received_at, WEATHER_MAX_AGE).then_some(&self.weather_nodes)
     }
@@ -964,6 +985,31 @@ fn fuel_ratio_assigned(response: &RestRepairAndRefuel) -> Option<f64> {
         .parse::<f64>()
         .ok()?;
     (ratio.is_finite() && ratio > 0.0).then_some(ratio)
+}
+
+fn pit_menu_changes(response: &RestRepairAndRefuel) -> Vec<RestPitMenuChange> {
+    response
+        .pit_menu
+        .pit_menu
+        .iter()
+        .filter_map(|item| {
+            let default_setting = item.default_setting?;
+            if item.current_setting == default_setting {
+                return None;
+            }
+            let label = item.name.trim().trim_end_matches(':').trim().to_owned();
+            if label.is_empty() {
+                return None;
+            }
+            let value = item
+                .settings
+                .get(item.current_setting)
+                .map(|setting| setting.text.trim().to_owned())
+                .filter(|text| !text.is_empty())
+                .unwrap_or_else(|| item.current_setting.to_string());
+            Some(RestPitMenuChange { label, value })
+        })
+        .collect()
 }
 
 #[derive(Clone, Copy, Debug, Default)]
@@ -1109,9 +1155,9 @@ fn normalized_class(value: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::{
-        fuel_ratio_assigned, normalized_driver_identity, normalized_name, pit_refill_targets,
-        rest_demand, steering_range, team_info_for_player, LocalRestResolver, RestGarageData,
-        RestPitStopEstimate, RestRepairAndRefuel, RestSessionInfo, RestStanding,
+        fuel_ratio_assigned, normalized_driver_identity, normalized_name, pit_menu_changes,
+        pit_refill_targets, rest_demand, steering_range, team_info_for_player, LocalRestResolver,
+        RestGarageData, RestPitStopEstimate, RestRepairAndRefuel, RestSessionInfo, RestStanding,
         RestStandingHistory, RestTeamInfo, RestTireManagement, RestVehicleDamage,
         RestWeatherSession, StandingsUpdate, STANDINGS_DEMAND, SUPPLEMENT_DEMAND,
         SUPPLEMENT_MAX_AGE, WEATHER_DEMAND,
@@ -1373,6 +1419,25 @@ mod tests {
         )
         .unwrap();
         assert_eq!(fuel_ratio_assigned(&response), Some(0.93));
+    }
+
+    #[test]
+    fn keeps_only_non_default_pit_menu_changes() {
+        let response: RestRepairAndRefuel = serde_json::from_str(
+            r#"{"pitMenu":{"pitMenu":[
+                {"name":"FUEL RATIO:","currentSetting":2,"default":1,"settings":[{"text":"0.91"},{"text":"0.92"},{"text":"0.93"}]},
+                {"name":"TYRES:","currentSetting":0,"default":0,"settings":[{"text":"NO CHANGE"}]},
+                {"name":"VIRTUAL ENERGY:","currentSetting":82,"default":0,"settings":[]}
+            ]}}"#,
+        )
+        .unwrap();
+
+        let changes = pit_menu_changes(&response);
+        assert_eq!(changes.len(), 2);
+        assert_eq!(changes[0].label, "FUEL RATIO");
+        assert_eq!(changes[0].value, "0.93");
+        assert_eq!(changes[1].label, "VIRTUAL ENERGY");
+        assert_eq!(changes[1].value, "82");
     }
 
     #[test]

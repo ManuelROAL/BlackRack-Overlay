@@ -75,6 +75,28 @@ impl LmuTelemetrySource {
         }
     }
 
+    pub(super) fn update_session_context(&mut self, context: SessionContext) {
+        let context_changed = self
+            .current_context
+            .as_ref()
+            .is_some_and(|current| current.has_changed(&context));
+
+        // A changed car, circuit or session limit must start a clean set of
+        // session-scoped calculations even when LMU keeps mSession unchanged.
+        // Preserve the normal session-transition path so race/qualifying
+        // sequence bookkeeping still sees an actual session-type change.
+        if context_changed && self.current_session == Some(context.session_type) {
+            self.current_session = None;
+        }
+        self.update_session(context.session_type);
+
+        if context_changed || self.current_context.is_none() {
+            self.current_context = Some(context);
+        } else if let Some(current) = self.current_context.as_mut() {
+            current.merge_known(&context);
+        }
+    }
+
     pub(super) fn player_in_pits(snapshot: &LmuSnapshot) -> bool {
         let count = (snapshot.standings_count as usize).min(MAX_VEHICLES);
         snapshot.standings[..count]

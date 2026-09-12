@@ -15,8 +15,7 @@ also learns pit geometry, protects its persistent data and can replace an
 approximation with measured traversal.
 
 Tyres use the compound mounted on each axle, match the game's surface colours
-and identify a detached rear wing. Trailing + Pedal now shows clutch input for
-LMU and iRacing. Forecast centres its single NOW column.
+and identify a detached rear wing. Forecast centres its single NOW column.
 
 Stint history adds starting/ending SOC and accumulated regenerated energy for
 hybrid cars, and pit-stop laps now account correctly for fuel added during the
@@ -34,7 +33,7 @@ and Spanish Dashboard copy are improved.
 
 Flags use the official LMU sector-yellow mask and circular track distance,
 while Standings and Track Map keep their preventive slow-car marker. Session
-cache resets, stalled iRacing mapping recovery, safer OBS/browser-source and
+cache resets, safer OBS/browser-source and
 optional REST handling, and durable Track Map learning reduce stale data and
 interrupted-save problems.
 
@@ -49,8 +48,7 @@ Timing crece solo con vueltas completas y comparte con el Mapa los colores de
 sectores en clasificación. El Mapa aprende la geometría de boxes y protege sus
 datos guardados. Neumáticos usa el compuesto montado en cada eje, sus colores
 siguen la superficie del juego y el alerón desprendido tiene aviso propio.
-Previsión centra su única columna AHORA. Trailing + Pedal añade embrague para
-LMU e iRacing.
+Previsión centra su única columna AHORA.
 
 Historial de stint añade SOC inicial/final y energía regenerada acumulada en
 coches híbridos, y las vueltas con parada cuentan correctamente el combustible
@@ -69,6 +67,6 @@ diagnósticos de soporte y el texto español del Dashboard.
 
 Banderas usa la máscara oficial de sector amarillo de LMU y la distancia
 circular; Clasificación y Mapa del circuito mantienen su marca preventiva de
-coche lento. Los cambios de sesión, mappings detenidos de iRacing, OBS/fuente
+coche lento. Los cambios de sesión, OBS/fuente
 de navegador y datos REST opcionales son ahora más resistentes a datos obsoletos
 o clientes lentos.

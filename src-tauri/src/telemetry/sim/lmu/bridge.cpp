@@ -493,12 +493,15 @@ extern "C" int lmu_read_snapshot(LmuSnapshot* output, int32_t spectator_vehicle_
                     // LMU entrega mBrakeTemp en Kelvin pese al comentario heredado del SDK.
                     output->player_brake_temperature_c[wheel_index] = wheel.mBrakeTemp - 273.15;
                     output->player_tire_remaining_by_wheel_percent[wheel_index] = tire_remaining;
+                    // mStaticUndeflectedRadius is a radius in centimetres. Longitudinal
+                    // slip compares the tyre's peripheral speed with the ground
+                    // velocity along the wheel, so lateral ground velocity must not
+                    // be included in the denominator.
                     const double radius_m = static_cast<double>(wheel.mStaticUndeflectedRadius) / 100.0;
-                    const double ground_speed_mps = std::hypot(
-                        wheel.mLongitudinalGroundVel,
-                        wheel.mLateralGroundVel);
-                    output->player_tire_slip_ratio[wheel_index] = ground_speed_mps > 1.0 && radius_m > 0.0
-                        ? std::abs(wheel.mRotation) * radius_m / ground_speed_mps - 1.0
+                    const double longitudinal_speed_mps = std::abs(wheel.mLongitudinalGroundVel);
+                    output->player_tire_slip_ratio[wheel_index] =
+                        longitudinal_speed_mps > 1.0 && radius_m > 0.0
+                        ? std::abs(wheel.mRotation) * radius_m / longitudinal_speed_mps - 1.0
                         : 0.0;
                     output->player_tire_sliding_fraction[wheel_index] =
                         std::clamp(wheel.mGripFract, 0.0, 1.0);

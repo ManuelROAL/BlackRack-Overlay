@@ -66,6 +66,11 @@ export interface TrackMapVehicle {
   is_player: boolean;
 }
 
+export interface PitStopMenuChange {
+  label: string;
+  value: string;
+}
+
 export interface TrackMapViewModel {
   cache_key: string;
   geometry_revision: number;
@@ -204,6 +209,8 @@ export interface TelemetryFrame {
   session_split_count: number;
   track_name: string;
   player_vehicle_name: string;
+  player_vehicle_class: string;
+  player_vehicle_livery_name: string;
   rest_weather_available: boolean;
   ambient_temperature_c: number;
   track_temperature_c: number;
@@ -353,6 +360,7 @@ export interface TelemetryFrame {
   pit_stop_damage_seconds: number;
   pit_stop_penalty_seconds: number;
   pit_stop_driver_swap_seconds: number;
+  pit_stop_menu_changes: PitStopMenuChange[];
   lap_progress: number;
   track_length_meters: number;
   track_map_vehicles: TrackMapVehicle[];

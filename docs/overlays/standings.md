@@ -31,9 +31,10 @@ duplicate selection or timing semantics.
 - Normalize LMU's abbreviated `Hyper` class label to the `HYPERCAR` heading and
   Hypercar red tone, consistently with longer Hypercar names and GTP aliases.
 - Columns are position, assigned number, manufacturer, badge, driver, DR/SR,
-  GAP, INT, best, last, recent-lap DELTA, AVG 5, NRG, damage, track-limit steps,
-  tyre and signals. Position and driver are mandatory; signals stays fixed at the far
-  right. Other columns are independently visible and reorderable. Pit data has independent visibility and placement settings: beside the name,
+  GAP, INT, best, last, AVG 5, recent-lap DELTA, NRG, damage, track-limit
+  steps, tyre and signals. Position and driver are mandatory; signals stays
+  fixed at the far right. Other columns are independently visible and
+  reorderable. Pit data has independent visibility and placement settings: beside the name,
   above the name or in one dedicated PIT column.
 - Reordering preserves the category-header boundary: identity columns without a
   label remain inside the colored category heading, while labeled data columns

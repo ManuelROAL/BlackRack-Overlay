@@ -23,8 +23,8 @@ use crate::telemetry::fuel_strategy::{
 };
 use crate::telemetry::pit_traversal::{PitSpeedSample, PitTraversalEstimator};
 use crate::telemetry::{
-    FlagWarning, RejoinWarning, StandingEntry, TelemetryDemand, TelemetryFrame, TireLifeModel,
-    TrackMapVehicle,
+    FlagWarning, PitStopMenuChange, RejoinWarning, StandingEntry, TelemetryDemand, TelemetryFrame,
+    TireLifeModel, TrackMapVehicle,
 };
 
 mod driver_rank;
@@ -649,15 +649,15 @@ impl CarHistory {
         if self.rest_history_last_lap == Some(last_history_lap) {
             return;
         }
-        self.delta_lap_times = [0.0; 5];
         self.recent_lap_times.clear();
+        self.delta_lap_times = [0.0; 5];
         let eligible = laps
             .iter()
             .filter(|(lap, _)| *lap <= current_total_laps)
             .collect::<Vec<_>>();
         for (_, lap_time) in eligible.iter().skip(eligible.len().saturating_sub(5)) {
-            self.push_delta_lap_time(*lap_time);
             Self::push_recent(&mut self.recent_lap_times, *lap_time);
+            self.push_delta_lap_time(*lap_time);
         }
         self.rest_history_last_lap = Some(last_history_lap);
     }
@@ -978,6 +978,7 @@ impl CarHistory {
 
 pub struct LmuTelemetrySource {
     current_session: Option<i32>,
+    current_context: Option<SessionContext>,
     last_session_elapsed_seconds: Option<f64>,
     last_lap: i32,
     fuel_at_lap_start: Option<f64>,
@@ -1028,6 +1029,91 @@ pub struct LmuTelemetrySource {
     driver_rank_race_sequence: u64,
     driver_rank_validation: Option<DriverRankValidationState>,
     source_stage_performance: SourceStagePerformance,
+}
+
+/// Stable identity/configuration for the active telemetry context. The flat
+/// frame fields remain the public telemetry contract; this compact internal
+/// key prevents session-scoped state from leaking across a car, circuit or
+/// session-configuration change when LMU keeps the numeric session type.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+struct SessionContext {
+    session_type: i32,
+    vehicle_model: String,
+    vehicle_entry: String,
+    track_name: String,
+    track_length_meters: u64,
+    max_laps: i32,
+    max_time_seconds: u64,
+}
+
+impl SessionContext {
+    fn from_values(
+        session_type: i32,
+        vehicle_model: String,
+        vehicle_entry: String,
+        track_name: String,
+        track_length_meters: f64,
+        max_laps: i32,
+        max_time_seconds: f64,
+    ) -> Self {
+        Self {
+            session_type,
+            vehicle_model,
+            vehicle_entry,
+            track_name,
+            track_length_meters: positive_rounded_u64(track_length_meters),
+            max_laps: max_laps.max(0),
+            max_time_seconds: positive_rounded_u64(max_time_seconds),
+        }
+    }
+
+    fn has_changed(&self, next: &Self) -> bool {
+        self.session_type != next.session_type
+            || known_string_changed(&self.vehicle_model, &next.vehicle_model)
+            || known_string_changed(&self.vehicle_entry, &next.vehicle_entry)
+            || known_string_changed(&self.track_name, &next.track_name)
+            || known_number_changed(self.track_length_meters, next.track_length_meters)
+            || known_number_changed(self.max_laps as u64, next.max_laps as u64)
+            || known_number_changed(self.max_time_seconds, next.max_time_seconds)
+    }
+
+    fn merge_known(&mut self, next: &Self) {
+        if !next.vehicle_model.is_empty() {
+            self.vehicle_model.clone_from(&next.vehicle_model);
+        }
+        if !next.vehicle_entry.is_empty() {
+            self.vehicle_entry.clone_from(&next.vehicle_entry);
+        }
+        if !next.track_name.is_empty() {
+            self.track_name.clone_from(&next.track_name);
+        }
+        if next.track_length_meters > 0 {
+            self.track_length_meters = next.track_length_meters;
+        }
+        if next.max_laps > 0 {
+            self.max_laps = next.max_laps;
+        }
+        if next.max_time_seconds > 0 {
+            self.max_time_seconds = next.max_time_seconds;
+        }
+        self.session_type = next.session_type;
+    }
+}
+
+fn positive_rounded_u64(value: f64) -> u64 {
+    if value.is_finite() && value > 0.0 {
+        value.round() as u64
+    } else {
+        0
+    }
+}
+
+fn known_string_changed(previous: &str, current: &str) -> bool {
+    !previous.is_empty() && !current.is_empty() && previous != current
+}
+
+fn known_number_changed(previous: u64, current: u64) -> bool {
+    previous > 0 && current > 0 && previous != current
 }
 
 #[derive(Default)]
@@ -1311,6 +1397,7 @@ impl LmuTelemetrySource {
     pub fn with_profile_directory(profile_directory: Option<std::path::PathBuf>) -> Self {
         Self {
             current_session: None,
+            current_context: None,
             last_session_elapsed_seconds: None,
             last_lap: -1,
             fuel_at_lap_start: None,

@@ -182,6 +182,7 @@ impl TelemetrySource for MockTelemetrySource {
             session_split_count: 12,
             track_name: "Circuit de la Sarthe".into(),
             player_vehicle_name: "Mock Hypercar".into(),
+            player_vehicle_class: "HYPERCAR".into(),
             player_vehicle_livery_name: "Mock Hypercar #7".into(),
             rest_weather_available: true,
             ambient_temperature_c: 19.4,
@@ -420,6 +421,7 @@ impl TelemetrySource for MockTelemetrySource {
             pit_stop_damage_seconds: 0.0,
             pit_stop_penalty_seconds: 0.0,
             pit_stop_driver_swap_seconds: 6.1,
+            pit_stop_menu_changes: Vec::new(),
             lap_progress,
             track_length_meters: 13_626.0,
             track_map_vehicles: if include_track_map {
