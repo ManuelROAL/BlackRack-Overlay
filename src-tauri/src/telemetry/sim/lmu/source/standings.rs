@@ -304,6 +304,7 @@ impl LmuTelemetrySource {
                 best_lap_seconds: entry.best_lap_seconds.max(0.0),
                 last_lap_seconds: history.last_lap_seconds(entry.last_lap_seconds),
                 average_lap_seconds,
+                last_lap_delta_seconds: [None; 5],
                 virtual_energy_active,
                 virtual_energy_percent: if virtual_energy_active {
                     rest.as_ref()
@@ -362,6 +363,16 @@ impl LmuTelemetrySource {
                 is_player: entry.is_player != 0,
             });
         }
+        let player_lap_times = player_entry
+            .and_then(|player| self.car_histories.get(&player.vehicle_id))
+            .map(CarHistory::delta_lap_times)
+            .unwrap_or([0.0; 5]);
+        for entry in &mut entries {
+            if let Some(history) = self.car_histories.get(&entry.vehicle_id) {
+                entry.last_lap_delta_seconds = history.last_lap_delta_seconds(player_lap_times);
+            }
+        }
+
 
         let qualifying_class_positions =
             Self::scored_class_positions(&entries, &driver_qualifying_overall_positions);

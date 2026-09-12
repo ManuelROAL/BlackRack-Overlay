@@ -53,7 +53,8 @@ the prepared vehicle IDs and formats them; it must not repeat domain selection.
 
 - Position, driver and physical time are mandatory. Configurable columns include
   number, country, license, DR/SR and estimate, position change, lap, AVG 5,
-  last/best, NRG, damage, per-driver track limits, pit status, tyre and flags.
+  last/best, recent-lap DELTA, NRG, damage, per-driver track limits, pit status,
+  tyre and flags.
   Pit status is independently visible but integrated into the driver cell rather
   than exposed as a separate reorderable column. It uses the same green request,
   active timer and `L<lap> · duration · count` states as Standings.
@@ -80,6 +81,10 @@ the prepared vehicle IDs and formats them; it must not repeat domain selection.
   durations when LMU omits the official time; that missing official result also
   confirms the reconstructed lap as invalid. Invalid LAST values are gray and
   take visual precedence over personal-best or session-fastest coloring.
+- The optional DELTA column shares Standings' per-vehicle recent-lap comparison:
+  it displays 2–5 player-minus-opponent differences, colors gains green and
+  losses orange, and can reverse the oldest/newest display order. Unavailable
+  lap pairs remain muted instead of becoming zero.
 - Reuse Standings' event-roster fallback for missing/`XX` nationality and badges.
 - If a resolved country asset fails to load, replace it with the bundled `XX`
   marker; remove the image if that fallback also fails instead of leaving a

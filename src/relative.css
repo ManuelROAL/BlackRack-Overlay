@@ -34,6 +34,7 @@
 .standing-gap,
 .standing-interval { padding-inline: 6px; }
 .lap-time { padding-inline: 7px; }
+.recent-lap-deltas { padding-inline: 3px; }
 .standing-energy { padding-inline: 7px 5px; }
 .standing-damage { padding-inline: 5px; }
 .standing-track-limits { padding-inline: 3px; }
@@ -189,6 +190,12 @@ body[data-overlay-fit="true"].relative-body .standings-shell {
 .standings-class[data-class-tone="lmgt3"] {
   --class-color: #58dc78;
 }
+
+.recent-lap-deltas { display: flex; align-items: center; justify-content: center; gap: 3px; min-width: 0; font-variant-numeric: tabular-nums; }
+.recent-lap-delta { color: #d0d6dc; }
+.recent-lap-delta[data-tone="gain"] { color: #62df8d; }
+.recent-lap-delta[data-tone="loss"] { color: #f0a45b; }
+.recent-lap-delta[data-tone="unavailable"] { color: #69737e; }
 
 .standings-class[data-class-tone="gte"] {
   --class-color: #e2b93b;

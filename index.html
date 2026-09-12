@@ -368,6 +368,15 @@
                 <option value="column" data-i18n="settings.pitColumn">Columna aparte</option>
               </select>
             </label>
+            <label class="standings-row-setting">
+              <span data-i18n="settings.deltaLaps">VUELTAS DELTA</span>
+              <input id="standings-delta-lap-count" type="number" min="2" max="5" step="1" />
+            </label>
+            <label class="standings-setting-toggle">
+              <input id="standings-invert-delta-layout" type="checkbox" />
+              <span></span>
+              <b data-i18n="settings.invertDelta">Invertir orden del delta</b>
+            </label>
           </div>
           <div class="settings-subtitle" data-i18n="settings.header">CABECERA</div>
           <div id="standings-header-options" class="standings-columns header-options" aria-label="Datos de cabecera de clasificación" data-i18n-aria-label="settings.standingsHeaderAria"></div>
@@ -414,6 +423,15 @@
                 <option value="above" data-i18n="settings.pitAbove">Encima del nombre</option>
                 <option value="column" data-i18n="settings.pitColumn">Columna aparte</option>
               </select>
+            </label>
+            <label class="standings-row-setting">
+              <span data-i18n="settings.deltaLaps">VUELTAS DELTA</span>
+              <input id="relative-delta-lap-count" type="number" min="2" max="5" step="1" />
+            </label>
+            <label class="standings-setting-toggle">
+              <input id="relative-invert-delta-layout" type="checkbox" />
+              <span></span>
+              <b data-i18n="settings.invertDelta">Invertir orden del delta</b>
             </label>
           </div>
           <div class="settings-subtitle" data-i18n="settings.header">CABECERA</div>

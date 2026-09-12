@@ -15,6 +15,7 @@ export type RelativeColumnId =
   | "lap"
   | "average"
   | "last"
+  | "delta"
   | "best"
   | "energy"
   | "damage"
@@ -51,6 +52,7 @@ export type RelativeOptionId =
   | "lap"
   | "average"
   | "last"
+  | "delta"
   | "best"
   | "energy"
   | "damage"
@@ -73,6 +75,8 @@ export interface RelativeSettings {
   behindRows: number;
   pitInformationLayout: "inline" | "above" | "column";
   driverNameFormat: DriverNameFormat;
+  deltaLapCount: number;
+  invertDeltaLayout: boolean;
 }
 
 export const RELATIVE_SETTINGS_KEY = "blackrack-overlay.relative.v3";
@@ -85,7 +89,7 @@ export const RELATIVE_HEADER_OPTIONS: RelativeOptionDefinition[] = [
 export const RELATIVE_COLUMN_OPTIONS: RelativeOptionDefinition[] = [
   { id: "number", labelKey: "column.number" }, { id: "country", labelKey: "column.country" }, { id: "license", labelKey: "column.badge" },
   { id: "rating", labelKey: "column.ranks" }, { id: "positionChange", labelKey: "option.positionChange" }, { id: "lap", labelKey: "column.lap" },
-  { id: "best", labelKey: "column.best" }, { id: "last", labelKey: "column.last" }, { id: "average", labelKey: "column.average" },
+  { id: "best", labelKey: "column.best" }, { id: "last", labelKey: "column.last" }, { id: "delta", labelKey: "column.delta" }, { id: "average", labelKey: "column.average" },
   { id: "energy", labelKey: "column.energy" }, { id: "damage", labelKey: "column.damage" }, { id: "trackLimitsColumn", labelKey: "column.trackLimits" },
   { id: "pitStops", labelKey: "column.pitStops" }, { id: "pitTime", labelKey: "column.pitTime" }, { id: "pitLap", labelKey: "column.pitLap" }, { id: "tire", labelKey: "column.tire" }, { id: "signals", labelKey: "column.signals" }
 ];
@@ -114,7 +118,7 @@ const relativeColumn = (
 
 const RELATIVE_COLUMN_LABELS: Record<RelativeColumnId, import("./i18n").TranslationKey> = {
   position: "column.position", number: "column.number", country: "column.country", badge: "column.badge", driver: "column.driver", ranks: "column.ranks",
-  relative: "column.relative", lap: "column.lap", best: "column.best", last: "column.last", average: "column.average", energy: "column.energy",
+  relative: "column.relative", lap: "column.lap", best: "column.best", last: "column.last", delta: "column.delta", average: "column.average", energy: "column.energy",
   damage: "column.damage", trackLimits: "column.trackLimits", pitStops: "column.pitStops", pitTime: "column.pitTime", pitLap: "column.pitLap", tire: "column.tire", signals: "column.signals"
 };
 
@@ -129,6 +133,7 @@ export const RELATIVE_COLUMNS: RelativeColumnDefinition[] = [
   relativeColumn("lap", "V", 28, false, "lap"),
   relativeColumn("best", "BEST", 68, false, "best"),
   relativeColumn("last", "LAST", 68, false, "last"),
+  relativeColumn("delta", "DELTA", 76, false, "delta"),
   relativeColumn("average", "AVG", 68, false, "average"),
   relativeColumn("energy", "NRG", 90, false, "energy"),
   relativeColumn("damage", "DMG", 42, false, "damage"),
@@ -141,15 +146,18 @@ export const RELATIVE_COLUMNS: RelativeColumnDefinition[] = [
 ];
 
 export const defaultRelativeSettings = (): RelativeSettings => {
+  const options = Object.fromEntries(
+    RELATIVE_OPTIONS.map(({ id }) => [id, id === "delta" ? false : true])
+  ) as Record<RelativeOptionId, boolean>;
   return {
-    options: Object.fromEntries(
-      RELATIVE_OPTIONS.map(({ id }) => [id, true])
-    ) as Record<RelativeOptionId, boolean>,
+    options,
     columnOrder: RELATIVE_COLUMNS.map(({ id }) => id),
     aheadRows: 4,
     behindRows: 4,
     pitInformationLayout: "inline",
-    driverNameFormat: DEFAULT_DRIVER_NAME_FORMAT
+    driverNameFormat: DEFAULT_DRIVER_NAME_FORMAT,
+    deltaLapCount: 3,
+    invertDeltaLayout: false
   };
 };
 
@@ -166,6 +174,8 @@ export const readRelativeSettings = (): RelativeSettings => {
       behindRows?: number;
       pitInformationLayout?: unknown;
       driverNameFormat?: unknown;
+      deltaLapCount?: number;
+      invertDeltaLayout?: boolean;
     };
     for (const option of RELATIVE_OPTIONS) {
       if (typeof stored.options?.[option.id] === "boolean") {
@@ -199,6 +209,10 @@ export const readRelativeSettings = (): RelativeSettings => {
     if (isDriverNameFormat(stored.driverNameFormat)) {
       settings.driverNameFormat = stored.driverNameFormat;
     }
+    settings.deltaLapCount = Number.isFinite(stored.deltaLapCount)
+      ? Math.max(2, Math.min(Math.round(stored.deltaLapCount as number), 5))
+      : settings.deltaLapCount;
+    if (typeof stored.invertDeltaLayout === "boolean") settings.invertDeltaLayout = stored.invertDeltaLayout;
   } catch {
     localStorage.removeItem(RELATIVE_SETTINGS_KEY);
   }

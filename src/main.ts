@@ -1606,8 +1606,23 @@ void ensureCompositeLayout()
 const applyProfileData = async (data: OverlayProfileData): Promise<void> => {
   applyingProfile = true;
   try {
-    standingsSettings = data.standings;
-    relativeSettings = data.relative;
+    const defaultStandings = defaultStandingsSettings();
+    const defaultRelative = defaultRelativeSettings();
+    standingsSettings = {
+      ...defaultStandings,
+      ...data.standings,
+      columns: { ...defaultStandings.columns, ...data.standings?.columns },
+      header: { ...defaultStandings.header, ...data.standings?.header },
+      deltaLapCount: data.standings?.deltaLapCount ?? defaultStandings.deltaLapCount,
+      invertDeltaLayout: data.standings?.invertDeltaLayout ?? defaultStandings.invertDeltaLayout
+    };
+    relativeSettings = {
+      ...defaultRelative,
+      ...data.relative,
+      options: { ...defaultRelative.options, ...data.relative?.options },
+      deltaLapCount: data.relative?.deltaLapCount ?? defaultRelative.deltaLapCount,
+      invertDeltaLayout: data.relative?.invertDeltaLayout ?? defaultRelative.invertDeltaLayout
+    };
     drivingSettings = data.driving;
     deltaSettings = data.delta;
     timingSettings = normalizeTimingSettings(data.timing);
@@ -3151,6 +3166,48 @@ const bindRowCount = (
 
 bindRowCount(ownClassRows, "ownClassRows", 3, 30);
 bindRowCount(otherClassRows, "otherClassRows", 1, 15);
+
+const bindDeltaSettings = (
+  inputId: string,
+  invertId: string,
+  settings: "standings" | "relative"
+): void => {
+  const target = settings === "standings" ? standingsSettings : relativeSettings;
+  const count = document.getElementById(inputId) as HTMLInputElement | null;
+  const invert = document.getElementById(invertId) as HTMLInputElement | null;
+  if (count) {
+    count.value = String(target.deltaLapCount);
+    count.addEventListener("change", () => {
+      const parsed = Number(count.value);
+      const value = Number.isFinite(parsed)
+        ? Math.max(2, Math.min(Math.round(parsed), 5))
+        : target.deltaLapCount;
+      count.value = String(value);
+      if (settings === "standings") {
+        standingsSettings = { ...standingsSettings, deltaLapCount: value };
+        persistStandingsSettings();
+      } else {
+        relativeSettings = { ...relativeSettings, deltaLapCount: value };
+        persistRelativeSettings();
+      }
+    });
+  }
+  if (invert) {
+    invert.checked = target.invertDeltaLayout;
+    invert.addEventListener("change", () => {
+      if (settings === "standings") {
+        standingsSettings = { ...standingsSettings, invertDeltaLayout: invert.checked };
+        persistStandingsSettings();
+      } else {
+        relativeSettings = { ...relativeSettings, invertDeltaLayout: invert.checked };
+        persistRelativeSettings();
+      }
+    });
+  }
+};
+
+bindDeltaSettings("standings-delta-lap-count", "standings-invert-delta-layout", "standings");
+bindDeltaSettings("relative-delta-lap-count", "relative-invert-delta-layout", "relative");
 
 const bindDriverNameFormat = (
   id: string,

@@ -31,8 +31,8 @@ duplicate selection or timing semantics.
 - Normalize LMU's abbreviated `Hyper` class label to the `HYPERCAR` heading and
   Hypercar red tone, consistently with longer Hypercar names and GTP aliases.
 - Columns are position, assigned number, manufacturer, badge, driver, DR/SR,
-  GAP, INT, best, last, AVG 5, NRG, damage, track-limit steps, tyre and
-  signals. Position and driver are mandatory; signals stays fixed at the far
+  GAP, INT, best, last, recent-lap DELTA, AVG 5, NRG, damage, track-limit steps,
+  tyre and signals. Position and driver are mandatory; signals stays fixed at the far
   right. Other columns are independently visible and reorderable. Pit data has independent visibility and placement settings: beside the name,
   above the name or in one dedicated PIT column.
 - Reordering preserves the category-header boundary: identity columns without a
@@ -85,6 +85,10 @@ shared `standings_models` module.
 - AVG 5 keeps the latest five completed plausible times, rejects values below the
   official valid best and excludes laps slower than 120% of the best plausible
   recent lap. Clean validity remains mandatory for consumption learning.
+- The optional DELTA column compares each car's last 2–5 recorded lap times with
+  the player's matching recent laps. It is signed as player minus opponent:
+  negative means the player was faster and positive means slower. Missing
+  records remain unavailable, and the display can reverse oldest/newest order.
 - `OUT` replaces last-lap time for the complete pit-out lap and retains its orange
   state rather than best-lap coloring.
 - The header's total is the player's projected completed race distance, using

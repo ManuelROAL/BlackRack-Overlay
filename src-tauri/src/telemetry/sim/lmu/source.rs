@@ -596,6 +596,7 @@ struct CarHistory {
     lap_visited_pits: bool,
     lap_valid: bool,
     recent_lap_times: VecDeque<f64>,
+    delta_lap_times: [f64; 5],
     recent_energy_usage: VecDeque<f64>,
     best_lap_seconds: f64,
     last_lap_valid: bool,
@@ -648,15 +649,37 @@ impl CarHistory {
         if self.rest_history_last_lap == Some(last_history_lap) {
             return;
         }
+        self.delta_lap_times = [0.0; 5];
         self.recent_lap_times.clear();
         let eligible = laps
             .iter()
             .filter(|(lap, _)| *lap <= current_total_laps)
             .collect::<Vec<_>>();
         for (_, lap_time) in eligible.iter().skip(eligible.len().saturating_sub(5)) {
+            self.push_delta_lap_time(*lap_time);
             Self::push_recent(&mut self.recent_lap_times, *lap_time);
         }
         self.rest_history_last_lap = Some(last_history_lap);
+    }
+
+    fn push_delta_lap_time(&mut self, lap_time: f64) {
+        self.delta_lap_times.rotate_left(1);
+        self.delta_lap_times[4] = Self::valid_lap_time(lap_time)
+            .then_some(lap_time)
+            .unwrap_or(0.0);
+    }
+
+    fn delta_lap_times(&self) -> [f64; 5] {
+        self.delta_lap_times
+    }
+
+    fn last_lap_delta_seconds(&self, player_lap_times: [f64; 5]) -> [Option<f64>; 5] {
+        std::array::from_fn(|index| {
+            let opponent_lap = self.delta_lap_times[index];
+            let player_lap = player_lap_times[index];
+            (Self::valid_lap_time(opponent_lap) && Self::valid_lap_time(player_lap))
+                .then_some(player_lap - opponent_lap)
+        })
     }
 
     fn update(&mut self, entry: &LmuStandingEntry, current_energy: f64) {
@@ -817,10 +840,12 @@ impl CarHistory {
                             || !official_result_valid
                             || (entry.in_garage == 0 && entry.lap_invalidated != 0));
                         Self::push_recent(&mut self.recent_lap_times, self.last_lap_seconds);
+                        self.push_delta_lap_time(self.last_lap_seconds);
                         self.last_lap_boundary_elapsed_seconds = Some(entry.elapsed_seconds);
                         self.current_lap_invalid = false;
                     } else {
                         self.recent_lap_times.clear();
+                        self.delta_lap_times = [0.0; 5];
                         self.last_lap_seconds = 0.0;
                         self.last_lap_valid = true;
                         self.current_lap_invalid = false;

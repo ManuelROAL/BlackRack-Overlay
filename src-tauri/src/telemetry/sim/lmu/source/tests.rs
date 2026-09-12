@@ -809,6 +809,19 @@ fn standings_history_averages_the_last_five_plausible_completed_laps() {
 }
 
 #[test]
+fn standings_delta_uses_player_minus_opponent_and_keeps_empty_slots() {
+    let mut player = CarHistory::default();
+    let mut opponent = CarHistory::default();
+    player.delta_lap_times = [0.0, 101.0, 102.0, 103.0, 104.0];
+    opponent.delta_lap_times = [100.0, 100.0, 103.0, 102.0, 105.0];
+
+    assert_eq!(
+        opponent.last_lap_delta_seconds(player.delta_lap_times()),
+        [None, Some(1.0), Some(-1.0), Some(1.0), Some(-1.0)]
+    );
+}
+
+#[test]
 fn out_lap_stays_active_until_the_next_finish_line_crossing() {
     let mut history = CarHistory::default();
     let mut entry = LmuStandingEntry {

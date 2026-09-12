@@ -15,6 +15,7 @@ export type StandingsColumnId =
   | "interval"
   | "best"
   | "last"
+  | "delta"
   | "average"
   | "energy"
   | "damage"
@@ -44,6 +45,8 @@ export interface StandingsSettings {
   showOtherClasses: boolean;
   pitInformationLayout: "inline" | "above" | "column";
   driverNameFormat: DriverNameFormat;
+  deltaLapCount: number;
+  invertDeltaLayout: boolean;
 }
 
 export type StandingsHeaderOptionId =
@@ -84,6 +87,7 @@ export const STANDINGS_COLUMNS: StandingsColumnDefinition[] = [
   { id: "interval", labelKey: "column.interval", header: "INT", width: 46, configurable: true, identity: false },
   { id: "best", labelKey: "column.best", header: "BEST", width: 60, configurable: true, identity: false },
   { id: "last", labelKey: "column.last", header: "LAST", width: 60, configurable: true, identity: false },
+  { id: "delta", labelKey: "column.delta", header: "DELTA", width: 72, configurable: true, identity: false },
   { id: "average", labelKey: "column.average", header: "AVG 5", width: 60, configurable: true, identity: false },
   { id: "energy", labelKey: "column.energy", header: "NRG", width: 62, configurable: true, identity: false },
   { id: "damage", labelKey: "column.damage", header: "DMG", width: 34, configurable: true, identity: false },
@@ -117,6 +121,7 @@ export const defaultStandingsSettings = (): StandingsSettings => {
     StandingsColumnId,
     boolean
   >;
+  columns.delta = false;
   return {
     columns,
     columnOrder: normalizeStandingsColumnOrder(STANDINGS_COLUMNS.map(({ id }) => id)),
@@ -129,7 +134,9 @@ export const defaultStandingsSettings = (): StandingsSettings => {
     otherClassRows: 3,
     showOtherClasses: true,
     pitInformationLayout: "inline",
-    driverNameFormat: DEFAULT_DRIVER_NAME_FORMAT
+    driverNameFormat: DEFAULT_DRIVER_NAME_FORMAT,
+    deltaLapCount: 3,
+    invertDeltaLayout: false
   };
 };
 
@@ -149,6 +156,8 @@ export const readStandingsSettings = (): StandingsSettings => {
       showOtherClasses?: boolean;
       pitInformationLayout?: unknown;
       driverNameFormat?: unknown;
+      deltaLapCount?: number;
+      invertDeltaLayout?: boolean;
     };
     for (const column of STANDINGS_COLUMNS) {
       if (column.configurable && typeof stored.columns?.[column.id] === "boolean") {
@@ -187,6 +196,8 @@ export const readStandingsSettings = (): StandingsSettings => {
     if (isDriverNameFormat(stored.driverNameFormat)) {
       settings.driverNameFormat = stored.driverNameFormat;
     }
+    settings.deltaLapCount = integerInRange(stored.deltaLapCount, settings.deltaLapCount, 2, 5);
+    if (typeof stored.invertDeltaLayout === "boolean") settings.invertDeltaLayout = stored.invertDeltaLayout;
   } catch {
     localStorage.removeItem(STANDINGS_SETTINGS_KEY);
   }

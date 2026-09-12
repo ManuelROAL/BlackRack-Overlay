@@ -562,6 +562,7 @@ pub struct StandingEntry {
     best_lap_seconds: f64,
     last_lap_seconds: f64,
     average_lap_seconds: f64,
+    last_lap_delta_seconds: [Option<f64>; 5],
     virtual_energy_active: bool,
     virtual_energy_percent: f64,
     virtual_energy_per_lap: f64,
