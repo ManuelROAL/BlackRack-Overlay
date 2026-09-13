@@ -1620,6 +1620,7 @@ const applyProfileData = async (data: OverlayProfileData): Promise<void> => {
       ...data.standings,
       columns: { ...defaultStandings.columns, ...data.standings?.columns },
       header: { ...defaultStandings.header, ...data.standings?.header },
+      combineLapTimes: data.standings?.combineLapTimes ?? defaultStandings.combineLapTimes,
       deltaLapCount: data.standings?.deltaLapCount ?? defaultStandings.deltaLapCount,
       invertDeltaLayout: data.standings?.invertDeltaLayout ?? defaultStandings.invertDeltaLayout
     };
@@ -1627,6 +1628,7 @@ const applyProfileData = async (data: OverlayProfileData): Promise<void> => {
       ...defaultRelative,
       ...data.relative,
       options: { ...defaultRelative.options, ...data.relative?.options },
+      combineLapTimes: data.relative?.combineLapTimes ?? defaultRelative.combineLapTimes,
       deltaLapCount: data.relative?.deltaLapCount ?? defaultRelative.deltaLapCount,
       invertDeltaLayout: data.relative?.invertDeltaLayout ?? defaultRelative.invertDeltaLayout
     };
@@ -2751,6 +2753,7 @@ const parseOverlayConfiguration = (
         columnOrder: normalizedStandingsOrder,
         header: normalizedStandingsHeader,
         pitInformationLayout: (standings.pitInformationLayout ?? "inline") as StandingsSettings["pitInformationLayout"],
+        combineLapTimes: standings.combineLapTimes === true,
         driverNameFormat: isDriverNameFormat(standings.driverNameFormat)
           ? standings.driverNameFormat
           : defaultStandings.driverNameFormat
@@ -2760,6 +2763,7 @@ const parseOverlayConfiguration = (
         options: normalizedRelativeOptions,
         columnOrder: normalizedRelativeOrder,
         pitInformationLayout: (relative.pitInformationLayout ?? "inline") as RelativeSettings["pitInformationLayout"],
+        combineLapTimes: relative.combineLapTimes === true,
         driverNameFormat: isDriverNameFormat(relative.driverNameFormat)
           ? relative.driverNameFormat
           : defaultRelative.driverNameFormat
@@ -3369,6 +3373,26 @@ const bindDeltaSettings = (
 
 bindDeltaSettings("standings-delta-lap-count", "standings-invert-delta-layout", "standings");
 bindDeltaSettings("relative-delta-lap-count", "relative-invert-delta-layout", "relative");
+
+const bindLapTimeCombination = (id: string, overlay: "standings" | "relative"): void => {
+  const input = document.getElementById(id) as HTMLInputElement | null;
+  if (!input) return;
+  input.checked = overlay === "standings"
+    ? standingsSettings.combineLapTimes
+    : relativeSettings.combineLapTimes;
+  input.addEventListener("change", () => {
+    if (overlay === "standings") {
+      standingsSettings = { ...standingsSettings, combineLapTimes: input.checked };
+      persistStandingsSettings();
+    } else {
+      relativeSettings = { ...relativeSettings, combineLapTimes: input.checked };
+      persistRelativeSettings();
+    }
+  });
+};
+
+bindLapTimeCombination("standings-combine-lap-times", "standings");
+bindLapTimeCombination("relative-combine-lap-times", "relative");
 
 const bindDriverNameFormat = (
   id: string,

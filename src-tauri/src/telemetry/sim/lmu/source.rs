@@ -604,6 +604,7 @@ struct CarHistory {
     last_lap_start_elapsed_seconds: Option<f64>,
     current_lap_invalid: bool,
     last_lap_boundary_elapsed_seconds: Option<f64>,
+    last_lap_finish_line_elapsed_seconds: Option<f64>,
     was_in_pits: bool,
     out_lap: bool,
     pit_stop_started_at: Option<Instant>,
@@ -812,6 +813,37 @@ impl CarHistory {
             && current_lap_seconds.is_finite()
             && current_lap_seconds > 1.0;
 
+        let early_finish_line_lap =
+            self.last_lap_start_elapsed_seconds
+                .and_then(|previous_start| {
+                    (previous_start > 0.0
+                        && previous_start < lap_start
+                        && current_lap_seconds.is_finite()
+                        && (0.0..=1.0).contains(&current_lap_seconds)
+                        && self.last_lap_finish_line_elapsed_seconds != Some(lap_start))
+                    .then(|| {
+                        Self::accepted_completed_lap_seconds(
+                            entry,
+                            self.current_lap_invalid,
+                            official_last_lap,
+                            lap_start - previous_start,
+                        )
+                    })
+                    .flatten()
+                    .map(|completed_lap_seconds| (previous_start, completed_lap_seconds))
+                });
+        if let Some((previous_start, completed_lap_seconds)) = early_finish_line_lap {
+            let official_result_valid = Self::completed_lap_result_is_valid(
+                entry.last_lap_seconds,
+                lap_start - previous_start,
+            );
+            self.last_lap_seconds = completed_lap_seconds;
+            self.last_lap_valid = !(self.current_lap_invalid
+                || !official_result_valid
+                || (entry.in_garage == 0 && entry.lap_invalidated != 0));
+            self.last_lap_finish_line_elapsed_seconds = Some(lap_start);
+        }
+
         if stable_lap_start {
             match self.last_lap_start_elapsed_seconds {
                 None => {
@@ -827,21 +859,22 @@ impl CarHistory {
                             entry.last_lap_seconds,
                             reconstructed,
                         );
-                        self.last_lap_seconds = if Self::valid_lap_time(official_last_lap) {
-                            official_last_lap
-                        } else if (self.current_lap_invalid && Self::valid_lap_time(reconstructed))
-                            || Self::plausible_reconstructed_lap(entry, reconstructed)
-                        {
-                            reconstructed
-                        } else {
-                            0.0
-                        };
+                        let completed_lap_seconds = Self::accepted_completed_lap_seconds(
+                            entry,
+                            self.current_lap_invalid,
+                            official_last_lap,
+                            reconstructed,
+                        );
+                        self.last_lap_seconds = completed_lap_seconds.unwrap_or(0.0);
                         self.last_lap_valid = !(self.current_lap_invalid
                             || !official_result_valid
                             || (entry.in_garage == 0 && entry.lap_invalidated != 0));
-                        Self::push_recent(&mut self.recent_lap_times, self.last_lap_seconds);
+                        if let Some(completed_lap_seconds) = completed_lap_seconds {
+                            Self::push_recent(&mut self.recent_lap_times, completed_lap_seconds);
+                            self.last_lap_boundary_elapsed_seconds = Some(entry.elapsed_seconds);
+                            self.last_lap_finish_line_elapsed_seconds = Some(lap_start);
+                        }
                         self.push_delta_lap_time(self.last_lap_seconds);
-                        self.last_lap_boundary_elapsed_seconds = Some(entry.elapsed_seconds);
                         self.current_lap_invalid = false;
                     } else {
                         self.recent_lap_times.clear();
@@ -850,6 +883,7 @@ impl CarHistory {
                         self.last_lap_valid = true;
                         self.current_lap_invalid = false;
                         self.last_lap_boundary_elapsed_seconds = None;
+                        self.last_lap_finish_line_elapsed_seconds = None;
                     }
                     self.last_lap_start_elapsed_seconds = Some(lap_start);
                 }
@@ -876,6 +910,23 @@ impl CarHistory {
 
     fn valid_lap_time(lap_time: f64) -> bool {
         lap_time.is_finite() && lap_time > 20.0 && lap_time < 900.0
+    }
+
+    fn accepted_completed_lap_seconds(
+        entry: &LmuStandingEntry,
+        current_lap_invalid: bool,
+        official_last_lap: f64,
+        reconstructed: f64,
+    ) -> Option<f64> {
+        if Self::valid_lap_time(official_last_lap) {
+            Some(official_last_lap)
+        } else if (current_lap_invalid && Self::valid_lap_time(reconstructed))
+            || Self::plausible_reconstructed_lap(entry, reconstructed)
+        {
+            Some(reconstructed)
+        } else {
+            None
+        }
     }
 
     fn normalize_official_lap(lap_time: f64) -> f64 {
@@ -960,6 +1011,15 @@ impl CarHistory {
 
     fn is_out_lap(&self) -> bool {
         self.out_lap
+    }
+
+    fn just_crossed_finish_line(&self, elapsed_seconds: f64) -> bool {
+        self.last_lap_finish_line_elapsed_seconds
+            .is_some_and(|boundary| {
+                elapsed_seconds.is_finite()
+                    && elapsed_seconds >= boundary
+                    && elapsed_seconds - boundary <= 4.0
+            })
     }
 
     fn pit_stop_time_seconds(&self) -> Option<f64> {
@@ -1469,5 +1529,30 @@ fn synchronized_lap_progress(raw: f64, current_lap_seconds: f64, lap_changed: bo
         0.0
     } else {
         raw.clamp(0.0, 1.0)
+    }
+}
+
+#[cfg(test)]
+mod finish_line_signal_tests {
+    use super::CarHistory;
+
+    #[test]
+    fn finish_line_signal_stays_active_for_four_elapsed_seconds() {
+        let mut history = CarHistory::default();
+        history.last_lap_finish_line_elapsed_seconds = Some(120.0);
+
+        assert!(history.just_crossed_finish_line(120.0));
+        assert!(history.just_crossed_finish_line(124.0));
+        assert!(!history.just_crossed_finish_line(124.001));
+    }
+
+    #[test]
+    fn finish_line_signal_rejects_invalid_or_pre_boundary_elapsed_time() {
+        let mut history = CarHistory::default();
+        history.last_lap_finish_line_elapsed_seconds = Some(120.0);
+
+        assert!(!history.just_crossed_finish_line(119.9));
+        assert!(!history.just_crossed_finish_line(f64::NAN));
+        assert!(!history.just_crossed_finish_line(f64::INFINITY));
     }
 }

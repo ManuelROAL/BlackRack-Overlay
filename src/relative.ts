@@ -453,7 +453,9 @@ const cellSignature = (entry: StandingEntry, column: RelativeColumnId, trackLimi
     case "ranks": return `${entry.driver_rank}|${Math.round(entry.driver_rank_progress)}|${Math.round(entry.estimated_driver_rank_gain)}|${entry.estimated_driver_rank_gain_available}|${entry.safety_rank}`;
     case "relative": return relativeGapSeconds.toFixed(2);
     case "lap": return entry.total_laps.toString();
-    case "best": return `${formatLapTime(entry.best_lap_seconds)}|${entry.best_lap_seconds > 0}|${entry.has_fastest_lap}`;
+    case "best": return relativeSettings.combineLapTimes
+      ? `${entry.just_crossed_finish_line}|${entry.is_out_lap ? "OUT" : formatLapTime(entry.last_lap_seconds)}|${entry.last_lap_valid}|${formatLapTime(entry.best_lap_seconds)}|${entry.best_lap_seconds > 0}|${entry.has_fastest_lap}`
+      : `${formatLapTime(entry.best_lap_seconds)}|${entry.best_lap_seconds > 0}|${entry.has_fastest_lap}`;
     case "last": return `${entry.is_out_lap ? "OUT" : formatLapTime(entry.last_lap_seconds)}|${formatLapTime(entry.best_lap_seconds)}|${entry.has_fastest_lap}|${entry.last_lap_valid}`;
     case "average": return formatLapTime(entry.average_lap_seconds);
     case "delta": return `${JSON.stringify(entry.last_lap_delta_seconds)}|${relativeSettings.deltaLapCount}|${relativeSettings.invertDeltaLayout}|${entry.is_player}`;
@@ -513,9 +515,19 @@ const createCell = (entry: StandingEntry, column: RelativeColumnId, trackLimit: 
     }
     case "lap": return node("b", "standing-lap-number", entry.total_laps.toString());
     case "best": {
-      const cell = node("b", "lap-time best-time", formatLapTime(entry.best_lap_seconds));
-      if (entry.best_lap_seconds > 0) cell.classList.add("personal-best");
-      if (entry.has_fastest_lap) cell.classList.add("session-fastest");
+      const showLast = relativeSettings.combineLapTimes && entry.just_crossed_finish_line;
+      const cell = entry.is_out_lap && showLast
+        ? node("b", "lap-time out-lap", "OUT")
+        : node("b", showLast ? "lap-time" : "lap-time best-time", formatLapTime(showLast ? entry.last_lap_seconds : entry.best_lap_seconds));
+      if (showLast) {
+        const invalid = entry.last_lap_seconds > 0 && !entry.last_lap_valid;
+        const personalBest = entry.last_lap_seconds > 0 && entry.best_lap_seconds > 0 && Math.abs(entry.last_lap_seconds - entry.best_lap_seconds) <= 0.001;
+        if (invalid) cell.classList.add("invalid-lap");
+        else if (!entry.is_out_lap && personalBest) cell.classList.add(entry.has_fastest_lap ? "session-fastest" : "personal-best");
+      } else {
+        if (entry.best_lap_seconds > 0) cell.classList.add("personal-best");
+        if (entry.has_fastest_lap) cell.classList.add("session-fastest");
+      }
       return cell;
     }
     case "last": {
@@ -863,6 +875,7 @@ if (import.meta.env.DEV && new URLSearchParams(window.location.search).has("prev
       relative_behind_seconds: index < 4 ? 120 + (index - 4) * 2.1 : (index - 4) * 2.1,
       best_lap_seconds: 104.44 + classIndex * 15 + index * 0.31,
       last_lap_seconds: index % 4 === 2 ? 0 : 105.12 + classIndex * 15 + index * 0.44,
+      just_crossed_finish_line: false,
       last_lap_delta_seconds: index % 4 === 2 ? null : [-0.342, 0.118, null, -0.041, index % 3 === 0 ? 0 : 0.205],
       average_lap_seconds: 105.4 + classIndex * 15 + index * 0.35,
       virtual_energy_active: true,

@@ -554,6 +554,7 @@ impl TelemetrySource for MockTelemetrySource {
                     best_lap_seconds: 208.114,
                     last_lap_seconds: 209.021,
                     last_lap_valid: true,
+                    just_crossed_finish_line: false,
                     average_lap_seconds: 209.334,
                     last_lap_delta_seconds: [
                         Some(-0.342),
@@ -614,6 +615,7 @@ impl TelemetrySource for MockTelemetrySource {
                     best_lap_seconds: 208.662,
                     last_lap_seconds: 209.418,
                     last_lap_valid: true,
+                    just_crossed_finish_line: false,
                     average_lap_seconds: 209.507,
                     last_lap_delta_seconds: [Some(0.0); 5],
                     virtual_energy_active: true,
@@ -668,6 +670,7 @@ impl TelemetrySource for MockTelemetrySource {
                     best_lap_seconds: 209.107,
                     last_lap_seconds: 211.844,
                     last_lap_valid: true,
+                    just_crossed_finish_line: false,
                     average_lap_seconds: 210.202,
                     last_lap_delta_seconds: [
                         Some(0.242),

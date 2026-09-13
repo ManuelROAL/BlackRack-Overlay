@@ -54,6 +54,11 @@ duplicate selection or timing semantics.
   manufacturer, nationality, badge and tyre assets.
 - A uniform tyre set uses the bundled sidewall-style compound SVG with a fixed
   color and letter glyph; mixed sets use four compact colored circles.
+- The BEST and LAST columns can be combined into one `BEST/LAST` column. It
+  shows each car's best lap normally and its completed last lap for four seconds
+  after that car crosses the timing line, then returns to BEST. It respects the
+  column visibility settings: BEST or LAST must be visible. It retains the
+  existing invalid-lap and `OUT` styling during the temporary LAST display.
 
 ## Simulator adapters
 

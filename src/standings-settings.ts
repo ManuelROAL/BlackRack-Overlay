@@ -45,6 +45,7 @@ export interface StandingsSettings {
   showOtherClasses: boolean;
   pitInformationLayout: "inline" | "above" | "column";
   driverNameFormat: DriverNameFormat;
+  combineLapTimes: boolean;
   deltaLapCount: number;
   invertDeltaLayout: boolean;
 }
@@ -135,6 +136,7 @@ export const defaultStandingsSettings = (): StandingsSettings => {
     showOtherClasses: true,
     pitInformationLayout: "inline",
     driverNameFormat: DEFAULT_DRIVER_NAME_FORMAT,
+    combineLapTimes: false,
     deltaLapCount: 3,
     invertDeltaLayout: false
   };
@@ -156,6 +158,7 @@ export const readStandingsSettings = (): StandingsSettings => {
       showOtherClasses?: boolean;
       pitInformationLayout?: unknown;
       driverNameFormat?: unknown;
+      combineLapTimes?: boolean;
       deltaLapCount?: number;
       invertDeltaLayout?: boolean;
     };
@@ -196,6 +199,7 @@ export const readStandingsSettings = (): StandingsSettings => {
     if (isDriverNameFormat(stored.driverNameFormat)) {
       settings.driverNameFormat = stored.driverNameFormat;
     }
+    if (typeof stored.combineLapTimes === "boolean") settings.combineLapTimes = stored.combineLapTimes;
     settings.deltaLapCount = integerInRange(stored.deltaLapCount, settings.deltaLapCount, 2, 5);
     if (typeof stored.invertDeltaLayout === "boolean") settings.invertDeltaLayout = stored.invertDeltaLayout;
   } catch {
@@ -205,7 +209,7 @@ export const readStandingsSettings = (): StandingsSettings => {
 };
 
 export const visibleStandingsColumns = (
-  settings: Pick<StandingsSettings, "columns" | "columnOrder" | "pitInformationLayout">
+  settings: Pick<StandingsSettings, "columns" | "columnOrder" | "pitInformationLayout" | "combineLapTimes">
 ): StandingsColumnDefinition[] => {
   const columns = new Map(STANDINGS_COLUMNS.map((column) => [column.id, column]));
   const order = [...settings.columnOrder.filter((id) => id !== "signals"), "signals" as const];
@@ -214,8 +218,16 @@ export const visibleStandingsColumns = (
     .filter((column): column is StandingsColumnDefinition =>
       column !== undefined
         && !["pitTime", "pitLap"].includes(column.id)
-        && (column.id === "pitStops"
-          ? settings.pitInformationLayout === "column" && (settings.columns.pitStops || settings.columns.pitTime || settings.columns.pitLap)
-          : !column.configurable || settings.columns[column.id])
-    ).map((column) => column.id === "pitStops" ? { ...column, width: 112 } : column);
+        && (column.id === "best" && settings.combineLapTimes
+          ? settings.columns.best || settings.columns.last
+          : column.id === "last" && settings.combineLapTimes
+            ? false
+            : column.id === "pitStops"
+              ? settings.pitInformationLayout === "column" && (settings.columns.pitStops || settings.columns.pitTime || settings.columns.pitLap)
+              : !column.configurable || settings.columns[column.id])
+    ).map((column) => column.id === "pitStops"
+      ? { ...column, width: 112 }
+      : column.id === "best" && settings.combineLapTimes
+        ? { ...column, header: "BEST/LAST" }
+        : column);
 };

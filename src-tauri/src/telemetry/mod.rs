@@ -581,6 +581,7 @@ pub struct StandingEntry {
     in_garage: bool,
     is_out_lap: bool,
     last_lap_valid: bool,
+    just_crossed_finish_line: bool,
     penalty_count: u32,
     finish_status: u32,
     is_player: bool,

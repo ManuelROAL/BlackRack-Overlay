@@ -355,6 +355,7 @@ impl LmuTelemetrySource {
                         .is_some_and(|standing| standing.in_garage_stall),
                 is_out_lap,
                 last_lap_valid: history.is_last_lap_valid(),
+                just_crossed_finish_line: history.just_crossed_finish_line(entry.elapsed_seconds),
                 penalty_count: entry.penalties,
                 finish_status: rest
                     .as_ref()

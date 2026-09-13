@@ -1000,7 +1000,9 @@ fn standings_history_reconstructs_and_keeps_an_invalid_last_lap_time() {
     entry.lap_start_elapsed_seconds = 500.25;
     entry.elapsed_seconds = 500.8;
     history.update(&entry, 58.0);
-    assert_eq!(history.last_lap_seconds(entry.last_lap_seconds), 95.0);
+    assert!((history.last_lap_seconds(entry.last_lap_seconds) - 100.25).abs() < 0.001);
+    assert!(!history.is_last_lap_valid());
+    assert!(history.just_crossed_finish_line(500.25));
 
     entry.elapsed_seconds = 501.5;
     history.update(&entry, 58.0);
@@ -1008,6 +1010,9 @@ fn standings_history_reconstructs_and_keeps_an_invalid_last_lap_time() {
     assert!(!history.is_last_lap_valid());
     assert!((history.last_lap_seconds(entry.last_lap_seconds) - 100.25).abs() < 0.001);
     assert!((history.average_lap_time() - 100.25).abs() < 0.001);
+    assert!(history.just_crossed_finish_line(500.25));
+    assert!(history.just_crossed_finish_line(504.25));
+    assert!(!history.just_crossed_finish_line(504.251));
 }
 
 #[test]
@@ -1028,9 +1033,15 @@ fn standings_history_uses_negative_official_time_as_invalid_confirmation() {
     entry.lap_start_elapsed_seconds = 500.25;
     entry.elapsed_seconds = 500.8;
     history.update(&entry, 59.0);
+    assert!((history.last_lap_seconds(entry.last_lap_seconds) - 100.25).abs() < 0.001);
+    assert!(!history.is_last_lap_valid());
+    assert!(history.just_crossed_finish_line(500.25));
+    entry.elapsed_seconds = 501.5;
+    history.update(&entry, 59.0);
 
     assert!(!history.is_last_lap_valid());
     assert!((history.last_lap_seconds(entry.last_lap_seconds) - 100.25).abs() < 0.001);
+    assert!(history.just_crossed_finish_line(500.25));
 }
 
 #[test]
@@ -1107,14 +1118,24 @@ fn standings_history_rejects_an_impossible_stable_partial_lap() {
 
     history.update(&entry, 60.0);
     entry.total_laps = 5;
+    entry.last_lap_seconds = 100.0;
+    entry.lap_start_elapsed_seconds = 500.0;
+    entry.elapsed_seconds = 501.5;
+    history.update(&entry, 59.5);
+    assert_eq!(history.delta_lap_times[4], 100.0);
+
+    entry.total_laps = 6;
     entry.last_lap_seconds = 0.0;
-    entry.lap_start_elapsed_seconds = 409.7;
-    entry.elapsed_seconds = 411.0;
+    entry.lap_start_elapsed_seconds = 509.7;
+    entry.elapsed_seconds = 511.0;
     history.update(&entry, 59.0);
 
     assert!(history.is_last_lap_valid());
     assert_eq!(history.last_lap_seconds(entry.last_lap_seconds), 0.0);
-    assert!(history.recent_lap_times.is_empty());
+    assert_eq!(history.recent_lap_times.back().copied(), Some(100.0));
+    assert_eq!(history.delta_lap_times[4], 0.0);
+    assert!(!history.just_crossed_finish_line(509.7));
+    assert!(!history.just_crossed_finish_line(511.0));
 }
 
 #[test]
@@ -1143,6 +1164,9 @@ fn standings_history_keeps_a_short_reconstructed_invalid_lap_visible() {
 
     assert!(!history.is_last_lap_valid());
     assert_eq!(history.last_lap_seconds(entry.last_lap_seconds), 45.0);
+    assert!(history.just_crossed_finish_line(445.0));
+    assert!(history.just_crossed_finish_line(449.0));
+    assert!(!history.just_crossed_finish_line(449.001));
 }
 
 #[test]

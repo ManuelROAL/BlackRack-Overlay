@@ -75,6 +75,7 @@ export interface RelativeSettings {
   behindRows: number;
   pitInformationLayout: "inline" | "above" | "column";
   driverNameFormat: DriverNameFormat;
+  combineLapTimes: boolean;
   deltaLapCount: number;
   invertDeltaLayout: boolean;
 }
@@ -156,6 +157,7 @@ export const defaultRelativeSettings = (): RelativeSettings => {
     behindRows: 4,
     pitInformationLayout: "inline",
     driverNameFormat: DEFAULT_DRIVER_NAME_FORMAT,
+    combineLapTimes: false,
     deltaLapCount: 3,
     invertDeltaLayout: false
   };
@@ -174,6 +176,7 @@ export const readRelativeSettings = (): RelativeSettings => {
       behindRows?: number;
       pitInformationLayout?: unknown;
       driverNameFormat?: unknown;
+      combineLapTimes?: boolean;
       deltaLapCount?: number;
       invertDeltaLayout?: boolean;
     };
@@ -209,6 +212,7 @@ export const readRelativeSettings = (): RelativeSettings => {
     if (isDriverNameFormat(stored.driverNameFormat)) {
       settings.driverNameFormat = stored.driverNameFormat;
     }
+    if (typeof stored.combineLapTimes === "boolean") settings.combineLapTimes = stored.combineLapTimes;
     settings.deltaLapCount = Number.isFinite(stored.deltaLapCount)
       ? Math.max(2, Math.min(Math.round(stored.deltaLapCount as number), 5))
       : settings.deltaLapCount;
@@ -223,7 +227,15 @@ export const visibleRelativeColumns = (settings: RelativeSettings): RelativeColu
   [...settings.columnOrder.filter((id) => !["pitTime", "pitLap"].includes(id) && id !== "signals"), "signals" as const]
     .map((id) => RELATIVE_COLUMNS.find((column) => column.id === id))
     .filter((column): column is RelativeColumnDefinition =>
-      column !== undefined && (column.id === "pitStops"
-        ? settings.pitInformationLayout === "column" && (settings.options.pitStops || settings.options.pitTime || settings.options.pitLap)
-        : column.option === undefined || settings.options[column.option])
-    ).map((column) => column.id === "pitStops" ? { ...column, width: 112 } : column);
+      column !== undefined && (column.id === "best" && settings.combineLapTimes
+        ? settings.options.best || settings.options.last
+        : column.id === "last" && settings.combineLapTimes
+          ? false
+          : column.id === "pitStops"
+            ? settings.pitInformationLayout === "column" && (settings.options.pitStops || settings.options.pitTime || settings.options.pitLap)
+            : column.option === undefined || settings.options[column.option])
+    ).map((column) => column.id === "pitStops"
+      ? { ...column, width: 112 }
+      : column.id === "best" && settings.combineLapTimes
+        ? { ...column, header: "BEST/LAST" }
+        : column);

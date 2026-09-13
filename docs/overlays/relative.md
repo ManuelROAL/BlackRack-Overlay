@@ -69,6 +69,11 @@ the prepared vehicle IDs and formats them; it must not repeat domain selection.
 - Driver-name format is independent from Standings and supports full name,
   initial plus surname, name plus surname initial, surname only, name only and
   surname plus name initial.
+- The BEST and LAST columns can be combined into one `BEST/LAST` column. It
+  shows each car's best lap normally and its completed last lap for four seconds
+  after that car crosses the timing line, then returns to BEST. It respects the
+  column visibility settings: BEST or LAST must be visible. It retains the
+  existing invalid-lap and `OUT` styling during the temporary LAST display.
 - Keep full header visibility separate from air/track temperature, brake bias,
   player track-limit counter/threshold, game-time and local-clock toggles. Format
   both clocks with the selected locale and distinguish the game-time clock from
