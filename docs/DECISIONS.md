@@ -5,6 +5,9 @@ in `docs/overlays/` and should not be duplicated here.
 
 ## Product
 
+- Monitor scope is persisted separately from layout. Global mode projects every
+  overlay onto `globalMonitor`; individual mode restores stored assignments.
+
 - The product name is **BlackRack Overlay**. Its technical bundle identifier is
   `com.blackrack.overlay`, while user-owned backend data uses the readable
   `%APPDATA%\BlackRack Overlay` directory on Windows. The WebView2 user data
@@ -91,9 +94,10 @@ in `docs/overlays/` and should not be duplicated here.
   otherwise follows game mode, so the per-mode behavior is unchanged by default
   and the panel never has to guess before telemetry arrives.
   A profile owns only overlay-facing state: visibility, layout (including
-  per-overlay monitor assignments), transparency, text size and per-overlay
-  settings. The general monitor fallback, performance profile, locale, shortcuts
-  and browser source stay global, so changing mode does not alter cadence.
+  per-overlay monitor assignments), monitor scope, transparency, text size and
+  per-overlay settings. The monitor fallback inside that scope, performance
+  profile, locale, shortcuts and browser source stay global, so changing mode
+  does not alter cadence.
 - The active profile is the live configuration rather than a copy: the existing
   `localStorage` keys stay authoritative and the profile store is refreshed from
   them. Overlays and OBS routes therefore need no knowledge of profiles, and
@@ -103,11 +107,11 @@ in `docs/overlays/` and should not be duplicated here.
 - General/per-overlay text size preserves its independent saved values while a
   common value is active. Increasing text may expand the reported design surface
   so compact panels do not clip while preserving the user's visual scale.
-- Hosts are grouped by monitor: every monitor with at least one visible overlay
-  gets one transparent composite host, and monitors without visible overlays get
-  none. The general monitor control moves every overlay together, while each
-  overlay can be assigned independently in its settings. This keeps the renderer
-  count proportional to active monitors rather than overlay count and avoids the
+- Hosts are grouped by effective monitor: every monitor with at least one visible
+  overlay gets one transparent composite host, and monitors without visible
+  overlays get none. General mode projects every overlay onto one monitor, while
+  per-overlay mode uses each saved assignment. This keeps the renderer count
+  proportional to active monitors rather than overlay count and avoids the
   empty-host composition cost that originally motivated removing per-overlay
   assignment.
 - Per-overlay configuration and position resets are scoped and never affect

@@ -161,6 +161,9 @@ These are hypotheses, not approved changes.
 
 ## Demand-driven per-monitor hosts
 
+Monitor scope does not change the host model: synchronization groups visible
+overlays by effective monitor, while General mode retains individual assignments.
+
 The composite architecture now creates one transparent host for each monitor
 that has at least one visible overlay. A host is closed when its last visible
 overlay moves away or is disabled. Multiple overlays on one monitor therefore

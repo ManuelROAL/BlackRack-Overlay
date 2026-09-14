@@ -6,6 +6,10 @@ telemetry semantics and file ownership live under `docs/overlays/`; use
 
 ## Visual language
 
+Monitor selection has General and Per overlay scopes. General mode projects all
+visible overlays onto one effective monitor without overwriting stored individual
+assignments; per-overlay mode restores those assignments.
+
 - Use the current Standings and Relative treatment as the visual reference:
   compact dark surfaces, thin neutral outlines, restrained lime accents,
   separated data surfaces, condensed typography and selective emphasis of the
@@ -33,12 +37,11 @@ telemetry semantics and file ownership live under `docs/overlays/`; use
 
 ## Host and interaction
 
-- Tauri groups panels by their assigned monitor. Each monitor with at least one
+- Tauri groups panels by their effective monitor. Each monitor with at least one
   visible panel gets one transparent WebView host, while monitors without visible
-  panels have no host and contribute no composed surface. The general monitor
-  control moves every panel together; the per-overlay setting changes one panel's
-  assignment. Both the native host and WebView use explicit transparent RGBA
-  backgrounds.
+  panels have no host and contribute no composed surface. General mode projects
+  every panel onto one monitor; per-overlay mode changes one panel's assignment.
+  Both the native host and WebView use explicit transparent RGBA backgrounds.
 - In game mode the host covers only the bounding box of the visible panels plus a
   24 px margin, not the whole display: the transparent surface the compositor
   puts over the game costs the game on every present. Edit mode restores the full

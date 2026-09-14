@@ -1,6 +1,13 @@
 import { invoke } from "@tauri-apps/api/core";
 import { emit } from "@tauri-apps/api/event";
 import type { OverlayId } from "./overlay-appearance";
+import {
+  effectiveOverlayMonitor,
+  normalizeOverlayMonitorScope,
+  readOverlayMonitorScope,
+  saveOverlayMonitorScope,
+  type OverlayMonitorScope
+} from "./overlay-monitor";
 
 export interface OverlayDisplay {
   index: number;
@@ -202,15 +209,34 @@ export const resolveOverlayMonitor = (): Promise<number> => {
 
 export const setOverlayMonitor = async (index: number): Promise<number> => {
   const result = await setOverlayMonitorPreference(index);
-  const layout = readCompositeLayout() ?? await ensureCompositeLayout();
-  for (const overlay of overlayIds) {
-    if (layout[overlay]) layout[overlay] = { ...layout[overlay], monitor: result };
-  }
-  localStorage.setItem(COMPOSITE_LAYOUT_KEY, JSON.stringify(layout));
-  layoutPromise = Promise.resolve(layout);
+  saveOverlayMonitorScope({ mode: "global", globalMonitor: result });
   await emit("overlay://layout", { monitor: result });
-  await synchronizeOverlayHosts(layout);
+  await synchronizeOverlayHosts();
   return result;
+};
+
+export const setOverlayMonitorScope = async (scope: OverlayMonitorScope): Promise<OverlayMonitorScope> => {
+  const displays = await getOverlayDisplays();
+  const fallback = displays[0]?.index ?? 0;
+  const normalized = normalizeOverlayMonitorScope(scope, { mode: scope.mode, globalMonitor: fallback });
+  normalized.globalMonitor = displays.some(({ index }) => index === normalized.globalMonitor)
+    ? normalized.globalMonitor
+    : fallback;
+  saveOverlayMonitorScope(normalized);
+  await setOverlayMonitorPreference(normalized.globalMonitor);
+  await emit("overlay://layout", normalized);
+  await synchronizeOverlayHosts();
+  return normalized;
+};
+
+export const getEffectiveCompositeLayout = (layout: CompositeLayout): CompositeLayout => {
+  const scope = readOverlayMonitorScope();
+  return Object.fromEntries(overlayIds.map((overlay) => {
+    const placement = layout[overlay];
+    return [overlay, placement
+      ? { ...placement, monitor: effectiveOverlayMonitor(placement.monitor, scope) }
+      : placement];
+  })) as CompositeLayout;
 };
 
 /** Persist the general monitor without changing per-overlay assignments. */
@@ -264,9 +290,13 @@ export const readCompositeLayout = (): CompositeLayout | null => {
 export const saveOverlayPlacement = async (placement: OverlayPlacement): Promise<void> => {
   const initializedLayout = await ensureCompositeLayout();
   const currentLayout = readCompositeLayout() ?? initializedLayout;
+  const scope = readOverlayMonitorScope();
+  const storedPlacement = currentLayout[placement.overlay] ?? initializedLayout[placement.overlay];
   const next = {
     ...placement,
-    monitor: placement.monitor ?? initializedLayout[placement.overlay]?.monitor
+    monitor: scope.mode === "global"
+      ? storedPlacement?.monitor ?? await resolveOverlayMonitor()
+      : placement.monitor ?? initializedLayout[placement.overlay]?.monitor
       ?? await resolveOverlayMonitor()
   } satisfies OverlayPlacement;
   currentLayout[placement.overlay] = next;
@@ -305,24 +335,31 @@ export const synchronizeOverlayHosts = async (providedLayout?: CompositeLayout):
     const layout = readCompositeLayout() ?? initialLayout;
     const available = new Set(displays.map(({ index }) => index));
     const fallback = available.has(fallbackMonitor) ? fallbackMonitor : displays[0]?.index ?? 0;
+    const monitorScope = readOverlayMonitorScope();
+    if (!available.has(monitorScope.globalMonitor)) {
+      saveOverlayMonitorScope({ ...monitorScope, globalMonitor: fallback });
+    }
     let normalized = false;
-    for (const overlay of overlayIds) {
-      const placement = layout[overlay];
-      if (!placement) continue;
-      const assigned = placement.monitor;
-      if (!Number.isInteger(assigned) || assigned === undefined || !available.has(assigned)) {
-        placement.monitor = fallback;
-        normalized = true;
+    if (monitorScope.mode === "individual") {
+      for (const overlay of overlayIds) {
+        const placement = layout[overlay];
+        if (!placement) continue;
+        const assigned = placement.monitor;
+        if (!Number.isInteger(assigned) || assigned === undefined || !available.has(assigned)) {
+          placement.monitor = fallback;
+          normalized = true;
+        }
       }
     }
     if (normalized) {
       localStorage.setItem(COMPOSITE_LAYOUT_KEY, JSON.stringify(layout));
       layoutPromise = Promise.resolve(layout);
     }
+    const effectiveLayout = getEffectiveCompositeLayout(layout);
     const monitors = new Set<number>();
     for (const state of states) {
       if (!state.visible) continue;
-      const monitor = layout[state.label]?.monitor;
+      const monitor = effectiveLayout[state.label]?.monitor;
       monitors.add(Number.isInteger(monitor) && monitor !== undefined ? monitor : fallback);
     }
     await invoke("sync_overlay_hosts", { monitors: [...monitors] });
@@ -335,6 +372,9 @@ export const setOverlayPlacementMonitor = async (
   overlay: OverlayId,
   monitor: number
 ): Promise<OverlayPlacement> => {
+  if (readOverlayMonitorScope().mode === "global") {
+    throw new Error("monitor_scope_global");
+  }
   const displays = await getOverlayDisplays();
   if (!displays.some(({ index }) => index === monitor)) throw new Error("monitor_unavailable");
   const layout = readCompositeLayout() ?? await ensureCompositeLayout();
@@ -351,12 +391,13 @@ export const setOverlayPlacementMonitor = async (
 
 export const resetOverlayPlacement = async (overlay: OverlayId): Promise<OverlayPlacement> => {
   const layout = readCompositeLayout() ?? await ensureCompositeLayout();
-  const monitor = layout[overlay]?.monitor ?? await resolveOverlayMonitor();
+  const storedMonitor = layout[overlay]?.monitor;
+  const monitor = effectiveOverlayMonitor(storedMonitor, readOverlayMonitorScope());
   const placement = await invoke<OverlayPlacement>("get_default_overlay_placement", {
     label: overlay,
     monitor
   });
-  placement.monitor = monitor;
+  placement.monitor = storedMonitor ?? monitor;
   await saveOverlayPlacement(placement);
   return placement;
 };

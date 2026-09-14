@@ -971,6 +971,10 @@ select {
   min-width: 0;
 }
 
+.overlay-monitor-group {
+  grid-template-columns: minmax(0, 1fr) minmax(120px, 150px) minmax(170px, 210px);
+}
+
 .global-setting-group > .switch {
   justify-self: end;
 }
@@ -1970,6 +1974,10 @@ select {
 .overlay-monitor-control select:focus {
   border-color: rgb(216 255 62 / 55%);
   outline: none;
+}
+
+#global-monitor-control[hidden] {
+  display: none;
 }
 
 .reset-confirmation {

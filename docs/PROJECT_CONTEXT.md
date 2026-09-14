@@ -124,6 +124,9 @@ first use.
 
 ## Repository map
 
+Monitor placement supports global and individual scopes. Global mode uses one
+effective monitor without discarding each overlay's stored assignment.
+
 ```text
 *.html                         Vite overlay, control and composite-host entries
 src/                           TypeScript and CSS overlays/control panel

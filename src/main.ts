@@ -151,6 +151,7 @@ import {
   resetOverlayPlacement,
   resolveOverlayMonitor,
   setOverlayMonitor,
+  setOverlayMonitorScope,
   setOverlayMonitorPreference,
   setOverlayPlacementMonitor,
   synchronizeOverlayHosts,
@@ -204,6 +205,15 @@ import {
   type SessionBindings,
   type SessionKind
 } from "./overlay-profiles";
+import {
+  defaultOverlayMonitorScope,
+  effectiveOverlayMonitor,
+  normalizeOverlayMonitorScope,
+  OVERLAY_MONITOR_SCOPE_KEY,
+  readOverlayMonitorScope,
+  saveOverlayMonitorScope,
+  type OverlayMonitorScope
+} from "./overlay-monitor";
 import { OVERLAY_GUIDE, OVERLAY_GUIDE_ORDER } from "./overlay-guide";
 
 installFrontendDiagnostics("control", (diagnostic) =>
@@ -290,7 +300,7 @@ interface UpdateProgress {
 
 interface OverlayConfigurationExport {
   format: "blackrack-overlay-configuration";
-  schemaVersion: 21;
+  schemaVersion: 22;
   exportedAt: string;
   ui: { locale: Locale };
   profiles: OverlayProfile[];
@@ -307,6 +317,7 @@ interface OverlayConfigurationExport {
       values: Record<OverlayId, number>;
     };
     monitor: number;
+    monitorScope?: OverlayMonitorScope;
     layout: Awaited<ReturnType<typeof ensureCompositeLayout>>;
     standings: StandingsSettings;
     relative: RelativeSettings;
@@ -489,7 +500,7 @@ if (localeSelect) {
   });
 }
 
-const CURRENT_CONFIGURATION_SCHEMA = 21;
+const CURRENT_CONFIGURATION_SCHEMA = 22;
 const CURRENT_CONFIGURATION_FORMAT = "blackrack-overlay-configuration";
 const LEGACY_CONFIGURATION_FORMAT = "lmu-overlay-configuration";
 const overlayIds: OverlayId[] = ["delta", "timing", "stinthistory", "driving", "liftcoast", "tires", "damage", "standings", "relative", "rivals", "fuel", "pitstop", "flags", "rejoin", "trackmap", "forecast", "conditions", "dashboard"];
@@ -1495,6 +1506,7 @@ const captureProfileData = (previous?: OverlayProfileData): OverlayProfileData =
       scope: { ...overlayFontSizeScope },
       values: { ...overlayFontSize }
     },
+    monitorScope: { ...readOverlayMonitorScope() },
     layout: layoutIsComplete(layout) ? layout : (previous?.layout ?? {} as CompositeLayout),
     standings: standingsSettings,
     relative: relativeSettings,
@@ -1520,6 +1532,7 @@ const defaultProfileData = (layout: CompositeLayout): OverlayProfileData => ({
     scope: { mode: "individual", globalFontSize: 100 },
     values: { ...DEFAULT_OVERLAY_FONT_SIZE }
   },
+  monitorScope: defaultOverlayMonitorScope(),
   layout,
   standings: defaultStandingsSettings(),
   relative: defaultRelativeSettings(),
@@ -1643,6 +1656,14 @@ const applyProfileData = async (data: OverlayProfileData): Promise<void> => {
     liftCoastSettings = normalizeLiftCoastSettings(data.liftCoast) ?? defaultLiftCoastSettings();
     overlayTransparencyScope = data.transparency.scope;
     overlayFontSizeScope = data.fontSize.scope;
+    const monitorFallback = await resolveOverlayMonitor();
+    const monitorScope = normalizeOverlayMonitorScope(data.monitorScope, {
+      mode: "individual",
+      globalMonitor: monitorFallback
+    });
+    overlayMonitorScope = monitorScope;
+    saveOverlayMonitorScope(monitorScope);
+    await setOverlayMonitorPreference(monitorScope.globalMonitor).catch(() => undefined);
     for (const id of overlayIds) {
       overlayTransparency[id] = data.transparency.values[id] ?? DEFAULT_OVERLAY_TRANSPARENCY[id];
       overlayFontSize[id] = data.fontSize.values[id] ?? DEFAULT_OVERLAY_FONT_SIZE[id];
@@ -2100,6 +2121,7 @@ resetAllPositionButton?.addEventListener("click", () => void resetAllOverlayPosi
 const overlayMonitorSelectors = new Map<OverlayId, HTMLSelectElement>();
 const selectedOverlayMonitors = new Map<OverlayId, number>();
 let selectedMonitor = 0;
+let overlayMonitorScope: OverlayMonitorScope = readOverlayMonitorScope();
 let monitorInventorySignature = "";
 let monitorInventoryRefresh: Promise<void> | null = null;
 
@@ -2115,6 +2137,24 @@ const monitorDisplaySignature = (displays: readonly OverlayDisplay[]): string =>
     display.scaleFactor
   ].join(":"))
   .join("|");
+
+const renderOverlayMonitorScope = (): void => {
+  const modeSelect = document.getElementById("overlay-monitor-mode") as HTMLSelectElement | null;
+  const globalControl = document.getElementById("global-monitor-control");
+  const layout = readCompositeLayout();
+  if (modeSelect) modeSelect.value = overlayMonitorScope.mode;
+  if (globalControl) globalControl.hidden = overlayMonitorScope.mode !== "global";
+  for (const [overlay, overlaySelect] of overlayMonitorSelectors) {
+    overlaySelect.disabled = overlayMonitorScope.mode === "global";
+    const monitor = overlayMonitorScope.mode === "global"
+      ? overlayMonitorScope.globalMonitor
+      : layout?.[overlay]?.monitor ?? selectedOverlayMonitors.get(overlay);
+    if (monitor !== undefined) {
+      overlaySelect.value = String(monitor);
+      selectedOverlayMonitors.set(overlay, monitor);
+    }
+  }
+};
 
 const renderMonitorOptions = (
   select: HTMLSelectElement,
@@ -2311,17 +2351,26 @@ renderFontSizeMode();
 const bindMonitorSelector = async (): Promise<void> => {
   const [displays, monitor] = await Promise.all([getOverlayDisplays(), resolveOverlayMonitor()]);
   const select = document.getElementById("overlay-monitor") as HTMLSelectElement | null;
+  const modeSelect = document.getElementById("overlay-monitor-mode") as HTMLSelectElement | null;
   if (!select) return;
-  selectedMonitor = renderMonitorOptions(select, displays, monitor, displays[0]?.index ?? 0);
+  selectedMonitor = renderMonitorOptions(select, displays, overlayMonitorScope.globalMonitor, monitor);
+  overlayMonitorScope = { ...overlayMonitorScope, globalMonitor: selectedMonitor };
+  saveOverlayMonitorScope(overlayMonitorScope);
+  renderOverlayMonitorScope();
+  modeSelect?.addEventListener("change", () => {
+    if (modeSelect.value !== "global" && modeSelect.value !== "individual") return;
+    void setOverlayMonitorScope({ ...overlayMonitorScope, mode: modeSelect.value }).then((scope) => {
+      overlayMonitorScope = scope;
+      renderOverlayMonitorScope();
+    }).catch(() => { modeSelect.value = overlayMonitorScope.mode; });
+  });
   monitorInventorySignature = monitorDisplaySignature(displays);
   select.addEventListener("change", () => {
     select.disabled = true;
     void setOverlayMonitor(Number(select.value)).then((result) => {
       selectedMonitor = result;
-      for (const overlaySelect of overlayMonitorSelectors.values()) {
-        overlaySelect.value = String(result);
-      }
-      for (const overlay of overlayMonitorSelectors.keys()) selectedOverlayMonitors.set(overlay, result);
+      overlayMonitorScope = { ...overlayMonitorScope, globalMonitor: result };
+      renderOverlayMonitorScope();
     }).catch(() => {
       select.value = String(selectedMonitor);
     }).finally(() => {
@@ -2337,11 +2386,12 @@ const bindOverlayMonitorSelectors = async (): Promise<void> => {
     resolveOverlayMonitor()
   ]);
   for (const [overlay, select] of overlayMonitorSelectors) {
-    const selected = layout[overlay]?.monitor ?? fallback;
+    const selected = effectiveOverlayMonitor(layout[overlay]?.monitor, overlayMonitorScope);
     selectedOverlayMonitors.set(
       overlay,
       renderMonitorOptions(select, displays, selected, displays[0]?.index ?? 0)
     );
+    select.disabled = overlayMonitorScope.mode === "global";
     select.addEventListener("change", () => {
       const next = Number(select.value);
       select.disabled = true;
@@ -2369,15 +2419,23 @@ const refreshMonitorInventory = async (): Promise<void> => {
 
     const fallback = displays[0]?.index ?? 0;
     const monitor = await resolveOverlayMonitor();
+    overlayMonitorScope = normalizeOverlayMonitorScope(readOverlayMonitorScope(), {
+      mode: overlayMonitorScope.mode,
+      globalMonitor: monitor
+    });
+    overlayMonitorScope.globalMonitor = displays.some(({ index }) => index === overlayMonitorScope.globalMonitor)
+      ? overlayMonitorScope.globalMonitor
+      : monitor;
+    saveOverlayMonitorScope(overlayMonitorScope);
     selectedMonitor = renderMonitorOptions(
       document.getElementById("overlay-monitor") as HTMLSelectElement,
       displays,
-      monitor,
+      overlayMonitorScope.globalMonitor,
       fallback
     );
     const layout = readCompositeLayout() ?? await ensureCompositeLayout();
     for (const [overlay, select] of overlayMonitorSelectors) {
-      const selected = layout[overlay]?.monitor
+      const selected = effectiveOverlayMonitor(layout[overlay]?.monitor, overlayMonitorScope)
         ?? selectedOverlayMonitors.get(overlay)
         ?? selectedMonitor;
       selectedOverlayMonitors.set(overlay, renderMonitorOptions(select, displays, selected, fallback));
@@ -2387,7 +2445,8 @@ const refreshMonitorInventory = async (): Promise<void> => {
 
     // Synchronization may have reassigned panels from a disconnected monitor.
     const latestLayout = readCompositeLayout() ?? layout;
-    const latestMonitor = await resolveOverlayMonitor();
+    overlayMonitorScope = readOverlayMonitorScope();
+    const latestMonitor = overlayMonitorScope.globalMonitor;
     selectedMonitor = renderMonitorOptions(
       document.getElementById("overlay-monitor") as HTMLSelectElement,
       displays,
@@ -2395,9 +2454,10 @@ const refreshMonitorInventory = async (): Promise<void> => {
       fallback
     );
     for (const [overlay, select] of overlayMonitorSelectors) {
-      const selected = latestLayout[overlay]?.monitor ?? selectedMonitor;
+      const selected = effectiveOverlayMonitor(latestLayout[overlay]?.monitor, overlayMonitorScope);
       selectedOverlayMonitors.set(overlay, renderMonitorOptions(select, displays, selected, fallback));
     }
+    renderOverlayMonitorScope();
   })().finally(() => {
     monitorInventoryRefresh = null;
   });
@@ -2438,6 +2498,7 @@ const parseOverlayConfiguration = (
   const fontSizeScope = configurationObject(fontSize?.scope);
   const fontSizeValues = configurationObject(fontSize?.values);
   const monitorSelection = configurationObject(overlays?.monitorSelection);
+  const monitorScope = configurationObject(overlays?.monitorScope);
   const layout = configurationObject(overlays?.layout);
   const standings = configurationObject(overlays?.standings);
   const relative = configurationObject(overlays?.relative);
@@ -2466,6 +2527,9 @@ const parseOverlayConfiguration = (
     ? Number(monitorSelection?.globalMonitor)
     : null;
   const monitor = schemaMonitor ?? legacyMonitor ?? 0;
+  const importedMonitorScope = monitorScope
+    ? normalizeOverlayMonitorScope(monitorScope)
+    : { mode: "individual", globalMonitor: monitor } as OverlayMonitorScope;
   const percentageIsValid = (value: unknown): value is number =>
     typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 100;
   const numericSchemaVersion = Number(schemaVersion);
@@ -2624,6 +2688,11 @@ const parseOverlayConfiguration = (
     && !completeBooleanRecord(normalizedTiming.times, timingTimeIds)) {
     throw new Error(t("config.invalidTiming"));
   }
+  if (numericSchemaVersion >= 22 && (!monitorScope
+    || (monitorScope.mode !== "global" && monitorScope.mode !== "individual")
+    || !Number.isInteger(monitorScope.globalMonitor) || Number(monitorScope.globalMonitor) < 0)) {
+    throw new Error(t("config.invalidMonitorMode"));
+  }
   const normalizedTimingOrder = normalizedTiming.timeOrder === undefined
     ? defaultTiming.timeOrder
     : normalizeTimingOrder(normalizedTiming.timeOrder);
@@ -2745,6 +2814,7 @@ const parseOverlayConfiguration = (
         values: transparencyValues as unknown as Record<OverlayId, number>
       },
       monitor,
+      monitorScope: importedMonitorScope,
       layout: cleanedLayout,
       fontSize: normalizedFontSize,
       standings: {
@@ -2796,6 +2866,7 @@ const parseOverlayConfiguration = (
     visibility: result.overlays.visibility,
     transparency: result.overlays.transparency,
     fontSize: result.overlays.fontSize,
+    monitorScope: result.overlays.monitorScope,
     layout: result.overlays.layout,
     standings: result.overlays.standings,
     relative: result.overlays.relative,
@@ -2840,6 +2911,13 @@ const normalizeImportedMonitor = async (
   const monitor = availableMonitors.has(configuration.overlays.monitor)
     ? configuration.overlays.monitor
     : primaryMonitor;
+  const monitorScope = normalizeOverlayMonitorScope(configuration.overlays.monitorScope, {
+    mode: configuration.overlays.monitorScope?.mode === "global" ? "global" : "individual",
+    globalMonitor: monitor
+  });
+  monitorScope.globalMonitor = availableMonitors.has(monitorScope.globalMonitor)
+    ? monitorScope.globalMonitor
+    : monitor;
   const normalizeLayout = (layout: CompositeLayout): CompositeLayout =>
     Object.fromEntries(overlayIds.map((id) => {
       const placement = layout[id];
@@ -2854,7 +2932,14 @@ const normalizeImportedMonitor = async (
     })) as CompositeLayout;
   const profiles = configuration.profiles.map((profile) => ({
     ...profile,
-    data: { ...profile.data, layout: normalizeLayout(profile.data.layout) }
+    data: {
+      ...profile.data,
+      monitorScope: normalizeOverlayMonitorScope(profile.data.monitorScope, {
+        mode: profile.data.monitorScope?.mode === "global" ? "global" : "individual",
+        globalMonitor: monitor
+      }),
+      layout: normalizeLayout(profile.data.layout)
+    }
   }));
   return {
     ...configuration,
@@ -2862,6 +2947,7 @@ const normalizeImportedMonitor = async (
     overlays: {
       ...configuration.overlays,
       monitor,
+      monitorScope,
       layout: normalizeLayout(configuration.overlays.layout)
     }
   };
@@ -2875,6 +2961,9 @@ const applyImportedConfiguration = (configuration: OverlayConfigurationExport): 
     [OVERLAY_FONT_SIZE_KEY, configuration.overlays.fontSize.values],
     [OVERLAY_FONT_SIZE_SCOPE_KEY, configuration.overlays.fontSize.scope],
     [COMPOSITE_LAYOUT_KEY, configuration.overlays.layout],
+    [OVERLAY_MONITOR_SCOPE_KEY, configuration.overlays.monitorScope ?? {
+      mode: "individual", globalMonitor: configuration.overlays.monitor
+    }],
     [STANDINGS_SETTINGS_KEY, configuration.overlays.standings],
     [RELATIVE_SETTINGS_KEY, configuration.overlays.relative],
     [DRIVING_SETTINGS_KEY, configuration.overlays.driving],
@@ -2941,6 +3030,7 @@ exportConfigurationButton?.addEventListener("click", () => {
           values: { ...overlayFontSize }
         },
         monitor,
+        monitorScope: { ...overlayMonitorScope },
         layout,
         standings: standingsSettings,
         relative: relativeSettings,

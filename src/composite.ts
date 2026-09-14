@@ -8,6 +8,7 @@ import {
   COMPOSITE_LAYOUT_KEY,
   clampPanelCoordinate,
   ensureCompositeLayout,
+  getEffectiveCompositeLayout,
   readCompositeLayout,
   saveOverlayPlacement,
   type CompositeLayout,
@@ -531,7 +532,8 @@ const createPanel = (overlay: OverlayId, placement: OverlayPlacement): void => {
 };
 
 const synchronizePanels = async (): Promise<void> => {
-  const layout = readCompositeLayout() ?? await ensureCompositeLayout();
+  const storedLayout = readCompositeLayout() ?? await ensureCompositeLayout();
+  const layout = getEffectiveCompositeLayout(storedLayout);
   let normalized = false;
   // A stored layout written before an overlay existed has no placement for it.
   // Seeding the missing one here keeps a single new overlay from throwing out
@@ -540,7 +542,7 @@ const synchronizePanels = async (): Promise<void> => {
   for (const overlay of overlayIds) {
     let placement = layout[overlay];
     if (!placement) {
-      seeded ??= await ensureCompositeLayout();
+      seeded ??= getEffectiveCompositeLayout(await ensureCompositeLayout());
       placement = seeded[overlay];
       if (!placement) continue;
       layout[overlay] = placement;
@@ -559,7 +561,15 @@ const synchronizePanels = async (): Promise<void> => {
     if (visible.has(overlay)) createPanel(overlay, fitted);
     else removePanel(overlay);
   }
-  if (normalized) localStorage.setItem(COMPOSITE_LAYOUT_KEY, JSON.stringify(layout));
+  if (normalized) {
+    const stored = readCompositeLayout() ?? storedLayout;
+    for (const overlay of overlayIds) {
+      if (layout[overlay] && stored[overlay]) {
+        stored[overlay] = { ...layout[overlay], monitor: stored[overlay].monitor };
+      }
+    }
+    localStorage.setItem(COMPOSITE_LAYOUT_KEY, JSON.stringify(stored));
+  }
   scheduleInteractionRegionSync();
   synchronizeHostBounds();
 };

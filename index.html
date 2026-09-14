@@ -110,12 +110,19 @@
           <span data-i18n="display.heading">PANTALLA</span>
           <strong data-i18n="display.title">Dónde y cómo se ven los overlays</strong>
         </header>
-        <div class="global-setting-group">
+        <div class="global-setting-group overlay-monitor-group">
           <div class="global-setting-copy">
             <span data-i18n="general.monitor">MONITOR</span>
-            <strong data-i18n="general.monitorSub">Cambia todos los overlays a la vez</strong>
+            <strong data-i18n="general.monitorSub">General o por overlay</strong>
           </div>
           <label class="select-field">
+            <span data-i18n="general.monitorMode">APLICAR</span>
+            <select id="overlay-monitor-mode" aria-label="Modo de monitor" data-i18n-aria-label="general.monitorModeAria">
+              <option value="individual" data-i18n="general.individual">Por overlay</option>
+              <option value="global" data-i18n="general.global">General</option>
+            </select>
+          </label>
+          <label id="global-monitor-control" class="select-field">
             <span data-i18n="general.monitorLabel">MOVER TODOS LOS OVERLAYS A</span>
             <select id="overlay-monitor" aria-label="Mover todos los overlays al monitor" data-i18n-aria-label="general.monitorAria"></select>
           </label>

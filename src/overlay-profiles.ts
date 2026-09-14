@@ -10,6 +10,7 @@ import type {
   OverlayId,
   OverlayTransparencyScope
 } from "./overlay-appearance";
+import type { OverlayMonitorScope } from "./overlay-monitor";
 import type { RelativeSettings } from "./relative-settings";
 import { isQualifyingSession, isRaceSession } from "./session-phase";
 import type { StandingsSettings } from "./standings-settings";
@@ -46,13 +47,15 @@ export const sessionKindFromType = (sessionType: number): SessionKind =>
   isRaceSession(sessionType) ? "race" : isQualifyingSession(sessionType) ? "qualifying" : "practice";
 
 /**
- * Overlay state a profile owns. Monitor, performance profile, locale, shortcuts
- * and the browser source stay global and are never switched with the mode.
+ * Overlay state a profile owns. Monitor scope and layout follow the profile;
+ * performance profile, locale, shortcuts and the browser source stay global.
  */
 export interface OverlayProfileData {
   visibility: Record<OverlayId, boolean>;
   transparency: { scope: OverlayTransparencyScope; values: Record<OverlayId, number> };
   fontSize: { scope: OverlayFontSizeScope; values: Record<OverlayId, number> };
+  /** Optional for profiles written before monitor scope was introduced. */
+  monitorScope?: OverlayMonitorScope;
   layout: CompositeLayout;
   standings: StandingsSettings;
   relative: RelativeSettings;
