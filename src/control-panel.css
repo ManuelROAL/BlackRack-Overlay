@@ -971,8 +971,10 @@ select {
   min-width: 0;
 }
 
-.overlay-monitor-group {
-  grid-template-columns: minmax(0, 1fr) minmax(120px, 150px) minmax(170px, 210px);
+.display-settings-group {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: start;
+  column-gap: 14px;
 }
 
 .global-setting-group > .switch {
