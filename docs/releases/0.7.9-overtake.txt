@@ -1,17 +1,44 @@
 [CENTER][B][SIZE=6][COLOR=#D8FF3E]BLACKRACK OVERLAY 0.7.9[/COLOR][/SIZE][/B]
 [COLOR=#AEB9C4]Lightweight, configurable LMU telemetry overlays — no SimHub required.[/COLOR][/CENTER]
 
-[B][COLOR=#B86BFF]WHAT'S NEW IN 0.7.9[/COLOR][/B]
+[B][COLOR=#B86BFF]VERSION UPDATES[/COLOR][/B]
+[LIST]
+[*]The control panel checks automatically for new versions and also supports on-demand checks.
+[*]Release highlights are shown before you update.
+[*]The new installer can be downloaded and installed directly from the application.
+[*]The installer is verified with SHA-256 before it runs.
+[*]If an update does not complete successfully, the application reports it after the next start.
+[/LIST]
+
+[B][COLOR=#D8FF3E]MONITORS AND CONFIGURATION[/COLOR][/B]
+[LIST]
+[*]Place every overlay on one monitor or assign overlays to different monitors.
+[*]Each monitor with active overlays uses its own transparent host.
+[*]Positions, sizes, scales and monitor assignments are preserved in profiles and backups.
+[/LIST]
+
+[B][COLOR=#D8FF3E]LMU TELEMETRY[/COLOR][/B]
+[LIST]
+[*]More stable behavior when changing sessions, circuits, events or vehicles.
+[*]Driver Rating results are preserved across event changes and application restarts.
+[*]Telemetry is more resilient when LMU provides incomplete or incompatible data.
+[*]Pit-menu changes are shown when LMU provides them.
+[*]Optional RaceOS or REST failures do not stop the main telemetry stream.
+[/LIST]
+
+[B][COLOR=#D8FF3E]STANDINGS, RELATIVE AND DASHBOARD[/COLOR][/B]
+[LIST]
+[*]Optional recent-lap delta columns are available in Standings and Relative.
+[*]BEST and LAST can be combined to show the newly completed lap temporarily.
+[*]GTE has its own class colour.
+[*]The hybrid battery gauge also shows its charge percentage.
+[*]Dashboard width stays stable when speed changes from two to three digits.
+[/LIST]
 
 [B][COLOR=#D8FF3E]TIMING[/COLOR][/B]
 [LIST]
-[*]Reorder the visible time rows from the Timing settings with drag-and-drop or the side buttons. The order is preserved in profiles, configuration backup and OBS.
-[/LIST]
-
-[B][COLOR=#D8FF3E]UPDATES[/COLOR][/B]
-[LIST]
-[*]The control panel checks for new versions automatically and on demand, shows the release highlights and can download and install an update for you.
-[*]The installer is checked before it runs, and an incomplete update is reported after the next start.
+[*]Visible Timing rows can be reordered by dragging or using the side buttons.
+[*]The order is preserved in profiles, configuration backups and browser sources.
 [/LIST]
 
 [B][COLOR=#B86BFF]REQUIREMENTS[/COLOR][/B]
@@ -21,21 +48,48 @@
 [B][COLOR=#B86BFF]DOWNLOAD[/COLOR][/B]
 BlackRack Overlay_0.7.9_x64-setup.exe
 
-[COLOR=#AEB9C4]The installer is not digitally signed, so Windows SmartScreen may warn on first run. Optional support: https://ko-fi.com/blackrack[/COLOR]
+[COLOR=#AEB9C4]The current build is focused on Le Mans Ultimate. Experimental iRacing support has been removed. The installer is not digitally signed, so Windows SmartScreen may warn on first run.[/COLOR]
 
 [CENTER][B][COLOR=#B86BFF]ESPAÑOL[/COLOR][/B][/CENTER]
 
-[B][COLOR=#B86BFF]NOVEDADES DE LA 0.7.9[/COLOR][/B]
+[B][COLOR=#B86BFF]ACTUALIZACIONES DE VERSIÓN[/COLOR][/B]
+[LIST]
+[*]El panel de control comprueba automáticamente si hay versiones nuevas y también permite buscarlas bajo demanda.
+[*]Muestra las principales novedades antes de actualizar.
+[*]Puedes descargar e instalar el nuevo instalador desde la propia aplicación.
+[*]El instalador se verifica mediante SHA-256 antes de ejecutarse.
+[*]Si una actualización no termina correctamente, la aplicación informa del problema al volver a iniciarse.
+[/LIST]
+
+[B][COLOR=#D8FF3E]MONITORES Y CONFIGURACIÓN[/COLOR][/B]
+[LIST]
+[*]Puedes colocar todos los overlays en un monitor o asignarlos a monitores diferentes.
+[*]Cada monitor con overlays activos utiliza su propio host transparente.
+[*]Las posiciones, tamaños, escalas y asignaciones de monitor se conservan en perfiles y copias de seguridad.
+[/LIST]
+
+[B][COLOR=#D8FF3E]TELEMETRÍA DE LMU[/COLOR][/B]
+[LIST]
+[*]Mayor estabilidad al cambiar de sesión, circuito, evento o vehículo.
+[*]Los resultados de Driver Rating se conservan entre cambios de evento y reinicios.
+[*]La telemetría es más resistente cuando LMU proporciona datos incompletos o incompatibles.
+[*]Se muestran los cambios del menú de parada de boxes cuando LMU los proporciona.
+[*]Los fallos opcionales de RaceOS o REST no detienen la telemetría principal.
+[/LIST]
+
+[B][COLOR=#D8FF3E]STANDINGS, RELATIVE Y DASHBOARD[/COLOR][/B]
+[LIST]
+[*]Puedes mostrar el delta de las últimas vueltas en Standings y Relative.
+[*]BEST y LAST se pueden combinar para mostrar temporalmente la vuelta recién completada.
+[*]GTE tiene su propio color de clase.
+[*]El indicador de batería híbrida muestra también el porcentaje de carga.
+[*]El ancho del Dashboard permanece estable al pasar de dos a tres cifras de velocidad.
+[/LIST]
 
 [B][COLOR=#D8FF3E]TIMING[/COLOR][/B]
 [LIST]
-[*]Puedes reordenar los tiempos visibles desde la configuración de Timing, arrastrando o usando los botones laterales. El orden se conserva en perfiles, copias de seguridad y OBS.
-[/LIST]
-
-[B][COLOR=#D8FF3E]ACTUALIZACIONES[/COLOR][/B]
-[LIST]
-[*]El panel de control comprueba si hay versiones nuevas automáticamente y bajo demanda, muestra las novedades y permite descargar e instalar una actualización.
-[*]El instalador se comprueba antes de ejecutarse y la aplicación informa después del siguiente inicio si una actualización no se completó.
+[*]Las filas visibles de Timing se pueden reordenar arrastrando o usando los botones laterales.
+[*]El orden se conserva en perfiles, copias de seguridad y fuentes de navegador.
 [/LIST]
 
 [B][COLOR=#B86BFF]REQUISITOS[/COLOR][/B]
@@ -45,4 +99,4 @@ Windows 10 u 11 de 64 bits, Le Mans Ultimate y su
 [B][COLOR=#B86BFF]DESCARGA[/COLOR][/B]
 BlackRack Overlay_0.7.9_x64-setup.exe
 
-[COLOR=#AEB9C4]El instalador no está firmado digitalmente y Windows SmartScreen puede mostrar un aviso la primera vez. Apoyo opcional: https://ko-fi.com/blackrack[/COLOR]
+[COLOR=#AEB9C4]La versión actual está centrada en Le Mans Ultimate. Se ha retirado el soporte experimental de iRacing. El instalador no está firmado digitalmente y Windows SmartScreen puede mostrar un aviso la primera vez.[/COLOR]

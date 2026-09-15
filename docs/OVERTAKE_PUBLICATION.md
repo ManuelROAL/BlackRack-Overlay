@@ -57,7 +57,7 @@ optional service is unavailable, the overlays keep running.
 
 ### Key features
 
-- One transparent host WebView for all enabled panels.
+- One transparent host WebView per active monitor, with panels grouped by monitor.
 - Click-through game mode and proportional edit mode.
 - Independent visibility, position, scale and transparency settings.
 - Configurable global shortcuts.
@@ -139,13 +139,24 @@ https://ko-fi.com/blackrack.
   OBS/browser-source handling and durable Track
   Map learning.
 
-### 0.7.9 — Configurable Timing and in-app updates
+### 0.7.9 — Safer updates, multi-monitor layouts and LMU telemetry
 
+- Added automatic and on-demand update checks in the control panel. Users see
+  release highlights before updating, can download and install the new version
+  from the application, and receive SHA-256 installer verification and
+  post-start failure reporting.
 - Added drag-and-drop and button controls for the order of visible Timing rows,
   preserved in profiles, configuration backup and OBS.
-- Added automatic and on-demand update checks in the control panel, with release
-  highlights, download/install flow, installer verification and post-start
-  failure reporting.
+- Added global or per-overlay monitor assignment, one transparent host per
+  active monitor and persistent monitor-aware layouts.
+- Added optional recent-lap delta columns and combined BEST/LAST display to
+  Standings and Relative, plus a dedicated GTE class colour.
+- Added the hybrid battery percentage to Dashboard and kept its width stable
+  when speed changes from two to three digits.
+- Hardened LMU telemetry across session, event and vehicle changes, preserved
+  Driver Rating results across restarts, improved resilience to incomplete data
+  and exposed available pit-menu changes.
+- Removed the experimental iRacing telemetry source from the current build.
 
 ## Decisions required before submission
 
@@ -171,6 +182,7 @@ Prepare at least one real in-game hero image before publishing. Recommended set:
 - [x] Rust library tests pass with the official LMU SDK detected.
 - [x] Production NSIS installer generated under the BlackRack name.
 - [x] SHA-256 generated and matched to the release installer.
+- [x] Release README, update manifest and SHA-256 were refreshed from the current installer.
 - [ ] Comparable moving race/replay performance capture completed.
 - [ ] Clean-machine installation and functional smoke test completed.
 - [ ] Real in-game publication images selected.

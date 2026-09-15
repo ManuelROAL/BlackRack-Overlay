@@ -2,14 +2,16 @@
   "schemaVersion": 1,
   "version": "0.7.9",
   "packageUrl": "https://github.com/ManuelROAL/BlackRack-Overlay/releases/download/v0.7.9/BlackRack%20Overlay_0.7.9_x64-setup.exe",
-  "sha256": "f3c23fdaca9bc3fe42bfd793172d1cbc4c7765150717ff1eec032630c23cd237",
+  "sha256": "4e4f82a9c18b5e63242c619f91d3de887d1a83853a779f44a840316641e22e4f",
   "fileName": "BlackRack Overlay_0.7.9_x64-setup.exe",
   "releasePageUrl": "https://github.com/ManuelROAL/BlackRack-Overlay/releases/tag/v0.7.9",
   "updateTitle": "BlackRack Overlay 0.7.9",
   "fullTitle": "BlackRack Overlay 0.7.9",
   "changelog": [
-    "El panel de control puede comprobar automáticamente si hay actualizaciones.",
-    "La actualización verifica la integridad del instalador antes de ejecutarlo.",
-    "El orden de los tiempos visibles se puede reorganizar desde la configuración de Timing."
+    "El panel de control busca versiones nuevas automáticamente y bajo demanda y muestra sus novedades.",
+    "Puedes descargar e instalar la actualización desde la aplicación; el instalador se verifica antes de ejecutarse.",
+    "Los overlays pueden repartirse entre varios monitores con posiciones y perfiles conservados.",
+    "Standings y Relative incorporan deltas de vueltas recientes y nuevas opciones de tiempos.",
+    "La telemetría LMU es más estable al cambiar de sesión, evento o vehículo."
   ]
 }
