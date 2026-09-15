@@ -1,6 +1,6 @@
 import { isTauriRuntime, listenRuntimeEvent } from "./runtime-events";
 
-export type OverlayId = "delta" | "timing" | "stinthistory" | "driving" | "liftcoast" | "tires" | "damage" | "standings" | "relative" | "rivals" | "fuel" | "pitstop" | "flags" | "rejoin" | "trackmap" | "forecast" | "conditions" | "dashboard";
+export type OverlayId = "delta" | "timing" | "stinthistory" | "driving" | "liftcoast" | "tires" | "damage" | "standings" | "relative" | "fuel" | "pitstop" | "flags" | "rejoin" | "trackmap" | "forecast" | "conditions" | "dashboard";
 
 export type OverlayTransparencySettings = Record<OverlayId, number>;
 export type OverlayFontSizeSettings = Record<OverlayId, number>;
@@ -44,7 +44,6 @@ export const DEFAULT_OVERLAY_TRANSPARENCY: OverlayTransparencySettings = {
   damage: 5,
   standings: 3,
   relative: 3,
-  rivals: 3,
   fuel: 5,
   pitstop: 5,
   flags: 0,

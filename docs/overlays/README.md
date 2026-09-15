@@ -11,7 +11,6 @@ UI behavior, telemetry semantics, cadence and special invariants.
 | Stint history | [stinthistory.md](stinthistory.md) | `stinthistory.html` | `/stinthistory` | 4 Hz |
 | Standings | [standings.md](standings.md) | `standings.html` | `/standings` | 10 Hz |
 | Relative | [relative.md](relative.md) | `relative.html` | `/relative` | 20 Hz |
-| Rivals | [rivals.md](rivals.md) | `rivals.html` | `/rivals` | 10 Hz |
 | Fuel / energy | [fuel.md](fuel.md) | `fuel.html` | `/fuel` | 50 Hz |
 | Trailing + Pedal | [driving.md](driving.md) | `driving.html` | `/driving` | 50 Hz input, 25 Hz canvas |
 | Lift & Coast | [liftcoast.md](liftcoast.md) | `liftcoast.html` | `/liftcoast` | 50 Hz |

@@ -35,7 +35,6 @@ export default defineConfig({
         damage: "damage.html",
         standings: "standings.html",
         relative: "relative.html",
-        rivals: "rivals.html",
         fuel: "fuel.html",
         pitstop: "pitstop.html",
         flags: "flags.html",

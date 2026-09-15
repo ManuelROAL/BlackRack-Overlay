@@ -47,7 +47,7 @@ export const clampPanelCoordinate = (
 
 const overlayIds: OverlayId[] = [
   "delta", "timing", "stinthistory", "driving", "liftcoast", "tires", "damage", "standings",
-  "relative", "rivals", "fuel", "pitstop", "flags", "rejoin", "trackmap",
+  "relative", "fuel", "pitstop", "flags", "rejoin", "trackmap",
   "forecast", "conditions", "dashboard"
 ];
 
@@ -72,7 +72,6 @@ const correctedDefaultSizes: Partial<Record<OverlayId, readonly [number, number,
   driving: [540, 120, 468, 120],
   standings: [980, 500, 970, 500],
   relative: [980, 300, 344, 255],
-  rivals: [980, 360, 520, 360],
   forecast: [352, 118, 366, 112],
   conditions: [480, 96, 390, 90]
 };

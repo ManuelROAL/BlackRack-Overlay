@@ -30,10 +30,9 @@ const MAX_ACCEPTS_PER_ITERATION: usize = 2;
 const REQUEST_READ_ATTEMPTS: usize = 8;
 const REQUEST_READ_TIMEOUT: Duration = Duration::from_millis(50);
 const HTML_SECURITY_POLICY: &str = "default-src 'self'; connect-src 'self' ws://localhost:6398 ws://127.0.0.1:6398; img-src 'self' data:; style-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'self'; object-src 'none'";
-const BROWSER_OVERLAYS: [(&str, &str); 18] = [
+const BROWSER_OVERLAYS: [(&str, &str); 17] = [
     ("standings", "standings.html"),
     ("relative", "relative.html"),
-    ("rivals", "rivals.html"),
     ("fuel", "fuel.html"),
     ("pitstop", "pitstop.html"),
     ("flags", "flags.html"),
