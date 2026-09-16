@@ -57,6 +57,9 @@ assignments; per-overlay mode restores those assignments.
   hosts without rebuilding active panels.
 - Every run starts in click-through game mode. Edit mode is entered explicitly
   from the control panel or global shortcut.
+- Every overlay card has a configurable hotkey to show or hide that overlay.
+  The shared capture flow persists each `hide_<overlay-id>` binding and mirrors
+  external `overlay://visibility` events in the card and active profile.
 - On Windows, edit-mode hit testing follows the global cursor independently on
   every monitor. A host accepts input only while the cursor is over one of its
   visible panel rectangles; transparent gaps pass input to the application

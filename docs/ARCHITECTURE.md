@@ -138,6 +138,9 @@ Tauri events    analysis JSONL/strategy CSV    browser-source SSE
 - `src/overlay-profiles.ts`: profile/binding storage model and validation. The
   control panel owns capture and application; the composite host and overlays
   never read profiles, only the live keys a profile writes.
+- The control panel exposes one `hide_<overlay-id>` shortcut per overlay card,
+  using the shared `get_shortcut_settings`/`set_shortcut` contract and reflecting
+  external `overlay://visibility` events.
 - `src/overlay-performance.ts`: optional five-second frontend render metrics.
 
 Every overlay has a separate CSS file. `src/styles.css` contains only genuinely

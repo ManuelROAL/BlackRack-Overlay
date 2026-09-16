@@ -1241,8 +1241,9 @@ fn set_overlay_visible_state(
     app: &AppHandle,
     control: &OverlayControl,
     label: &'static str,
-    visible: bool,
+    requested_visible: bool,
 ) -> Result<bool, String> {
+    let visible = requested_visible && telemetry::overlay_allowed_in_current_mode(label);
     {
         let mut desired = control
             .desired_visible
@@ -1255,6 +1256,38 @@ fn set_overlay_visible_state(
         }
     }
 
+    emit_overlay_visibility_state(app, control, label, visible)
+}
+
+fn toggle_overlay_visible_state(
+    app: &AppHandle,
+    control: &OverlayControl,
+    label: &'static str,
+) -> Result<bool, String> {
+    let visible = {
+        let mut desired = control
+            .desired_visible
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        if desired.remove(label) {
+            false
+        } else if telemetry::overlay_allowed_in_current_mode(label) {
+            desired.insert(label);
+            true
+        } else {
+            false
+        }
+    };
+
+    emit_overlay_visibility_state(app, control, label, visible)
+}
+
+fn emit_overlay_visibility_state(
+    app: &AppHandle,
+    control: &OverlayControl,
+    label: &'static str,
+    visible: bool,
+) -> Result<bool, String> {
     app.emit(
         "overlay://visibility",
         &OverlayWindowState { label, visible },
@@ -1888,12 +1921,7 @@ fn register_overlay_shortcut(
                 return;
             }
             let control = app.state::<OverlayControl>();
-            let visible = !control
-                .desired_visible
-                .lock()
-                .unwrap_or_else(|poisoned| poisoned.into_inner())
-                .contains(label);
-            if let Err(error) = set_overlay_visible_state(app, &control, label, visible) {
+            if let Err(error) = toggle_overlay_visible_state(app, &control, label) {
                 startup_log::record(format!(
                     "could not emit visibility for overlay {label}: {error}"
                 ));

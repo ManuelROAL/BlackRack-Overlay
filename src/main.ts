@@ -256,9 +256,14 @@ interface ShortcutBindingStatus {
   error: string | null;
 }
 
+type HideOverlayShortcutAction = `hide_${OverlayId}`;
+type ShortcutAction = "interaction_mode" | "show_panel" | HideOverlayShortcutAction;
+
 interface ShortcutSettingsStatus {
   interaction_mode: ShortcutBindingStatus;
   show_panel: ShortcutBindingStatus;
+  /** Optional while older backend builds are still in use. */
+  hide_overlays?: Partial<Record<OverlayId, ShortcutBindingStatus>>;
 }
 
 interface WheelInputStatus {
@@ -335,8 +340,6 @@ interface OverlayConfigurationExport {
     teamMode: boolean;
   };
 }
-
-type ShortcutAction = "interaction_mode" | "show_panel";
 
 let simulatorStatus: SimulatorStatus | null = null;
 
@@ -839,7 +842,7 @@ const syncBrowserSourcePreferences = (): void => {
   onLiveSettingsChanged();
 };
 
-const shortcutInputs: Record<ShortcutAction, HTMLInputElement | null> = {
+const shortcutInputs: Partial<Record<ShortcutAction, HTMLInputElement | null>> = {
   interaction_mode: document.getElementById("shortcut-interaction-mode") as HTMLInputElement | null,
   show_panel: document.getElementById("shortcut-show-panel") as HTMLInputElement | null
 };
@@ -863,12 +866,29 @@ const renderShortcutSettings = (status: ShortcutSettingsStatus): void => {
     }
   }
 
+  for (const id of overlayIds) {
+    const input = overlayShortcutInputs.get(id);
+    const binding = status.hide_overlays?.[id];
+    if (!input || !binding) continue;
+    input.value = binding.shortcut;
+    input.dataset.state = binding.active ? "active" : "error";
+    input.title = binding.error
+      ? `${t("shortcuts.unavailable")}: ${binding.error}`
+      : t(binding.active ? "shortcuts.active" : "shortcuts.unavailable");
+  }
+
   const interactionFooter = document.getElementById("footer-interaction-shortcut");
   const panelFooter = document.getElementById("footer-panel-shortcut");
   if (interactionFooter) interactionFooter.textContent = status.interaction_mode.shortcut;
   if (panelFooter) panelFooter.textContent = status.show_panel.shortcut;
 
-  const unavailable = [status.interaction_mode, status.show_panel].find((binding) => !binding.active);
+  const unavailable = [
+    status.interaction_mode,
+    status.show_panel,
+    ...overlayIds.map((id) => status.hide_overlays?.[id]).filter(
+      (binding): binding is ShortcutBindingStatus => Boolean(binding)
+    )
+  ].find((binding) => !binding.active);
   if (unavailable) {
     setShortcutMessage(
       t("shortcuts.occupied", { shortcut: unavailable.shortcut }),
@@ -914,20 +934,23 @@ const saveShortcut = async (action: ShortcutAction, shortcut: string): Promise<v
           ? "shortcuts.persistenceError"
           : "shortcuts.unavailableFor";
     setShortcutMessage(t(key, { shortcut }), "error");
-    console.error("Could not update global shortcut:", error);
-    renderShortcutSettings(await invoke<ShortcutSettingsStatus>("get_shortcut_settings"));
+    console.error("Could not update shortcut:", error);
+    try {
+      renderShortcutSettings(await invoke<ShortcutSettingsStatus>("get_shortcut_settings"));
+    } catch (reloadError) {
+      console.error("Could not reload shortcut settings:", reloadError);
+    }
   } finally {
     if (input) input.disabled = false;
   }
 };
 
-for (const action of ["interaction_mode", "show_panel"] as const) {
-  const input = shortcutInputs[action];
-  input?.addEventListener("focus", () => {
+const bindShortcutCapture = (action: ShortcutAction, input: HTMLInputElement): void => {
+  input.addEventListener("focus", () => {
     setShortcutMessage(t("shortcuts.capture"));
     input.select();
   });
-  input?.addEventListener("keydown", (event) => {
+  input.addEventListener("keydown", (event) => {
     if (event.key === "Tab") return;
     event.preventDefault();
     if (event.key === "Escape") {
@@ -942,6 +965,11 @@ for (const action of ["interaction_mode", "show_panel"] as const) {
       void saveShortcut(action, shortcut);
     }
   });
+};
+
+for (const action of ["interaction_mode", "show_panel"] as const) {
+  const input = shortcutInputs[action];
+  if (input) bindShortcutCapture(action, input);
 }
 
 const persistStandingsSettings = (): void => {
@@ -1051,6 +1079,7 @@ const persistDashboardSettings = (): void => {
   void emit("dashboard://settings", dashboardSettings);
   syncBrowserSourcePreferences();
 };
+const overlayShortcutInputs = new Map<OverlayId, HTMLInputElement>();
 
 const persistLiftCoastSettings = (): void => {
   localStorage.setItem(LIFTCOAST_SETTINGS_KEY, JSON.stringify(liftCoastSettings));
@@ -2154,6 +2183,7 @@ const renderOverlayMonitorScope = (): void => {
       selectedOverlayMonitors.set(overlay, monitor);
     }
   }
+
 };
 
 const renderMonitorOptions = (
@@ -2209,6 +2239,23 @@ for (const id of overlayIds) {
     guideButton.setAttribute("aria-controls", "overlay-guide");
     guideButton.addEventListener("click", () => openOverlayGuide(id));
     card.insertBefore(guideButton, switchElement);
+
+    const shortcutControl = document.createElement("label");
+    shortcutControl.className = "overlay-shortcut-setting";
+    const shortcutCopy = document.createElement("span");
+    const shortcutCaption = document.createElement("b");
+    shortcutCaption.textContent = t("overlay.shortcut");
+    const shortcutSub = document.createElement("small");
+    shortcutSub.textContent = t("overlay.shortcutSub");
+    shortcutCopy.append(shortcutCaption, shortcutSub);
+    const shortcutInput = document.createElement("input");
+    shortcutInput.type = "text";
+    shortcutInput.readOnly = true;
+    shortcutInput.setAttribute("aria-label", t("overlay.shortcutAria", { overlay: overlayDisplayName(id) }));
+    shortcutControl.append(shortcutCopy, shortcutInput);
+    card.insertBefore(shortcutControl, switchElement);
+    overlayShortcutInputs.set(id, shortcutInput);
+    bindShortcutCapture(`hide_${id}`, shortcutInput);
 
     const control = document.createElement("label");
     control.className = "overlay-transparency";
@@ -3908,6 +3955,26 @@ const renderInteractionMode = (mode: InteractionMode): void => {
 
 void listen<InteractionMode>("overlay://interaction-mode", ({ payload }) => renderInteractionMode(payload))
   .catch(reportInitializationError("interaction mode listener"));
+
+void listen<OverlayState>("overlay://visibility", ({ payload }) => {
+  if (!overlayIds.includes(payload.label)) return;
+  // Spectator restrictions only affect the mounted panel. Keep its saved
+  // profile visibility while the panel is temporarily blocked.
+  if (disabledInSpectator(payload.label)) {
+    setCardState(payload.label, false);
+    if (payload.visible) {
+      void invoke("set_overlay_visible", { label: payload.label, visible: false })
+        .catch((error) => console.error(`No se pudo mantener oculto ${payload.label}:`, error));
+    }
+    return;
+  }
+  preferences[payload.label] = payload.visible;
+  persist();
+  setCardState(payload.label, payload.visible);
+  void synchronizeOverlayHosts().catch((error) => {
+    console.error("No se pudieron sincronizar los hosts tras cambiar la visibilidad:", error);
+  });
+}).catch(reportInitializationError("overlay visibility listener"));
 
 document.getElementById("toggle-interaction-mode")?.addEventListener("click", () => {
   void invoke<InteractionMode>("toggle_interaction_mode_command").catch((error) => {

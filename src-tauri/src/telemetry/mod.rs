@@ -459,6 +459,10 @@ fn spectator_mode() -> bool {
     SPECTATOR_MODE.load(Ordering::Relaxed)
 }
 
+pub(crate) fn overlay_allowed_in_current_mode(label: &str) -> bool {
+    !spectator_mode() || !matches!(label, "liftcoast" | "stinthistory" | "fuel")
+}
+
 fn team_mode() -> bool {
     TEAM_MODE.load(Ordering::Relaxed)
 }
