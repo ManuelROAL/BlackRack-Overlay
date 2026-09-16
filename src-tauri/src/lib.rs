@@ -110,6 +110,29 @@ struct OverlayControl {
 struct ShortcutSettings {
     interaction_mode: String,
     show_panel: String,
+    #[serde(default = "default_overlay_shortcuts")]
+    hide_overlays: HashMap<String, String>,
+}
+
+fn default_overlay_shortcuts() -> HashMap<String, String> {
+    OVERLAY_LABELS
+        .iter()
+        .enumerate()
+        .map(|(index, label)| {
+            let shortcut = if index < 9 {
+                format!("Ctrl+Alt+{}", index + 1)
+            } else {
+                format!("Ctrl+Alt+Shift+{}", index - 8)
+            };
+            ((*label).into(), shortcut)
+        })
+        .collect()
+}
+
+fn overlay_label_for_shortcut_action(action: &str) -> Option<&'static str> {
+    action
+        .strip_prefix("hide_")
+        .and_then(|label| OVERLAY_LABELS.iter().copied().find(|known| *known == label))
 }
 
 impl Default for ShortcutSettings {
@@ -117,6 +140,7 @@ impl Default for ShortcutSettings {
         Self {
             interaction_mode: "Ctrl+Shift+O".into(),
             show_panel: "Ctrl+Shift+M".into(),
+            hide_overlays: default_overlay_shortcuts(),
         }
     }
 }
@@ -128,6 +152,8 @@ struct ShortcutRuntime {
     active_show_panel: Option<String>,
     interaction_mode_error: Option<String>,
     show_panel_error: Option<String>,
+    active_hide_overlays: HashMap<String, String>,
+    hide_overlays_error: HashMap<String, String>,
 }
 
 struct ShortcutControl(Mutex<ShortcutRuntime>);
@@ -213,6 +239,7 @@ struct ShortcutBindingStatus {
 struct ShortcutSettingsStatus {
     interaction_mode: ShortcutBindingStatus,
     show_panel: ShortcutBindingStatus,
+    hide_overlays: HashMap<String, ShortcutBindingStatus>,
 }
 
 #[derive(Clone, Serialize)]
@@ -1207,6 +1234,15 @@ async fn set_overlay_visible(
         .find(|known| *known == label)
         .ok_or_else(|| startup_log::command_error("unknown_overlay", &label))?;
 
+    set_overlay_visible_state(&app, &control, label, visible)
+}
+
+fn set_overlay_visible_state(
+    app: &AppHandle,
+    control: &OverlayControl,
+    label: &'static str,
+    visible: bool,
+) -> Result<bool, String> {
     {
         let mut desired = control
             .desired_visible
@@ -1219,21 +1255,22 @@ async fn set_overlay_visible(
         }
     }
 
-    let state = OverlayWindowState { label, visible };
-    app.emit("overlay://visibility", &state)
-        .map_err(|error| startup_log::command_error("overlay_visibility_failed", error))?;
+    app.emit(
+        "overlay://visibility",
+        &OverlayWindowState { label, visible },
+    )
+    .map_err(|error| startup_log::command_error("overlay_visibility_failed", error))?;
 
-    if !control.auto_hidden.load(Ordering::Relaxed) {
-        let has_desired_overlays = !control
+    if !control.auto_hidden.load(Ordering::Relaxed)
+        && !control
             .desired_visible
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .is_empty();
-        if has_desired_overlays {
-            for_each_overlay_host(&app, |window| {
-                let _ = window.show();
-            });
-        }
+            .is_empty()
+    {
+        for_each_overlay_host(app, |window| {
+            let _ = window.show();
+        });
     }
 
     Ok(visible)
@@ -1632,10 +1669,27 @@ fn load_shortcut_settings(app: &AppHandle) -> ShortcutSettings {
     match serde_json::from_str::<ShortcutSettings>(&contents) {
         // A hand-edited settings file goes through the same validation as the
         // panel, so nothing unexpected reaches the accelerator parser.
-        Ok(settings)
+        Ok(mut settings)
             if is_valid_shortcut(&settings.interaction_mode)
-                && is_valid_shortcut(&settings.show_panel) =>
+                && is_valid_shortcut(&settings.show_panel)
+                && settings.hide_overlays.len() == OVERLAY_LABELS.len()
+                && OVERLAY_LABELS.iter().all(|label| {
+                    settings
+                        .hide_overlays
+                        .get(*label)
+                        .is_some_and(|shortcut| is_valid_shortcut(shortcut))
+                }) =>
         {
+            for label in OVERLAY_LABELS {
+                settings
+                    .hide_overlays
+                    .entry(label.into())
+                    .or_insert_with(|| {
+                        default_overlay_shortcuts()
+                            .remove(label)
+                            .expect("default overlay shortcut")
+                    });
+            }
             settings
         }
         Ok(_) => {
@@ -1823,6 +1877,31 @@ fn register_panel_shortcut(app: &AppHandle, shortcut: &str) -> Result<(), String
         .map_err(|error| error.to_string())
 }
 
+fn register_overlay_shortcut(
+    app: &AppHandle,
+    label: &'static str,
+    shortcut: &str,
+) -> Result<(), String> {
+    app.global_shortcut()
+        .on_shortcut(shortcut, move |app, _, event| {
+            if event.state() != ShortcutState::Pressed {
+                return;
+            }
+            let control = app.state::<OverlayControl>();
+            let visible = !control
+                .desired_visible
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner())
+                .contains(label);
+            if let Err(error) = set_overlay_visible_state(app, &control, label, visible) {
+                startup_log::record(format!(
+                    "could not emit visibility for overlay {label}: {error}"
+                ));
+            }
+        })
+        .map_err(|error| error.to_string())
+}
+
 /// Opens the inspector on every window of the application in debug builds.
 ///
 /// The overlay host suppresses its own context menu and is click-through in
@@ -1854,6 +1933,19 @@ fn register_devtools_shortcut(app: &AppHandle) {
 }
 
 fn shortcut_status(runtime: &ShortcutRuntime) -> ShortcutSettingsStatus {
+    let hide_overlays = OVERLAY_LABELS
+        .iter()
+        .map(|label| {
+            (
+                (*label).into(),
+                ShortcutBindingStatus {
+                    shortcut: runtime.settings.hide_overlays[*label].clone(),
+                    active: runtime.active_hide_overlays.contains_key(*label),
+                    error: runtime.hide_overlays_error.get(*label).cloned(),
+                },
+            )
+        })
+        .collect();
     ShortcutSettingsStatus {
         interaction_mode: ShortcutBindingStatus {
             shortcut: runtime.settings.interaction_mode.clone(),
@@ -1865,6 +1957,7 @@ fn shortcut_status(runtime: &ShortcutRuntime) -> ShortcutSettingsStatus {
             active: runtime.active_show_panel.is_some(),
             error: runtime.show_panel_error.clone(),
         },
+        hide_overlays,
     }
 }
 
@@ -1892,7 +1985,29 @@ fn is_valid_shortcut(shortcut: &str) -> bool {
 
 #[cfg(test)]
 mod shortcut_validation_tests {
-    use super::is_valid_shortcut;
+    use super::{default_overlay_shortcuts, is_valid_shortcut, overlay_label_for_shortcut_action};
+
+    #[test]
+    fn overlay_defaults_are_deterministic_and_cover_every_label() {
+        let defaults = default_overlay_shortcuts();
+        assert_eq!(defaults.len(), 17);
+        assert_eq!(defaults["delta"], "Ctrl+Alt+1");
+        assert_eq!(defaults["dashboard"], "Ctrl+Alt+Shift+8");
+    }
+
+    #[test]
+    fn overlay_shortcut_actions_accept_known_labels_only() {
+        assert_eq!(
+            overlay_label_for_shortcut_action("hide_delta"),
+            Some("delta")
+        );
+        assert_eq!(
+            overlay_label_for_shortcut_action("hide_dashboard"),
+            Some("dashboard")
+        );
+        assert_eq!(overlay_label_for_shortcut_action("hide_unknown"), None);
+        assert_eq!(overlay_label_for_shortcut_action("show_panel"), None);
+    }
 
     #[test]
     fn accepts_the_accelerators_the_panel_can_produce() {
@@ -1951,27 +2066,42 @@ fn set_shortcut(
         return Err("invalid".into());
     }
 
-    let (old_active, other_shortcut, old_settings) = {
+    let (old_active, old_settings) = {
         let runtime = control
             .0
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner());
-        match action.as_str() {
-            "interaction_mode" => (
-                runtime.active_interaction_mode.clone(),
-                runtime.settings.show_panel.clone(),
-                runtime.settings.clone(),
-            ),
-            "show_panel" => (
-                runtime.active_show_panel.clone(),
-                runtime.settings.interaction_mode.clone(),
-                runtime.settings.clone(),
-            ),
+        let old_active = match action.as_str() {
+            "interaction_mode" => runtime.active_interaction_mode.clone(),
+            "show_panel" => runtime.active_show_panel.clone(),
+            value if overlay_label_for_shortcut_action(value).is_some() => runtime
+                .active_hide_overlays
+                .get(overlay_label_for_shortcut_action(value).unwrap())
+                .cloned(),
             _ => return Err("unknown_action".into()),
-        }
+        };
+        (old_active, runtime.settings.clone())
     };
 
-    if shortcut.eq_ignore_ascii_case(&other_shortcut) {
+    let mut configured_shortcuts = vec![
+        (
+            "interaction_mode".to_string(),
+            old_settings.interaction_mode.as_str(),
+        ),
+        ("show_panel".to_string(), old_settings.show_panel.as_str()),
+    ];
+    configured_shortcuts.extend(OVERLAY_LABELS.iter().map(|label| {
+        (
+            format!("hide_{label}"),
+            old_settings.hide_overlays[*label].as_str(),
+        )
+    }));
+    let duplicate = configured_shortcuts
+        .into_iter()
+        .any(|(other_action, other)| {
+            other_action != action && shortcut.eq_ignore_ascii_case(other)
+        });
+    if duplicate {
         return Err("duplicate".into());
     }
     if old_active
@@ -1992,19 +2122,11 @@ fn set_shortcut(
         }
     }
 
-    let register = if action == "interaction_mode" {
-        register_interaction_shortcut(&app, &shortcut)
-    } else {
-        register_panel_shortcut(&app, &shortcut)
-    };
+    let register = register_shortcut_action(&app, &action, &shortcut);
 
     if let Err(error) = register {
         if let Some(old) = &old_active {
-            let restored = if action == "interaction_mode" {
-                register_interaction_shortcut(&app, old)
-            } else {
-                register_panel_shortcut(&app, old)
-            };
+            let restored = register_shortcut_action(&app, &action, old);
             if let Err(restore_error) = restored {
                 startup_log::record(format!(
                     "error: could not restore shortcut {old}: {restore_error}"
@@ -2018,17 +2140,18 @@ fn set_shortcut(
     let mut new_settings = old_settings;
     if action == "interaction_mode" {
         new_settings.interaction_mode = shortcut.clone();
-    } else {
+    } else if action == "show_panel" {
         new_settings.show_panel = shortcut.clone();
+    } else {
+        new_settings.hide_overlays.insert(
+            overlay_label_for_shortcut_action(&action).unwrap().into(),
+            shortcut.clone(),
+        );
     }
     if let Err(error) = save_shortcut_settings(&app, &new_settings) {
         let _ = app.global_shortcut().unregister(shortcut.as_str());
         if let Some(old) = &old_active {
-            let _ = if action == "interaction_mode" {
-                register_interaction_shortcut(&app, old)
-            } else {
-                register_panel_shortcut(&app, old)
-            };
+            let _ = register_shortcut_action(&app, &action, old);
         }
         startup_log::record(format!("could not save shortcut settings: {error}"));
         return Err("persistence_failed".into());
@@ -2039,15 +2162,37 @@ fn set_shortcut(
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner());
     runtime.settings = new_settings;
-    if action == "interaction_mode" {
-        runtime.active_interaction_mode = Some(shortcut.clone());
-        runtime.interaction_mode_error = None;
-    } else {
-        runtime.active_show_panel = Some(shortcut.clone());
-        runtime.show_panel_error = None;
+    match action.as_str() {
+        "interaction_mode" => {
+            runtime.active_interaction_mode = Some(shortcut.clone());
+            runtime.interaction_mode_error = None;
+        }
+        "show_panel" => {
+            runtime.active_show_panel = Some(shortcut.clone());
+            runtime.show_panel_error = None;
+        }
+        _ => {
+            let label = overlay_label_for_shortcut_action(&action).unwrap();
+            runtime
+                .active_hide_overlays
+                .insert(label.into(), shortcut.clone());
+            runtime.hide_overlays_error.remove(label);
+        }
     }
     startup_log::record(format!("shortcut {action} changed to {shortcut}"));
     Ok(shortcut_status(&runtime))
+}
+
+fn register_shortcut_action(app: &AppHandle, action: &str, shortcut: &str) -> Result<(), String> {
+    match action {
+        "interaction_mode" => register_interaction_shortcut(app, shortcut),
+        "show_panel" => register_panel_shortcut(app, shortcut),
+        value => {
+            let label = overlay_label_for_shortcut_action(value)
+                .ok_or_else(|| "unknown_action".to_string())?;
+            register_overlay_shortcut(app, label, shortcut)
+        }
+    }
 }
 
 pub fn run() {
@@ -2184,6 +2329,19 @@ pub fn run() {
                     })
                     .map_or(Err(original_error), |_| Ok(())),
             };
+            let overlay_results: Vec<(&'static str, Result<(), String>)> = OVERLAY_LABELS
+                .iter()
+                .map(|label| {
+                    (
+                        *label,
+                        register_overlay_shortcut(
+                            app.handle(),
+                            label,
+                            settings.hide_overlays[*label].as_str(),
+                        ),
+                    )
+                })
+                .collect();
             let shortcut_control = app.state::<ShortcutControl>();
             let mut runtime = shortcut_control
                 .0
@@ -2220,6 +2378,28 @@ pub fn run() {
                         "warning: {} unavailable; continuing without it: {error}",
                         settings.show_panel
                     ));
+                }
+            }
+            for (label, result) in overlay_results {
+                match result {
+                    Ok(()) => {
+                        runtime
+                            .active_hide_overlays
+                            .insert(label.into(), settings.hide_overlays[label].clone());
+                        startup_log::record(format!(
+                            "shortcut {} registered for hiding overlay {label}",
+                            settings.hide_overlays[label]
+                        ));
+                    }
+                    Err(error) => {
+                        runtime
+                            .hide_overlays_error
+                            .insert(label.into(), error.clone());
+                        startup_log::record(format!(
+                            "warning: {} unavailable; continuing without it: {error}",
+                            settings.hide_overlays[label]
+                        ));
+                    }
                 }
             }
             drop(runtime);
