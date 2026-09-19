@@ -925,11 +925,20 @@ struct TelemetryDemand {
 
 impl TelemetryFrame {
     pub(crate) fn should_hide_overlays(&self, app_has_focus: bool) -> bool {
+        // LMU can keep the last active-car sample briefly while returning to
+        // its menu. Treat both the missing-car signal and the menu phase as
+        // menu state, even if the realtime flag has not caught up yet.
+        let in_menu = !self.player_active || self.game_phase == 0;
+        // Phases 8 and 9 are both post-session states (the latter is the
+        // stopped/reset state). Session-end hiding must also win in observer
+        // modes, just like garage hiding does.
+        let session_ended = self.game_phase >= 8;
+
         !self.connected
-            || !self.player_active
+            || in_menu
             || self.player_in_garage
+            || session_ended
             || (!self.spectator_mode && !self.game_in_realtime)
-            || self.game_phase == 9
             || (!self.game_in_foreground && !app_has_focus)
     }
 
@@ -1431,10 +1440,28 @@ mod tests {
         frame.player_active = true;
         frame.game_in_foreground = true;
         frame.game_in_realtime = true;
+        frame.game_phase = 5;
         assert!(!frame.should_hide_overlays(false));
 
-        frame.game_phase = 9;
+        for phase in [0, 8, 9] {
+            frame.game_phase = phase;
+            assert!(frame.should_hide_overlays(true));
+            frame.spectator_mode = true;
+            assert!(frame.should_hide_overlays(true));
+            frame.spectator_mode = false;
+        }
+        frame.game_phase = 5;
+
+        frame.spectator_mode = true;
+        frame.game_in_realtime = false;
+        assert!(!frame.should_hide_overlays(false));
+        frame.spectator_mode = false;
+        frame.game_in_realtime = true;
+
+        frame.player_active = false;
+        frame.game_phase = 5;
         assert!(frame.should_hide_overlays(false));
+        frame.player_active = true;
         frame.game_phase = 5;
 
         frame.game_in_realtime = false;
