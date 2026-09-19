@@ -121,6 +121,10 @@ fields may be enabled, including all of them. The strip grows with its content.
   rather than the clean average. With energy active, the smaller fuel/energy range
   wins; both references must exist. Unknown is `--`, while an empty resource with
   a valid consumption reference is `0.0`. This model runs even with Fuel disabled.
+- Lap shows the current lap over Rust's shared `session_total_laps_estimated`, with
+  a `~` prefix because the total is a projection for timed sessions and practice.
+  The raw `session_max_laps` is used only as a fallback when no estimate exists;
+  LMU's large sentinel for an open-ended timed session is never displayed.
 - Delta and lap times come from `delta_model` and `timing_model`. Both are built
   on demand, so the source loop treats an active Dashboard as a request for them
   exactly like the Delta and Timing overlays.

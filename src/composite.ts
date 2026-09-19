@@ -138,7 +138,7 @@ const telemetryFields: Record<OverlayId, readonly (keyof TelemetryFrame)[]> = {
     "player_vehicle_class", "player_vehicle_livery_name", "session_type", "game_phase",
     "session_max_laps", "session_max_time_seconds", "player_active", "gear", "speed_kph", "rpm", "max_rpm",
     "player_position", "player_class_position",
-    "lap_number", "session_max_laps", "session_time_remaining",
+    "lap_number", "session_max_laps", "session_total_laps_estimated", "session_time_remaining",
     "delta_model", "timing_model",
     "fuel_liters", "resource_autonomy",
     "virtual_energy_active", "virtual_energy_percent",

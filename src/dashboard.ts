@@ -1,6 +1,6 @@
 import "./dashboard.css";
 import batteryIconUrl from "./assets/lmu-icons/battery-empty-svgrepo-com.svg";
-import { t } from "./i18n";
+import { formatNumber, t } from "./i18n";
 import type { TelemetryFrame } from "./telemetry-types";
 import { fitOverlayToContentBox } from "./overlay-fit";
 import { bindOverlayInteractionMode } from "./overlay-interaction";
@@ -195,10 +195,14 @@ const renderValues = (frame: TelemetryFrame): void => {
       ? `P${frame.player_class_position}`
       : frame.player_position > 0 ? `P${frame.player_position}` : UNKNOWN
   );
+  const estimatedTotal = Number.isFinite(frame.session_total_laps_estimated)
+    && frame.session_total_laps_estimated > 0
+    ? `~${formatNumber(frame.session_total_laps_estimated, 2)}`
+    : frame.session_max_laps > 0 && frame.session_max_laps < 10_000
+      ? String(frame.session_max_laps)
+      : UNKNOWN;
   setText(value("lap"), frame.lap_number > 0
-    ? frame.session_max_laps > 0
-      ? `${frame.lap_number}/${frame.session_max_laps}`
-      : String(frame.lap_number)
+    ? estimatedTotal === UNKNOWN ? String(frame.lap_number) : `${frame.lap_number}/${estimatedTotal}`
     : UNKNOWN);
   setText(value("session"), clock(frame.session_time_remaining));
 
@@ -335,6 +339,7 @@ const previewFrame = {
   player_class_size: 20,
   lap_number: 37,
   session_max_laps: 0,
+  session_total_laps_estimated: 40.25,
   session_time_remaining: 3 * 3600 + 42 * 60 + 15,
   fuel_liters: 46.3,
   estimated_fuel_laps: 17.5,
