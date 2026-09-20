@@ -573,9 +573,7 @@ fn serve_request(stream: &mut TcpStream, request_path: &str, app: &AppHandle) {
             })
             .unwrap_or_else(|| serde_json::json!({}));
         let json = serde_json::to_string(&settings).unwrap_or_else(|_| "{}".into());
-        let script = format!(
-            "(()=>{{const p={json},q=new URLSearchParams(location.search).get('lang'),valid=l=>typeof l==='string'&&Array.isArray(p.supportedLocales)&&p.supportedLocales.includes(l);if(valid(q))document.documentElement.dataset.localeOverride=q;else if(valid(p.locale))localStorage.setItem('blackrack-overlay.locale.v1',p.locale);if(p.standings)localStorage.setItem('blackrack-overlay.standings.v1',JSON.stringify(p.standings));if(p.relative)localStorage.setItem('blackrack-overlay.relative.v1',JSON.stringify(p.relative));if(p.driving)localStorage.setItem('blackrack-overlay.driving.v1',JSON.stringify(p.driving));if(p.delta)localStorage.setItem('blackrack-overlay.delta.v1',JSON.stringify(p.delta));if(p.timing)localStorage.setItem('blackrack-overlay.timing.v1',JSON.stringify(p.timing));if(p.trackMap)localStorage.setItem('blackrack-overlay.track-map-settings.v1',JSON.stringify(p.trackMap));if(p.transparency)localStorage.setItem('blackrack-overlay.background-transparency.v1',JSON.stringify(p.transparency));if(p.fontSize)localStorage.setItem('blackrack-overlay.font-size.v1',JSON.stringify(p.fontSize));if(p.fuel)localStorage.setItem('blackrack-overlay.fuel-strategy.v1',JSON.stringify(p.fuel));if(p.tires)localStorage.setItem('blackrack-overlay.tires.v1',JSON.stringify(p.tires));if(p.conditions)localStorage.setItem('blackrack-overlay.conditions.v1',JSON.stringify(p.conditions));if(p.dashboard)localStorage.setItem('blackrack-overlay.dashboard.v1',JSON.stringify(p.dashboard));if(p.liftCoast)localStorage.setItem('blackrack-overlay.liftcoast.v1',JSON.stringify(p.liftCoast));document.documentElement.dataset.browserSource='true';}})();"
-        );
+        let script = browser_source_settings_script(&json);
         write_response(
             stream,
             200,
@@ -609,6 +607,12 @@ fn serve_request(stream: &mut TcpStream, request_path: &str, app: &AppHandle) {
             .into_bytes();
     }
     write_response(stream, 200, &mime, &contents);
+}
+
+fn browser_source_settings_script(json: &str) -> String {
+    format!(
+        "(()=>{{const p={json},q=new URLSearchParams(location.search).get('lang'),valid=l=>typeof l==='string'&&Array.isArray(p.supportedLocales)&&p.supportedLocales.includes(l);if(valid(q))document.documentElement.dataset.localeOverride=q;else if(valid(p.locale))localStorage.setItem('blackrack-overlay.locale.v1',p.locale);if(p.standings)localStorage.setItem('blackrack-overlay.standings.v1',JSON.stringify(p.standings));if(p.relative)localStorage.setItem('blackrack-overlay.relative.v3',JSON.stringify(p.relative));if(p.driving)localStorage.setItem('blackrack-overlay.driving.v1',JSON.stringify(p.driving));if(p.delta)localStorage.setItem('blackrack-overlay.delta.v1',JSON.stringify(p.delta));if(p.timing)localStorage.setItem('blackrack-overlay.timing.v1',JSON.stringify(p.timing));if(p.trackMap)localStorage.setItem('blackrack-overlay.track-map-settings.v1',JSON.stringify(p.trackMap));if(p.transparency)localStorage.setItem('blackrack-overlay.background-transparency.v1',JSON.stringify(p.transparency));if(p.fontSize)localStorage.setItem('blackrack-overlay.font-size.v1',JSON.stringify(p.fontSize));if(p.fuel)localStorage.setItem('blackrack-overlay.fuel-strategy.v1',JSON.stringify(p.fuel));if(p.tires)localStorage.setItem('blackrack-overlay.tires.v1',JSON.stringify(p.tires));if(p.conditions)localStorage.setItem('blackrack-overlay.conditions.v1',JSON.stringify(p.conditions));if(p.dashboard)localStorage.setItem('blackrack-overlay.dashboard.v1',JSON.stringify(p.dashboard));if(p.liftCoast)localStorage.setItem('blackrack-overlay.liftcoast.v1',JSON.stringify(p.liftCoast));document.documentElement.dataset.browserSource='true';}})();"
+    )
 }
 
 fn write_response(stream: &mut TcpStream, status: u16, mime: &str, body: &[u8]) {
@@ -657,8 +661,8 @@ fn browser_overlay_entry(request_path: &str) -> Option<&'static str> {
 #[cfg(test)]
 mod tests {
     use super::{
-        browser_overlay_entry, event_overlay_demand, host_allowed, is_safe_asset_path,
-        origin_allowed, BROWSER_OVERLAYS,
+        browser_overlay_entry, browser_source_settings_script, event_overlay_demand, host_allowed,
+        is_safe_asset_path, origin_allowed, BROWSER_OVERLAYS,
     };
 
     #[test]
@@ -702,6 +706,14 @@ mod tests {
     #[test]
     fn unknown_routes_are_not_treated_as_overlays() {
         assert_eq!(browser_overlay_entry("/unknown"), None);
+    }
+
+    #[test]
+    fn browser_source_relative_settings_use_v3_key() {
+        let script = browser_source_settings_script("{}");
+
+        assert!(script.contains("blackrack-overlay.relative.v3"));
+        assert!(!script.contains("blackrack-overlay.relative.v1"));
     }
 
     #[test]
