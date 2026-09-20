@@ -1437,7 +1437,8 @@ select {
   letter-spacing: 0.07em;
 }
 
-.standings-name-format-setting select {
+.standings-name-format-setting select,
+.standings-name-format-setting input {
   width: 132px;
   padding: 6px 7px;
   border: 1px solid rgb(255 255 255 / 12%);
@@ -1449,7 +1450,8 @@ select {
   outline: none;
 }
 
-.standings-name-format-setting select:focus {
+.standings-name-format-setting select:focus,
+.standings-name-format-setting input:focus {
   border-color: rgb(216 255 62 / 55%);
 }
 
@@ -2757,7 +2759,8 @@ select {
     grid-column: 1 / -1;
   }
 
-  .standings-name-format-setting select {
+  .standings-name-format-setting select,
+  .standings-name-format-setting input {
     width: 100%;
   }
 
