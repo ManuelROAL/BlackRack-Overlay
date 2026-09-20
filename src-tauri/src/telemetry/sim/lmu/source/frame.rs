@@ -140,6 +140,10 @@ impl TelemetrySource for LmuTelemetrySource {
             standings_build_started.map(|started| started.elapsed().as_micros());
 
         if snapshot.player_active == 0 {
+            // Keep the connected snapshot/cache for spectator and team-focus
+            // resolution, but do not publish its roster while LMU has no car
+            // selected. The roster can still belong to the previous focus
+            // during this transition and must not be treated as active data.
             self.last_lap = -1;
             self.fuel_at_lap_start = None;
             self.fuel_previous_sample = None;
@@ -151,9 +155,7 @@ impl TelemetrySource for LmuTelemetrySource {
             self.tire_wear_tracker.reset();
             self.player_lap_distance.reset();
             self.player_lap_times.reset();
-            let mut frame = TelemetryFrame::waiting_for_simulator(true);
-            frame.standings = standings;
-            return frame;
+            return TelemetryFrame::waiting_for_simulator(true);
         }
 
         let warnings_started = Instant::now();

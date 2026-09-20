@@ -6,7 +6,7 @@ use super::{
 };
 use crate::telemetry::sim::lmu::event_split::DriverRankSettings;
 use crate::telemetry::sim::lmu::rest::{RestCompoundCondition, RestStanding};
-use crate::telemetry::StandingEntry;
+use crate::telemetry::{StandingEntry, TelemetryFrame};
 use std::collections::{HashMap, HashSet};
 
 fn lap_distance_sample(
@@ -34,6 +34,15 @@ fn fuel_energy_ratio_requires_both_valid_consumptions() {
     assert!((fuel_energy_ratio(12.0, 8.0) - 1.5).abs() < 1e-9);
     assert_eq!(fuel_energy_ratio(12.0, 0.0), 0.0);
     assert_eq!(fuel_energy_ratio(f64::NAN, 8.0), 0.0);
+}
+
+#[test]
+fn waiting_frame_does_not_expose_standings() {
+    let frame = TelemetryFrame::waiting_for_simulator(true);
+
+    assert!(frame.connected);
+    assert!(!frame.player_active);
+    assert!(frame.standings.is_empty());
 }
 
 #[test]
