@@ -114,14 +114,11 @@ interface LivePenalties {
 }
 
 interface LiveStanding {
-  slotID?: number;
   penalties?: LivePenalties;
   carNumber?: string | number;
-  vehicleNumber?: string | number;
 }
 
-const livePenalties = new Map<number, LivePenalties>();
-const liveCarNumbers = new Map<number, string>();
+const livePenalties = new Map<string, LivePenalties>();
 
 const connectLiveStandings = (): void => {
   const socket = new WebSocket("ws://localhost:6398/websocket/ui");
@@ -134,16 +131,11 @@ const connectLiveStandings = (): void => {
       const message = JSON.parse(data) as { topic?: string; body?: LiveStanding[] };
       if (message.topic !== "LiveStandings" || !Array.isArray(message.body)) return;
       livePenalties.clear();
-      liveCarNumbers.clear();
       for (const standing of message.body) {
-        if (!Number.isInteger(standing.slotID)) continue;
-        const slotID = standing.slotID as number;
+        const carNumber = standing.carNumber === undefined ? "" : String(standing.carNumber).trim();
+        if (!carNumber) continue;
         if (standing.penalties) {
-          livePenalties.set(slotID, standing.penalties);
-        }
-        const sessionNumber = standing.vehicleNumber ?? standing.carNumber;
-        if (sessionNumber !== undefined && String(sessionNumber).trim()) {
-          liveCarNumbers.set(slotID, String(sessionNumber).trim());
+          livePenalties.set(carNumber, standing.penalties);
         }
       }
     } catch {
@@ -434,7 +426,7 @@ const signals = (entry: StandingEntry): HTMLElement => {
   if (entry.in_garage) container.append(node("span", "race-flag garage-flag", "GAR"));
   else if (entry.in_pits) container.append(node("span", "race-flag pit-flag", "PIT"));
   if (entry.causing_yellow) container.append(node("span", "race-flag yellow-flag", "Y"));
-  const penalties = livePenalties.get(entry.vehicle_id);
+  const penalties = livePenalties.get(entry.car_number);
   if ((penalties?.DT ?? 0) > 0) container.append(node("span", "race-flag penalty-flag", "DT"));
   if ((penalties?.SG ?? 0) > 0) container.append(node("span", "race-flag penalty-flag", "SG"));
   if (!penalties && entry.penalty_count > 0) {
@@ -498,7 +490,7 @@ const appendDriverPitStatus = (cell: HTMLElement, entry: StandingEntry): void =>
 const cellSignature = (entry: StandingEntry, column: StandingsColumnId, trackLimit: number): string => {
   switch (column) {
     case "position": return `${entry.position}|${raceSession ? entry.position_change : ""}`;
-    case "number": return liveCarNumbers.get(entry.vehicle_id) || entry.car_number || "--";
+    case "number": return entry.car_number || "--";
     case "badge": return entry.driver_badge;
     case "pitTime":
     case "pitLap":
@@ -521,7 +513,7 @@ const cellSignature = (entry: StandingEntry, column: StandingsColumnId, trackLim
     case "trackLimits": return entry.track_limits_steps === null ? "--" : `${entry.track_limits_steps}|${trackLimit}`;
     case "tire": return entry.tire_compounds.join("/");
     case "signals": {
-      const penalties = livePenalties.get(entry.vehicle_id);
+      const penalties = livePenalties.get(entry.car_number);
       return `${raceSession ? entry.finish_status : 0}|${entry.in_garage}|${entry.in_pits}|${entry.causing_yellow}|${entry.penalty_count}|${entry.flag}|${penalties?.DT ?? 0}|${penalties?.SG ?? 0}`;
     }
   }
@@ -537,7 +529,7 @@ const createCell = (entry: StandingEntry, column: StandingsColumnId, trackLimit:
       if (raceSession) cell.append(positionChange(entry.position_change));
       return cell;
     }
-    case "number": return node("span", "car-number", liveCarNumbers.get(entry.vehicle_id) || entry.car_number || "--");
+    case "number": return node("span", "car-number", entry.car_number || "--");
     case "badge": return driverBadge(entry.driver_badge);
     case "driver": {
       const cell = node("div", "standing-driver");
@@ -831,6 +823,13 @@ const syncChildren = (parent: HTMLElement, desired: HTMLElement[]): void => {
   while (parent.children.length > desired.length) parent.lastElementChild?.remove();
 };
 
+const resetRenderCaches = (): void => {
+  rowCache.clear();
+  classSections.clear();
+  classHeaders.clear();
+  cachedSessionHeader = null;
+};
+
 const cachedSessionHeaderFor = (frame: TelemetryFrame): HTMLElement => {
   const signature = JSON.stringify([
     settings.header,
@@ -893,6 +892,14 @@ const applySessionPhase = (sessionType: number): void => {
 const render = (frame: TelemetryFrame): void => {
   const list = document.getElementById("standings-list");
   if (!list) return;
+
+  const playerAvailable = frame.connected && frame.player_active && !frame.player_in_garage;
+  if (!playerAvailable) {
+    lastFrame = null;
+    resetRenderCaches();
+    list.replaceChildren(node("p", "empty-state", t("standings.waiting")));
+    return;
+  }
 
   if (frame.standings.length === 0) {
     // LMU puede publicar un frame intermedio sin standings al actualizar la
@@ -968,6 +975,7 @@ const settingsListener = listenRuntimeEvent<StandingsSettings>("standings://sett
   settings = payload;
   applyColumnLayout();
   updateOverlayFit({ width: standingsBaseWidth(), height: fittedOverlayHeight });
+  resetRenderCaches();
   if (lastFrame) render(lastFrame);
 });
 
