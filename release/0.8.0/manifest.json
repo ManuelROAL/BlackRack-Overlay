@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
   "version": "0.8.0",
-  "packageUrl": "https://github.com/ManuelROAL/BlackRack-Overlay/releases/download/v0.8.0/BlackRack%20Overlay_0.8.0_x64-setup.exe",
+  "packageUrl": "https://github.com/ManuelROAL/BlackRack-Overlay/releases/download/v0.8.0/BlackRack.Overlay_0.8.0_x64-setup.exe",
   "sha256": "8781abc7ad354a797150170db0a273e89fbfd0b8a847b3f4bee07f6d8fb3a203",
-  "fileName": "BlackRack Overlay_0.8.0_x64-setup.exe",
+  "fileName": "BlackRack.Overlay_0.8.0_x64-setup.exe",
   "releasePageUrl": "https://github.com/ManuelROAL/BlackRack-Overlay/releases/tag/v0.8.0",
   "updateTitle": "BlackRack Overlay 0.8.0",
   "fullTitle": "BlackRack Overlay 0.8.0",
