@@ -14,5 +14,31 @@
     "Standings y Relative mantienen sanciones y dorsales asociados al vehículo correcto.",
     "Los overlays se ocultan correctamente al volver LMU al menú o terminar una sesión.",
     "Cierre más limpio del ciclo de telemetría y de los hosts de overlays."
-  ]
+  ],
+  "localized": {
+    "es": {
+      "updateTitle": "BlackRack Overlay 0.8.0",
+      "fullTitle": "BlackRack Overlay 0.8.0",
+      "changelog": [
+        "Atajos globales configurables para mostrar u ocultar cada overlay.",
+        "Dashboard muestra una estimación de vueltas en sesiones cronometradas y prácticas.",
+        "Standings y Relative limpian los datos cuando LMU no tiene un vehículo seleccionado.",
+        "Standings y Relative mantienen sanciones y dorsales asociados al vehículo correcto.",
+        "Los overlays se ocultan correctamente al volver LMU al menú o terminar una sesión.",
+        "Cierre más limpio del ciclo de telemetría y de los hosts de overlays."
+      ]
+    },
+    "en": {
+      "updateTitle": "BlackRack Overlay 0.8.0",
+      "fullTitle": "BlackRack Overlay 0.8.0",
+      "changelog": [
+        "Configurable global shortcuts to show or hide each overlay.",
+        "Dashboard estimates lap count for timed sessions and practice.",
+        "Standings and Relative clear data when LMU has no selected vehicle.",
+        "Standings and Relative keep penalties and car numbers associated with the correct vehicle.",
+        "Overlays hide correctly when returning LMU to the menu or ending a session.",
+        "Telemetry cycle and overlay hosts shut down more cleanly."
+      ]
+    }
+  }
 }

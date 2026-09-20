@@ -25,9 +25,26 @@ el esquema siguiente y publicar el instalador con el mismo hash:
   "releasePageUrl": "https://github.com/ManuelROAL/BlackRack-Overlay/releases/tag/v0.7.9",
   "updateTitle": "BlackRack Overlay 0.7.9",
   "fullTitle": "BlackRack Overlay 0.7.9",
-  "changelog": ["Cambio visible para jugadores"]
+  "changelog": ["Cambio visible para jugadores"],
+  "localized": {
+    "es": {
+      "updateTitle": "BlackRack Overlay 0.7.9",
+      "fullTitle": "BlackRack Overlay 0.7.9",
+      "changelog": ["Cambio visible para jugadores"]
+    },
+    "en": {
+      "updateTitle": "BlackRack Overlay 0.7.9",
+      "fullTitle": "BlackRack Overlay 0.7.9",
+      "changelog": ["Visible change for players"]
+    }
+  }
 }
 ```
+
+`localized` es opcional y permite que el panel presente los títulos y las notas
+en el idioma seleccionado. Los campos legacy (`updateTitle`, `fullTitle` y
+`changelog`) deben conservarse como fallback para las versiones instaladas que
+todavía no conocen las traducciones localizadas.
 
 El primer instalador que contenga esta funcionalidad debe publicarse antes de
 que se anuncie una versión posterior en el manifiesto. El instalador sigue sin
