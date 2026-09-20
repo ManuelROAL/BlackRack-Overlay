@@ -72,8 +72,7 @@ impl TelemetrySource for LmuTelemetrySource {
             self.tire_wear_tracker.reset();
             self.rejoin_hold_frames = 0;
             self.last_standings_state_update = None;
-            self.last_valid_standings.clear();
-            self.last_valid_standings_at = None;
+            self.clear_standings_cache();
             self.last_valid_snapshot = None;
             self.last_valid_snapshot_at = None;
             self.player_lap_distance.reset();
@@ -155,6 +154,9 @@ impl TelemetrySource for LmuTelemetrySource {
             self.tire_wear_tracker.reset();
             self.player_lap_distance.reset();
             self.player_lap_times.reset();
+            // Do not let the next selected vehicle inherit a roster that was
+            // built for the previous focus during this inactive transition.
+            self.clear_standings_cache();
             return TelemetryFrame::waiting_for_simulator(true);
         }
 

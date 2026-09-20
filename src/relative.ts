@@ -111,6 +111,7 @@ interface LivePenalties {
 interface LiveStanding {
   penalties?: LivePenalties;
   carNumber?: string | number;
+  vehicleNumber?: string | number;
 }
 
 const livePenalties = new Map<string, LivePenalties>();
@@ -127,10 +128,13 @@ const connectLiveStandings = (): void => {
       if (message.topic !== "LiveStandings" || !Array.isArray(message.body)) return;
       livePenalties.clear();
       for (const standing of message.body) {
-        const carNumber = standing.carNumber === undefined ? "" : String(standing.carNumber).trim();
-        if (!carNumber) continue;
+        const carNumbers = [standing.vehicleNumber, standing.carNumber]
+          .filter((value): value is string | number => value !== undefined)
+          .map((value) => String(value).trim())
+          .filter(Boolean);
+        if (carNumbers.length === 0) continue;
         if (standing.penalties) {
-          livePenalties.set(carNumber, standing.penalties);
+          for (const carNumber of carNumbers) livePenalties.set(carNumber, standing.penalties);
         }
       }
     } catch {
@@ -752,7 +756,10 @@ const render = (frame: TelemetryFrame): void => {
   const list = document.getElementById("relative-list");
   if (!list) return;
 
-  const playerAvailable = frame.connected && frame.player_active && !frame.player_in_garage;
+  // A car in its garage is still the selected car. Only a missing selected
+  // vehicle invalidates the roster; garage visibility is handled by the
+  // backend overlay lifecycle.
+  const playerAvailable = frame.connected && frame.player_active;
   if (!playerAvailable) {
     lastFrame = null;
     resetRenderCaches();

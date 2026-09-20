@@ -66,7 +66,9 @@ restore per-overlay native listeners or direct cross-realm object events.
   the fresh `focus`/`hasFocus` identity from local REST standings and match its
   normalized driver name to shared-memory scoring before selecting the telemetry
   vehicle. Never equate REST `slotID` with shared-memory `mID` without that
-  identity match.
+  identity match. While no vehicle is selected, keep the last shared-memory
+  snapshot only as an internal lookup aid and publish an empty waiting frame;
+  Standings and Relative must not present the previous car as current data.
 - Team mode is separate from spectator mode. Validate the local REST `teamInfo`
   roster against `sessionInfo.playerName`, then match its drivers, team or vehicle
   identity to shared-memory scoring. This keeps the registered team car selected

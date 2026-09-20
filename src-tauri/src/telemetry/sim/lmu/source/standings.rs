@@ -549,6 +549,11 @@ impl LmuTelemetrySource {
         entries
     }
 
+    pub(super) fn clear_standings_cache(&mut self) {
+        self.last_valid_standings.clear();
+        self.last_valid_standings_at = None;
+    }
+
     pub(super) fn stable_standings(&mut self, standings: Vec<StandingEntry>) -> Vec<StandingEntry> {
         const TRANSIENT_EMPTY_HOLD: Duration = Duration::from_secs(2);
 
@@ -564,8 +569,7 @@ impl LmuTelemetrySource {
             return self.last_valid_standings.clone();
         }
 
-        self.last_valid_standings.clear();
-        self.last_valid_standings_at = None;
+        self.clear_standings_cache();
         standings
     }
 
