@@ -11,12 +11,12 @@ SimHub package.
 ## Resource fields
 
 - Title: `BlackRack Overlay`
-- Version: `0.8.1`
+- Version: `0.8.2`
 - Category: `Le Mans Ultimate`
 - Tag line: `Lightweight, configurable LMU telemetry overlays — no SimHub required.`
 - Tags: `le mans ultimate`, `lmu`, `overlay`, `standings`, `relative`,
   `delta bar`, `fuel calculator`, `virtual energy`, `track map`, `obs`
-- Download: `release/0.8.1/BlackRack Overlay_0.8.1_x64-setup.exe`
+- Download: `release/0.8.2/BlackRack Overlay_0.8.2_x64-setup.exe`
 - Support URL: `https://ko-fi.com/blackrack`
 
 ## Overview copy
@@ -70,7 +70,7 @@ optional service is unavailable, the overlays keep running.
 
 ### Installation
 
-1. Download and run `BlackRack Overlay_0.8.0_x64-setup.exe`.
+1. Download and run `BlackRack Overlay_0.8.2_x64-setup.exe`.
 2. Start Le Mans Ultimate in windowed or borderless-windowed mode.
 3. Open BlackRack Overlay and enable the panels you want to use.
 
@@ -176,6 +176,13 @@ https://ko-fi.com/blackrack.
   not reserve global key combinations until the user assigns them.
 - Delete or Backspace clears an assigned overlay shortcut.
 
+### 0.8.2 — Browser-source settings and control-panel layout
+
+- Fixed the Relative browser-source settings key and aligned all browser-source
+  settings mappings.
+- Improved expanded overlay settings layout, shortcut alignment and fuel-margin
+  number-input styling.
+
 ## Decisions required before submission
 
 Choose and insert the resource's usage terms. Do not inherit the doX listing's
@@ -195,7 +202,7 @@ Prepare at least one real in-game hero image before publishing. Recommended set:
 
 ## Final checklist
 
-- [x] Version synchronized at `0.8.1` in npm, Cargo and Tauri.
+- [x] Version synchronized at `0.8.2` in npm, Cargo and Tauri.
 - [x] Frontend production build and localization checks pass.
 - [x] Rust library tests pass with the official LMU SDK detected.
 - [x] Production NSIS installer generated under the BlackRack name.

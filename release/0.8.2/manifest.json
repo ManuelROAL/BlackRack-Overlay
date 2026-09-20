@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "version": "0.8.2",
+  "packageUrl": "https://github.com/ManuelROAL/BlackRack-Overlay/releases/download/v0.8.2/BlackRack.Overlay_0.8.2_x64-setup.exe",
+  "sha256": "61618344eedc4ba00723aa8422875124bf9d5111d08d3739c3d7115332a1984d",
+  "fileName": "BlackRack.Overlay_0.8.2_x64-setup.exe",
+  "releasePageUrl": "https://github.com/ManuelROAL/BlackRack-Overlay/releases/tag/v0.8.2",
+  "updateTitle": "BlackRack Overlay 0.8.2",
+  "fullTitle": "BlackRack Overlay 0.8.2",
+  "changelog": [
+    "Las fuentes de navegador usan la clave correcta de ajustes de Relative.",
+    "Añadida cobertura de regresión para las correspondencias de ajustes de fuentes de navegador.",
+    "Mejorada la distribución y alineación de los ajustes expandidos de overlays.",
+    "Unificado el estilo de los campos numéricos del margen de combustible."
+  ],
+  "localized": {
+    "es": {
+      "updateTitle": "BlackRack Overlay 0.8.2",
+      "fullTitle": "BlackRack Overlay 0.8.2",
+      "changelog": [
+        "Las fuentes de navegador usan la clave correcta de ajustes de Relative.",
+        "Añadida cobertura de regresión para las correspondencias de ajustes de fuentes de navegador.",
+        "Mejorada la distribución y alineación de los ajustes expandidos de overlays.",
+        "Unificado el estilo de los campos numéricos del margen de combustible."
+      ]
+    },
+    "en": {
+      "updateTitle": "BlackRack Overlay 0.8.2",
+      "fullTitle": "BlackRack Overlay 0.8.2",
+      "changelog": [
+        "Browser sources use the correct Relative settings key.",
+        "Browser-source settings mappings now have regression coverage.",
+        "Expanded overlay settings layout and shortcut alignment are improved.",
+        "Fuel-margin number inputs now use consistent styling."
+      ]
+    }
+  }
+}
