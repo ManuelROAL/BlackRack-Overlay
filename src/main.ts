@@ -289,6 +289,11 @@ interface UpdateInfo {
   updateTitle: string | null;
   fullTitle: string | null;
   changelog: string[];
+  localized: Record<string, {
+    updateTitle: string | null;
+    fullTitle: string | null;
+    changelog: string[];
+  }>;
 }
 
 interface UpdateCheckResponse {
@@ -568,6 +573,24 @@ const updateVersion = document.getElementById("update-version");
 const updateChangelog = document.getElementById("update-changelog");
 let updateRequestInFlight = false;
 
+const localizedUpdateInfo = (info: UpdateInfo, locale: string): UpdateInfo["localized"][string] | null => {
+  const candidates = [locale, locale.split(/[-_]/, 1)[0], "en"];
+  for (const candidate of candidates) {
+    const localized = info.localized[candidate];
+    if (localized) return localized;
+  }
+  return null;
+};
+
+const selectUpdateInfo = (info: UpdateInfo): Pick<UpdateInfo, "updateTitle" | "fullTitle" | "changelog"> => {
+  const localized = localizedUpdateInfo(info, getLocale());
+  return localized ?? {
+    updateTitle: info.updateTitle,
+    fullTitle: info.fullTitle,
+    changelog: info.changelog
+  };
+};
+
 const renderUpdateInfo = (info: UpdateInfo | null): void => {
   if (!updateDetails || !updateVersion || !updateChangelog || !installUpdateButton) return;
   updateChangelog.replaceChildren();
@@ -576,8 +599,9 @@ const renderUpdateInfo = (info: UpdateInfo | null): void => {
     installUpdateButton.hidden = true;
     return;
   }
-  updateVersion.textContent = info.fullTitle || info.updateTitle || t("update.available", { version: info.version });
-  for (const entry of info.changelog) {
+  const selected = selectUpdateInfo(info);
+  updateVersion.textContent = selected.fullTitle || selected.updateTitle || t("update.available", { version: info.version });
+  for (const entry of selected.changelog) {
     const item = document.createElement("li");
     item.textContent = entry;
     updateChangelog.append(item);
@@ -599,12 +623,28 @@ const readStoredUpdate = (): UpdateInfo | null => {
     const record = value as Record<string, unknown>;
     if (typeof record.version !== "string" || !Array.isArray(record.changelog)
       || !record.changelog.every((entry) => typeof entry === "string")) return null;
+    const localized: UpdateInfo["localized"] = {};
+    if (record.localized !== undefined) {
+      if (typeof record.localized !== "object" || record.localized === null) return null;
+      for (const [locale, value] of Object.entries(record.localized)) {
+        if (typeof value !== "object" || value === null) return null;
+        const localizedRecord = value as Record<string, unknown>;
+        if (!Array.isArray(localizedRecord.changelog)
+          || !localizedRecord.changelog.every((entry) => typeof entry === "string")) return null;
+        localized[locale] = {
+          updateTitle: typeof localizedRecord.updateTitle === "string" ? localizedRecord.updateTitle : null,
+          fullTitle: typeof localizedRecord.fullTitle === "string" ? localizedRecord.fullTitle : null,
+          changelog: localizedRecord.changelog as string[]
+        };
+      }
+    }
     return {
       version: record.version,
       releasePageUrl: typeof record.releasePageUrl === "string" ? record.releasePageUrl : null,
       updateTitle: typeof record.updateTitle === "string" ? record.updateTitle : null,
       fullTitle: typeof record.fullTitle === "string" ? record.fullTitle : null,
-      changelog: record.changelog as string[]
+      changelog: record.changelog as string[],
+      localized
     };
   } catch {
     return null;

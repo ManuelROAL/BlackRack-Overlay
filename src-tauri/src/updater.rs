@@ -26,6 +26,15 @@ pub(crate) struct UpdateInfo {
     pub update_title: Option<String>,
     pub full_title: Option<String>,
     pub changelog: Vec<String>,
+    pub localized: std::collections::HashMap<String, LocalizedUpdateInfo>,
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct LocalizedUpdateInfo {
+    pub update_title: Option<String>,
+    pub full_title: Option<String>,
+    pub changelog: Vec<String>,
 }
 
 #[derive(Clone, Serialize)]
@@ -60,13 +69,26 @@ struct UpdateManifest {
     full_title: Option<String>,
     #[serde(default)]
     changelog: Option<ManifestChangelog>,
+    #[serde(default)]
+    localized: std::collections::HashMap<String, ManifestLocalizedUpdateInfo>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 #[serde(untagged)]
 enum ManifestChangelog {
     Text(String),
     Items(Vec<String>),
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ManifestLocalizedUpdateInfo {
+    #[serde(default)]
+    update_title: Option<String>,
+    #[serde(default)]
+    full_title: Option<String>,
+    #[serde(default)]
+    changelog: Option<ManifestChangelog>,
 }
 
 impl ManifestChangelog {
@@ -829,18 +851,35 @@ fn update_info(manifest: &UpdateManifest) -> UpdateInfo {
         changelog: manifest
             .changelog
             .as_ref()
-            .map(|value| match value {
-                ManifestChangelog::Text(text) => ManifestChangelog::Text(text.clone()),
-                ManifestChangelog::Items(items) => ManifestChangelog::Items(items.clone()),
-            })
+            .cloned()
             .map(ManifestChangelog::into_lines)
             .unwrap_or_default(),
+        localized: manifest
+            .localized
+            .iter()
+            .map(|(locale, value)| {
+                (
+                    locale.clone(),
+                    LocalizedUpdateInfo {
+                        update_title: value.update_title.clone(),
+                        full_title: value.full_title.clone(),
+                        changelog: value
+                            .changelog
+                            .clone()
+                            .map(ManifestChangelog::into_lines)
+                            .unwrap_or_default(),
+                    },
+                )
+            })
+            .collect(),
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{is_newer_version, parse_version, read_limited_manifest, MAX_MANIFEST_BYTES};
+    use super::{
+        is_newer_version, parse_version, read_limited_manifest, UpdateManifest, MAX_MANIFEST_BYTES,
+    };
 
     #[test]
     fn versions_compare_as_numeric_components() {
@@ -863,6 +902,36 @@ mod tests {
         assert_eq!(
             read_limited_manifest(std::io::Cursor::new(body)).unwrap_err(),
             "update_manifest_invalid"
+        );
+    }
+
+    #[test]
+    fn manifest_accepts_legacy_and_localized_changelogs() {
+        let manifest: UpdateManifest = serde_json::from_str(
+            r#"{
+                "schemaVersion": 1,
+                "version": "0.8.1",
+                "packageUrl": "https://example.com/update.exe",
+                "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+                "fileName": "update.exe",
+                "changelog": ["Legacy"],
+                "localized": {
+                    "es": {"updateTitle": "Actualización", "fullTitle": "Versión nueva", "changelog": ["Cambio"]},
+                    "en": {"updateTitle": "Update", "fullTitle": "New version", "changelog": "Feature\nFix"}
+                }
+            }"#,
+        )
+        .unwrap();
+
+        assert!(manifest.changelog.is_some());
+        assert_eq!(manifest.localized.len(), 2);
+        assert_eq!(
+            manifest.localized["en"]
+                .changelog
+                .clone()
+                .unwrap()
+                .into_lines(),
+            vec!["Feature", "Fix"]
         );
     }
 }
