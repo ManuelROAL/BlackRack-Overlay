@@ -709,10 +709,35 @@ mod tests {
     }
 
     #[test]
-    fn browser_source_relative_settings_use_v3_key() {
+    fn browser_source_settings_use_aligned_keys() {
         let script = browser_source_settings_script("{}");
 
-        assert!(script.contains("blackrack-overlay.relative.v3"));
+        let settings_keys = [
+            ("standings", "blackrack-overlay.standings.v1"),
+            ("relative", "blackrack-overlay.relative.v3"),
+            ("driving", "blackrack-overlay.driving.v1"),
+            ("delta", "blackrack-overlay.delta.v1"),
+            ("timing", "blackrack-overlay.timing.v1"),
+            ("trackMap", "blackrack-overlay.track-map-settings.v1"),
+            (
+                "transparency",
+                "blackrack-overlay.background-transparency.v1",
+            ),
+            ("fontSize", "blackrack-overlay.font-size.v1"),
+            ("fuel", "blackrack-overlay.fuel-strategy.v1"),
+            ("tires", "blackrack-overlay.tires.v1"),
+            ("conditions", "blackrack-overlay.conditions.v1"),
+            ("dashboard", "blackrack-overlay.dashboard.v1"),
+            ("liftCoast", "blackrack-overlay.liftcoast.v1"),
+        ];
+
+        for (payload, key) in settings_keys {
+            assert!(
+                script.contains(&format!("if(p.{payload})localStorage.setItem('{key}'")),
+                "missing browser-source settings mapping for {payload} -> {key}"
+            );
+        }
+        assert!(script.contains("localStorage.setItem('blackrack-overlay.locale.v1',p.locale)"));
         assert!(!script.contains("blackrack-overlay.relative.v1"));
     }
 
