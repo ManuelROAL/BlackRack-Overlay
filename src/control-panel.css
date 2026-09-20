@@ -1820,7 +1820,7 @@ select {
 
 .overlay-list > .overlay-option.expanded {
   grid-column: 1 / -1;
-  grid-template-columns: 42px minmax(180px, 1fr) 150px auto;
+  grid-template-columns: 42px minmax(0, 1fr) 168px 48px;
   grid-template-rows: auto auto auto auto;
   min-height: 132px;
   padding: 13px 16px;
@@ -1839,7 +1839,7 @@ select {
 }
 
 .overlay-list > .overlay-option.expanded > .overlay-shortcut-setting {
-  grid-column: 3;
+  grid-column: 2 / 4;
   grid-row: 3;
 }
 
