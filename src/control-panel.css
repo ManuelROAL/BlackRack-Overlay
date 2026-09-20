@@ -1841,6 +1841,8 @@ select {
 .overlay-list > .overlay-option.expanded > .overlay-shortcut-setting {
   grid-column: 2 / 4;
   grid-row: 3;
+  grid-template-columns: max-content 112px;
+  justify-content: end;
 }
 
 .overlay-list > .overlay-option.expanded > .switch {
@@ -2690,6 +2692,8 @@ select {
   .overlay-list > .overlay-option.expanded > .overlay-shortcut-setting {
     grid-column: 2 / 4;
     grid-row: 4;
+    grid-template-columns: minmax(0, 1fr) 112px;
+    justify-content: stretch;
   }
 
   .overlay-list > .overlay-option.expanded > .switch {
