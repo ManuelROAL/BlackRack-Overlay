@@ -195,12 +195,13 @@ const renderValues = (frame: TelemetryFrame): void => {
       ? `P${frame.player_class_position}`
       : frame.player_position > 0 ? `P${frame.player_position}` : UNKNOWN
   );
-  const estimatedTotal = Number.isFinite(frame.session_total_laps_estimated)
-    && frame.session_total_laps_estimated > 0
-    ? `~${formatNumber(frame.session_total_laps_estimated, 2)}`
-    : frame.session_max_laps > 0 && frame.session_max_laps < 10_000
-      ? String(frame.session_max_laps)
-      : UNKNOWN;
+  const fixedTotal = frame.session_max_laps > 0 && frame.session_max_laps < 10_000
+    ? String(frame.session_max_laps)
+    : null;
+  const estimatedTotal = fixedTotal
+    ?? (Number.isFinite(frame.session_total_laps_estimated) && frame.session_total_laps_estimated > 0
+      ? `~${formatNumber(frame.session_total_laps_estimated, 2)}`
+      : UNKNOWN);
   setText(value("lap"), frame.lap_number > 0
     ? estimatedTotal === UNKNOWN ? String(frame.lap_number) : `${frame.lap_number}/${estimatedTotal}`
     : UNKNOWN);

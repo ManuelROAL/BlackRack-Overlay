@@ -11,12 +11,12 @@ SimHub package.
 ## Resource fields
 
 - Title: `BlackRack Overlay`
-- Version: `0.7.9`
+- Version: `0.8.0`
 - Category: `Le Mans Ultimate`
 - Tag line: `Lightweight, configurable LMU telemetry overlays — no SimHub required.`
 - Tags: `le mans ultimate`, `lmu`, `overlay`, `standings`, `relative`,
   `delta bar`, `fuel calculator`, `virtual energy`, `track map`, `obs`
-- Download: `release/0.7.9/BlackRack Overlay_0.7.9_x64-setup.exe`
+- Download: `release/0.8.0/BlackRack Overlay_0.8.0_x64-setup.exe`
 - Support URL: `https://ko-fi.com/blackrack`
 
 ## Overview copy
@@ -70,7 +70,7 @@ optional service is unavailable, the overlays keep running.
 
 ### Installation
 
-1. Download and run `BlackRack Overlay_0.7.9_x64-setup.exe`.
+1. Download and run `BlackRack Overlay_0.8.0_x64-setup.exe`.
 2. Start Le Mans Ultimate in windowed or borderless-windowed mode.
 3. Open BlackRack Overlay and enable the panels you want to use.
 
@@ -158,6 +158,16 @@ https://ko-fi.com/blackrack.
   and exposed available pit-menu changes.
 - Removed the experimental iRacing telemetry source from the current build.
 
+### 0.8.0 — Overlay shortcuts and safer session transitions
+
+- Added an individually configurable global show/hide shortcut to every overlay.
+- Dashboard now shows an estimated total lap count for timed sessions and
+  practice when LMU does not publish a fixed limit.
+- Standings and Relative no longer keep showing the previous car while LMU has
+  no vehicle selected.
+- Overlays hide correctly when LMU returns to its menu or ends a session.
+- Improved telemetry and overlay-host shutdown behavior when the app closes.
+
 ## Decisions required before submission
 
 Choose and insert the resource's usage terms. Do not inherit the doX listing's
@@ -177,7 +187,7 @@ Prepare at least one real in-game hero image before publishing. Recommended set:
 
 ## Final checklist
 
-- [x] Version synchronized at `0.7.9` in npm, Cargo and Tauri.
+- [x] Version synchronized at `0.8.0` in npm, Cargo and Tauri.
 - [x] Frontend production build and localization checks pass.
 - [x] Rust library tests pass with the official LMU SDK detected.
 - [x] Production NSIS installer generated under the BlackRack name.
