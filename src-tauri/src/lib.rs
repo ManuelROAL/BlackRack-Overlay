@@ -103,6 +103,8 @@ pub(crate) fn require_control_window(window: &WebviewWindow) -> Result<(), Strin
 struct OverlayControl {
     click_through: AtomicBool,
     auto_hidden: AtomicBool,
+    shutdown: AtomicBool,
+    focused_windows: Mutex<HashSet<String>>,
     desired_visible: Mutex<HashSet<&'static str>>,
 }
 
@@ -1189,15 +1191,13 @@ fn is_overlay_host_target(target: &EventTarget) -> bool {
 }
 
 pub(crate) fn update_overlay_auto_visibility(app: &AppHandle, frame: &telemetry::TelemetryFrame) {
-    let mut app_has_focus = app
-        .get_webview_window("control")
-        .and_then(|window| window.is_focused().ok())
-        .unwrap_or(false);
-    for_each_overlay_host(app, |window| {
-        app_has_focus |= window.is_focused().unwrap_or(false);
-    });
-    let should_hide = frame.should_hide_overlays(app_has_focus);
     let control = app.state::<OverlayControl>();
+    let app_has_focus = !control
+        .focused_windows
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .is_empty();
+    let should_hide = frame.should_hide_overlays(app_has_focus);
     if control.auto_hidden.swap(should_hide, Ordering::Relaxed) == should_hide {
         return;
     }
@@ -2236,6 +2236,8 @@ pub fn run() {
         .manage(OverlayControl {
             click_through: AtomicBool::new(DEFAULT_CLICK_THROUGH),
             auto_hidden: AtomicBool::new(true),
+            shutdown: AtomicBool::new(false),
+            focused_windows: Mutex::new(HashSet::new()),
             desired_visible: Mutex::new(HashSet::new()),
         })
         .manage(ShortcutControl(Mutex::new(ShortcutRuntime::default())));
@@ -2440,14 +2442,37 @@ pub fn run() {
             Ok(())
         })
         .on_window_event(|window, event| {
-            if window.label() == "control"
-                && matches!(event, tauri::WindowEvent::CloseRequested { .. })
-            {
-                save_control_window_position(window);
-                startup_log::record(
-                    "session end status=normal reason=control_window_close_requested",
-                );
-                window.app_handle().exit(0);
+            let control = window.app_handle().state::<OverlayControl>();
+            match event {
+                tauri::WindowEvent::Focused(focused) => {
+                    let mut focused_windows = control
+                        .focused_windows
+                        .lock()
+                        .unwrap_or_else(|poisoned| poisoned.into_inner());
+                    if *focused {
+                        focused_windows.insert(window.label().to_string());
+                    } else {
+                        focused_windows.remove(window.label());
+                    }
+                }
+                tauri::WindowEvent::Destroyed => {
+                    let mut focused_windows = control
+                        .focused_windows
+                        .lock()
+                        .unwrap_or_else(|poisoned| poisoned.into_inner());
+                    focused_windows.remove(window.label());
+                }
+                tauri::WindowEvent::CloseRequested { .. }
+                    if window.label() == CONTROL_WINDOW_LABEL =>
+                {
+                    control.shutdown.store(true, Ordering::Relaxed);
+                    save_control_window_position(window);
+                    startup_log::record(
+                        "session end status=normal reason=control_window_close_requested",
+                    );
+                    window.app_handle().exit(0);
+                }
+                _ => {}
             }
         })
         .run(tauri::generate_context!())

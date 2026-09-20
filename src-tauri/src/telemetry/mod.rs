@@ -1165,7 +1165,11 @@ pub fn spawn_source(app: AppHandle) {
         let mut cycle: u64 = 0;
 
         loop {
-            if app.get_webview_window("control").is_none() {
+            if app
+                .state::<crate::OverlayControl>()
+                .shutdown
+                .load(Ordering::Relaxed)
+            {
                 break;
             }
             let cycle_started = Instant::now();
