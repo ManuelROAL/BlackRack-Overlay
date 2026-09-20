@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "version": "0.8.1",
+  "packageUrl": "https://github.com/ManuelROAL/BlackRack-Overlay/releases/download/v0.8.1/BlackRack.Overlay_0.8.1_x64-setup.exe",
+  "sha256": "8f5f59d5ca180f226a00dfdf38095a0bc5c50d8f2688d184f33ec4dccb6badd1",
+  "fileName": "BlackRack.Overlay_0.8.1_x64-setup.exe",
+  "releasePageUrl": "https://github.com/ManuelROAL/BlackRack-Overlay/releases/tag/v0.8.1",
+  "updateTitle": "BlackRack Overlay 0.8.1",
+  "fullTitle": "BlackRack Overlay 0.8.1",
+  "changelog": [
+    "Las notas de actualización respetan el idioma seleccionado en el panel.",
+    "Los atajos globales de overlays empiezan desactivados hasta que los asignes.",
+    "Supr o Retroceso borra el atajo asignado a un overlay.",
+    "Los atajos de overlays ya configurados se conservan."
+  ],
+  "localized": {
+    "es": {
+      "updateTitle": "BlackRack Overlay 0.8.1",
+      "fullTitle": "BlackRack Overlay 0.8.1",
+      "changelog": [
+        "Las notas de actualización respetan el idioma seleccionado en el panel.",
+        "Los atajos globales de overlays empiezan desactivados hasta que los asignes.",
+        "Supr o Retroceso borra el atajo asignado a un overlay.",
+        "Los atajos de overlays ya configurados se conservan."
+      ]
+    },
+    "en": {
+      "updateTitle": "BlackRack Overlay 0.8.1",
+      "fullTitle": "BlackRack Overlay 0.8.1",
+      "changelog": [
+        "Release notes follow the interface language selected in the panel.",
+        "Overlay global shortcuts start disabled until you assign them.",
+        "Delete or Backspace clears an assigned overlay shortcut.",
+        "Existing configured overlay shortcuts are preserved."
+      ]
+    }
+  }
+}

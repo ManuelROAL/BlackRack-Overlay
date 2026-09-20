@@ -11,12 +11,12 @@ SimHub package.
 ## Resource fields
 
 - Title: `BlackRack Overlay`
-- Version: `0.8.0`
+- Version: `0.8.1`
 - Category: `Le Mans Ultimate`
 - Tag line: `Lightweight, configurable LMU telemetry overlays — no SimHub required.`
 - Tags: `le mans ultimate`, `lmu`, `overlay`, `standings`, `relative`,
   `delta bar`, `fuel calculator`, `virtual energy`, `track map`, `obs`
-- Download: `release/0.8.0/BlackRack Overlay_0.8.0_x64-setup.exe`
+- Download: `release/0.8.1/BlackRack Overlay_0.8.1_x64-setup.exe`
 - Support URL: `https://ko-fi.com/blackrack`
 
 ## Overview copy
@@ -168,6 +168,14 @@ https://ko-fi.com/blackrack.
 - Overlays hide correctly when LMU returns to its menu or ends a session.
 - Improved telemetry and overlay-host shutdown behavior when the app closes.
 
+### 0.8.1 — Localized update notes and safer shortcuts
+
+- The update panel now shows release notes in the selected interface language,
+  including when the notification was already stored locally.
+- Overlay show/hide shortcuts start empty and inactive, so the application does
+  not reserve global key combinations until the user assigns them.
+- Delete or Backspace clears an assigned overlay shortcut.
+
 ## Decisions required before submission
 
 Choose and insert the resource's usage terms. Do not inherit the doX listing's
@@ -187,7 +195,7 @@ Prepare at least one real in-game hero image before publishing. Recommended set:
 
 ## Final checklist
 
-- [x] Version synchronized at `0.8.0` in npm, Cargo and Tauri.
+- [x] Version synchronized at `0.8.1` in npm, Cargo and Tauri.
 - [x] Frontend production build and localization checks pass.
 - [x] Rust library tests pass with the official LMU SDK detected.
 - [x] Production NSIS installer generated under the BlackRack name.
