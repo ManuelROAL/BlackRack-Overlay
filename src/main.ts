@@ -573,21 +573,16 @@ const updateVersion = document.getElementById("update-version");
 const updateChangelog = document.getElementById("update-changelog");
 let updateRequestInFlight = false;
 
-const localizedUpdateInfo = (info: UpdateInfo, locale: string): UpdateInfo["localized"][string] | null => {
-  const candidates = [locale, locale.split(/[-_]/, 1)[0], "en"];
-  for (const candidate of candidates) {
-    const localized = info.localized[candidate];
-    if (localized) return localized;
-  }
-  return null;
-};
-
 const selectUpdateInfo = (info: UpdateInfo): Pick<UpdateInfo, "updateTitle" | "fullTitle" | "changelog"> => {
-  const localized = localizedUpdateInfo(info, getLocale());
-  return localized ?? {
-    updateTitle: info.updateTitle,
-    fullTitle: info.fullTitle,
-    changelog: info.changelog
+  const locale = getLocale();
+  const candidates = [locale, locale.split(/[-_]/, 1)[0], "en"]
+    .filter((candidate, index, values) => values.indexOf(candidate) === index)
+    .map((candidate) => info.localized[candidate])
+    .filter((localized): localized is NonNullable<typeof localized> => localized !== undefined);
+  return {
+    updateTitle: candidates.find((localized) => localized.updateTitle)?.updateTitle ?? info.updateTitle,
+    fullTitle: candidates.find((localized) => localized.fullTitle)?.fullTitle ?? info.fullTitle,
+    changelog: candidates.find((localized) => localized.changelog.length > 0)?.changelog ?? info.changelog
   };
 };
 
