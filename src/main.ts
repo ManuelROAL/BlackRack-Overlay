@@ -905,11 +905,12 @@ const renderShortcutSettings = (status: ShortcutSettingsStatus): void => {
     const input = overlayShortcutInputs.get(id);
     const binding = status.hide_overlays?.[id];
     if (!input || !binding) continue;
+    const disabled = !binding.shortcut;
     input.value = binding.shortcut;
-    input.dataset.state = binding.active ? "active" : "error";
+    input.dataset.state = binding.active ? "active" : disabled ? "disabled" : "error";
     input.title = binding.error
       ? `${t("shortcuts.unavailable")}: ${binding.error}`
-      : t(binding.active ? "shortcuts.active" : "shortcuts.unavailable");
+      : t(disabled ? "shortcuts.disabled" : binding.active ? "shortcuts.active" : "shortcuts.unavailable");
   }
 
   const interactionFooter = document.getElementById("footer-interaction-shortcut");
@@ -923,7 +924,7 @@ const renderShortcutSettings = (status: ShortcutSettingsStatus): void => {
     ...overlayIds.map((id) => status.hide_overlays?.[id]).filter(
       (binding): binding is ShortcutBindingStatus => Boolean(binding)
     )
-  ].find((binding) => !binding.active);
+  ].find((binding) => Boolean(binding.shortcut) && !binding.active);
   if (unavailable) {
     setShortcutMessage(
       t("shortcuts.occupied", { shortcut: unavailable.shortcut }),
@@ -958,7 +959,10 @@ const saveShortcut = async (action: ShortcutAction, shortcut: string): Promise<v
   try {
     const status = await invoke<ShortcutSettingsStatus>("set_shortcut", { action, shortcut });
     renderShortcutSettings(status);
-    setShortcutMessage(t("shortcuts.saved", { shortcut }), "success");
+    setShortcutMessage(
+      shortcut ? t("shortcuts.saved", { shortcut }) : t("shortcuts.cleared"),
+      "success"
+    );
   } catch (error) {
     const kind = String(error);
     const key = kind === "invalid"
@@ -991,6 +995,15 @@ const bindShortcutCapture = (action: ShortcutAction, input: HTMLInputElement): v
     if (event.key === "Escape") {
       input.blur();
       setShortcutMessage(t("shortcuts.cancelled"));
+      return;
+    }
+    if (
+      (event.key === "Delete" || event.key === "Backspace")
+      && action.startsWith("hide_")
+    ) {
+      input.value = "";
+      input.blur();
+      void saveShortcut(action, "");
       return;
     }
     const shortcut = shortcutFromKeyboardEvent(event);

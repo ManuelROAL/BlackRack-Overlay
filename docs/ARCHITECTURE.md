@@ -140,7 +140,8 @@ Tauri events    analysis JSONL/strategy CSV    browser-source SSE
   never read profiles, only the live keys a profile writes.
 - The control panel exposes one `hide_<overlay-id>` shortcut per overlay card,
   using the shared `get_shortcut_settings`/`set_shortcut` contract and reflecting
-  external `overlay://visibility` events.
+  external `overlay://visibility` events. These bindings are empty and inactive
+  by default; Delete or Backspace clears an assigned overlay binding.
 - `src/overlay-performance.ts`: optional five-second frontend render metrics.
 
 Every overlay has a separate CSS file. `src/styles.css` contains only genuinely

@@ -119,15 +119,7 @@ struct ShortcutSettings {
 fn default_overlay_shortcuts() -> HashMap<String, String> {
     OVERLAY_LABELS
         .iter()
-        .enumerate()
-        .map(|(index, label)| {
-            let shortcut = if index < 9 {
-                format!("Ctrl+Alt+{}", index + 1)
-            } else {
-                format!("Ctrl+Alt+Shift+{}", index - 8)
-            };
-            ((*label).into(), shortcut)
-        })
+        .map(|label| ((*label).into(), String::new()))
         .collect()
 }
 
@@ -1710,7 +1702,7 @@ fn load_shortcut_settings(app: &AppHandle) -> ShortcutSettings {
                     settings
                         .hide_overlays
                         .get(*label)
-                        .is_some_and(|shortcut| is_valid_shortcut(shortcut))
+                        .is_some_and(|shortcut| is_valid_overlay_shortcut(shortcut))
                 }) =>
         {
             for label in OVERLAY_LABELS {
@@ -1915,6 +1907,9 @@ fn register_overlay_shortcut(
     label: &'static str,
     shortcut: &str,
 ) -> Result<(), String> {
+    if shortcut.is_empty() {
+        return Ok(());
+    }
     app.global_shortcut()
         .on_shortcut(shortcut, move |app, _, event| {
             if event.state() != ShortcutState::Pressed {
@@ -2011,6 +2006,10 @@ fn is_valid_shortcut(shortcut: &str) -> bool {
     segments > 1
 }
 
+fn is_valid_overlay_shortcut(shortcut: &str) -> bool {
+    shortcut.is_empty() || is_valid_shortcut(shortcut)
+}
+
 #[cfg(test)]
 mod shortcut_validation_tests {
     use super::{default_overlay_shortcuts, is_valid_shortcut, overlay_label_for_shortcut_action};
@@ -2019,8 +2018,7 @@ mod shortcut_validation_tests {
     fn overlay_defaults_are_deterministic_and_cover_every_label() {
         let defaults = default_overlay_shortcuts();
         assert_eq!(defaults.len(), 17);
-        assert_eq!(defaults["delta"], "Ctrl+Alt+1");
-        assert_eq!(defaults["dashboard"], "Ctrl+Alt+Shift+8");
+        assert!(defaults.values().all(String::is_empty));
     }
 
     #[test]
@@ -2069,6 +2067,12 @@ mod shortcut_validation_tests {
             );
         }
     }
+
+    #[test]
+    fn overlay_shortcuts_may_be_empty_but_global_shortcuts_may_not() {
+        assert!(super::is_valid_overlay_shortcut(""));
+        assert!(!is_valid_shortcut(""));
+    }
 }
 
 #[tauri::command]
@@ -2090,7 +2094,12 @@ fn set_shortcut(
 ) -> Result<ShortcutSettingsStatus, String> {
     require_control_window(&window)?;
     let shortcut = shortcut.trim().replace(' ', "");
-    if !is_valid_shortcut(&shortcut) {
+    let is_overlay_action = overlay_label_for_shortcut_action(&action).is_some();
+    if !(if is_overlay_action {
+        is_valid_overlay_shortcut(&shortcut)
+    } else {
+        is_valid_shortcut(&shortcut)
+    }) {
         return Err("invalid".into());
     }
 
@@ -2127,7 +2136,7 @@ fn set_shortcut(
     let duplicate = configured_shortcuts
         .into_iter()
         .any(|(other_action, other)| {
-            other_action != action && shortcut.eq_ignore_ascii_case(other)
+            !shortcut.is_empty() && other_action != action && shortcut.eq_ignore_ascii_case(other)
         });
     if duplicate {
         return Err("duplicate".into());
@@ -2177,7 +2186,9 @@ fn set_shortcut(
         );
     }
     if let Err(error) = save_shortcut_settings(&app, &new_settings) {
-        let _ = app.global_shortcut().unregister(shortcut.as_str());
+        if !shortcut.is_empty() {
+            let _ = app.global_shortcut().unregister(shortcut.as_str());
+        }
         if let Some(old) = &old_active {
             let _ = register_shortcut_action(&app, &action, old);
         }
@@ -2201,9 +2212,13 @@ fn set_shortcut(
         }
         _ => {
             let label = overlay_label_for_shortcut_action(&action).unwrap();
-            runtime
-                .active_hide_overlays
-                .insert(label.into(), shortcut.clone());
+            if shortcut.is_empty() {
+                runtime.active_hide_overlays.remove(label);
+            } else {
+                runtime
+                    .active_hide_overlays
+                    .insert(label.into(), shortcut.clone());
+            }
             runtime.hide_overlays_error.remove(label);
         }
     }
@@ -2411,6 +2426,9 @@ pub fn run() {
                 }
             }
             for (label, result) in overlay_results {
+                if settings.hide_overlays[label].is_empty() {
+                    continue;
+                }
                 match result {
                     Ok(()) => {
                         runtime
