@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "version": "0.8.3",
+  "packageUrl": "https://github.com/ManuelROAL/BlackRack-Overlay/releases/download/v0.8.3/BlackRack.Overlay_0.8.3_x64-setup.exe",
+  "sha256": "54a249c10190bde0c49d5f67b89f7d850d4c1f38ab06b91f15c997942c4ff3d4",
+  "fileName": "BlackRack.Overlay_0.8.3_x64-setup.exe",
+  "releasePageUrl": "https://github.com/ManuelROAL/BlackRack-Overlay/releases/tag/v0.8.3",
+  "updateTitle": "BlackRack Overlay 0.8.3",
+  "fullTitle": "BlackRack Overlay 0.8.3",
+  "changelog": [
+    "Los overlays permanecen visibles durante el final de la sesión.",
+    "Siguen ocultándose al volver al menú, entrar en el garaje o perder el vehículo."
+  ],
+  "localized": {
+    "es": {
+      "updateTitle": "BlackRack Overlay 0.8.3",
+      "fullTitle": "BlackRack Overlay 0.8.3",
+      "changelog": [
+        "Los overlays permanecen visibles durante el final de la sesión.",
+        "Siguen ocultándose al volver al menú, entrar en el garaje o perder el vehículo."
+      ]
+    },
+    "en": {
+      "updateTitle": "BlackRack Overlay 0.8.3",
+      "fullTitle": "BlackRack Overlay 0.8.3",
+      "changelog": [
+        "Overlays remain visible through the end of the session.",
+        "They still hide when returning to the menu, entering the garage or losing the vehicle."
+      ]
+    }
+  }
+}
