@@ -46,6 +46,11 @@ en el idioma seleccionado. Los campos legacy (`updateTitle`, `fullTitle` y
 `changelog`) deben conservarse como fallback para las versiones instaladas que
 todavía no conocen las traducciones localizadas.
 
+El panel también incluye en la vista **Novedades** todos los manifiestos
+`release/*/manifest.json` incluidos en la compilación, ordenados por versión.
+Al añadir una entrega al repositorio, su manifiesto pasa a formar parte del
+historial local; `localized` se usa para mostrarlo en el idioma seleccionado.
+
 El primer instalador que contenga esta funcionalidad debe publicarse antes de
 que se anuncie una versión posterior en el manifiesto. El instalador sigue sin
 firma digital por ahora; HTTPS y la doble comprobación SHA-256 reducen el riesgo

@@ -104,6 +104,8 @@ Tauri events    analysis JSONL/strategy CSV    browser-source SSE
 ## Frontend ownership
 
 - `src/main.ts`: control panel and persisted settings.
+  The control panel also bundles the release manifests into a localized changelog
+  view, while the update card uses the same release-note selection logic.
   The support action asks the Rust backend to open the fixed project Ko-fi URL
   in the system browser; no remote page is loaded inside the application WebView.
   Known browser-server and shortcut failures are localized from stable backend
@@ -126,6 +128,8 @@ Tauri events    analysis JSONL/strategy CSV    browser-source SSE
   while retaining the original browser-console output and bounding duplicate
   reports. Rust panics add their cause, location and backtrace to that same log;
   the backend retains the latest 20 session files.
+- `src/release-notes.ts`: imports the checked-in `release/*/manifest.json` files,
+  orders them by version and selects localized notes for the control panel.
 - `src/backend-errors.ts`: translates the stable snake_case codes commands reject
   with. Backend `Result::Err` payloads returned to a webview are codes, never
   prose; `startup_log::command_error` records the English detail in the session

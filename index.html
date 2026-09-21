@@ -43,6 +43,10 @@
           <span data-i18n="nav.integrations">INTEGRACIONES</span>
           <small data-i18n="nav.integrationsSub">OBS y diagnóstico</small>
         </button>
+        <button type="button" data-control-view="changelog">
+          <span data-i18n="nav.changelog">NOVEDADES</span>
+          <small data-i18n="nav.changelogSub">Cambios de cada versión</small>
+        </button>
       </nav>
 
       <details id="getting-started" class="general-settings-section getting-started" data-view-section="general">
@@ -75,6 +79,14 @@
             <ul id="update-changelog"></ul>
           </div>
         </div>
+      </section>
+
+      <section class="general-settings-section release-notes-section" data-view-section="changelog" aria-label="Historial de cambios" data-i18n-aria-label="changelog.aria">
+        <header class="settings-section-heading">
+          <span data-i18n="changelog.heading">NOVEDADES</span>
+          <strong data-i18n="changelog.title">Historial de cambios</strong>
+        </header>
+        <div id="release-notes-list" class="release-notes-list"></div>
       </section>
 
       <section class="control-intro" data-view-section="overlays">

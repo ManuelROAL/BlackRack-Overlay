@@ -51,6 +51,7 @@ on their runtime or source code.
   map, traction control, ABS, brake bias, lights, wipers and air/track
   temperature.
 - Startup diagnostics for failures on other computers.
+- Release changelog history available from the control panel.
 
 ## Current data sources
 

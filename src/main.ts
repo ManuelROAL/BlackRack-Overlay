@@ -215,6 +215,7 @@ import {
   type OverlayMonitorScope
 } from "./overlay-monitor";
 import { OVERLAY_GUIDE, OVERLAY_GUIDE_ORDER } from "./overlay-guide";
+import { RELEASE_NOTES, selectReleaseNotes, type ReleaseNotesManifest } from "./release-notes";
 
 installFrontendDiagnostics("control", (diagnostic) =>
   invoke("record_frontend_error", { ...diagnostic })
@@ -283,18 +284,7 @@ interface BrowserSourceStatus {
   error_detail: string | null;
 }
 
-interface UpdateInfo {
-  version: string;
-  releasePageUrl: string | null;
-  updateTitle: string | null;
-  fullTitle: string | null;
-  changelog: string[];
-  localized: Record<string, {
-    updateTitle: string | null;
-    fullTitle: string | null;
-    changelog: string[];
-  }>;
-}
+type UpdateInfo = ReleaseNotesManifest;
 
 interface UpdateCheckResponse {
   currentVersion: string;
@@ -571,20 +561,8 @@ const updateStatus = document.getElementById("update-status");
 const updateDetails = document.getElementById("update-details");
 const updateVersion = document.getElementById("update-version");
 const updateChangelog = document.getElementById("update-changelog");
+const releaseNotesList = document.getElementById("release-notes-list");
 let updateRequestInFlight = false;
-
-const selectUpdateInfo = (info: UpdateInfo): Pick<UpdateInfo, "updateTitle" | "fullTitle" | "changelog"> => {
-  const locale = getLocale();
-  const candidates = [locale, locale.split(/[-_]/, 1)[0], "en"]
-    .filter((candidate, index, values) => values.indexOf(candidate) === index)
-    .map((candidate) => info.localized[candidate])
-    .filter((localized): localized is NonNullable<typeof localized> => localized !== undefined);
-  return {
-    updateTitle: candidates.find((localized) => localized.updateTitle)?.updateTitle ?? info.updateTitle,
-    fullTitle: candidates.find((localized) => localized.fullTitle)?.fullTitle ?? info.fullTitle,
-    changelog: candidates.find((localized) => localized.changelog.length > 0)?.changelog ?? info.changelog
-  };
-};
 
 const renderUpdateInfo = (info: UpdateInfo | null): void => {
   if (!updateDetails || !updateVersion || !updateChangelog || !installUpdateButton) return;
@@ -594,7 +572,7 @@ const renderUpdateInfo = (info: UpdateInfo | null): void => {
     installUpdateButton.hidden = true;
     return;
   }
-  const selected = selectUpdateInfo(info);
+  const selected = selectReleaseNotes(info, getLocale());
   updateVersion.textContent = selected.fullTitle || selected.updateTitle || t("update.available", { version: info.version });
   for (const entry of selected.changelog) {
     const item = document.createElement("li");
@@ -608,6 +586,36 @@ const renderUpdateInfo = (info: UpdateInfo | null): void => {
 const setUpdateStatus = (message: string): void => {
   if (updateStatus) updateStatus.textContent = message;
 };
+
+const renderReleaseNotes = (): void => {
+  if (!releaseNotesList) return;
+  releaseNotesList.replaceChildren();
+  for (const release of RELEASE_NOTES) {
+    const selected = selectReleaseNotes(release, getLocale());
+    const article = document.createElement("article");
+    article.className = "release-note";
+
+    const header = document.createElement("header");
+    const version = document.createElement("span");
+    version.className = "release-note-version";
+    version.textContent = `v${release.version}`;
+    const title = document.createElement("strong");
+    title.textContent = selected.fullTitle || selected.updateTitle || `v${release.version}`;
+    header.append(version, title);
+
+    const changelog = document.createElement("ul");
+    for (const entry of selected.changelog) {
+      const item = document.createElement("li");
+      item.textContent = entry;
+      changelog.append(item);
+    }
+
+    article.append(header, changelog);
+    releaseNotesList.append(article);
+  }
+};
+
+renderReleaseNotes();
 
 const readStoredUpdate = (): UpdateInfo | null => {
   const raw = localStorage.getItem(UPDATE_AVAILABLE_STORAGE_KEY);
