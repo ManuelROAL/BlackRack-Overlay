@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "version": "0.8.5",
+  "packageUrl": "https://github.com/ManuelROAL/BlackRack-Overlay/releases/download/v0.8.5/BlackRack.Overlay_0.8.5_x64-setup.exe",
+  "sha256": "6d7d23139a0239e3a91fffafc38856c815ca5c1274ede0e8fb17ceae8988cf4e",
+  "fileName": "BlackRack.Overlay_0.8.5_x64-setup.exe",
+  "releasePageUrl": "https://github.com/ManuelROAL/BlackRack-Overlay/releases/tag/v0.8.5",
+  "updateTitle": "BlackRack Overlay 0.8.5",
+  "fullTitle": "BlackRack Overlay 0.8.5",
+  "changelog": [
+    "Los overlays permanecen visibles durante la espera previa a la sesión.",
+    "Las fases de sesión, por sí solas, ya no ocultan los overlays."
+  ],
+  "localized": {
+    "es": {
+      "updateTitle": "BlackRack Overlay 0.8.5",
+      "fullTitle": "BlackRack Overlay 0.8.5",
+      "changelog": [
+        "Los overlays permanecen visibles durante la espera previa a la sesión.",
+        "Las fases de sesión, por sí solas, ya no ocultan los overlays."
+      ]
+    },
+    "en": {
+      "updateTitle": "BlackRack Overlay 0.8.5",
+      "fullTitle": "BlackRack Overlay 0.8.5",
+      "changelog": [
+        "Overlays remain visible during the pre-session wait.",
+        "Session phases alone no longer hide overlays."
+      ]
+    }
+  }
+}
