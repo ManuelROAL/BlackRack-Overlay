@@ -49,9 +49,9 @@ pub(super) const DESCRIPTOR: SourceDescriptor = SourceDescriptor {
         session_splits: true,
     },
     official_geometry: Some(trackmap::official_geometry),
-    // Modern LMU exposes LMU_Data when Settings > Gameplay > Enable Plugins is
-    // enabled. There is no separately installable runtime dependency to probe;
-    // the source reports the live mapping state through its telemetry frames.
+    // LMU exposes LMU_Data natively. There is no separately installable runtime
+    // dependency to probe; the source reports the live mapping state through
+    // its telemetry frames.
     dependency: None,
 };
 

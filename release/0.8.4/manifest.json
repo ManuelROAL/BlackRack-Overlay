@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "version": "0.8.4",
+  "packageUrl": "https://github.com/ManuelROAL/BlackRack-Overlay/releases/download/v0.8.4/BlackRack.Overlay_0.8.4_x64-setup.exe",
+  "sha256": "9b0211c2b7aeba326c4ef6b9d248211904c6d7a9e87b8d42ec2ed614243c27b4",
+  "fileName": "BlackRack.Overlay_0.8.4_x64-setup.exe",
+  "releasePageUrl": "https://github.com/ManuelROAL/BlackRack-Overlay/releases/tag/v0.8.4",
+  "updateTitle": "BlackRack Overlay 0.8.4",
+  "fullTitle": "BlackRack Overlay 0.8.4",
+  "changelog": [
+    "Añadido un historial localizado de novedades en el panel de control.",
+    "Las notas de actualización y el historial respetan el idioma seleccionado.",
+    "LMU usa su memoria compartida nativa sin necesitar un DLL de telemetría externo."
+  ],
+  "localized": {
+    "es": {
+      "updateTitle": "BlackRack Overlay 0.8.4",
+      "fullTitle": "BlackRack Overlay 0.8.4",
+      "changelog": [
+        "Añadido un historial localizado de novedades en el panel de control.",
+        "Las notas de actualización y el historial respetan el idioma seleccionado.",
+        "LMU usa su memoria compartida nativa sin necesitar un DLL de telemetría externo."
+      ]
+    },
+    "en": {
+      "updateTitle": "BlackRack Overlay 0.8.4",
+      "fullTitle": "BlackRack Overlay 0.8.4",
+      "changelog": [
+        "Added a localized What’s New history to the control panel.",
+        "Update notes and the release history follow the selected language.",
+        "LMU uses its native shared memory without an external telemetry DLL."
+      ]
+    }
+  }
+}

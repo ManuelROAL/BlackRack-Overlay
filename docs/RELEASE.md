@@ -83,7 +83,7 @@ aplicación y actualizarlo si la preparación de la versión añade o retira fun
 4. Crear el instalador con `npm.cmd run tauri build` solamente cuando se haya decidido
    publicar esa versión.
 5. Instalar en una cuenta de Windows limpia o una máquina de prueba y comprobar inicio,
-   WebView2, `Enable Plugins` de LMU, overlays, atajos, OBS, importación/exportación y el botón
+   WebView2, memoria compartida nativa de LMU, overlays, atajos, OBS, importación/exportación y el botón
    de Ko-fi. En la pantalla final, comprobar también que las casillas para crear el
    acceso directo e iniciar la aplicación siguen disponibles, y que **Apoyar el
    proyecto en Ko-fi** aparece marcada inicialmente, puede desmarcarse y solo abre

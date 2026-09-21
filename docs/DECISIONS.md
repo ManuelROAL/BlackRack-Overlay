@@ -159,8 +159,7 @@ in `docs/overlays/` and should not be duplicated here.
 ## Distribution and diagnostics
 
 - Users install the application normally. Telemetry uses LMU's native `LMU_Data`
-  shared memory after `Settings > Gameplay > Enable Plugins` is enabled. An
-  external shared-memory DLL is optional compatibility support for older builds.
+  shared memory; no external shared-memory DLL or additional LMU option is required.
 - Distribution is installer-only. The control panel may link to the fixed project
   Ko-fi page in the system browser, but it does not embed remote donation content,
   accept arbitrary URLs or make Ko-fi part of telemetry and startup behavior.
@@ -168,7 +167,7 @@ in `docs/overlays/` and should not be duplicated here.
   adds a Ko-fi option that starts checked but can be cleared. It opens the same
   fixed URL only when still selected on Finish; silent installs never open it.
   The app does not install or require a shared-memory DLL; it reports live
-  telemetry status after LMU's native plugin support is enabled.
+  telemetry status from LMU's native shared memory.
 - Tauri embeds `frontendDist`; the installer does not deploy a duplicate `web/`
   directory.
 - Automatic update checks use one fixed HTTPS manifest and run from the control

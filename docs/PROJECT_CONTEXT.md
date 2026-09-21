@@ -91,9 +91,8 @@ remove enrichment such as DR/SR or split data, but must not stop the overlays.
   panel and every dynamically created overlay host.
 - Rust release builds use fat LTO, one code-generation unit and strip symbols
   from the final binaries. Debug and development profiles remain unchanged.
-- The application reads LMU's native `LMU_Data` shared memory. Users must enable
-  LMU's `Settings > Gameplay > Enable Plugins` option; an external shared-memory
-  plugin is only a compatibility fallback for older game builds.
+- The application reads LMU's native `LMU_Data` shared memory. No external
+  shared-memory DLL or additional LMU option is required.
 - Release artifacts and checksums live under `release/<version>/`.
 
 ## Current optimization state

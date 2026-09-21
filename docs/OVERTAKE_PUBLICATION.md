@@ -11,12 +11,12 @@ SimHub package.
 ## Resource fields
 
 - Title: `BlackRack Overlay`
-- Version: `0.8.3`
+- Version: `0.8.4`
 - Category: `Le Mans Ultimate`
 - Tag line: `Lightweight, configurable LMU telemetry overlays — no SimHub required.`
 - Tags: `le mans ultimate`, `lmu`, `overlay`, `standings`, `relative`,
   `delta bar`, `fuel calculator`, `virtual energy`, `track map`, `obs`
-- Download: `release/0.8.3/BlackRack Overlay_0.8.3_x64-setup.exe`
+- Download: `release/0.8.4/BlackRack Overlay_0.8.4_x64-setup.exe`
 - Support URL: `https://ko-fi.com/blackrack`
 
 ## Overview copy
@@ -70,14 +70,12 @@ optional service is unavailable, the overlays keep running.
 
 ### Installation
 
-1. Download and run `BlackRack Overlay_0.8.3_x64-setup.exe`.
-2. In LMU, enable **Settings > Gameplay > Enable Plugins** and restart the game.
-3. Start Le Mans Ultimate in windowed or borderless-windowed mode.
-4. Open BlackRack Overlay and enable the panels you want to use.
+1. Download and run `BlackRack Overlay_0.8.4_x64-setup.exe`.
+2. Start Le Mans Ultimate in windowed or borderless-windowed mode.
+3. Open BlackRack Overlay and enable the panels you want to use.
 
-No Node.js, Rust, Tauri or SimHub installation is required. Users do not need
-to copy a BlackRack DLL into the game. Older LMU builds may optionally use an
-external shared-memory plugin as a compatibility fallback.
+No Node.js, Rust, Tauri or SimHub installation is required. LMU's native shared
+memory is used directly; users do not need to install or copy a telemetry DLL.
 
 ### Requirements and notes
 
@@ -189,6 +187,13 @@ https://ko-fi.com/blackrack.
   phases while the player remains in the race or server.
 - Menu, garage and missing-vehicle hiding behavior remains unchanged.
 
+### 0.8.4 — Localized changelog and native LMU telemetry
+
+- Added a localized What’s New history to the control panel and reused the
+  selected language for update notes.
+- LMU now uses its native shared memory directly; no external telemetry DLL or
+  extra LMU option is required.
+
 ## Decisions required before submission
 
 Choose and insert the resource's usage terms. Do not inherit the doX listing's
@@ -208,7 +213,7 @@ Prepare at least one real in-game hero image before publishing. Recommended set:
 
 ## Final checklist
 
-- [x] Version synchronized at `0.8.3` in npm, Cargo and Tauri.
+- [x] Version synchronized at `0.8.4` in npm, Cargo and Tauri.
 - [x] Frontend production build and localization checks pass.
 - [x] Rust library tests pass with the official LMU SDK detected.
 - [x] Production NSIS installer generated under the BlackRack name.
