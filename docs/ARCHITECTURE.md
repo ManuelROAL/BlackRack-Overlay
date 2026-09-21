@@ -80,8 +80,9 @@ Tauri events    analysis JSONL/strategy CSV    browser-source SSE
 - `sim/lmu/driver_ranks.rs`, `sim/lmu/event_split.rs`, `sim/lmu/racecontrol.rs`
   - Authenticate and enrich online sessions without blocking the hot loop.
 - `sim/lmu/trackmap.rs`, `sim/lmu/install.rs`
-  - Read the official track outline and locate the telemetry plugin. Both are
-    reached through the descriptor, never from the agnostic modules.
+  - Read the official track outline and locate LMU's local installation data for
+    event enrichment. Both are reached through LMU-specific modules, never from
+    the agnostic modules.
 - `src-tauri/src/telemetry/sim/mod.rs`
   - Holds `TelemetrySource`, `SourceDescriptor`, `SourceCapabilities`, the
     `CANDIDATES` table and the source that keeps following the running

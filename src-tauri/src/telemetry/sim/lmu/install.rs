@@ -3,13 +3,12 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 const GAME_RELATIVE_PATH: &str = "steamapps/common/Le Mans Ultimate";
-pub(super) const TELEMETRY_PLUGIN: &str = "Plugins/LMU_SharedMemoryMapPlugin64.dll";
 const MAX_STEAM_LIBRARIES: usize = 32;
 
-/// Discovery is a read-only probe: the paths below are only stat-ed to report
-/// whether the telemetry plugin is installed. Nothing here is opened, written or
-/// executed, so `LMU_INSTALL_DIR` and `libraryfolders.vdf` — both of which the
-/// user controls — cannot do more than point the check at a different directory.
+/// Discovery is read-only: the paths below are only used to locate LMU's local
+/// logs and browser storage. Nothing here is opened, written or executed, so
+/// `LMU_INSTALL_DIR` and `libraryfolders.vdf` — both of which the user controls
+/// — cannot do more than point the check at a different directory.
 pub(crate) fn installations() -> Vec<PathBuf> {
     let mut candidates = Vec::new();
     if let Some(path) = std::env::var_os("LMU_INSTALL_DIR") {
@@ -41,13 +40,6 @@ pub(crate) fn installations() -> Vec<PathBuf> {
     candidates
         .retain(|path| path.is_dir() && seen.insert(path.to_string_lossy().to_ascii_lowercase()));
     candidates
-}
-
-pub(crate) fn telemetry_plugin() -> Option<PathBuf> {
-    installations()
-        .into_iter()
-        .map(|installation| installation.join(TELEMETRY_PLUGIN))
-        .find(|plugin| plugin.is_file())
 }
 
 fn libraries_from_vdf(path: &Path) -> Vec<PathBuf> {

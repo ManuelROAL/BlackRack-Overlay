@@ -71,13 +71,13 @@ optional service is unavailable, the overlays keep running.
 ### Installation
 
 1. Download and run `BlackRack Overlay_0.8.3_x64-setup.exe`.
-2. Start Le Mans Ultimate in windowed or borderless-windowed mode.
-3. Open BlackRack Overlay and enable the panels you want to use.
+2. In LMU, enable **Settings > Gameplay > Enable Plugins** and restart the game.
+3. Start Le Mans Ultimate in windowed or borderless-windowed mode.
+4. Open BlackRack Overlay and enable the panels you want to use.
 
-No Node.js, Rust, Tauri or SimHub installation is required. LMU's own official
-shared-memory plugin must be present in
-`Le Mans Ultimate\Plugins\LMU_SharedMemoryMapPlugin64.dll`; users do not need to
-copy a BlackRack DLL into the game.
+No Node.js, Rust, Tauri or SimHub installation is required. Users do not need
+to copy a BlackRack DLL into the game. Older LMU builds may optionally use an
+external shared-memory plugin as a compatibility fallback.
 
 ### Requirements and notes
 

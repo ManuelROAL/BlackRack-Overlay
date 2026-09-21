@@ -145,7 +145,7 @@ weather polls only for Forecast or Conditions. Disconnecting LMU disables all th
 
 The supplement worker carries a second condition: the player must have a
 vehicle, which shared memory reports as `player_active`. Being connected is not
-enough, because the plugin reports that from the main menu, where no car exists
+enough, because shared memory reports that from the main menu, where no car exists
 and every `/rest/garage/` endpoint is being asked about one that is not there.
 That is not a tidiness rule — see the warning below.
 

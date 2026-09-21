@@ -15,8 +15,7 @@ Tauri para funcionar.
 
 - Windows 10 u 11 de 64 bits.
 - Le Mans Ultimate.
-- El plugin oficial de LMU en
-  `Plugins/LMU_SharedMemoryMapPlugin64.dll`.
+- La opción **Enable Plugins** activada en **Settings > Gameplay** de LMU.
 - Microsoft Edge WebView2 Runtime. El instalador incluye su bootstrapper; puede
   necesitar conexión a Internet si WebView2 no está instalado.
 
@@ -24,13 +23,15 @@ Tauri para funcionar.
 
 1. Descarga el instalador desde la [última release](https://github.com/ManuelROAL/BlackRack-Overlay/releases/latest).
 2. Ejecuta `BlackRack Overlay_<versión>_x64-setup.exe`.
-3. Abre BlackRack Overlay y selecciona el idioma y el monitor en **General**.
-4. Activa y configura los overlays que quieras usar.
-5. Usa el modo **Edición** para mover o redimensionar los paneles.
-6. Vuelve al modo **Juego** antes de conducir para que el ratón pueda pasar al simulador.
+3. En LMU, activa **Settings > Gameplay > Enable Plugins** y reinicia el juego.
+4. Abre BlackRack Overlay y selecciona el idioma y el monitor en **General**.
+5. Activa y configura los overlays que quieras usar.
+6. Usa el modo **Edición** para mover o redimensionar los paneles.
+7. Vuelve al modo **Juego** antes de conducir para que el ratón pueda pasar al simulador.
 
-No copies ninguna DLL de BlackRack Overlay a la carpeta del juego. La telemetría
-de LMU utiliza el plugin oficial del simulador.
+No copies ninguna DLL de BlackRack Overlay a la carpeta del juego. En versiones
+antiguas de LMU que no publiquen la memoria compartida nativa, el plugin de
+memoria compartida puede seguir siendo una compatibilidad opcional.
 
 ## Actualizaciones
 

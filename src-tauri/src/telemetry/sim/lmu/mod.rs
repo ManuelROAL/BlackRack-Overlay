@@ -3,13 +3,13 @@
 //! All of it needs the SDK header and the `bridge.cpp` symbols, so the module
 //! is gated the same way `build.rs` gates the native bridge. A build without
 //! the SDK cannot read this simulator at all, so it has nothing to report
-//! about the plugin either.
+//! about the native shared-memory source either.
 
 use std::path::Path;
 
 use super::TelemetrySource;
 #[cfg(all(target_os = "windows", lmu_sdk))]
-use super::{SourceCapabilities, SourceDependency, SourceDescriptor};
+use super::{SourceCapabilities, SourceDescriptor};
 
 #[cfg(all(target_os = "windows", lmu_sdk))]
 mod install;
@@ -49,25 +49,11 @@ pub(super) const DESCRIPTOR: SourceDescriptor = SourceDescriptor {
         session_splits: true,
     },
     official_geometry: Some(trackmap::official_geometry),
-    dependency: Some(plugin_dependency),
+    // Modern LMU exposes LMU_Data when Settings > Gameplay > Enable Plugins is
+    // enabled. There is no separately installable runtime dependency to probe;
+    // the source reports the live mapping state through its telemetry frames.
+    dependency: None,
 };
-
-/// The shared-memory plugin the game loads; without it the bridge reads an
-/// empty mapping no matter how the app is built.
-#[cfg(all(target_os = "windows", lmu_sdk))]
-fn plugin_dependency() -> SourceDependency {
-    match install::telemetry_plugin() {
-        Some(path) => SourceDependency {
-            available: true,
-            detail: Some(path.display().to_string()),
-        },
-        // Nothing was found, so name what was looked for instead.
-        None => SourceDependency {
-            available: false,
-            detail: Some(install::TELEMETRY_PLUGIN.replace('/', "\\")),
-        },
-    }
-}
 
 /// The bridge symbols exist, so this simulator can be read whenever it is
 /// running; the source itself reports whether it currently is.
