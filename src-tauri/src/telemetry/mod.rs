@@ -925,12 +925,8 @@ struct TelemetryDemand {
 
 impl TelemetryFrame {
     pub(crate) fn should_hide_overlays(&self, app_has_focus: bool) -> bool {
-        // LMU can keep the last active-car sample briefly while returning to
-        // its menu. Treat both the missing-car signal and the menu phase as
-        // menu state, even if the realtime flag has not caught up yet.
-        let in_menu = !self.player_active || self.game_phase == 0;
         !self.connected
-            || in_menu
+            || !self.player_active
             || self.player_in_garage
             || (!self.spectator_mode && !self.game_in_realtime)
             || (!self.game_in_foreground && !app_has_focus)
@@ -1451,7 +1447,7 @@ mod tests {
         frame.game_phase = 5;
 
         frame.game_phase = 0;
-        assert!(frame.should_hide_overlays(true));
+        assert!(!frame.should_hide_overlays(true));
         frame.game_phase = 5;
 
         frame.spectator_mode = true;

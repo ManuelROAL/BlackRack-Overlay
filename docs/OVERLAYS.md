@@ -88,13 +88,13 @@ assignments; per-overlay mode restores those assignments.
   72 px minimum— would otherwise have the stored scale raised and saved
   again on every launch, and would reappear oversized once the roster arrived.
 - Automatically hide overlays when LMU is not foreground, the player is inactive,
-  the game is not realtime, the player is in the garage or LMU is back in its
-  menu. Reaching the session timer or a checkered/finished phase does not hide
-  overlays while the player remains in the server or race.
+  the game is not realtime or the player is in the garage. Session phases alone
+  —including the pre-session server wait, the session timer and a
+  checkered/finished phase—never hide overlays.
   Spectator and team modes permit non-realtime viewing. Spectator mode treats the
   currently watched entry as the reference vehicle; team mode keeps the player's
   registered team car as the reference regardless of the active camera. They are
-  mutually exclusive; garage and menu hiding still apply.
+  mutually exclusive; garage hiding still applies.
   Garage hiding follows that single reference vehicle, not the local player's
   garage state when spectating a different car.
   In spectator mode, the control panel disables Lift & Coast, Stint History and
