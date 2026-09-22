@@ -305,6 +305,7 @@ impl LmuTelemetrySource {
                     event_id: event_id.to_owned(),
                     split_number,
                     player_vehicle_id: sample.vehicle_id,
+                    player_driver_name: sample.driver_name.clone(),
                     player_class: sample.vehicle_class.clone(),
                     before_raw_elo: Self::usable_raw_elo(player_raw_elo),
                     before_visual_score: sample.visual_score,
@@ -314,12 +315,21 @@ impl LmuTelemetrySource {
                     final_qualifying_position: 0,
                     final_position_source: "unavailable",
                     final_logged_signature: None,
+                    postrace_score_candidate: None,
+                    postrace_score_source: None,
+                    postrace_score_samples: 0,
                 });
             }
 
             let Some(state) = self.driver_rank_validation.as_mut() else {
                 return;
             };
+            if sample.driver_name != state.player_driver_name {
+                state.postrace_score_candidate = None;
+                state.postrace_score_source = None;
+                state.postrace_score_samples = 0;
+                return;
+            }
             if state.event_id.is_empty() && !event_id.is_empty() {
                 state.event_id = event_id.to_owned();
             }
@@ -364,6 +374,7 @@ impl LmuTelemetrySource {
                 "split_number": state.split_number,
                 "player": {
                     "vehicle_id": state.player_vehicle_id,
+                    "driver_name": state.player_driver_name,
                     "vehicle_class": state.player_class,
                     "before_raw_elo": state.before_raw_elo,
                     "before_visual_score": state.before_visual_score,
@@ -379,7 +390,7 @@ impl LmuTelemetrySource {
             return;
         }
 
-        let Some(state) = self.driver_rank_validation.take() else {
+        let Some(mut state) = self.driver_rank_validation.take() else {
             return;
         };
         let Some(estimated_gain) = state.final_estimated_gain else {
@@ -391,7 +402,21 @@ impl LmuTelemetrySource {
             return;
         }
 
-        let current_visual_score = sample.and_then(|value| value.visual_score);
+        let Some(sample) = sample else {
+            state.postrace_score_candidate = None;
+            state.postrace_score_source = None;
+            state.postrace_score_samples = 0;
+            self.driver_rank_validation = Some(state);
+            return;
+        };
+        if sample.driver_name != state.player_driver_name {
+            state.postrace_score_candidate = None;
+            state.postrace_score_source = None;
+            state.postrace_score_samples = 0;
+            self.driver_rank_validation = Some(state);
+            return;
+        }
+        let current_visual_score = sample.visual_score;
         let after_raw_elo = Self::usable_raw_elo(player_raw_elo);
         let Some((actual_gain, actual_source)) = Self::driver_rank_actual_gain(
             state.before_raw_elo,
@@ -399,9 +424,38 @@ impl LmuTelemetrySource {
             state.before_visual_score,
             current_visual_score,
         ) else {
+            state.postrace_score_candidate = None;
+            state.postrace_score_source = None;
+            state.postrace_score_samples = 0;
             self.driver_rank_validation = Some(state);
             return;
         };
+        let observed_score = match actual_source {
+            "raw_elo" => after_raw_elo,
+            _ => current_visual_score,
+        };
+        let Some(observed_score) = observed_score else {
+            state.postrace_score_candidate = None;
+            state.postrace_score_source = None;
+            state.postrace_score_samples = 0;
+            self.driver_rank_validation = Some(state);
+            return;
+        };
+        if state.postrace_score_source == Some(actual_source)
+            && state
+                .postrace_score_candidate
+                .is_some_and(|candidate| (candidate - observed_score).abs() <= 0.001)
+        {
+            state.postrace_score_samples = state.postrace_score_samples.saturating_add(1);
+        } else {
+            state.postrace_score_candidate = Some(observed_score);
+            state.postrace_score_source = Some(actual_source);
+            state.postrace_score_samples = 1;
+        }
+        if state.postrace_score_samples < 2 {
+            self.driver_rank_validation = Some(state);
+            return;
+        }
         let error = actual_gain - estimated_gain;
         emit(serde_json::json!({
             "event": "driver_rank_validation",
@@ -414,6 +468,7 @@ impl LmuTelemetrySource {
             "split_number": state.split_number,
             "player": {
                 "vehicle_id": state.player_vehicle_id,
+                "driver_name": state.player_driver_name,
                 "vehicle_class": state.player_class,
                 "before_raw_elo": state.before_raw_elo,
                 "after_raw_elo": after_raw_elo,
@@ -520,6 +575,7 @@ impl LmuTelemetrySource {
                 } else {
                     "player_rank_unavailable"
                 },
+                driver_name: entry.driver_name.clone(),
                 vehicle_id: entry.vehicle_id,
                 vehicle_class: entry.vehicle_class.clone(),
                 driver_rank: entry.driver_rank.clone(),
@@ -581,6 +637,7 @@ impl LmuTelemetrySource {
                 if entry.is_player {
                     player_diagnostic = Some(DriverRankEstimateDiagnostic {
                         status: "player_rank_unavailable",
+                        driver_name: entry.driver_name.clone(),
                         vehicle_id: entry.vehicle_id,
                         vehicle_class: entry.vehicle_class.clone(),
                         driver_rank: entry.driver_rank.clone(),
@@ -646,6 +703,7 @@ impl LmuTelemetrySource {
                 if entry.is_player {
                     player_diagnostic = Some(DriverRankEstimateDiagnostic {
                         status: "opponent_ranks_unavailable",
+                        driver_name: entry.driver_name.clone(),
                         vehicle_id: entry.vehicle_id,
                         vehicle_class: entry.vehicle_class.clone(),
                         driver_rank: entry.driver_rank.clone(),
@@ -676,6 +734,7 @@ impl LmuTelemetrySource {
             if entry.is_player {
                 player_diagnostic = Some(DriverRankEstimateDiagnostic {
                     status: "estimated",
+                    driver_name: entry.driver_name.clone(),
                     vehicle_id: entry.vehicle_id,
                     vehicle_class: entry.vehicle_class.clone(),
                     driver_rank: entry.driver_rank.clone(),

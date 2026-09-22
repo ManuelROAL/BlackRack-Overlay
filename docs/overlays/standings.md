@@ -158,11 +158,14 @@ shared `standings_models` module.
   retain the previous logs.
 - Version 2 samples identify the app and formula, event, split and race sequence,
   and include each anonymous rated opponent's positions, score, expected result
-  and head-to-head outcomes. At the checkered flag, write the final prediction;
-  after a fresh RaceControl profile refresh in a later session, write a settlement
-  with actual gain, prediction error and source. Prefer continuous raw ELO for
-  settlement and fall back to the continuous visual score only when raw ELO is
-  unavailable or masked as zero.
+  and head-to-head outcomes. At the checkered flag, write the final prediction.
+  In a later session, settle only after two consecutive samples for the same
+  selected driver agree on the refreshed score; a changed score replaces the
+  provisional candidate. Write the settlement with actual gain, prediction
+  error and source. Prefer continuous raw ELO for settlement and fall back to
+  the continuous visual score only when raw ELO is unavailable or masked as
+  zero. The freshness revision must belong to the selected driver's profile,
+  not to an unrelated authenticated-account ELO refresh.
 - During the live race, DR head-to-head results follow the responsive class order
   from shared memory. After the checkered flag, prefer LMU REST `position` only
   when `serverScored` is true and every car in that class has a positive scored

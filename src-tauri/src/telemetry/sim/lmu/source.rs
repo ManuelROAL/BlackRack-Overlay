@@ -1319,6 +1319,7 @@ struct DriverRankOpponentDiagnostic {
 #[derive(Clone)]
 struct DriverRankEstimateDiagnostic {
     status: &'static str,
+    driver_name: String,
     vehicle_id: i32,
     vehicle_class: String,
     driver_rank: String,
@@ -1352,6 +1353,7 @@ struct DriverRankValidationState {
     event_id: String,
     split_number: u32,
     player_vehicle_id: i32,
+    player_driver_name: String,
     player_class: String,
     before_raw_elo: Option<f64>,
     before_visual_score: Option<f64>,
@@ -1361,6 +1363,9 @@ struct DriverRankValidationState {
     final_qualifying_position: i32,
     final_position_source: &'static str,
     final_logged_signature: Option<String>,
+    postrace_score_candidate: Option<f64>,
+    postrace_score_source: Option<&'static str>,
+    postrace_score_samples: u8,
 }
 
 struct SourceStagePerformance {

@@ -420,15 +420,11 @@ impl LmuTelemetrySource {
             };
 
         let authenticated_player_elo = self.driver_ranks.authenticated_player_elo();
-        let authenticated_elo_revision = self.driver_ranks.authenticated_player_elo_revision();
-        let (validation_player_elo, player_rank_refresh_revision) = if authenticated_player_elo
-            .is_some()
-            && authenticated_elo_revision > player_profile_revision
-        {
-            (authenticated_player_elo, authenticated_elo_revision)
-        } else {
-            (player_driver_elo, player_profile_revision)
-        };
+        // Validation must use the selected driver's profile revision. The
+        // authenticated account ELO may be stale or belong to another
+        // identity; it remains a display fallback below.
+        let (validation_player_elo, player_rank_refresh_revision) =
+            (player_driver_elo, player_profile_revision);
         if player_driver_elo.is_none() {
             player_driver_elo = authenticated_player_elo;
         }
@@ -453,6 +449,7 @@ impl LmuTelemetrySource {
                         "status": sample.status,
                         "player": {
                             "vehicle_id": sample.vehicle_id,
+                            "driver_name": sample.driver_name,
                             "vehicle_class": sample.vehicle_class,
                             "driver_rank": sample.driver_rank,
                             "driver_rank_progress": sample.driver_rank_progress,
@@ -476,6 +473,7 @@ impl LmuTelemetrySource {
                         "status": sample.status,
                         "player": {
                             "vehicle_id": sample.vehicle_id,
+                            "driver_name": sample.driver_name,
                             "vehicle_class": sample.vehicle_class,
                             "driver_rank": sample.driver_rank,
                             "driver_rank_progress": sample.driver_rank_progress,

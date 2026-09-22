@@ -26,6 +26,7 @@ fn split(event_id: &str, k: f64, distance: f64) -> SessionSplit {
 fn diagnostic(gain: f64, race_position: i32) -> DriverRankEstimateDiagnostic {
     DriverRankEstimateDiagnostic {
         status: "estimated",
+        driver_name: "Driver One".into(),
         vehicle_id: 1,
         vehicle_class: "GTE".into(),
         driver_rank: "S1".into(),
@@ -52,6 +53,24 @@ fn validate(
     game_phase: u32,
     refresh_revision: u64,
 ) -> Vec<serde_json::Value> {
+    validate_with_raw_elo(
+        source,
+        Some(sample),
+        Some(0.0),
+        session_type,
+        game_phase,
+        refresh_revision,
+    )
+}
+
+fn validate_with_raw_elo(
+    source: &mut LmuTelemetrySource,
+    sample: Option<&DriverRankEstimateDiagnostic>,
+    player_raw_elo: Option<f64>,
+    session_type: i32,
+    game_phase: u32,
+    refresh_revision: u64,
+) -> Vec<serde_json::Value> {
     let mut events = Vec::new();
     source.apply_driver_rank_validation(
         DriverRankValidationInput {
@@ -59,8 +78,8 @@ fn validate(
             game_phase,
             event_id: "race-event",
             split_number: 2,
-            sample: Some(sample),
-            player_raw_elo: Some(0.0),
+            sample,
+            player_raw_elo,
             refresh_revision,
         },
         |event| events.push(event),
@@ -336,6 +355,7 @@ fn stopped_frames_cannot_create_a_race_or_replace_a_pending_finish() {
     source.update_driver_rank_session(&snapshot(1, 0, 0.0));
     validate(&mut source, &final_sample, 1, 0, 14);
     assert!(source.driver_rank_validation.is_some());
+    assert!(validate(&mut source, &final_sample, 1, 0, 15).is_empty());
     let events = validate(&mut source, &final_sample, 1, 0, 15);
     assert!(source.driver_rank_validation.is_none());
     assert_eq!(events.len(), 1);
@@ -401,4 +421,151 @@ fn a_real_restart_opens_one_new_race_and_clears_previous_race_inputs() {
         source.update_driver_rank_session(&snapshot(10, 0, 0.1));
         assert_eq!(source.driver_rank_race_sequence, 2);
     }
+}
+
+#[test]
+fn mismatched_identity_breaks_postrace_score_consecutiveness() {
+    let mut source = LmuTelemetrySource::new();
+    let final_sample = diagnostic(-1.0, 7);
+    source.update_driver_rank_session(&snapshot(10, 0, 0.0));
+    validate(&mut source, &final_sample, 10, 5, 14);
+    source.update_driver_rank_session(&snapshot(10, 8, 1_240.0));
+    validate(&mut source, &final_sample, 10, 8, 14);
+
+    assert!(validate(&mut source, &final_sample, 1, 0, 15).is_empty());
+    let mut other_driver = final_sample.clone();
+    other_driver.driver_name = "Driver Two".into();
+    assert!(validate(&mut source, &other_driver, 1, 0, 15).is_empty());
+    assert!(validate(&mut source, &final_sample, 1, 0, 15).is_empty());
+    assert!(validate_with_raw_elo(&mut source, None, Some(0.0), 1, 0, 15).is_empty());
+    let events = validate(&mut source, &final_sample, 1, 0, 15);
+    assert!(events.is_empty());
+    let events = validate(&mut source, &final_sample, 1, 0, 15);
+    assert_eq!(events.len(), 1);
+}
+
+#[test]
+fn visual_and_raw_postrace_sources_cannot_mix_for_stability() {
+    let mut source = LmuTelemetrySource::new();
+    let final_sample = diagnostic(-1.0, 7);
+    source.update_driver_rank_session(&snapshot(10, 0, 0.0));
+    source.apply_driver_rank_validation(
+        DriverRankValidationInput {
+            session_type: 10,
+            game_phase: 5,
+            event_id: "race-event",
+            split_number: 2,
+            sample: Some(&final_sample),
+            player_raw_elo: Some(100.0),
+            refresh_revision: 14,
+        },
+        |_| {},
+    );
+    source.update_driver_rank_session(&snapshot(10, 8, 1_240.0));
+    source.apply_driver_rank_validation(
+        DriverRankValidationInput {
+            session_type: 10,
+            game_phase: 8,
+            event_id: "race-event",
+            split_number: 2,
+            sample: Some(&final_sample),
+            player_raw_elo: Some(100.0),
+            refresh_revision: 14,
+        },
+        |_| {},
+    );
+    let mut visual = final_sample.clone();
+    visual.visual_score = Some(500.0);
+    let mut events = Vec::new();
+    source.apply_driver_rank_validation(
+        DriverRankValidationInput {
+            session_type: 1,
+            game_phase: 0,
+            event_id: "race-event",
+            split_number: 2,
+            sample: Some(&visual),
+            player_raw_elo: Some(500.0),
+            refresh_revision: 15,
+        },
+        |event| events.push(event),
+    );
+    assert!(events.is_empty());
+    source.apply_driver_rank_validation(
+        DriverRankValidationInput {
+            session_type: 1,
+            game_phase: 0,
+            event_id: "race-event",
+            split_number: 2,
+            sample: Some(&visual),
+            player_raw_elo: Some(0.0),
+            refresh_revision: 15,
+        },
+        |event| events.push(event),
+    );
+    assert!(events.is_empty());
+    source.apply_driver_rank_validation(
+        DriverRankValidationInput {
+            session_type: 1,
+            game_phase: 0,
+            event_id: "race-event",
+            split_number: 2,
+            sample: Some(&visual),
+            player_raw_elo: Some(0.0),
+            refresh_revision: 15,
+        },
+        |event| events.push(event),
+    );
+    assert_eq!(events.len(), 1);
+}
+
+#[test]
+fn changing_postrace_score_replaces_candidate_without_settling() {
+    let mut source = LmuTelemetrySource::new();
+    let final_sample = diagnostic(-1.0, 7);
+    source.update_driver_rank_session(&snapshot(10, 0, 0.0));
+    validate(&mut source, &final_sample, 10, 5, 14);
+    source.update_driver_rank_session(&snapshot(10, 8, 1_240.0));
+    validate(&mut source, &final_sample, 10, 8, 14);
+    let mut changed = final_sample.clone();
+    changed.visual_score = Some(500.0);
+    assert!(validate(&mut source, &final_sample, 1, 0, 15).is_empty());
+    assert!(validate(&mut source, &changed, 1, 0, 15).is_empty());
+    assert!(source.driver_rank_validation.is_some());
+}
+
+#[test]
+fn two_consecutive_identical_postrace_scores_settle_validation() {
+    let mut source = LmuTelemetrySource::new();
+    let final_sample = diagnostic(-1.0, 7);
+    source.update_driver_rank_session(&snapshot(10, 0, 0.0));
+    validate(&mut source, &final_sample, 10, 5, 14);
+    source.update_driver_rank_session(&snapshot(10, 8, 1_240.0));
+    validate(&mut source, &final_sample, 10, 8, 14);
+    let mut stable = final_sample.clone();
+    stable.visual_score = Some(500.0);
+    assert!(validate(&mut source, &stable, 1, 0, 15).is_empty());
+    let events = validate(&mut source, &stable, 1, 0, 15);
+    assert_eq!(events.len(), 1);
+    assert_eq!(events[0]["status"], "settled");
+}
+
+#[test]
+fn changing_postrace_score_source_restarts_stability_confirmation() {
+    let mut source = LmuTelemetrySource::new();
+    let mut final_sample = diagnostic(-1.0, 7);
+    final_sample.visual_score = Some(500.0);
+    source.update_driver_rank_session(&snapshot(10, 0, 0.0));
+    validate_with_raw_elo(&mut source, Some(&final_sample), Some(1300.0), 10, 5, 14);
+    source.update_driver_rank_session(&snapshot(10, 8, 1_240.0));
+    validate_with_raw_elo(&mut source, Some(&final_sample), Some(1300.0), 10, 8, 14);
+
+    let mut postrace = final_sample.clone();
+    postrace.visual_score = Some(1400.0);
+    assert!(validate_with_raw_elo(&mut source, Some(&postrace), Some(1400.0), 1, 0, 15).is_empty());
+    // A zero raw ELO masks the raw source, so the same numeric value must not
+    // count as the second sample when the validator falls back to visual DR.
+    assert!(validate_with_raw_elo(&mut source, Some(&postrace), Some(0.0), 1, 0, 15).is_empty());
+    let events = validate_with_raw_elo(&mut source, Some(&postrace), Some(0.0), 1, 0, 15);
+    assert_eq!(events.len(), 1);
+    assert_eq!(events[0]["comparison"]["actual_source"], "visual_score");
 }
