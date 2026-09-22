@@ -114,6 +114,9 @@ struct LmuSnapshot {
     double leader_time_into_lap;
     double player_time_into_lap;
     double player_lap_distance;
+    double player_world_x;
+    double player_world_y;
+    int32_t player_vehicle_id;
     double track_length;
     double ambient_temperature_c;
     double track_temperature_c;
@@ -597,6 +600,9 @@ extern "C" int lmu_read_snapshot(LmuSnapshot* output, int32_t spectator_vehicle_
 
     const TelemInfoV01& vehicle = *selected_vehicle;
     output->player_active = 1;
+    output->player_world_x = vehicle.mPos.x;
+    output->player_world_y = -vehicle.mPos.z;
+    output->player_vehicle_id = static_cast<int32_t>(selected_vehicle_id);
     output->player_lap_valid = vehicle.mLapInvalidated ? 0u : 1u;
     output->lap_number = static_cast<int32_t>(vehicle.mLapNumber);
     output->gear = static_cast<int32_t>(vehicle.mGear);

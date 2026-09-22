@@ -19,6 +19,9 @@ TypeScript fetches static geometry, interpolates and renders it.
 
 - Prefer matched per-vehicle telemetry coordinates over slower scoring position.
   Normalize LMU lateral position as `world_y = -mPos.z`.
+- In a solo session LMU may expose the selected telemetry vehicle without a
+  scoring roster; keep the player marker from that selected vehicle's position
+  and lap distance instead of publishing an empty map batch.
 - Fetch `/rest/watch/trackmap` once per circuit. Type 0 is the ordered main
   centerline and type 1 the open pitlane. Filter other families and cache valid
   geometry by normalized circuit key.

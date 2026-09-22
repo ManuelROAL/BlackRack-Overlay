@@ -665,30 +665,7 @@ impl TelemetrySource for LmuTelemetrySource {
             (FuelStrategies::default(), 0.0, 0.0, 0.0, 0)
         };
         let track_map_vehicles = if include_track_map {
-            snapshot.standings[..snapshot.standings_count.min(MAX_VEHICLES as u32) as usize]
-                .iter()
-                .filter(|entry| {
-                    entry.vehicle_id > 0
-                        && entry.world_x.is_finite()
-                        && entry.world_y.is_finite()
-                        && entry.in_garage == 0
-                })
-                .map(|entry| TrackMapVehicle {
-                    vehicle_id: entry.vehicle_id,
-                    overall_position: entry.position,
-                    vehicle_class: Self::string_from_chars(&entry.vehicle_class),
-                    world_x: entry.world_x,
-                    world_y: entry.world_y,
-                    world_position_available: true,
-                    lap_distance: entry.lap_distance.max(0.0),
-                    total_laps: entry.total_laps,
-                    in_pits: entry.in_pits != 0,
-                    in_garage: entry.in_garage != 0,
-                    causing_yellow: standings_yellow_culprits.contains(&entry.vehicle_id),
-                    sector: entry.sector,
-                    is_player: entry.is_player != 0,
-                })
-                .collect()
+            Self::track_map_vehicles(&snapshot, &standings_yellow_culprits)
         } else {
             Vec::new()
         };
@@ -1060,5 +1037,66 @@ impl TelemetrySource for LmuTelemetrySource {
             frame_us: frame_started.elapsed().as_micros(),
         });
         frame
+    }
+}
+
+impl LmuTelemetrySource {
+    pub(super) fn track_map_vehicles(
+        snapshot: &LmuSnapshot,
+        standings_yellow_culprits: &HashSet<i32>,
+    ) -> Vec<TrackMapVehicle> {
+        let mut vehicles = snapshot.standings
+            [..snapshot.standings_count.min(MAX_VEHICLES as u32) as usize]
+            .iter()
+            .filter(|entry| {
+                entry.vehicle_id > 0
+                    && entry.world_x.is_finite()
+                    && entry.world_y.is_finite()
+                    && entry.in_garage == 0
+            })
+            .map(|entry| TrackMapVehicle {
+                vehicle_id: entry.vehicle_id,
+                overall_position: entry.position,
+                vehicle_class: Self::string_from_chars(&entry.vehicle_class),
+                world_x: entry.world_x,
+                world_y: entry.world_y,
+                world_position_available: true,
+                lap_distance: entry.lap_distance.max(0.0),
+                total_laps: entry.total_laps,
+                in_pits: entry.in_pits != 0,
+                in_garage: entry.in_garage != 0,
+                causing_yellow: standings_yellow_culprits.contains(&entry.vehicle_id),
+                sector: entry.sector,
+                is_player: entry.is_player != 0,
+            })
+            .collect::<Vec<_>>();
+
+        // In a solo session LMU can expose the selected telemetry vehicle while
+        // leaving the scoring roster empty. Keep the player's map marker alive
+        // from the authoritative vehicle telemetry instead of publishing an
+        // empty coordinate batch.
+        if snapshot.player_active != 0
+            && snapshot.player_in_garage == 0
+            && !vehicles.iter().any(|vehicle| vehicle.is_player)
+        {
+            vehicles.push(TrackMapVehicle {
+                vehicle_id: snapshot.player_vehicle_id,
+                overall_position: snapshot.player_position.max(1),
+                vehicle_class: "PLAYER".to_owned(),
+                world_x: snapshot.player_world_x,
+                world_y: snapshot.player_world_y,
+                world_position_available: snapshot.player_world_x.is_finite()
+                    && snapshot.player_world_y.is_finite(),
+                lap_distance: snapshot.player_lap_distance.max(0.0),
+                total_laps: snapshot.player_total_laps.max(snapshot.lap_number),
+                in_pits: false,
+                in_garage: false,
+                causing_yellow: false,
+                sector: snapshot.player_sector,
+                is_player: true,
+            });
+        }
+
+        vehicles
     }
 }

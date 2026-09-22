@@ -1255,6 +1255,32 @@ fn rust_snapshot_matches_cpp_bridge_layout_size() {
 }
 
 #[test]
+fn track_map_keeps_selected_player_without_scoring_roster() {
+    let snapshot = LmuSnapshot {
+        player_active: 1,
+        player_lap_distance: 1_234.0,
+        player_world_x: 42.0,
+        player_world_y: -17.0,
+        player_vehicle_id: 7,
+        player_position: 0,
+        player_total_laps: 2,
+        lap_number: 2,
+        ..LmuSnapshot::default()
+    };
+
+    let vehicles = LmuTelemetrySource::track_map_vehicles(&snapshot, &HashSet::new());
+
+    assert_eq!(vehicles.len(), 1);
+    let player = &vehicles[0];
+    assert!(player.is_player);
+    assert_eq!(player.vehicle_id, 7);
+    assert_eq!(player.overall_position, 1);
+    assert_eq!(player.lap_distance, 1_234.0);
+    assert_eq!((player.world_x, player.world_y), (42.0, -17.0));
+    assert!(player.world_position_available);
+}
+
+#[test]
 fn maps_explicit_tc_and_abs_activation_flags() {
     let mut snapshot = LmuSnapshot {
         tc_active: 1,
