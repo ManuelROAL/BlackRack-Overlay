@@ -120,6 +120,13 @@ import {
   type LiftCoastSettings
 } from "./liftcoast-settings";
 import {
+  defaultPitStopSettings,
+  normalizePitStopSettings,
+  PITSTOP_SETTINGS_KEY,
+  readPitStopSettings,
+  type PitStopSettings
+} from "./pitstop-settings";
+import {
   DEFAULT_OVERLAY_FONT_SIZE,
   DEFAULT_OVERLAY_TRANSPARENCY,
   effectiveOverlayFontSize,
@@ -300,7 +307,7 @@ interface UpdateProgress {
 
 interface OverlayConfigurationExport {
   format: "blackrack-overlay-configuration";
-  schemaVersion: 22;
+  schemaVersion: 23;
   exportedAt: string;
   ui: { locale: Locale };
   profiles: OverlayProfile[];
@@ -330,6 +337,7 @@ interface OverlayConfigurationExport {
     conditions: ConditionsSettings;
     dashboard: DashboardSettings;
     liftCoast: LiftCoastSettings;
+    pitstop: PitStopSettings;
     performanceProfile: PerformanceProfile;
     spectatorMode: boolean;
     teamMode: boolean;
@@ -498,7 +506,7 @@ if (localeSelect) {
   });
 }
 
-const CURRENT_CONFIGURATION_SCHEMA = 22;
+const CURRENT_CONFIGURATION_SCHEMA = 23;
 const CURRENT_CONFIGURATION_FORMAT = "blackrack-overlay-configuration";
 const LEGACY_CONFIGURATION_FORMAT = "lmu-overlay-configuration";
 const overlayIds: OverlayId[] = ["delta", "timing", "stinthistory", "driving", "liftcoast", "tires", "damage", "standings", "relative", "fuel", "pitstop", "flags", "rejoin", "trackmap", "forecast", "conditions", "dashboard"];
@@ -833,6 +841,7 @@ let tiresSettings: TiresSettings = readTiresSettings();
 let conditionsSettings: ConditionsSettings = readConditionsSettings();
 let dashboardSettings: DashboardSettings = readDashboardSettings();
 let liftCoastSettings: LiftCoastSettings = readLiftCoastSettings();
+let pitStopSettings: PitStopSettings = readPitStopSettings();
 const overlayTransparency = readOverlayTransparency();
 let overlayTransparencyScope: OverlayTransparencyScope = readOverlayTransparencyScope();
 const overlayFontSize = readOverlayFontSize();
@@ -872,6 +881,7 @@ const syncBrowserSourcePreferences = (): void => {
       conditions: conditionsSettings,
       dashboard: dashboardSettings,
       liftCoast: liftCoastSettings,
+      pitstop: pitStopSettings,
       transparency: effectiveOverlayTransparency(overlayTransparency, overlayTransparencyScope),
       fontSize: effectiveOverlayFontSize(overlayFontSize, overlayFontSizeScope),
       locale: getLocale(),
@@ -1140,6 +1150,12 @@ const overlayShortcutInputs = new Map<OverlayId, HTMLInputElement>();
 const persistLiftCoastSettings = (): void => {
   localStorage.setItem(LIFTCOAST_SETTINGS_KEY, JSON.stringify(liftCoastSettings));
   void emit("liftcoast://settings", liftCoastSettings);
+  syncBrowserSourcePreferences();
+};
+
+const persistPitStopSettings = (): void => {
+  localStorage.setItem(PITSTOP_SETTINGS_KEY, JSON.stringify(pitStopSettings));
+  void emit("pitstop://settings", pitStopSettings);
   syncBrowserSourcePreferences();
 };
 
@@ -1535,6 +1551,10 @@ const applyOverlayConfigurationDefaults = (id: OverlayId, events: Promise<unknow
     liftCoastSettings = defaultLiftCoastSettings();
     localStorage.setItem(LIFTCOAST_SETTINGS_KEY, JSON.stringify(liftCoastSettings));
     events.push(emit("liftcoast://settings", liftCoastSettings));
+  } else if (id === "pitstop") {
+    pitStopSettings = defaultPitStopSettings();
+    localStorage.setItem(PITSTOP_SETTINGS_KEY, JSON.stringify(pitStopSettings));
+    events.push(emit("pitstop://settings", pitStopSettings));
   }
 };
 
@@ -1603,7 +1623,8 @@ const captureProfileData = (previous?: OverlayProfileData): OverlayProfileData =
     tires: tiresSettings,
     conditions: conditionsSettings,
     dashboard: dashboardSettings,
-    liftCoast: liftCoastSettings
+    liftCoast: liftCoastSettings,
+    pitstop: pitStopSettings
   };
 };
 
@@ -1629,7 +1650,8 @@ const defaultProfileData = (layout: CompositeLayout): OverlayProfileData => ({
   tires: defaultTiresSettings(),
   conditions: defaultConditionsSettings(),
   dashboard: defaultDashboardSettings(),
-  liftCoast: defaultLiftCoastSettings()
+  liftCoast: defaultLiftCoastSettings(),
+  pitstop: defaultPitStopSettings()
 });
 
 let activeMode: OverlayMode = modeFromFlags(spectatorMode, teamMode);
@@ -1739,6 +1761,7 @@ const applyProfileData = async (data: OverlayProfileData): Promise<void> => {
     conditionsSettings = data.conditions;
     dashboardSettings = normalizeDashboardSettings(data.dashboard) ?? defaultDashboardSettings();
     liftCoastSettings = normalizeLiftCoastSettings(data.liftCoast) ?? defaultLiftCoastSettings();
+    pitStopSettings = normalizePitStopSettings(data.pitstop) ?? defaultPitStopSettings();
     overlayTransparencyScope = data.transparency.scope;
     overlayFontSizeScope = data.fontSize.scope;
     const monitorFallback = await resolveOverlayMonitor();
@@ -1765,6 +1788,7 @@ const applyProfileData = async (data: OverlayProfileData): Promise<void> => {
     localStorage.setItem(CONDITIONS_SETTINGS_KEY, JSON.stringify(conditionsSettings));
     localStorage.setItem(DASHBOARD_SETTINGS_KEY, JSON.stringify(dashboardSettings));
     localStorage.setItem(LIFTCOAST_SETTINGS_KEY, JSON.stringify(liftCoastSettings));
+    localStorage.setItem(PITSTOP_SETTINGS_KEY, JSON.stringify(pitStopSettings));
     localStorage.setItem(OVERLAY_TRANSPARENCY_KEY, JSON.stringify(overlayTransparency));
     localStorage.setItem(OVERLAY_TRANSPARENCY_SCOPE_KEY, JSON.stringify(overlayTransparencyScope));
     localStorage.setItem(OVERLAY_FONT_SIZE_KEY, JSON.stringify(overlayFontSize));
@@ -1786,7 +1810,8 @@ const applyProfileData = async (data: OverlayProfileData): Promise<void> => {
       emit("tires://settings", tiresSettings),
       emit("conditions://settings", conditionsSettings),
       emit("dashboard://settings", dashboardSettings),
-      emit("liftcoast://settings", liftCoastSettings)
+      emit("liftcoast://settings", liftCoastSettings),
+      emit("pitstop://settings", pitStopSettings)
     ];
     for (const id of overlayIds) {
       events.push(emit("overlay://background-transparency", {
@@ -2614,6 +2639,7 @@ const parseOverlayConfiguration = (
   const conditions = configurationObject(overlays?.conditions);
   const dashboard = configurationObject(overlays?.dashboard);
   const liftCoast = configurationObject(overlays?.liftCoast);
+  const pitstop = configurationObject(overlays?.pitstop);
   const importedProfiles = root?.profiles;
   const importedBindings = root?.modeBindings;
   const importedSessionBindings = root?.sessionBindings;
@@ -2653,7 +2679,8 @@ const parseOverlayConfiguration = (
     || (numericSchemaVersion >= 15 && !tires)
     || (numericSchemaVersion >= 16 && !conditions)
     || (numericSchemaVersion >= 18 && !dashboard)
-    || (numericSchemaVersion >= 20 && !liftCoast)) {
+    || (numericSchemaVersion >= 20 && !liftCoast)
+    || (numericSchemaVersion >= 23 && !pitstop)) {
     throw new Error(t("config.incompatible"));
   }
   if (transparencyScope.mode !== "global" && transparencyScope.mode !== "individual") {
@@ -2857,6 +2884,12 @@ const parseOverlayConfiguration = (
   if (!normalizedLiftCoast) {
     throw new Error(t("config.invalidLiftCoast"));
   }
+  const normalizedPitStop = pitstop
+    ? normalizePitStopSettings(pitstop)
+    : defaultPitStopSettings();
+  if (!normalizedPitStop) {
+    throw new Error(t("config.invalidPitStop"));
+  }
   const fallbackVisibility = defaultVisibility();
   for (const id of overlayIds) {
     if (visibility[id] === undefined) visibility[id] = fallbackVisibility[id];
@@ -2958,6 +2991,7 @@ const parseOverlayConfiguration = (
       conditions: normalizedConditions,
       dashboard: normalizedDashboard,
       liftCoast: normalizedLiftCoast,
+      pitstop: normalizedPitStop,
       performanceProfile: isPerformanceProfile(importedPerformanceProfile)
         ? importedPerformanceProfile
         : DEFAULT_PERFORMANCE_PROFILE,
@@ -2981,7 +3015,8 @@ const parseOverlayConfiguration = (
     tires: result.overlays.tires,
     conditions: result.overlays.conditions,
     dashboard: result.overlays.dashboard,
-    liftCoast: result.overlays.liftCoast
+    liftCoast: result.overlays.liftCoast,
+    pitstop: result.overlays.pitstop
   };
   // Documents written before schema 17 carry a single configuration; it becomes
   // the one profile every mode starts bound to.
@@ -3078,6 +3113,7 @@ const applyImportedConfiguration = (configuration: OverlayConfigurationExport): 
     [CONDITIONS_SETTINGS_KEY, configuration.overlays.conditions],
     [DASHBOARD_SETTINGS_KEY, configuration.overlays.dashboard],
     [LIFTCOAST_SETTINGS_KEY, configuration.overlays.liftCoast],
+    [PITSTOP_SETTINGS_KEY, configuration.overlays.pitstop],
     [PERFORMANCE_PROFILE_KEY, configuration.overlays.performanceProfile],
     [SPECTATOR_MODE_KEY, configuration.overlays.spectatorMode && !configuration.overlays.teamMode],
     [TEAM_MODE_KEY, configuration.overlays.teamMode],
@@ -3146,6 +3182,7 @@ exportConfigurationButton?.addEventListener("click", () => {
         conditions: conditionsSettings,
         dashboard: dashboardSettings,
         liftCoast: liftCoastSettings,
+        pitstop: pitStopSettings,
         performanceProfile,
         spectatorMode,
         teamMode
@@ -3493,6 +3530,15 @@ for (const field of DASHBOARD_FIELDS) {
     }
   );
 }
+appendToggle(
+  document.getElementById("pitstop-settings-options"),
+  t("settings.pitstopShowChanges"),
+  pitStopSettings.showChanges,
+  (checked) => {
+    pitStopSettings = { ...pitStopSettings, showChanges: checked };
+    persistPitStopSettings();
+  }
+);
 
 const showOtherClasses = document.getElementById("standings-show-other-classes") as HTMLInputElement | null;
 const ownClassRows = document.getElementById("standings-own-class-rows") as HTMLInputElement | null;

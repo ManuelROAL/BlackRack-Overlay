@@ -12,6 +12,7 @@ import type {
 } from "./overlay-appearance";
 import type { OverlayMonitorScope } from "./overlay-monitor";
 import type { RelativeSettings } from "./relative-settings";
+import type { PitStopSettings } from "./pitstop-settings";
 import { isQualifyingSession, isRaceSession } from "./session-phase";
 import type { StandingsSettings } from "./standings-settings";
 import type { TimingSettings } from "./timing-settings";
@@ -74,6 +75,8 @@ export interface OverlayProfileData {
   dashboard?: DashboardSettings;
   /** Added after the first profile format; old profiles keep the default. */
   liftCoast?: LiftCoastSettings;
+  /** Optional so older profiles retain the original visible changes block. */
+  pitstop?: PitStopSettings;
 }
 
 export interface OverlayProfile {

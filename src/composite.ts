@@ -604,6 +604,7 @@ for (const event of [
   "conditions://settings",
   "dashboard://settings",
   "liftcoast://settings",
+  "pitstop://settings",
   "overlay://background-transparency",
   "overlay://font-size",
   "performance://logging"

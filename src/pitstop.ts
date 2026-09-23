@@ -4,7 +4,8 @@ import { fitOverlayToContent } from "./overlay-fit";
 import { bindOverlayInteractionMode } from "./overlay-interaction";
 import { bindOverlayTransparency } from "./overlay-appearance";
 import { createOverlayPerformanceTracker } from "./overlay-performance";
-import { isTauriRuntime, listenTelemetry } from "./runtime-events";
+import { isTauriRuntime, listenRuntimeEvent, listenTelemetry } from "./runtime-events";
+import { readPitStopSettings, type PitStopSettings } from "./pitstop-settings";
 import { t } from "./i18n";
 
 type PitStopValue = "damage" | "resource" | "tires" | "driver" | "penalty" | "total";
@@ -23,6 +24,8 @@ const renderPerformance = createOverlayPerformanceTracker("pitstop");
 const shell = document.querySelector<HTMLElement>(".pitstop-shell")!;
 const synchronizeOverlayHeight = fitOverlayToContent(210, shell);
 let renderedChangesKey = "";
+let showChanges = readPitStopSettings().showChanges;
+let lastMenuChanges: PitStopMenuChange[] = [];
 
 const formatSeconds = (seconds: number, available = true): string =>
   available && Number.isFinite(seconds) ? `+${Math.max(0, seconds).toFixed(1)}s` : "--.-s";
@@ -32,6 +35,7 @@ const setText = (element: HTMLElement, text: string): void => {
 };
 
 const renderMenuChanges = (menuChanges: PitStopMenuChange[]): void => {
+  lastMenuChanges = menuChanges;
   const key = menuChanges.map(({ label, value }) => `${label}\u0000${value}`).join("\u0001");
   if (key !== renderedChangesKey) {
     renderedChangesKey = key;
@@ -47,9 +51,9 @@ const renderMenuChanges = (menuChanges: PitStopMenuChange[]): void => {
       })
     );
   }
-  const showChanges = menuChanges.length > 0;
-  if (changes.hidden === showChanges) {
-    changes.hidden = !showChanges;
+  const visible = showChanges && menuChanges.length > 0;
+  if (changes.hidden === visible) {
+    changes.hidden = !visible;
     synchronizeOverlayHeight();
   }
 };
@@ -95,3 +99,8 @@ bindOverlayTransparency("pitstop");
 bindOverlayInteractionMode();
 if (!isTauriRuntime()) render(previewFrame);
 void listenTelemetry((frame) => renderPerformance.measure(() => render(frame)));
+void listenRuntimeEvent<PitStopSettings>("pitstop://settings", (settings) => {
+  if (typeof settings?.showChanges !== "boolean" || showChanges === settings.showChanges) return;
+  showChanges = settings.showChanges;
+  renderMenuChanges(lastMenuChanges);
+});

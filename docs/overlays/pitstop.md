@@ -16,8 +16,12 @@
 - Repairs combine damage, brakes and brake ducts. Penalties remain a separate
   optional row.
 - Show a compact `Cambios`/`Changes` block only when the LMU pit menu reports a
-  non-default selection. Each changed menu item shows its label and selected
-  value; an empty or stale menu does not render the block.
+  non-default selection and the profile's `showChanges` option is enabled (the
+  default). Each changed menu item shows its label and selected value; an empty
+  or stale menu does not render the block. The option is available in the
+  overlay's settings disclosure, belongs to overlay profiles and exported
+  configurations, and updates the rendered panel height live. OBS browser-source
+  pages receive the saved setting when their route loads.
 - Use virtual energy for the resource row when the player's active strategy uses
   it, otherwise fuel.
 - All values become unavailable when the estimate is missing or stale.
