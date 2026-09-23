@@ -1262,6 +1262,7 @@ fn track_map_keeps_selected_player_without_scoring_roster() {
         player_world_x: 42.0,
         player_world_y: -17.0,
         player_vehicle_id: 7,
+        vehicle_class_id: 6,
         player_position: 0,
         player_total_laps: 2,
         lap_number: 2,
@@ -1277,6 +1278,7 @@ fn track_map_keeps_selected_player_without_scoring_roster() {
     assert_eq!(player.overall_position, 1);
     assert_eq!(player.lap_distance, 1_234.0);
     assert_eq!((player.world_x, player.world_y), (42.0, -17.0));
+    assert_eq!(player.vehicle_class, "GT3");
     assert!(player.world_position_available);
 }
 

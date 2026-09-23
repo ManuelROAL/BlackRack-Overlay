@@ -1041,6 +1041,18 @@ impl TelemetrySource for LmuTelemetrySource {
 }
 
 impl LmuTelemetrySource {
+    fn selected_vehicle_class(vehicle_class_id: u32) -> &'static str {
+        match vehicle_class_id {
+            0 => "HYPERCAR",
+            2 => "LMP2_ELMS",
+            3 => "LMP2",
+            4 => "LMP3",
+            5 => "GTE",
+            6 => "GT3",
+            _ => "PLAYER",
+        }
+    }
+
     pub(super) fn track_map_vehicles(
         snapshot: &LmuSnapshot,
         standings_yellow_culprits: &HashSet<i32>,
@@ -1082,7 +1094,7 @@ impl LmuTelemetrySource {
             vehicles.push(TrackMapVehicle {
                 vehicle_id: snapshot.player_vehicle_id,
                 overall_position: snapshot.player_position.max(1),
-                vehicle_class: "PLAYER".to_owned(),
+                vehicle_class: Self::selected_vehicle_class(snapshot.vehicle_class_id).to_owned(),
                 world_x: snapshot.player_world_x,
                 world_y: snapshot.player_world_y,
                 world_position_available: snapshot.player_world_x.is_finite()
