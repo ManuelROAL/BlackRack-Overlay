@@ -106,6 +106,8 @@ struct OverlayControl {
     shutdown: AtomicBool,
     focused_windows: Mutex<HashSet<String>>,
     desired_visible: Mutex<HashSet<&'static str>>,
+    #[cfg(windows)]
+    edit_previous_foreground_window: Mutex<Option<isize>>,
 }
 
 #[derive(Clone, Deserialize, Serialize)]
@@ -421,6 +423,30 @@ fn set_native_overlay_click_through(click_through: bool) {
     NATIVE_OVERLAY_INPUT_THREAD
         .get()
         .map(std::thread::Thread::unpark);
+}
+
+#[cfg(windows)]
+fn current_foreground_window() -> Option<isize> {
+    use windows_sys::Win32::UI::WindowsAndMessaging::GetForegroundWindow;
+
+    let window = unsafe { GetForegroundWindow() };
+    (!window.is_null()).then_some(window as isize)
+}
+
+#[cfg(windows)]
+fn restore_foreground_window(window: Option<isize>) {
+    use windows_sys::Win32::Foundation::HWND;
+    use windows_sys::Win32::UI::WindowsAndMessaging::{IsWindow, SetForegroundWindow};
+
+    let Some(window) = window else {
+        return;
+    };
+    let window = window as HWND;
+    unsafe {
+        if IsWindow(window) != 0 {
+            let _ = SetForegroundWindow(window);
+        }
+    }
 }
 
 /// Clamp a requested host rectangle to the monitor. The result is always at
@@ -1847,6 +1873,26 @@ fn import_overlay_configuration(window: WebviewWindow, path: PathBuf) -> Result<
 fn toggle_interaction_mode(app: &AppHandle) {
     let control = app.state::<OverlayControl>();
     let next = !control.click_through.load(Ordering::Relaxed);
+
+    #[cfg(windows)]
+    if !next {
+        let previous = current_foreground_window();
+        *control
+            .edit_previous_foreground_window
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner()) = previous;
+    }
+    #[cfg(windows)]
+    let previous_foreground_window = if next {
+        control
+            .edit_previous_foreground_window
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .take()
+    } else {
+        None
+    };
+
     control.click_through.store(next, Ordering::Relaxed);
 
     #[cfg(windows)]
@@ -1869,6 +1915,15 @@ fn toggle_interaction_mode(app: &AppHandle) {
             click_through: next,
         },
     );
+
+    #[cfg(windows)]
+    if next {
+        // Entering edit mode focuses the control panel so placement works. Put
+        // keyboard input back in the window that was active before editing;
+        // otherwise Escape and the other simulator controls stay with the
+        // panel even though the overlays are locked again.
+        restore_foreground_window(previous_foreground_window);
+    }
 }
 
 #[tauri::command]
@@ -2254,6 +2309,8 @@ pub fn run() {
             shutdown: AtomicBool::new(false),
             focused_windows: Mutex::new(HashSet::new()),
             desired_visible: Mutex::new(HashSet::new()),
+            #[cfg(windows)]
+            edit_previous_foreground_window: Mutex::new(None),
         })
         .manage(ShortcutControl(Mutex::new(ShortcutRuntime::default())));
     #[cfg(windows)]

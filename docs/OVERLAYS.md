@@ -56,7 +56,10 @@ assignments; per-overlay mode restores those assignments.
   created on demand. LMU-driven automatic visibility hides or shows existing
   hosts without rebuilding active panels.
 - Every run starts in click-through game mode. Edit mode is entered explicitly
-  from the control panel or global shortcut.
+  from the control panel or global shortcut. Entering edit mode may focus the
+  control panel; when the global shortcut locks the overlays again on Windows,
+  the window that was active before editing regains focus so simulator controls
+  such as Escape continue to reach the game.
 - Every overlay card has a configurable hotkey to show or hide that overlay.
   The shared capture flow persists each `hide_<overlay-id>` binding and mirrors
   external `overlay://visibility` events in the card and active profile. The

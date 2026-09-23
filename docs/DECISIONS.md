@@ -20,7 +20,9 @@ in `docs/overlays/` and should not be duplicated here.
   same monitor share one transparent host WebView, so moving panels between
   monitors does not create one renderer per overlay.
 - Game mode is click-through and every run starts there. Edit mode is explicit.
-  Escape is not intercepted because it conflicts with LMU controls.
+  Entering edit mode may focus the control panel, and returning to game mode on
+  Windows restores the window that was active before editing. Escape is not
+  intercepted because it conflicts with LMU controls.
 - Positions, proportional sizes, each overlay's monitor assignment, the general
   monitor fallback and user preferences persist. A panel may be deliberately
   cropped at the monitor edge while retaining a recoverable strip.
