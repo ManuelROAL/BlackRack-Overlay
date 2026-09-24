@@ -117,167 +117,6 @@
         <p id="overlay-filter-empty" class="overlay-filter-empty" hidden data-i18n="filter.empty">No hay overlays que coincidan.</p>
       </section>
 
-      <details class="general-settings-section" data-view-section="general" aria-label="Pantalla y apariencia" data-i18n-aria-label="display.aria" open>
-        <summary class="settings-section-heading">
-          <span data-i18n="display.heading">PANTALLA</span>
-          <strong data-i18n="display.title">Dónde y cómo se ven los overlays</strong>
-        </summary>
-        <div class="global-setting-group display-settings-group">
-          <div class="paired-setting monitor-setting">
-            <div class="global-setting-copy">
-              <span data-i18n="general.monitor">MONITOR</span>
-              <strong data-i18n="general.monitorSub">General o por overlay</strong>
-            </div>
-            <label class="select-field">
-              <span data-i18n="general.monitorMode">APLICAR</span>
-              <select id="overlay-monitor-mode" aria-label="Modo de monitor" data-i18n-aria-label="general.monitorModeAria">
-                <option value="individual" data-i18n="general.individual">Por overlay</option>
-                <option value="global" data-i18n="general.global">General</option>
-              </select>
-            </label>
-            <label id="global-monitor-control" class="select-field" hidden>
-              <span data-i18n="general.monitorLabel">MOVER TODOS LOS OVERLAYS A</span>
-              <select id="overlay-monitor" aria-label="Mover todos los overlays al monitor" data-i18n-aria-label="general.monitorAria"></select>
-            </label>
-          </div>
-          <div class="paired-setting">
-            <div class="global-setting-copy">
-              <span data-i18n="general.transparency">TRANSPARENCIA</span>
-              <strong data-i18n="general.transparencySub">General o por overlay</strong>
-            </div>
-            <label class="select-field">
-              <span data-i18n="general.apply">APLICAR</span>
-              <select id="transparency-mode" aria-label="Modo de transparencia" data-i18n-aria-label="general.transparencyModeAria">
-                <option value="individual" data-i18n="general.individual">Por overlay</option>
-                <option value="global" data-i18n="general.global">General</option>
-              </select>
-            </label>
-            <label id="global-transparency-control" class="global-transparency-control">
-              <span data-i18n="general.globalValue">VALOR GENERAL</span>
-              <input id="global-transparency" type="range" min="0" max="100" step="5" />
-              <output id="global-transparency-output">5%</output>
-            </label>
-          </div>
-          <div class="paired-setting">
-            <div class="global-setting-copy">
-              <span data-i18n="general.fontSize">TAMAÑO DEL TEXTO</span>
-              <strong data-i18n="general.fontSizeSub">General o por overlay</strong>
-            </div>
-            <label class="select-field">
-              <span data-i18n="general.apply">APLICAR</span>
-              <select id="font-size-mode" aria-label="Modo de tamaño del texto" data-i18n-aria-label="general.fontSizeModeAria">
-                <option value="individual" data-i18n="general.individual">Por overlay</option>
-                <option value="global" data-i18n="general.global">General</option>
-              </select>
-            </label>
-            <label id="global-font-size-control" class="global-transparency-control">
-              <span data-i18n="general.globalValue">VALOR GENERAL</span>
-              <input id="global-font-size" type="range" min="75" max="200" step="5" />
-              <output id="global-font-size-output">100%</output>
-            </label>
-          </div>
-        </div>
-      </details>
-
-      <details class="general-settings-section" data-view-section="general" aria-label="Modo de seguimiento" data-i18n-aria-label="follow.groupAria" open>
-        <summary class="settings-section-heading">
-          <span data-i18n="follow.heading">MODO</span>
-          <strong data-i18n="follow.sub">A qué coche siguen los overlays</strong>
-        </summary>
-        <div class="global-setting-group overlay-mode-group">
-          <div class="overlay-mode-list" role="group" aria-label="Modo de seguimiento" data-i18n-aria-label="follow.groupAria">
-            <button type="button" data-overlay-mode="game" aria-pressed="false">
-              <b data-i18n="follow.game">Juego</b>
-              <small data-i18n="follow.gameSub">Tu coche mientras conduces</small>
-            </button>
-            <button type="button" data-overlay-mode="spectator" aria-pressed="false">
-              <b data-i18n="follow.spectator">Espectador</b>
-              <small data-i18n="follow.spectatorSub">El coche que estás observando</small>
-            </button>
-            <button type="button" data-overlay-mode="team" aria-pressed="false">
-              <b data-i18n="follow.team">Equipo</b>
-              <small data-i18n="follow.teamSub">Siempre el coche de tu equipo</small>
-            </button>
-          </div>
-        </div>
-        <div class="overlay-profiles-section">
-          <div class="overlay-profiles-heading">
-            <span data-i18n="profiles.heading">PERFILES</span>
-            <strong data-i18n="profiles.title">Una configuración de overlays por modo y tipo de sesión</strong>
-            <small data-i18n="profiles.sub">Cada perfil guarda visibilidad, posición, tamaño, transparencia y ajustes de los overlays. Los cambios se guardan en el perfil activo.</small>
-          </div>
-          <ul id="overlay-profile-list" class="overlay-profile-list"></ul>
-          <div class="overlay-profile-actions">
-            <button id="create-overlay-profile" type="button" data-i18n="profiles.create">NUEVO PERFIL</button>
-          </div>
-          <div class="overlay-profile-bindings">
-            <label class="select-field">
-              <span data-i18n="profiles.bindingGame">PERFIL EN MODO JUEGO</span>
-              <select data-profile-binding="game" aria-label="Perfil del modo juego" data-i18n-aria-label="profiles.bindingGameAria"></select>
-            </label>
-            <label class="select-field">
-              <span data-i18n="profiles.bindingSpectator">PERFIL EN MODO ESPECTADOR</span>
-              <select data-profile-binding="spectator" aria-label="Perfil del modo espectador" data-i18n-aria-label="profiles.bindingSpectatorAria"></select>
-            </label>
-            <label class="select-field">
-              <span data-i18n="profiles.bindingTeam">PERFIL EN MODO EQUIPO</span>
-              <select data-profile-binding="team" aria-label="Perfil del modo equipo" data-i18n-aria-label="profiles.bindingTeamAria"></select>
-            </label>
-          </div>
-          <div id="overlay-profile-session-bindings" class="overlay-profile-session" hidden>
-            <small data-i18n="profiles.sessionSub">En modo juego cada tipo de sesión puede usar su propio perfil; el warmup cuenta como práctica.</small>
-            <div class="overlay-profile-bindings">
-              <label class="select-field">
-                <span data-i18n="profiles.bindingPractice">PERFIL EN PRÁCTICA</span>
-                <select data-profile-session-binding="practice" aria-label="Perfil de las sesiones de práctica" data-i18n-aria-label="profiles.bindingPracticeAria"></select>
-              </label>
-              <label class="select-field">
-                <span data-i18n="profiles.bindingQualifying">PERFIL EN CLASIFICACIÓN</span>
-                <select data-profile-session-binding="qualifying" aria-label="Perfil de las sesiones de clasificación" data-i18n-aria-label="profiles.bindingQualifyingAria"></select>
-              </label>
-              <label class="select-field">
-                <span data-i18n="profiles.bindingRace">PERFIL EN CARRERA</span>
-                <select data-profile-session-binding="race" aria-label="Perfil de las sesiones de carrera" data-i18n-aria-label="profiles.bindingRaceAria"></select>
-              </label>
-            </div>
-          </div>
-          <p id="overlay-profile-status" aria-live="polite"></p>
-        </div>
-      </details>
-
-      <details class="general-settings-section general-settings-accent" data-view-section="general" aria-label="Perfil de rendimiento" data-i18n-aria-label="performance.aria" open>
-        <summary class="settings-section-heading">
-          <span data-i18n="performance.heading">RENDIMIENTO</span>
-          <strong data-i18n="performance.title">Elige el equilibrio para tu equipo</strong>
-        </summary>
-        <div class="performance-profile-list" role="group" aria-label="Perfiles de rendimiento" data-i18n-aria-label="performance.groupAria">
-          <button type="button" data-performance-profile="smooth" aria-pressed="false">
-            <span class="performance-profile-icon">50</span>
-            <span class="performance-profile-copy">
-              <b data-i18n="performance.smooth">Fluido</b>
-              <small data-i18n="performance.smoothSub">Respuesta visual máxima y mapa completo.</small>
-            </span>
-            <em data-i18n="performance.smoothMeta">MÁS SUAVE</em>
-          </button>
-          <button type="button" data-performance-profile="balanced" aria-pressed="false">
-            <span class="performance-profile-icon">25</span>
-            <span class="performance-profile-copy">
-              <b data-i18n="performance.balanced">Equilibrado</b>
-              <small data-i18n="performance.balancedSub">Menos renderizado, conservando todos los coches.</small>
-            </span>
-            <em data-i18n="performance.recommended">RECOMENDADO</em>
-          </button>
-          <button type="button" data-performance-profile="efficiency" aria-pressed="false">
-            <span class="performance-profile-icon">17</span>
-            <span class="performance-profile-copy">
-              <b data-i18n="performance.efficiency">Ahorro</b>
-              <small data-i18n="performance.efficiencySub">Cadencia reducida y mapa completo sin pulso.</small>
-            </span>
-            <em data-i18n="performance.efficiencyMeta">MENOR CARGA</em>
-          </button>
-        </div>
-      </details>
-
       <details class="general-settings-section" data-view-section="general" aria-label="Idioma, unidades y atajos" data-i18n-aria-label="general.appAria" open>
         <summary class="settings-section-heading">
           <span data-i18n="general.appHeading">APLICACIÓN</span>
@@ -348,6 +187,167 @@
               CAMBIAR A MODO EDICIÓN
             </button>
           </div>
+        </div>
+      </details>
+
+      <details class="general-settings-section" data-view-section="general" aria-label="Pantalla y apariencia" data-i18n-aria-label="display.aria" open>
+        <summary class="settings-section-heading">
+          <span data-i18n="display.heading">PANTALLA</span>
+          <strong data-i18n="display.title">Dónde y cómo se ven los overlays</strong>
+        </summary>
+        <div class="global-setting-group display-settings-group">
+          <div class="paired-setting monitor-setting">
+            <div class="global-setting-copy">
+              <span data-i18n="general.monitor">MONITOR</span>
+              <strong data-i18n="general.monitorSub">General o por overlay</strong>
+            </div>
+            <label class="select-field">
+              <span data-i18n="general.monitorMode">APLICAR</span>
+              <select id="overlay-monitor-mode" aria-label="Modo de monitor" data-i18n-aria-label="general.monitorModeAria">
+                <option value="individual" data-i18n="general.individual">Por overlay</option>
+                <option value="global" data-i18n="general.global">General</option>
+              </select>
+            </label>
+            <label id="global-monitor-control" class="select-field" hidden>
+              <span data-i18n="general.monitorLabel">MOVER TODOS LOS OVERLAYS A</span>
+              <select id="overlay-monitor" aria-label="Mover todos los overlays al monitor" data-i18n-aria-label="general.monitorAria"></select>
+            </label>
+          </div>
+          <div class="paired-setting">
+            <div class="global-setting-copy">
+              <span data-i18n="general.transparency">TRANSPARENCIA</span>
+              <strong data-i18n="general.transparencySub">General o por overlay</strong>
+            </div>
+            <label class="select-field">
+              <span data-i18n="general.apply">APLICAR</span>
+              <select id="transparency-mode" aria-label="Modo de transparencia" data-i18n-aria-label="general.transparencyModeAria">
+                <option value="individual" data-i18n="general.individual">Por overlay</option>
+                <option value="global" data-i18n="general.global">General</option>
+              </select>
+            </label>
+            <label id="global-transparency-control" class="global-transparency-control">
+              <span data-i18n="general.globalValue">VALOR GENERAL</span>
+              <input id="global-transparency" type="range" min="0" max="100" step="5" />
+              <output id="global-transparency-output">5%</output>
+            </label>
+          </div>
+          <div class="paired-setting">
+            <div class="global-setting-copy">
+              <span data-i18n="general.fontSize">TAMAÑO DEL TEXTO</span>
+              <strong data-i18n="general.fontSizeSub">General o por overlay</strong>
+            </div>
+            <label class="select-field">
+              <span data-i18n="general.apply">APLICAR</span>
+              <select id="font-size-mode" aria-label="Modo de tamaño del texto" data-i18n-aria-label="general.fontSizeModeAria">
+                <option value="individual" data-i18n="general.individual">Por overlay</option>
+                <option value="global" data-i18n="general.global">General</option>
+              </select>
+            </label>
+            <label id="global-font-size-control" class="global-transparency-control">
+              <span data-i18n="general.globalValue">VALOR GENERAL</span>
+              <input id="global-font-size" type="range" min="75" max="200" step="5" />
+              <output id="global-font-size-output">100%</output>
+            </label>
+          </div>
+        </div>
+      </details>
+
+      <details class="general-settings-section" data-view-section="general" aria-label="Perfil de rendimiento" data-i18n-aria-label="performance.aria" open>
+        <summary class="settings-section-heading">
+          <span data-i18n="performance.heading">RENDIMIENTO</span>
+          <strong data-i18n="performance.title">Elige el equilibrio para tu equipo</strong>
+        </summary>
+        <div class="performance-profile-list" role="group" aria-label="Perfiles de rendimiento" data-i18n-aria-label="performance.groupAria">
+          <button type="button" data-performance-profile="smooth" aria-pressed="false">
+            <span class="performance-profile-icon">50</span>
+            <span class="performance-profile-copy">
+              <b data-i18n="performance.smooth">Fluido</b>
+              <small data-i18n="performance.smoothSub">Respuesta visual máxima y mapa completo.</small>
+            </span>
+            <em data-i18n="performance.smoothMeta">MÁS SUAVE</em>
+          </button>
+          <button type="button" data-performance-profile="balanced" aria-pressed="false">
+            <span class="performance-profile-icon">25</span>
+            <span class="performance-profile-copy">
+              <b data-i18n="performance.balanced">Equilibrado</b>
+              <small data-i18n="performance.balancedSub">Menos renderizado, conservando todos los coches.</small>
+            </span>
+            <em data-i18n="performance.recommended">RECOMENDADO</em>
+          </button>
+          <button type="button" data-performance-profile="efficiency" aria-pressed="false">
+            <span class="performance-profile-icon">17</span>
+            <span class="performance-profile-copy">
+              <b data-i18n="performance.efficiency">Ahorro</b>
+              <small data-i18n="performance.efficiencySub">Cadencia reducida y mapa completo sin pulso.</small>
+            </span>
+            <em data-i18n="performance.efficiencyMeta">MENOR CARGA</em>
+          </button>
+        </div>
+      </details>
+
+      <details class="general-settings-section" data-view-section="general" aria-label="Modo de seguimiento" data-i18n-aria-label="follow.groupAria" open>
+        <summary class="settings-section-heading">
+          <span data-i18n="follow.heading">MODO</span>
+          <strong data-i18n="follow.sub">A qué coche siguen los overlays</strong>
+        </summary>
+        <div class="global-setting-group overlay-mode-group">
+          <div class="overlay-mode-list" role="group" aria-label="Modo de seguimiento" data-i18n-aria-label="follow.groupAria">
+            <button type="button" data-overlay-mode="game" aria-pressed="false">
+              <b data-i18n="follow.game">Juego</b>
+              <small data-i18n="follow.gameSub">Tu coche mientras conduces</small>
+            </button>
+            <button type="button" data-overlay-mode="spectator" aria-pressed="false">
+              <b data-i18n="follow.spectator">Espectador</b>
+              <small data-i18n="follow.spectatorSub">El coche que estás observando</small>
+            </button>
+            <button type="button" data-overlay-mode="team" aria-pressed="false">
+              <b data-i18n="follow.team">Equipo</b>
+              <small data-i18n="follow.teamSub">Siempre el coche de tu equipo</small>
+            </button>
+          </div>
+        </div>
+        <div class="overlay-profiles-section">
+          <div class="overlay-profiles-heading">
+            <span data-i18n="profiles.heading">PERFILES</span>
+            <strong data-i18n="profiles.title">Una configuración de overlays por modo y tipo de sesión</strong>
+            <small data-i18n="profiles.sub">Cada perfil guarda visibilidad, posición, tamaño, transparencia y ajustes de los overlays. Los cambios se guardan en el perfil activo.</small>
+          </div>
+          <ul id="overlay-profile-list" class="overlay-profile-list"></ul>
+          <div class="overlay-profile-actions">
+            <button id="create-overlay-profile" type="button" data-i18n="profiles.create">NUEVO PERFIL</button>
+          </div>
+          <div class="overlay-profile-bindings">
+            <label class="select-field">
+              <span data-i18n="profiles.bindingGame">PERFIL EN MODO JUEGO</span>
+              <select data-profile-binding="game" aria-label="Perfil del modo juego" data-i18n-aria-label="profiles.bindingGameAria"></select>
+            </label>
+            <label class="select-field">
+              <span data-i18n="profiles.bindingSpectator">PERFIL EN MODO ESPECTADOR</span>
+              <select data-profile-binding="spectator" aria-label="Perfil del modo espectador" data-i18n-aria-label="profiles.bindingSpectatorAria"></select>
+            </label>
+            <label class="select-field">
+              <span data-i18n="profiles.bindingTeam">PERFIL EN MODO EQUIPO</span>
+              <select data-profile-binding="team" aria-label="Perfil del modo equipo" data-i18n-aria-label="profiles.bindingTeamAria"></select>
+            </label>
+          </div>
+          <div id="overlay-profile-session-bindings" class="overlay-profile-session" hidden>
+            <small data-i18n="profiles.sessionSub">En modo juego cada tipo de sesión puede usar su propio perfil; el warmup cuenta como práctica.</small>
+            <div class="overlay-profile-bindings">
+              <label class="select-field">
+                <span data-i18n="profiles.bindingPractice">PERFIL EN PRÁCTICA</span>
+                <select data-profile-session-binding="practice" aria-label="Perfil de las sesiones de práctica" data-i18n-aria-label="profiles.bindingPracticeAria"></select>
+              </label>
+              <label class="select-field">
+                <span data-i18n="profiles.bindingQualifying">PERFIL EN CLASIFICACIÓN</span>
+                <select data-profile-session-binding="qualifying" aria-label="Perfil de las sesiones de clasificación" data-i18n-aria-label="profiles.bindingQualifyingAria"></select>
+              </label>
+              <label class="select-field">
+                <span data-i18n="profiles.bindingRace">PERFIL EN CARRERA</span>
+                <select data-profile-session-binding="race" aria-label="Perfil de las sesiones de carrera" data-i18n-aria-label="profiles.bindingRaceAria"></select>
+              </label>
+            </div>
+          </div>
+          <p id="overlay-profile-status" aria-live="polite"></p>
         </div>
       </details>
 
