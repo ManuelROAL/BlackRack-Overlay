@@ -1709,6 +1709,10 @@ select {
   padding-bottom: 12px;
 }
 
+[data-settings-for="sessioninfo"] > .standings-name-format-setting {
+  margin: 0 16px;
+}
+
 [data-settings-for="liftcoast"] > .liftcoast-display-mode-field {
   max-width: 260px;
   margin: 0 16px 14px;
