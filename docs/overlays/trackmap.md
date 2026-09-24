@@ -86,11 +86,12 @@ TypeScript fetches static geometry, interpolates and renders it.
   pit cars remain at reduced opacity.
 - Every performance profile retains the complete roster; only delivery/rendering
   cadence and the Efficiency halo behavior change.
-- The player keeps its class-position label in a 28 px circle and has a larger
-  lime halo advanced by telemetry events. It pulses in Smooth and Balanced and is
-  static in Efficiency. Never replace its label with `P`.
+- The player shows its class-position label in a 28 px circle unless a custom
+  image hides it, and has a larger lime halo advanced by telemetry events. It
+  pulses in Smooth and Balanced and is static in Efficiency. Never replace its
+  label with `P`.
 - The player alone may override its class colour or use a custom image. The image
-  is clipped inside the 28 px disc; its position label stays above it, while the
+  is clipped inside the 28 px disc and hides the position label, while the
   existing halo and leader star retain their placement. A null colour restores
   class colour. Settings and imported profiles retain only a validated bounded
   PNG data URL; arbitrary image strings are never used as CSS.

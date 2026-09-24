@@ -196,8 +196,7 @@
   pointer-events: none;
 }
 
-.vehicle-marker.is-player.has-custom-color .vehicle-label,
-.vehicle-marker.is-player.has-custom-icon .vehicle-label {
+.vehicle-marker.is-player.has-custom-color .vehicle-label {
   position: absolute;
   z-index: 1;
   top: 50%;
@@ -208,6 +207,10 @@
   background: rgb(8 11 15 / 78%);
   color: #fff;
   text-shadow: 0 1px 2px #000;
+}
+
+.vehicle-marker.is-player.has-custom-icon .vehicle-label {
+  display: none;
 }
 
 .vehicle-marker.is-player .marker-halo,
