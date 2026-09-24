@@ -87,6 +87,7 @@
   left: 0;
   width: 0;
   height: 0;
+  z-index: 1;
   will-change: transform;
   transition: none;
 }
@@ -116,7 +117,7 @@
   z-index: 10;
 }
 
-.vehicle-marker.is-player.has-custom-icon {
+.vehicle-marker.is-player {
   z-index: 11;
 }
 
