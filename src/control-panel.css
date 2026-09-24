@@ -932,20 +932,7 @@ select {
 }
 
 .update-setting-group {
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-}
-
-.update-setting-group > summary.settings-section-heading {
-  grid-column: 1;
-  grid-row: 1;
-  border-bottom: 0;
-}
-
-.update-setting-group > .update-actions {
-  grid-column: 2;
-  grid-row: 1;
-  padding-right: 14px;
+  align-items: start;
 }
 
 .update-actions {
@@ -2885,8 +2872,7 @@ select {
   .global-setting-group,
   .paired-setting-group,
   .performance-profile-list,
-  .configuration-export,
-  .update-setting-group {
+  .configuration-export {
     grid-template-columns: 1fr;
   }
 
@@ -2901,17 +2887,6 @@ select {
   .configuration-transfer-actions,
   .update-actions {
     width: 100%;
-  }
-
-  .update-setting-group > summary.settings-section-heading,
-  .update-setting-group > .update-actions {
-    grid-column: 1;
-    grid-row: auto;
-  }
-
-  .update-setting-group > .update-actions {
-    justify-content: start;
-    padding: 0 14px 12px;
   }
 
   .update-actions button {

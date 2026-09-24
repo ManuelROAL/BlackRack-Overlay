@@ -63,21 +63,23 @@
         </div>
       </details>
 
-      <details class="general-settings-section general-settings-accent update-setting-group" data-view-section="general" open>
-        <summary class="settings-section-heading global-setting-copy">
-          <span data-i18n="update.heading">ACTUALIZACIONES</span>
-          <strong data-i18n="update.title">Mantén BlackRack al día</strong>
-          <small id="update-status" aria-live="polite" data-i18n="update.initial">La comprobación automática se realiza cada seis horas.</small>
-        </summary>
-        <div class="update-actions">
-          <button id="check-for-updates" type="button" data-i18n="update.check">BUSCAR ACTUALIZACIONES</button>
-          <button id="install-update" type="button" data-i18n="update.install" hidden>DESCARGAR E INSTALAR</button>
+      <section class="general-settings-section general-settings-accent" data-view-section="general">
+        <div class="global-setting-group update-setting-group">
+          <div class="global-setting-copy">
+            <span data-i18n="update.heading">ACTUALIZACIONES</span>
+            <strong data-i18n="update.title">Mantén BlackRack al día</strong>
+            <small id="update-status" aria-live="polite" data-i18n="update.initial">La comprobación automática se realiza cada seis horas.</small>
+          </div>
+          <div class="update-actions">
+            <button id="check-for-updates" type="button" data-i18n="update.check">BUSCAR ACTUALIZACIONES</button>
+            <button id="install-update" type="button" data-i18n="update.install" hidden>DESCARGAR E INSTALAR</button>
+          </div>
+          <div id="update-details" class="update-details" hidden>
+            <strong id="update-version"></strong>
+            <ul id="update-changelog"></ul>
+          </div>
         </div>
-        <div id="update-details" class="update-details" hidden>
-          <strong id="update-version"></strong>
-          <ul id="update-changelog"></ul>
-        </div>
-      </details>
+      </section>
 
       <section class="general-settings-section release-notes-section" data-view-section="changelog" aria-label="Historial de cambios" data-i18n-aria-label="changelog.aria">
         <header class="settings-section-heading">
