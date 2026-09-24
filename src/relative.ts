@@ -17,6 +17,7 @@ import { applyTrackLimitTone, formatTrackLimitPoints } from "./track-limit-tone"
 import { formatDriverName } from "./driver-name-format";
 import { isRaceSession } from "./session-phase";
 import { formatClock as formatRealClock, formatNumber, formatTimeOfDay, t, type TranslationKey } from "./i18n";
+import { applyDisplayUnits, formatTemperatureValue, temperatureUnit, type DisplayUnits } from "./display-units";
 
 let relativeSettings = readRelativeSettings();
 // V es el contador de vueltas de la sesión: fuera de carrera cada piloto lleva
@@ -653,14 +654,24 @@ const sessionHeader = (frame: TelemetryFrame): HTMLElement => {
   const header = node("header", "relative-table-header");
   if (frame.rest_weather_available && relativeSettings.options.airTemperature) {
     const ambient = node("span", "relative-temperature relative-temperature-air");
-    ambient.append(temperatureIcon(airTemperatureIconUrl), `${Math.round(frame.ambient_temperature_c)}°C`);
-    ambient.title = t("standings.airTemperatureTitle", { value: decimal(frame.ambient_temperature_c, 1) });
+    ambient.append(
+      temperatureIcon(airTemperatureIconUrl),
+      `${formatTemperatureValue(frame.ambient_temperature_c)}${temperatureUnit()}`
+    );
+    ambient.title = t("standings.airTemperatureTitle", {
+      value: formatTemperatureValue(frame.ambient_temperature_c, 1), unit: temperatureUnit()
+    });
     header.append(ambient);
   }
   if (frame.rest_weather_available && relativeSettings.options.trackTemperature) {
     const track = node("span", "relative-temperature relative-temperature-track");
-    track.append(temperatureIcon(trackTemperatureIconUrl), `${Math.round(frame.track_temperature_c)}°C`);
-    track.title = t("standings.trackTemperatureTitle", { value: decimal(frame.track_temperature_c, 1) });
+    track.append(
+      temperatureIcon(trackTemperatureIconUrl),
+      `${formatTemperatureValue(frame.track_temperature_c)}${temperatureUnit()}`
+    );
+    track.title = t("standings.trackTemperatureTitle", {
+      value: formatTemperatureValue(frame.track_temperature_c, 1), unit: temperatureUnit()
+    });
     header.append(track);
   }
   if (relativeSettings.options.brakeBias) {
@@ -728,8 +739,8 @@ const cachedSessionHeaderFor = (frame: TelemetryFrame): HTMLElement => {
     relativeSettings.options.gameTimeClock,
     relativeSettings.options.realTimeClock,
     frame.rest_weather_available,
-    Math.round(frame.ambient_temperature_c),
-    Math.round(frame.track_temperature_c),
+    formatTemperatureValue(frame.ambient_temperature_c, 1),
+    formatTemperatureValue(frame.track_temperature_c, 1),
     Math.round(frame.brake_bias_percent * 10),
     frame.track_limits_steps,
     frame.track_limits_steps_per_penalty,
@@ -832,11 +843,17 @@ const settingsListener = listenRuntimeEvent<RelativeSettings>("relative://settin
   applyColumnLayout();
   if (lastFrame) render(lastFrame);
 });
+const displayUnitsListener = listenRuntimeEvent<DisplayUnits>("display-units://change", (payload) => {
+  applyDisplayUnits(payload);
+  resetRenderCaches();
+  if (lastFrame) render(lastFrame);
+});
 
 if (import.meta.hot) {
   import.meta.hot.dispose(() => {
     void telemetryListener.then((unlisten) => unlisten());
     void settingsListener.then((unlisten) => unlisten());
+    void displayUnitsListener.then((unlisten) => unlisten());
   });
 }
 bindOverlayInteractionMode();

@@ -109,6 +109,11 @@ in `docs/overlays/` and should not be duplicated here.
 - General/per-overlay text size preserves its independent saved values while a
   common value is active. Increasing text may expand the reported design surface
   so compact panels do not clip while preserving the user's visual scale.
+- Display units are global settings: temperatures default to Celsius and speeds
+  to km/h, and the same choices apply to native overlays and OBS. Convert only
+  when presenting values; telemetry fields, heatmap thresholds and domain
+  calculations retain their canonical Celsius, km/h and SI values. Configuration
+  exports include both choices, and older imports keep the current local choices.
 - Hosts are grouped by effective monitor: every monitor with at least one visible
   overlay gets one transparent composite host, and monitors without visible
   overlays get none. General mode projects every overlay onto one monitor, while

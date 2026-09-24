@@ -607,6 +607,7 @@ for (const event of [
   "pitstop://settings",
   "overlay://background-transparency",
   "overlay://font-size",
+  "display-units://change",
   "performance://logging"
 ]) {
   void listen<unknown>(event, ({ payload }) => {

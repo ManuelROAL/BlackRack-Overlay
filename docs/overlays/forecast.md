@@ -48,6 +48,9 @@
 
 ## Verification focus
 
+Forecast and current air temperatures follow the global Celsius/Fahrenheit
+display preference; the REST values remain Celsius.
+
 Test forecast availability transitions, session switch (PRACTICE/QUALIFY/RACE),
 missing/stale REST, sky/icon selection, NOW labelling and the dynamic-width
 reporting with the frontend build.

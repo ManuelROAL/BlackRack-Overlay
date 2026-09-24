@@ -30,6 +30,8 @@ on their runtime or source code.
 - Compact Lift & Coast lamps driven by LMU's official shared-memory progress.
 - Background transparency selectable as one general value or per overlay.
 - Text size selectable from 75% to 200% as one general value or per overlay.
+- Temperature display selectable between Celsius and Fahrenheit, and speed display
+  between km/h and mph, as global preferences across overlays and OBS.
 - Visible overlays assigned to the same monitor share one host; hosts are created
   on demand only for monitors that currently have visible overlays.
 - Optional telemetry/performance analysis logging.

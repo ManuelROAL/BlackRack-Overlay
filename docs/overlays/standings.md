@@ -273,6 +273,9 @@ shared `standings_models` module.
 
 ## Verification focus
 
+Air and track temperatures in the session header follow the global
+Celsius/Fahrenheit display preference, including their tooltips.
+
 Test lap transitions, invalid laps, late startup, driver swaps, pits, GAP/INT,
 class selection/counts, track-limit availability, DR/SR retry and session reset.
 Confirm 10 Hz requested cycles and reuse with Relative rather than a 50 Hz roster.

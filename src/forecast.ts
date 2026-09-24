@@ -4,9 +4,10 @@ import { fitOverlay } from "./overlay-fit";
 import { bindOverlayInteractionMode } from "./overlay-interaction";
 import { bindOverlayTransparency } from "./overlay-appearance";
 import { createOverlayPerformanceTracker } from "./overlay-performance";
-import { isTauriRuntime, listenTelemetry } from "./runtime-events";
+import { isTauriRuntime, listenRuntimeEvent, listenTelemetry } from "./runtime-events";
 import { t } from "./i18n";
 import { weatherIconUrl } from "./weather-icons";
+import { applyDisplayUnits, formatTemperature, type DisplayUnits } from "./display-units";
 
 const MAX_NODES = 5;
 const COLUMN_WIDTH = 64;
@@ -29,13 +30,11 @@ const setText = (element: HTMLElement, text: string): void => {
   if (element.textContent !== text) element.textContent = text;
 };
 
-const formatTemp = (celsius: number): string =>
-  Number.isFinite(celsius) ? `${Math.round(celsius)}°` : "--°";
-
 const formatPercent = (value: number): string =>
   Number.isFinite(value) ? `${Math.round(value)}%` : "--%";
 
 const strip = document.getElementById("forecast-strip")!;
+let latestFrame: TelemetryFrame | null = null;
 
 interface ForecastCell {
   root: HTMLElement;
@@ -88,7 +87,7 @@ const render = (frame: TelemetryFrame): void => {
       frame.rest_weather_available ? frame.cloud_coverage : currentNode?.sky ?? 0
     );
     nowCell.icon.hidden = false;
-    setText(nowCell.temp, formatTemp(
+    setText(nowCell.temp, formatTemperature(
       frame.rest_weather_available ? frame.ambient_temperature_c : currentNode?.temperature_c ?? NaN
     ));
     setText(nowCell.rain, formatPercent(
@@ -109,7 +108,7 @@ const render = (frame: TelemetryFrame): void => {
       : `+${node.minutes_from_now}M`;
     cell.icon.src = weatherIconUrl(node.sky);
     cell.icon.hidden = false;
-    setText(cell.temp, formatTemp(node.temperature_c));
+    setText(cell.temp, formatTemperature(node.temperature_c));
     setText(cell.rain, formatPercent(node.rain_chance_percent));
     cell.root.dataset.rain = node.rain_chance_percent >= 50 ? "high" : "low";
   }
@@ -148,4 +147,11 @@ const previewFrame = {
 
 bindOverlayInteractionMode();
 if (!isTauriRuntime()) render(previewFrame);
-void listenTelemetry((frame) => renderPerformance.measure(() => render(frame)));
+void listenTelemetry((frame) => {
+  latestFrame = frame;
+  renderPerformance.measure(() => render(frame));
+});
+void listenRuntimeEvent<DisplayUnits>("display-units://change", (next) => {
+  applyDisplayUnits(next);
+  if (latestFrame) render(latestFrame);
+});

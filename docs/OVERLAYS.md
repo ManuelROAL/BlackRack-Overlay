@@ -135,8 +135,8 @@ assignments; per-overlay mode restores those assignments.
   Visibility stays immediately accessible. Per-overlay monitor, transparency,
   reset and content options live in that overlay's single settings disclosure.
 - Present general settings as labelled full-width blocks that each open with the
-  shared section heading: Display (the monitor, then transparency and text size
-  paired on one row, each with its own general-value slider), Mode (the
+  shared section heading: Display (the monitor, transparency and text size with
+  their general-value sliders, plus the global temperature and speed units), Mode (the
   follow modes with the configuration profiles, their per-mode bindings and the
   per-session bindings that only game mode shows),
   Performance, Application (interface language and the global shortcuts) and

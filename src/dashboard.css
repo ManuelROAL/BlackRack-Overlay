@@ -218,7 +218,7 @@ body.dashboard-body {
   white-space: nowrap;
 }
 
-/* Keep the strip stable when speed crosses the 100 km/h boundary. */
+/* Keep the strip stable as the speed value gains digits. */
 .dash-fields > div[data-dashboard-field="speed"] dd {
   min-width: 3ch;
   text-align: center;

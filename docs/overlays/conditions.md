@@ -65,6 +65,10 @@
 
 ## Verification focus
 
+The global display-unit preference converts air and track temperatures between
+Celsius and Fahrenheit and wind speed between km/h and mph. Wind calculations
+continue to use metres per second.
+
 Test REST wind units/direction, vehicle-relative arrow rotation, shared-memory
 grip availability, state thresholds, humidity fallback and missing/stale forecast
 with the frontend build.

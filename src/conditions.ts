@@ -7,6 +7,7 @@ import { createOverlayPerformanceTracker } from "./overlay-performance";
 import { isTauriRuntime, listenRuntimeEvent, listenTelemetry } from "./runtime-events";
 import { t } from "./i18n";
 import { weatherIconUrl } from "./weather-icons";
+import { applyDisplayUnits, formatSpeed, formatTemperature, type DisplayUnits } from "./display-units";
 import {
   CONDITIONS_OPTIONS,
   readConditionsSettings,
@@ -41,6 +42,7 @@ const grid = document.querySelector<HTMLElement>(".conditions-grid")!;
 let settings = readConditionsSettings();
 let rainAvailable = false;
 let layoutSignature = "";
+let latestFrame: TelemetryFrame | null = null;
 
 const updateLayout = (): void => {
   const headerVisible = (["weather", "surface", "grip"] as ConditionsOptionId[])
@@ -76,9 +78,6 @@ const setText = (element: HTMLElement, text: string): void => {
   if (element.textContent !== text) element.textContent = text;
 };
 
-const formatTemp = (celsius: number): string =>
-  Number.isFinite(celsius) ? `${Math.round(celsius)}°` : "--°";
-
 const formatPercent = (value: number): string =>
   Number.isFinite(value) ? `${Math.round(value)}%` : "--%";
 
@@ -94,8 +93,7 @@ const windValue = (speedMs: number, bearing: number): string => {
   if (!Number.isFinite(speedMs) || speedMs <= 0) return "--";
   const directionIndex = Math.round(((bearing + 360) % 360) / 45) % 8;
   const direction = WIND_DIRECTIONS[directionIndex];
-  const kmh = Math.round(speedMs * 3.6);
-  return `${kmh} km/h ${direction}`;
+  return `${formatSpeed(speedMs * 3.6)} ${direction}`;
 };
 
 const render = (frame: TelemetryFrame): void => {
@@ -119,8 +117,8 @@ const render = (frame: TelemetryFrame): void => {
     frame.track_grip_state === "dry" ? frame.track_rubber_percent : frame.track_wetness_percent
   ));
 
-  setText(values.air, formatTemp(frame.rest_weather_available ? frame.ambient_temperature_c : NaN));
-  setText(values.track, formatTemp(frame.rest_weather_available ? frame.track_temperature_c : NaN));
+  setText(values.air, formatTemperature(frame.rest_weather_available ? frame.ambient_temperature_c : NaN));
+  setText(values.track, formatTemperature(frame.rest_weather_available ? frame.track_temperature_c : NaN));
   setText(values.wind, windValue(frame.wind_speed_ms, frame.wind_direction_degrees));
   const windAvailable = Number.isFinite(frame.wind_speed_ms) && frame.wind_speed_ms > 0;
   windArrow.hidden = !windAvailable;
@@ -163,7 +161,14 @@ const previewFrame = {
 
 bindOverlayInteractionMode();
 if (!isTauriRuntime()) render(previewFrame);
-void listenTelemetry((frame) => renderPerformance.measure(() => render(frame)));
+void listenTelemetry((frame) => {
+  latestFrame = frame;
+  renderPerformance.measure(() => render(frame));
+});
 if (isTauriRuntime()) {
   void listenRuntimeEvent<ConditionsSettings>("conditions://settings", applySettings);
 }
+void listenRuntimeEvent<DisplayUnits>("display-units://change", (next) => {
+  applyDisplayUnits(next);
+  if (latestFrame) render(latestFrame);
+});

@@ -125,6 +125,9 @@ the prepared vehicle IDs and formats them; it must not repeat domain selection.
 
 ## Verification focus
 
+Air and track temperatures in the session header follow the global
+Celsius/Fahrenheit display preference, including their tooltips.
+
 Test lap-wrap duplication, multiclass/lapped traffic, timing-line transitions,
 garage exclusion, sign and ordering of gaps, event combinations, row limits,
 independent column/header settings and fitted size. Confirm 20 Hz roster demand

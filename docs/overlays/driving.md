@@ -66,6 +66,11 @@
   composing between telemetry frames.
 - Cache hot DOM/canvas references and skip unchanged writes.
 
+## Display units
+
+The dial speed follows the global km/h or mph preference, including its unit
+label. The frame stays in km/h.
+
 ## Verification focus
 
 Check rapid steering/FFB/pedal/clutch changes, the RPM strip through its color thresholds

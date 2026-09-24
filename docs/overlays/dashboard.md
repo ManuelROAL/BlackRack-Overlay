@@ -88,6 +88,10 @@ fields may be enabled, including all of them. The strip grows with its content.
 
 ## Data semantics
 
+- Speed is converted from the canonical km/h frame value according to the global
+  display-unit preference; the field label reports KM/H or MPH. Air and track
+  temperatures use the same global Celsius/Fahrenheit preference.
+
 - Everything comes from the selected vehicle, so spectator and team mode read
   the followed car rather than the player's.
 - The strip draws nothing until `player_active`; before that it shows the

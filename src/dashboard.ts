@@ -20,6 +20,13 @@ import {
   type DashboardFieldId,
   type DashboardSettings
 } from "./dashboard-settings";
+import {
+  applyDisplayUnits,
+  formatSpeedValue,
+  formatTemperature,
+  speedUnitShort,
+  type DisplayUnits
+} from "./display-units";
 
 bindOverlayTransparency("dashboard");
 const renderPerformance = createOverlayPerformanceTracker("dashboard");
@@ -39,6 +46,7 @@ const batteryFill = document.getElementById("dashboard-battery-fill")!;
 const batteryPercentLabel = document.getElementById("dashboard-battery-percent")!;
 const batteryOutline = document.querySelector<HTMLImageElement>(".dash-hybrid-outline")!;
 batteryOutline.src = batteryIconUrl;
+const speedLabel = fields.speed.querySelector<HTMLElement>("dt")!;
 const readout = document.querySelector<HTMLElement>(".dash-readout")!;
 const row = value("fields");
 const empty = value("empty");
@@ -187,7 +195,8 @@ const renderValues = (frame: TelemetryFrame): void => {
   }
   setState(gear, "rev", revLevel(revState.ratio));
 
-  setText(value("speed"), String(Math.max(0, Math.round(frame.speed_kph))));
+  setText(value("speed"), formatSpeedValue(Math.max(0, frame.speed_kph)));
+  setText(speedLabel, speedUnitShort());
   setText(value("rpm"), String(Math.max(0, Math.round(frame.rpm))));
   setText(
     value("position"),
@@ -237,8 +246,8 @@ const renderValues = (frame: TelemetryFrame): void => {
   setText(value("tccut"), level(frame.traction_control_cut, frame.traction_control_cut_max));
   setText(value("abs"), level(frame.anti_lock_brakes_level, frame.anti_lock_brakes_max));
   setText(value("bias"), `${frame.brake_bias_percent.toFixed(1)}%`);
-  setText(value("air"), rounded(frame.ambient_temperature_c, 0, "°"));
-  setText(value("track"), rounded(frame.track_temperature_c, 0, "°"));
+  setText(value("air"), formatTemperature(frame.ambient_temperature_c));
+  setText(value("track"), formatTemperature(frame.track_temperature_c));
   setText(value("wipers"), wiperStateLabel(frame.wiper_state));
 };
 
@@ -385,6 +394,11 @@ if (!isTauriRuntime()) {
   adjustmentContext = "";
 }
 void listenTelemetry((frame) => renderPerformance.measure(() => render(frame)));
+void listenRuntimeEvent<DisplayUnits>("display-units://change", (next) => {
+  applyDisplayUnits(next);
+  setText(speedLabel, speedUnitShort());
+  if (lastFrame) render(lastFrame);
+});
 if (isTauriRuntime()) {
   void listenRuntimeEvent<DashboardSettings>("dashboard://settings", applySettings);
 }

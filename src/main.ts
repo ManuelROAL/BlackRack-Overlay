@@ -7,6 +7,14 @@ import "./dashboard-settings.css";
 import { backendErrorMessage } from "./backend-errors";
 import { installFrontendDiagnostics } from "./frontend-diagnostics";
 import {
+  applyDisplayUnits,
+  normalizeDisplayUnits,
+  persistDisplayUnits,
+  readDisplayUnits,
+  DISPLAY_UNITS_STORAGE_KEY,
+  type DisplayUnits
+} from "./display-units";
+import {
   applyTranslations,
   formatNumber,
   getLocale,
@@ -307,9 +315,9 @@ interface UpdateProgress {
 
 interface OverlayConfigurationExport {
   format: "blackrack-overlay-configuration";
-  schemaVersion: 23;
+  schemaVersion: 24;
   exportedAt: string;
-  ui: { locale: Locale };
+  ui: { locale: Locale; displayUnits: DisplayUnits };
   profiles: OverlayProfile[];
   modeBindings: ProfileBindings;
   sessionBindings: SessionBindings;
@@ -506,7 +514,7 @@ if (localeSelect) {
   });
 }
 
-const CURRENT_CONFIGURATION_SCHEMA = 23;
+const CURRENT_CONFIGURATION_SCHEMA = 24;
 const CURRENT_CONFIGURATION_FORMAT = "blackrack-overlay-configuration";
 const LEGACY_CONFIGURATION_FORMAT = "lmu-overlay-configuration";
 const overlayIds: OverlayId[] = ["delta", "timing", "stinthistory", "driving", "liftcoast", "tires", "damage", "standings", "relative", "fuel", "pitstop", "flags", "rejoin", "trackmap", "forecast", "conditions", "dashboard"];
@@ -842,6 +850,29 @@ let conditionsSettings: ConditionsSettings = readConditionsSettings();
 let dashboardSettings: DashboardSettings = readDashboardSettings();
 let liftCoastSettings: LiftCoastSettings = readLiftCoastSettings();
 let pitStopSettings: PitStopSettings = readPitStopSettings();
+let displayUnits: DisplayUnits = readDisplayUnits();
+const temperatureUnitSelect = document.getElementById("temperature-unit") as HTMLSelectElement | null;
+const speedUnitSelect = document.getElementById("speed-unit") as HTMLSelectElement | null;
+const updateDisplayUnits = (value: unknown): void => {
+  displayUnits = persistDisplayUnits(value);
+  displayUnits = applyDisplayUnits(displayUnits);
+  if (temperatureUnitSelect) temperatureUnitSelect.value = displayUnits.temperature;
+  if (speedUnitSelect) speedUnitSelect.value = displayUnits.speed;
+  void emit("display-units://change", displayUnits);
+  syncBrowserSourcePreferences();
+};
+if (temperatureUnitSelect) {
+  temperatureUnitSelect.value = displayUnits.temperature;
+  temperatureUnitSelect.addEventListener("change", () => updateDisplayUnits({
+    ...displayUnits, temperature: temperatureUnitSelect.value
+  }));
+}
+if (speedUnitSelect) {
+  speedUnitSelect.value = displayUnits.speed;
+  speedUnitSelect.addEventListener("change", () => updateDisplayUnits({
+    ...displayUnits, speed: speedUnitSelect.value
+  }));
+}
 const overlayTransparency = readOverlayTransparency();
 let overlayTransparencyScope: OverlayTransparencyScope = readOverlayTransparencyScope();
 const overlayFontSize = readOverlayFontSize();
@@ -882,6 +913,7 @@ const syncBrowserSourcePreferences = (): void => {
       dashboard: dashboardSettings,
       liftCoast: liftCoastSettings,
       pitstop: pitStopSettings,
+      displayUnits,
       transparency: effectiveOverlayTransparency(overlayTransparency, overlayTransparencyScope),
       fontSize: effectiveOverlayFontSize(overlayFontSize, overlayFontSizeScope),
       locale: getLocale(),
@@ -2941,7 +2973,12 @@ const parseOverlayConfiguration = (
     sessionBindings: { practice: null, qualifying: null, race: null },
     format: CURRENT_CONFIGURATION_FORMAT,
     schemaVersion: CURRENT_CONFIGURATION_SCHEMA,
-    ui: { locale: isLocale(ui?.locale) ? ui.locale : getLocale() },
+    ui: {
+      locale: isLocale(ui?.locale) ? ui.locale : getLocale(),
+      displayUnits: numericSchemaVersion >= 24 && ui?.displayUnits !== undefined
+        ? normalizeDisplayUnits(ui.displayUnits)
+        : readDisplayUnits()
+    },
     overlays: {
       ...normalized.overlays,
       visibility: visibility as unknown as Record<OverlayId, boolean>,
@@ -3093,6 +3130,7 @@ const normalizeImportedMonitor = async (
 
 const applyImportedConfiguration = (configuration: OverlayConfigurationExport): void => {
   const entries: Array<[string, unknown]> = [
+    [DISPLAY_UNITS_STORAGE_KEY, configuration.ui.displayUnits],
     [storageKey, configuration.overlays.visibility],
     [OVERLAY_TRANSPARENCY_KEY, configuration.overlays.transparency.values],
     [OVERLAY_TRANSPARENCY_SCOPE_KEY, configuration.overlays.transparency.scope],
@@ -3135,6 +3173,7 @@ const applyImportedConfiguration = (configuration: OverlayConfigurationExport): 
     else localStorage.setItem(LOCALE_STORAGE_KEY, previousLocale);
     throw error;
   }
+  updateDisplayUnits(configuration.ui.displayUnits);
 };
 
 const setConfigurationTransferBusy = (busy: boolean): void => {
@@ -3154,7 +3193,7 @@ exportConfigurationButton?.addEventListener("click", () => {
       format: CURRENT_CONFIGURATION_FORMAT,
       schemaVersion: CURRENT_CONFIGURATION_SCHEMA,
       exportedAt: now.toISOString(),
-      ui: { locale: getLocale() },
+      ui: { locale: getLocale(), displayUnits: readDisplayUnits() },
       profiles: profileState.profiles,
       modeBindings: profileState.bindings,
       sessionBindings: profileState.sessionBindings,

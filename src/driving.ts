@@ -18,6 +18,7 @@ import {
   listenTelemetry
 } from "./runtime-events";
 import { rpmLedIsActive, rpmLedState } from "./rpm-leds";
+import { applyDisplayUnits, formatSpeedValue, speedUnit, type DisplayUnits } from "./display-units";
 
 const BASE_HEIGHT = 120;
 const RPM_LEDS_HEIGHT = 14;
@@ -35,6 +36,7 @@ const canvas = document.getElementById("trailing-canvas") as HTMLCanvasElement;
 const context = canvas.getContext("2d");
 const shell = document.querySelector<HTMLElement>(".driving-shell");
 const driveDial = document.querySelector<HTMLElement>(".drive-dial");
+const speedReadout = document.getElementById("speed")!;
 const trailingPanel = document.querySelector<HTMLElement>(".trailing-panel");
 const pedalPanel = document.querySelector<HTMLElement>(".pedal-panel");
 const rpmLeds = Array.from(document.querySelectorAll<HTMLElement>(".rpm-leds i"));
@@ -44,6 +46,7 @@ for (const element of document.querySelectorAll<HTMLElement>("[id]")) {
 }
 let settings = readDrivingSettings();
 let graphRenderPhase = 0;
+let latestSpeedKph: number | null = null;
 
 const visiblePedalCount = (values: Record<DrivingPedalId, boolean>): number =>
   DRIVING_PEDALS.filter(({ id }) => values[id]).length;
@@ -210,6 +213,7 @@ const applySettings = (next: DrivingSettings): void => {
 };
 
 const render = (frame: TelemetryFrame): void => {
+  latestSpeedKph = frame.speed_kph;
   const throttle = Math.max(0, Math.min(1, frame.throttle));
   const brake = Math.max(0, Math.min(1, frame.brake));
   const clutch = Math.max(0, Math.min(1, frame.clutch));
@@ -225,7 +229,8 @@ const render = (frame: TelemetryFrame): void => {
   text("throttle-value", `${Math.round(throttle * 100)}`);
   text("brake-value", `${Math.round(brake * 100)}`);
   text("clutch-value", `${Math.round(clutch * 100)}`);
-  text("speed", `${Math.round(frame.speed_kph)}`);
+  text("speed", formatSpeedValue(frame.speed_kph));
+  speedReadout.dataset.unit = speedUnit();
   text("gear", frame.gear < 0 ? "R" : frame.gear === 0 ? "N" : `${frame.gear}`);
   setLevel("throttle-level", throttle);
   setLevel("brake-level", brake);
@@ -237,5 +242,10 @@ const render = (frame: TelemetryFrame): void => {
 
 void listenTelemetry(render);
 void listenRuntimeEvent<DrivingSettings>("driving://settings", applySettings);
+void listenRuntimeEvent<DisplayUnits>("display-units://change", (next) => {
+  applyDisplayUnits(next);
+  speedReadout.dataset.unit = speedUnit();
+  if (latestSpeedKph !== null) text("speed", formatSpeedValue(latestSpeedKph));
+});
 applySettings(settings);
 bindOverlayInteractionMode();

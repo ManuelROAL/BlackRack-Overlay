@@ -26,6 +26,7 @@ import { applyTrackLimitTone, formatTrackLimitPoints } from "./track-limit-tone"
 import { formatDriverName } from "./driver-name-format";
 import { isPracticeSession, isRaceSession } from "./session-phase";
 import { formatClock as formatRealClock, formatNumber, formatTimeOfDay, t, type TranslationKey } from "./i18n";
+import { applyDisplayUnits, formatTemperatureValue, temperatureUnit, type DisplayUnits } from "./display-units";
 
 let settings = readStandingsSettings();
 const STANDINGS_EMPTY_HEIGHT = 72;
@@ -726,18 +727,22 @@ const sessionHeader = (frame: TelemetryFrame): HTMLElement => {
     const ambient = node("span", "standings-header-temperature");
     ambient.append(
       icon(airTemperatureIconUrl, "standings-header-icon", t("standings.airTemperature")),
-      `${Math.round(frame.ambient_temperature_c)}°C`
+      `${formatTemperatureValue(frame.ambient_temperature_c)}${temperatureUnit()}`
     );
-    ambient.title = t("standings.airTemperatureTitle", { value: formatNumber(frame.ambient_temperature_c, 1) });
+    ambient.title = t("standings.airTemperatureTitle", {
+      value: formatTemperatureValue(frame.ambient_temperature_c, 1), unit: temperatureUnit()
+    });
     dataGroup.append(ambient);
   }
   if (frame.rest_weather_available && settings.header.trackTemperature) {
     const track = node("span", "standings-header-temperature");
     track.append(
       icon(trackTemperatureIconUrl, "standings-header-icon", t("standings.trackTemperature")),
-      `${Math.round(frame.track_temperature_c)}°C`
+      `${formatTemperatureValue(frame.track_temperature_c)}${temperatureUnit()}`
     );
-    track.title = t("standings.trackTemperatureTitle", { value: formatNumber(frame.track_temperature_c, 1) });
+    track.title = t("standings.trackTemperatureTitle", {
+      value: formatTemperatureValue(frame.track_temperature_c, 1), unit: temperatureUnit()
+    });
     dataGroup.append(track);
   }
   if (settings.header.brakeBias) {
@@ -848,8 +853,8 @@ const cachedSessionHeaderFor = (frame: TelemetryFrame): HTMLElement => {
     frame.session_extra_laps_estimated,
     frame.session_extra_laps_approximate,
     frame.rest_weather_available,
-    Math.round(frame.ambient_temperature_c),
-    Math.round(frame.track_temperature_c),
+    formatTemperatureValue(frame.ambient_temperature_c, 1),
+    formatTemperatureValue(frame.track_temperature_c, 1),
     Math.round(frame.brake_bias_percent * 10),
     frame.track_limits_steps,
     frame.track_limits_steps_per_penalty,
@@ -985,11 +990,17 @@ const settingsListener = listenRuntimeEvent<StandingsSettings>("standings://sett
   resetRenderCaches();
   if (lastFrame) render(lastFrame);
 });
+const displayUnitsListener = listenRuntimeEvent<DisplayUnits>("display-units://change", (payload) => {
+  applyDisplayUnits(payload);
+  resetRenderCaches();
+  if (lastFrame) render(lastFrame);
+});
 
 if (import.meta.hot) {
   import.meta.hot.dispose(() => {
     void telemetryListener.then((unlisten) => unlisten());
     void settingsListener.then((unlisten) => unlisten());
+    void displayUnitsListener.then((unlisten) => unlisten());
   });
 }
 bindOverlayInteractionMode();

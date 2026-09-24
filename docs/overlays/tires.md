@@ -131,6 +131,10 @@ Detailed Damage (`damage.md`).
 
 ## Verification focus
 
+Tyre, brake, engine-oil and engine-water readings and their tooltips follow the
+global Celsius/Fahrenheit display preference. Keep the heatmap thresholds in
+Celsius so their colors do not change when the displayed unit changes.
+
 Test all four corners and three tyre bands independently, temperature conversion,
 remaining tread, flat-spot reset, suspension source mapping,
 puncture/detachment priority, wing detachment against a lost wheel, engine-warning state and

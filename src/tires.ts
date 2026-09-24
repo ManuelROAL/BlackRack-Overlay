@@ -8,6 +8,12 @@ import { isTauriRuntime, listenRuntimeEvent, listenTelemetry } from "./runtime-e
 import { formatNumber, t, type TranslationKey } from "./i18n";
 import { brakeTemperatureColor, tireTemperatureColor } from "./temperature-colors";
 import { readTiresSettings, type TiresSettings } from "./tires-settings";
+import {
+  applyDisplayUnits,
+  formatTemperature,
+  temperatureUnit,
+  type DisplayUnits
+} from "./display-units";
 
 const wheels = Array.from(document.querySelectorAll<HTMLElement>("[data-wheel]"));
 const temperatures = wheels.map((wheel) => wheel.querySelector<HTMLElement>(".wheel-temperature")!);
@@ -25,6 +31,7 @@ const oilTemperatureValue = oilTemperature.querySelector<HTMLElement>("strong")!
 const waterTemperatureValue = waterTemperature.querySelector<HTMLElement>("strong")!;
 const renderPerformance = createOverlayPerformanceTracker("tires");
 let settings = readTiresSettings();
+let latestFrame: TelemetryFrame | null = null;
 
 const setText = (element: HTMLElement, value: string): void => {
   if (element.textContent !== value) element.textContent = value;
@@ -60,6 +67,11 @@ const shortCompound = (value: string): string => {
 const readable = (value: number, digits: number, suffix: string): string =>
   Number.isFinite(value) && value >= 0 ? `${formatNumber(value, digits)}${suffix}` : `--${digits ? ".-" : ""}${suffix}`;
 
+const readableTemperature = (value: number, digits: number): string =>
+  Number.isFinite(value) && value >= 0
+    ? formatTemperature(value, digits)
+    : `--${digits ? ".-" : ""}${temperatureUnit()}`;
+
 const damageNameKeys: TranslationKey[] = [
   "tires.part.frontCenter", "tires.part.frontLeft", "tires.part.left", "tires.part.rearLeft",
   "tires.part.rearCenter", "tires.part.rearRight", "tires.part.right", "tires.part.frontRight"
@@ -90,8 +102,8 @@ const render = (frame: TelemetryFrame): void => {
       ? zoneTemperatures.reduce((total, value) => total + value, 0) / zoneTemperatures.length
       : temperature;
 
-    setText(temperatures[index], readable(temperature, 1, "°"));
-    setText(brakeTemperatures[index], readable(brakeTemperature, 0, "°"));
+    setText(temperatures[index], readableTemperature(temperature, 1));
+    setText(brakeTemperatures[index], readableTemperature(brakeTemperature, 0));
     setText(wearValues[index], Number.isFinite(remaining) && remaining >= 0
       ? `${Math.round(remaining)}%`
       : "--%");
@@ -129,10 +141,10 @@ const render = (frame: TelemetryFrame): void => {
     const title = flat || detached
       ? detached ? t("tires.detached") : t("tires.flat")
       : t("tires.tooltip", {
-          tire: readable(temperature, 1, " °C"), brake: readable(brakeTemperature, 0, " °C"),
+          tire: readableTemperature(temperature, 1), brake: readableTemperature(brakeTemperature, 0),
           remaining: readable(remaining, 1, "%"), flat: readable(flatSpot, 2, "%"),
           suspension: readable(suspension, 0, "%"), compound: compoundLabel,
-          optimal: readable(optimalTemperature, 0, " °C")
+          optimal: readableTemperature(optimalTemperature, 0)
         });
     if (wheels[index].title !== title) wheels[index].title = title;
   }
@@ -162,13 +174,13 @@ const render = (frame: TelemetryFrame): void => {
   setAttribute(engineStatus, "aria-label", engineLabel);
   setAttribute(engineStatus, "title", engineLabel);
 
-  setText(oilTemperatureValue, readable(frame.player_engine_oil_temperature_c, 0, "°"));
-  setText(waterTemperatureValue, readable(frame.player_engine_water_temperature_c, 0, "°"));
+  setText(oilTemperatureValue, readableTemperature(frame.player_engine_oil_temperature_c, 0));
+  setText(waterTemperatureValue, readableTemperature(frame.player_engine_water_temperature_c, 0));
   setAttribute(oilTemperature, "title", t("tires.oilTemperature", {
-    value: readable(frame.player_engine_oil_temperature_c, 0, " °C")
+    value: readableTemperature(frame.player_engine_oil_temperature_c, 0)
   }));
   setAttribute(waterTemperature, "title", t("tires.waterTemperature", {
-    value: readable(frame.player_engine_water_temperature_c, 0, " °C")
+    value: readableTemperature(frame.player_engine_water_temperature_c, 0)
   }));
 
   const aggregateDamageAvailable = Number.isFinite(frame.player_damage_percent)
@@ -222,5 +234,12 @@ bindOverlayTransparency("tires");
 bindOverlayInteractionMode();
 applySettings(settings);
 if (!isTauriRuntime()) render(previewFrame);
-void listenTelemetry((frame) => renderPerformance.measure(() => render(frame)));
+void listenTelemetry((frame) => {
+  latestFrame = frame;
+  renderPerformance.measure(() => render(frame));
+});
 void listenRuntimeEvent<TiresSettings>("tires://settings", applySettings);
+void listenRuntimeEvent<DisplayUnits>("display-units://change", (next) => {
+  applyDisplayUnits(next);
+  if (latestFrame) render(latestFrame);
+});
