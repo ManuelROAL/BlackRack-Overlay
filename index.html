@@ -962,17 +962,6 @@
         </div>
       </details>
       
-      <section class="general-settings-section support-diagnostic" data-view-section="integrations">
-        <header class="settings-section-heading">
-          <span data-i18n="start.support">SOPORTE</span>
-          <strong data-i18n="start.diagnosticTitle">Información para pedir ayuda</strong>
-        </header>
-        <p data-i18n="start.diagnosticHelp">Copia el resumen y adjúntalo a tu consulta junto con los pasos para reproducir el problema. No incluye registros, rutas personales ni credenciales.</p>
-        <button id="copy-support-diagnostic" type="button" data-i18n="start.copy">COPIAR DIAGNÓSTICO</button>
-        <p id="support-diagnostic-status" aria-live="polite"></p>
-        <textarea id="support-diagnostic-output" rows="10" readonly hidden aria-label="Resumen de diagnóstico" data-i18n-aria-label="start.diagnosticTitle"></textarea>
-      </section>
-
       <details class="logging-section diagnostic-details" data-view-section="integrations" aria-label="Análisis de estrategia" data-i18n-aria-label="strategyLog.aria">
         <summary class="integration-section-heading">
           <span data-i18n="strategyLog.heading">ESTRATEGIA</span>
@@ -997,6 +986,16 @@
           <span data-i18n="logging.heading">DIAGNÓSTICO</span>
           <strong data-i18n="logging.sub">Análisis y registro local</strong>
         </summary>
+        <div class="support-diagnostic">
+          <header class="settings-section-heading">
+            <span data-i18n="start.support">SOPORTE</span>
+            <strong data-i18n="start.diagnosticTitle">Información para pedir ayuda</strong>
+          </header>
+          <p data-i18n="start.diagnosticHelp">Copia el resumen y adjúntalo a tu consulta junto con los pasos para reproducir el problema. No incluye registros, rutas personales ni credenciales.</p>
+          <button id="copy-support-diagnostic" type="button" data-i18n="start.copy">COPIAR DIAGNÓSTICO</button>
+          <p id="support-diagnostic-status" aria-live="polite"></p>
+          <textarea id="support-diagnostic-output" rows="10" readonly hidden aria-label="Resumen de diagnóstico" data-i18n-aria-label="start.diagnosticTitle"></textarea>
+        </div>
         <article id="logging-card" class="overlay-option logging-option">
           <div class="overlay-icon logging-icon">REC</div>
           <div class="overlay-copy">
