@@ -1241,6 +1241,17 @@ select {
   background: rgb(105 231 148 / 6%);
 }
 
+.browser-source-vr-hint {
+  margin: 0 2px;
+  padding: 8px 10px;
+  border-left: 2px solid rgb(216 255 62 / 55%);
+  border-radius: 0 5px 5px 0;
+  color: #cbd4dd;
+  background: rgb(216 255 62 / 4%);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 .control-panel[data-active-view="general"] .support-section,
 .control-panel[data-active-view="integrations"] .support-section {
   margin-top: auto;
