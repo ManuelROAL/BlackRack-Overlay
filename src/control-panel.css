@@ -2583,7 +2583,14 @@ select {
   font-size: 11px;
 }
 
-#open-kofi {
+.support-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.support-button {
   display: flex;
   align-items: center;
   gap: 7px;
@@ -2598,16 +2605,16 @@ select {
   cursor: pointer;
 }
 
-#open-kofi:hover:not(:disabled) {
+.support-button:hover:not(:disabled) {
   filter: brightness(1.1);
 }
 
-#open-kofi:disabled {
+.support-button:disabled {
   cursor: wait;
   opacity: 0.6;
 }
 
-#open-kofi span {
+.support-button span {
   font-size: 15px;
 }
 
@@ -2840,7 +2847,6 @@ select {
   }
 
   .configuration-transfer-actions,
-  #open-kofi,
   .update-actions {
     width: 100%;
   }
@@ -2858,7 +2864,13 @@ select {
     flex-direction: column;
   }
 
-  #open-kofi {
+  .support-actions {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .support-button {
+    width: 100%;
     justify-content: center;
   }
 

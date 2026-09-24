@@ -107,8 +107,9 @@ Tauri events    analysis JSONL/strategy CSV    browser-source SSE
 - `src/main.ts`: control panel and persisted settings.
   The control panel also bundles the release manifests into a localized changelog
   view, while the update card uses the same release-note selection logic.
-  The support action asks the Rust backend to open the fixed project Ko-fi URL
-  in the system browser; no remote page is loaded inside the application WebView.
+  The support actions ask the Rust backend to open the fixed project Ko-fi or
+  PayPal URL in the system browser; no remote page is loaded inside the
+  application WebView.
   Known browser-server and shortcut failures are localized from stable backend
   kinds/codes; raw system details are logged rather than rendered as UI copy.
 - `browser.html` and `src/browser-index.ts`: catalog-driven OBS route index. The

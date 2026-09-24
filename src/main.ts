@@ -784,23 +784,35 @@ if (!Number.isFinite(lastUpdateCheck) || Date.now() - lastUpdateCheck >= UPDATE_
 }
 window.setInterval(() => void checkForUpdates(false), UPDATE_CHECK_INTERVAL_MS);
 
-const supportButton = document.getElementById("open-kofi") as HTMLButtonElement | null;
 const supportStatus = document.getElementById("support-status");
-supportButton?.addEventListener("click", () => {
-  supportButton.disabled = true;
-  if (supportStatus) supportStatus.textContent = t("support.opening");
-  invoke("open_support_page")
-    .then(() => {
-      if (supportStatus) supportStatus.textContent = t("support.opened");
-    })
-    .catch((error) => {
-      console.error("No se pudo abrir Ko-fi", error);
-      if (supportStatus) supportStatus.textContent = t("support.error");
-    })
-    .finally(() => {
-      supportButton.disabled = false;
-    });
-});
+const bindSupportButton = (
+  buttonId: string,
+  command: string,
+  openingKey: TranslationKey,
+  openedKey: TranslationKey,
+  errorKey: TranslationKey,
+  errorMessage: string
+): void => {
+  const button = document.getElementById(buttonId) as HTMLButtonElement | null;
+  button?.addEventListener("click", () => {
+    button.disabled = true;
+    if (supportStatus) supportStatus.textContent = t(openingKey);
+    invoke(command)
+      .then(() => {
+        if (supportStatus) supportStatus.textContent = t(openedKey);
+      })
+      .catch((error) => {
+        console.error(errorMessage, error);
+        if (supportStatus) supportStatus.textContent = t(errorKey);
+      })
+      .finally(() => {
+        button.disabled = false;
+      });
+  });
+};
+
+bindSupportButton("open-kofi", "open_support_page", "support.opening", "support.opened", "support.error", "No se pudo abrir Ko-fi");
+bindSupportButton("open-paypal", "open_paypal_page", "support.paypalOpening", "support.paypalOpened", "support.paypalError", "No se pudo abrir PayPal");
 
 let activeOverlayFilter = "all";
 const overlaySearch = document.getElementById("overlay-search") as HTMLInputElement | null;

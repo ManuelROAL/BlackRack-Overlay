@@ -219,8 +219,9 @@ assignments; per-overlay mode restores those assignments.
   Imports retain known values from older product/schema versions, fill settings
   introduced later with current defaults and tolerate unknown additive fields.
 - A common support card remains below the visible content in Overlays, General
-  and Integrations, immediately above the shortcut footer. It opens the fixed
-  project Ko-fi URL in the system browser and never embeds remote content.
+  and Integrations, immediately above the shortcut footer. Its Ko-fi and PayPal
+  buttons open their fixed project URLs in the system browser and never embed
+  remote content.
 
 ## Composite delivery and OBS
 

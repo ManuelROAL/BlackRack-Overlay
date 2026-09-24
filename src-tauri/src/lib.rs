@@ -47,6 +47,7 @@ const OVERLAY_HOST_PREFIX: &str = "overlay-monitor-";
 const CONTROL_WINDOW_LABEL: &str = "control";
 const DEFAULT_CLICK_THROUGH: bool = true;
 const KOFI_SUPPORT_URL: &str = "https://ko-fi.com/blackrack";
+const PAYPAL_SUPPORT_URL: &str = "https://www.paypal.com/paypalme/BlackRack";
 
 /// Chromium arguments for every webview of the application. WebView2 keeps one
 /// browser process per user data directory, so the environment created first
@@ -1662,18 +1663,14 @@ fn set_simulator_preference(window: WebviewWindow, simulator: String) -> Result<
 }
 
 #[tauri::command]
-fn open_support_page(window: WebviewWindow) -> Result<(), String> {
-    require_control_window(&window)?;
+fn open_support_url(url: &str) -> Result<(), String> {
     #[cfg(windows)]
     {
         use std::iter::once;
         use windows_sys::Win32::UI::Shell::ShellExecuteW;
         use windows_sys::Win32::UI::WindowsAndMessaging::SW_SHOWNORMAL;
 
-        let url = KOFI_SUPPORT_URL
-            .encode_utf16()
-            .chain(once(0))
-            .collect::<Vec<_>>();
+        let url = url.encode_utf16().chain(once(0)).collect::<Vec<_>>();
         let result = unsafe {
             ShellExecuteW(
                 std::ptr::null_mut(),
@@ -1698,11 +1695,23 @@ fn open_support_page(window: WebviewWindow) -> Result<(), String> {
             "xdg-open"
         };
         std::process::Command::new(launcher)
-            .arg(KOFI_SUPPORT_URL)
+            .arg(url)
             .spawn()
             .map(|_| ())
             .map_err(|error| startup_log::command_error("support_page_failed", error))
     }
+}
+
+#[tauri::command]
+fn open_support_page(window: WebviewWindow) -> Result<(), String> {
+    require_control_window(&window)?;
+    open_support_url(KOFI_SUPPORT_URL)
+}
+
+#[tauri::command]
+fn open_paypal_page(window: WebviewWindow) -> Result<(), String> {
+    require_control_window(&window)?;
+    open_support_url(PAYPAL_SUPPORT_URL)
 }
 
 fn shortcut_settings_path(app: &AppHandle) -> Result<std::path::PathBuf, String> {
@@ -2354,6 +2363,7 @@ pub fn run() {
             get_simulator_status,
             set_simulator_preference,
             open_support_page,
+            open_paypal_page,
             updater::check_for_update,
             updater::download_and_install_update,
             updater::get_update_status,
