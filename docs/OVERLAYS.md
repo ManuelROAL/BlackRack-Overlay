@@ -19,6 +19,9 @@ assignments; per-overlay mode restores those assignments.
   values a deliberate hierarchy.
 - Keep overlay descriptions and configuration-option labels in the control panel
   readable at a glance; secondary text must retain clear contrast against cards.
+- Overlay-specific configuration panels render text in sentence case at one
+  12 px size. Their selects share the same dark surface, neutral border, and lime
+  focus treatment while retaining widths suited to each panel layout.
 - Keep each overlay's CSS in its own file. Shared primitives belong in
   `src/styles.css` only when they are genuinely shared.
 - Do not set `color-scheme: dark` on an embedded document root; WebView2 can paint

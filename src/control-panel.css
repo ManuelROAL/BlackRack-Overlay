@@ -3016,3 +3016,50 @@ select {
 .trackmap-player-image-field p:empty { display: none; }
 .trackmap-player-color-field button:disabled,
 .trackmap-player-image-field button:disabled { opacity: 0.45; cursor: default; }
+
+/* Overlay configuration panels keep one readable type size and casing across
+   static and dynamically-created controls. */
+[data-settings-for].standings-settings-section {
+  font-size: 12px;
+  text-transform: lowercase;
+}
+
+[data-settings-for].standings-settings-section * {
+  font-size: inherit;
+  text-transform: inherit;
+}
+
+[data-settings-for].standings-settings-section::first-letter,
+[data-settings-for].standings-settings-section *::first-letter {
+  text-transform: uppercase;
+}
+
+[data-settings-for].standings-settings-section select {
+  min-height: 34px;
+  padding: 7px 30px 7px 9px;
+  border: 1px solid rgb(255 255 255 / 12%);
+  border-radius: 5px;
+  color: #dce2e7;
+  background-color: #121923;
+  background-image:
+    linear-gradient(45deg, transparent 50%, #a6b3c0 50%),
+    linear-gradient(135deg, #a6b3c0 50%, transparent 50%);
+  background-repeat: no-repeat;
+  background-position:
+    calc(100% - 14px) calc(50% - 1px),
+    calc(100% - 9px) calc(50% - 1px);
+  background-size: 5px 5px;
+  appearance: none;
+  cursor: pointer;
+  font-weight: 800;
+  outline: none;
+}
+
+[data-settings-for].standings-settings-section select:focus {
+  border-color: rgb(216 255 62 / 55%);
+}
+
+[data-settings-for].standings-settings-section select option {
+  color: #dce2e7;
+  background: #121923;
+}
