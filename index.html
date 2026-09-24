@@ -905,6 +905,32 @@
           </label>
         </section>
 
+        <article class="overlay-option" data-overlay-card="sessioninfo" data-overlay-category="race">
+          <div class="overlay-icon">◷</div>
+          <div class="overlay-copy">
+            <strong data-i18n="card.sessioninfo">Información de sesión</strong>
+            <span data-i18n="card.sessioninfoSub">Reloj, sesión, clima, límites de pista y temperaturas.</span>
+          </div>
+          <label class="switch">
+            <input type="checkbox" data-overlay="sessioninfo" aria-label="Mostrar Información de sesión" />
+            <span></span>
+          </label>
+        </article>
+        <section class="standings-settings-section" data-settings-for="sessioninfo" hidden>
+          <header class="settings-section-heading">
+            <span data-i18n="settings.sessioninfo">CONFIGURACIÓN DE INFORMACIÓN DE SESIÓN</span>
+            <strong data-i18n="settings.visible">Elementos visibles</strong>
+          </header>
+          <label class="select-field">
+            <span data-i18n="sessioninfo.layout">DISPOSICIÓN</span>
+            <select id="sessioninfo-layout" aria-label="Disposición de información de sesión" data-i18n-aria-label="sessioninfo.layoutAria">
+              <option value="line" data-i18n="sessioninfo.line">En línea</option>
+              <option value="column" data-i18n="sessioninfo.column">En columna</option>
+            </select>
+          </label>
+          <div id="sessioninfo-options" class="standings-columns" aria-label="Valores visibles de información de sesión" data-i18n-aria-label="settings.sessioninfoAria"></div>
+        </section>
+
       </section>
 
       <section class="configuration-export overlay-bulk-reset" data-view-section="overlays" aria-label="Restablecer todos los overlays" data-i18n-aria-label="reset.allAria">
@@ -967,6 +993,7 @@
             <div data-browser-overlay="forecast"><code></code><button type="button" data-i18n="browser.copy">COPIAR</button></div>
             <div data-browser-overlay="conditions"><code></code><button type="button" data-i18n="browser.copy">COPIAR</button></div>
             <div data-browser-overlay="dashboard"><code></code><button type="button" data-i18n="browser.copy">COPIAR</button></div>
+            <div data-browser-overlay="sessioninfo"><code></code><button type="button" data-i18n="browser.copy">COPIAR</button></div>
           </div>
         </div>
       </details>

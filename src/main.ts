@@ -121,6 +121,14 @@ import {
   type DashboardSettings
 } from "./dashboard-settings";
 import {
+  SESSIONINFO_FIELDS,
+  SESSIONINFO_SETTINGS_KEY,
+  defaultSessionInfoSettings,
+  normalizeSessionInfoSettings,
+  readSessionInfoSettings,
+  type SessionInfoSettings
+} from "./sessioninfo-settings";
+import {
   defaultLiftCoastSettings,
   isLiftCoastDisplayMode,
   LIFTCOAST_SETTINGS_KEY,
@@ -317,7 +325,7 @@ interface UpdateProgress {
 
 interface OverlayConfigurationExport {
   format: "blackrack-overlay-configuration";
-  schemaVersion: 24;
+  schemaVersion: 25;
   exportedAt: string;
   ui: { locale: Locale; displayUnits: DisplayUnits };
   profiles: OverlayProfile[];
@@ -346,6 +354,7 @@ interface OverlayConfigurationExport {
     tires: TiresSettings;
     conditions: ConditionsSettings;
     dashboard: DashboardSettings;
+    sessionInfo: SessionInfoSettings;
     liftCoast: LiftCoastSettings;
     pitstop: PitStopSettings;
     performanceProfile: PerformanceProfile;
@@ -516,10 +525,10 @@ if (localeSelect) {
   });
 }
 
-const CURRENT_CONFIGURATION_SCHEMA = 24;
+const CURRENT_CONFIGURATION_SCHEMA = 25;
 const CURRENT_CONFIGURATION_FORMAT = "blackrack-overlay-configuration";
 const LEGACY_CONFIGURATION_FORMAT = "lmu-overlay-configuration";
-const overlayIds: OverlayId[] = ["delta", "timing", "stinthistory", "driving", "liftcoast", "tires", "damage", "standings", "relative", "fuel", "pitstop", "flags", "rejoin", "trackmap", "forecast", "conditions", "dashboard"];
+const overlayIds: OverlayId[] = ["delta", "timing", "stinthistory", "driving", "liftcoast", "tires", "damage", "standings", "relative", "fuel", "pitstop", "flags", "rejoin", "trackmap", "forecast", "conditions", "dashboard", "sessioninfo"];
 const storageKey = "blackrack-overlay.visible-windows.v1";
 
 const defaultVisibility = (): Record<OverlayId, boolean> => Object.fromEntries(
@@ -862,6 +871,7 @@ let fuelSettings: FuelSettings = readFuelSettings();
 let tiresSettings: TiresSettings = readTiresSettings();
 let conditionsSettings: ConditionsSettings = readConditionsSettings();
 let dashboardSettings: DashboardSettings = readDashboardSettings();
+let sessionInfoSettings: SessionInfoSettings = readSessionInfoSettings();
 let liftCoastSettings: LiftCoastSettings = readLiftCoastSettings();
 let pitStopSettings: PitStopSettings = readPitStopSettings();
 let displayUnits: DisplayUnits = readDisplayUnits();
@@ -925,6 +935,7 @@ const syncBrowserSourcePreferences = (): void => {
       tires: tiresSettings,
       conditions: conditionsSettings,
       dashboard: dashboardSettings,
+      sessionInfo: sessionInfoSettings,
       liftCoast: liftCoastSettings,
       pitstop: pitStopSettings,
       displayUnits,
@@ -1191,6 +1202,12 @@ const persistConditionsSettings = (): void => {
 const persistDashboardSettings = (): void => {
   localStorage.setItem(DASHBOARD_SETTINGS_KEY, JSON.stringify(dashboardSettings));
   void emit("dashboard://settings", dashboardSettings);
+  syncBrowserSourcePreferences();
+};
+
+const persistSessionInfoSettings = (): void => {
+  localStorage.setItem(SESSIONINFO_SETTINGS_KEY, JSON.stringify(sessionInfoSettings));
+  void emit("sessioninfo://settings", sessionInfoSettings);
   syncBrowserSourcePreferences();
 };
 const overlayShortcutInputs = new Map<OverlayId, HTMLInputElement>();
@@ -1728,6 +1745,10 @@ const applyOverlayConfigurationDefaults = (id: OverlayId, events: Promise<unknow
     dashboardSettings = defaultDashboardSettings();
     localStorage.setItem(DASHBOARD_SETTINGS_KEY, JSON.stringify(dashboardSettings));
     events.push(emit("dashboard://settings", dashboardSettings));
+  } else if (id === "sessioninfo") {
+    sessionInfoSettings = defaultSessionInfoSettings();
+    localStorage.setItem(SESSIONINFO_SETTINGS_KEY, JSON.stringify(sessionInfoSettings));
+    events.push(emit("sessioninfo://settings", sessionInfoSettings));
   } else if (id === "liftcoast") {
     liftCoastSettings = defaultLiftCoastSettings();
     localStorage.setItem(LIFTCOAST_SETTINGS_KEY, JSON.stringify(liftCoastSettings));
@@ -1804,6 +1825,7 @@ const captureProfileData = (previous?: OverlayProfileData): OverlayProfileData =
     tires: tiresSettings,
     conditions: conditionsSettings,
     dashboard: dashboardSettings,
+    sessionInfo: sessionInfoSettings,
     liftCoast: liftCoastSettings,
     pitstop: pitStopSettings
   };
@@ -1831,6 +1853,7 @@ const defaultProfileData = (layout: CompositeLayout): OverlayProfileData => ({
   tires: defaultTiresSettings(),
   conditions: defaultConditionsSettings(),
   dashboard: defaultDashboardSettings(),
+  sessionInfo: defaultSessionInfoSettings(),
   liftCoast: defaultLiftCoastSettings(),
   pitstop: defaultPitStopSettings()
 });
@@ -1946,6 +1969,7 @@ const applyProfileData = async (data: OverlayProfileData): Promise<void> => {
     tiresSettings = data.tires;
     conditionsSettings = data.conditions;
     dashboardSettings = normalizeDashboardSettings(data.dashboard) ?? defaultDashboardSettings();
+    sessionInfoSettings = normalizeSessionInfoSettings(data.sessionInfo) ?? defaultSessionInfoSettings();
     liftCoastSettings = normalizeLiftCoastSettings(data.liftCoast) ?? defaultLiftCoastSettings();
     pitStopSettings = normalizePitStopSettings(data.pitstop) ?? defaultPitStopSettings();
     overlayTransparencyScope = data.transparency.scope;
@@ -1973,6 +1997,7 @@ const applyProfileData = async (data: OverlayProfileData): Promise<void> => {
     localStorage.setItem(TIRES_SETTINGS_KEY, JSON.stringify(tiresSettings));
     localStorage.setItem(CONDITIONS_SETTINGS_KEY, JSON.stringify(conditionsSettings));
     localStorage.setItem(DASHBOARD_SETTINGS_KEY, JSON.stringify(dashboardSettings));
+    localStorage.setItem(SESSIONINFO_SETTINGS_KEY, JSON.stringify(sessionInfoSettings));
     localStorage.setItem(LIFTCOAST_SETTINGS_KEY, JSON.stringify(liftCoastSettings));
     localStorage.setItem(PITSTOP_SETTINGS_KEY, JSON.stringify(pitStopSettings));
     localStorage.setItem(OVERLAY_TRANSPARENCY_KEY, JSON.stringify(overlayTransparency));
@@ -1996,6 +2021,7 @@ const applyProfileData = async (data: OverlayProfileData): Promise<void> => {
       emit("tires://settings", tiresSettings),
       emit("conditions://settings", conditionsSettings),
       emit("dashboard://settings", dashboardSettings),
+      emit("sessioninfo://settings", sessionInfoSettings),
       emit("liftcoast://settings", liftCoastSettings),
       emit("pitstop://settings", pitStopSettings)
     ];
@@ -2821,6 +2847,7 @@ const parseOverlayConfiguration = (
   const tires = configurationObject(overlays?.tires);
   const conditions = configurationObject(overlays?.conditions);
   const dashboard = configurationObject(overlays?.dashboard);
+  const sessionInfo = configurationObject(overlays?.sessionInfo);
   const liftCoast = configurationObject(overlays?.liftCoast);
   const pitstop = configurationObject(overlays?.pitstop);
   const importedProfiles = root?.profiles;
@@ -2862,6 +2889,7 @@ const parseOverlayConfiguration = (
     || (numericSchemaVersion >= 15 && !tires)
     || (numericSchemaVersion >= 16 && !conditions)
     || (numericSchemaVersion >= 18 && !dashboard)
+    || (numericSchemaVersion >= 25 && !sessionInfo)
     || (numericSchemaVersion >= 20 && !liftCoast)
     || (numericSchemaVersion >= 23 && !pitstop)) {
     throw new Error(t("config.incompatible"));
@@ -3063,6 +3091,12 @@ const parseOverlayConfiguration = (
   if (!normalizedDashboard) {
     throw new Error(t("config.invalidDashboard"));
   }
+  const normalizedSessionInfo = sessionInfo
+    ? normalizeSessionInfoSettings(sessionInfo)
+    : defaultSessionInfoSettings();
+  if (!normalizedSessionInfo) {
+    throw new Error(t("config.invalidSessionInfo"));
+  }
   const normalizedLiftCoast = liftCoast
     ? normalizeLiftCoastSettings(liftCoast)
     : defaultLiftCoastSettings();
@@ -3184,6 +3218,7 @@ const parseOverlayConfiguration = (
       tires: normalizedTires as unknown as TiresSettings,
       conditions: normalizedConditions,
       dashboard: normalizedDashboard,
+      sessionInfo: normalizedSessionInfo,
       liftCoast: normalizedLiftCoast,
       pitstop: normalizedPitStop,
       performanceProfile: isPerformanceProfile(importedPerformanceProfile)
@@ -3209,6 +3244,7 @@ const parseOverlayConfiguration = (
     tires: result.overlays.tires,
     conditions: result.overlays.conditions,
     dashboard: result.overlays.dashboard,
+    sessionInfo: result.overlays.sessionInfo,
     liftCoast: result.overlays.liftCoast,
     pitstop: result.overlays.pitstop
   };
@@ -3307,6 +3343,7 @@ const applyImportedConfiguration = (configuration: OverlayConfigurationExport): 
     [TIRES_SETTINGS_KEY, configuration.overlays.tires],
     [CONDITIONS_SETTINGS_KEY, configuration.overlays.conditions],
     [DASHBOARD_SETTINGS_KEY, configuration.overlays.dashboard],
+    [SESSIONINFO_SETTINGS_KEY, configuration.overlays.sessionInfo],
     [LIFTCOAST_SETTINGS_KEY, configuration.overlays.liftCoast],
     [PITSTOP_SETTINGS_KEY, configuration.overlays.pitstop],
     [PERFORMANCE_PROFILE_KEY, configuration.overlays.performanceProfile],
@@ -3377,6 +3414,7 @@ exportConfigurationButton?.addEventListener("click", () => {
         tires: tiresSettings,
         conditions: conditionsSettings,
         dashboard: dashboardSettings,
+        sessionInfo: sessionInfoSettings,
         liftCoast: liftCoastSettings,
         pitstop: pitStopSettings,
         performanceProfile,
@@ -3702,6 +3740,39 @@ if (dashboardPitTarget) {
     };
     persistDashboardSettings();
   });
+}
+const sessionInfoOptions = document.getElementById("sessioninfo-options");
+const sessionInfoLayout = document.getElementById("sessioninfo-layout") as HTMLSelectElement | null;
+if (sessionInfoLayout) {
+  sessionInfoLayout.value = sessionInfoSettings.layout;
+  sessionInfoLayout.addEventListener("change", () => {
+    if (sessionInfoLayout.value !== "line" && sessionInfoLayout.value !== "column") return;
+    sessionInfoSettings = { ...sessionInfoSettings, layout: sessionInfoLayout.value };
+    persistSessionInfoSettings();
+  });
+}
+appendToggle(
+  sessionInfoOptions,
+  t("sessioninfo.useSystemClock"),
+  sessionInfoSettings.useSystemClock,
+  (checked) => {
+    sessionInfoSettings = { ...sessionInfoSettings, useSystemClock: checked };
+    persistSessionInfoSettings();
+  }
+);
+for (const field of SESSIONINFO_FIELDS) {
+  appendToggle(
+    sessionInfoOptions,
+    t(field.labelKey),
+    sessionInfoSettings.visible[field.id],
+    (checked) => {
+      sessionInfoSettings = {
+        ...sessionInfoSettings,
+        visible: { ...sessionInfoSettings.visible, [field.id]: checked }
+      };
+      persistSessionInfoSettings();
+    }
+  );
 }
 const liftCoastDisplayMode = document.getElementById("liftcoast-display-mode") as HTMLSelectElement | null;
 if (liftCoastDisplayMode) {

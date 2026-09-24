@@ -63,7 +63,7 @@ interface TelemetryBatch {
 const overlayIds: OverlayId[] = [
   "delta", "timing", "stinthistory", "driving", "liftcoast", "tires", "damage", "standings",
   "relative", "fuel", "pitstop", "flags", "rejoin", "trackmap",
-  "forecast", "conditions", "dashboard"
+  "forecast", "conditions", "dashboard", "sessioninfo"
 ];
 // Projected into every overlay on top of its own allowlist: an overlay has to
 // know what the active simulator can report before it decides what to draw.
@@ -152,13 +152,20 @@ const telemetryFields: Record<OverlayId, readonly (keyof TelemetryFrame)[]> = {
     "anti_lock_brakes_level", "anti_lock_brakes_max", "brake_bias_percent",
     "speed_limiter_active", "headlights_on", "wiper_state", "lift_and_coast_progress",
     "ambient_temperature_c", "track_temperature_c"
+  ],
+  sessioninfo: [
+    "connected", "game_phase", "track_name", "session_type", "game_time_of_day_seconds", "session_time_remaining",
+    "session_laps_remaining", "session_laps_remaining_estimated", "lap_number",
+    "session_total_laps_estimated", "rest_weather_available", "track_temperature_c",
+    "ambient_temperature_c", "cloud_coverage", "rain_percent", "track_limits_steps",
+    "track_limits_steps_per_penalty"
   ]
 };
 const overlayTitleKeys: Record<OverlayId, import("./i18n").TranslationKey> = {
   delta: "card.delta", timing: "card.timing", stinthistory: "card.stintHistory", driving: "card.driving", liftcoast: "card.liftcoast", tires: "card.tires",
   damage: "card.damage", standings: "card.standings", relative: "card.relative", fuel: "card.fuel",
   pitstop: "card.pitstop", flags: "card.flags", rejoin: "card.rejoin", trackmap: "card.trackmap",
-  forecast: "card.forecast", conditions: "card.conditions", dashboard: "card.dashboard"
+  forecast: "card.forecast", conditions: "card.conditions", dashboard: "card.dashboard", sessioninfo: "card.sessioninfo"
 };
 const overlayTitle = (overlay: OverlayId): string => t(overlayTitleKeys[overlay]).toLocaleUpperCase(getLocale());
 
@@ -603,6 +610,7 @@ for (const event of [
   "tires://settings",
   "conditions://settings",
   "dashboard://settings",
+  "sessioninfo://settings",
   "liftcoast://settings",
   "pitstop://settings",
   "overlay://background-transparency",

@@ -313,6 +313,7 @@ struct PerformanceMonitor {
     emitted_forecast: u64,
     emitted_conditions: u64,
     emitted_dashboard: u64,
+    emitted_sessioninfo: u64,
     max_standings_rows: usize,
 }
 
@@ -351,6 +352,7 @@ impl PerformanceMonitor {
             emitted_forecast: 0,
             emitted_conditions: 0,
             emitted_dashboard: 0,
+            emitted_sessioninfo: 0,
             max_standings_rows: 0,
         }
     }
@@ -400,6 +402,7 @@ impl PerformanceMonitor {
                 "forecast": self.emitted_forecast,
                 "conditions": self.emitted_conditions,
                 "dashboard": self.emitted_dashboard,
+                "sessioninfo": self.emitted_sessioninfo,
             },
             "max_standings_rows": self.max_standings_rows,
         }));
@@ -1223,8 +1226,9 @@ pub fn spawn_source(app: AppHandle) {
                 || browser_relative
                 || dr_estimate_log::enabled()
                 || spectator_mode();
-            let rest_weather_requested =
-                overlay_requested("forecast") || overlay_requested("conditions");
+            let rest_weather_requested = overlay_requested("forecast")
+                || overlay_requested("conditions")
+                || overlay_requested("sessioninfo");
             let mut frame = source.next_frame(TelemetryDemand {
                 include_standings: standings_requested,
                 include_track_map: track_map_requested,
@@ -1322,6 +1326,8 @@ pub fn spawn_source(app: AppHandle) {
             let emit_forecast = weather_due && super::overlay_is_active(&app, "forecast");
             let emit_conditions = secondary_due && super::overlay_is_active(&app, "conditions");
             let emit_dashboard = driving_due && super::overlay_is_active(&app, "dashboard");
+            let sessioninfo_due = cycle_due(cycle, tuning.secondary_overlay_cycles);
+            let emit_sessioninfo = sessioninfo_due && super::overlay_is_active(&app, "sessioninfo");
             let emit_fuel = driving_due && super::overlay_is_active(&app, "fuel");
             // An active warning follows the fast cadence so its response never
             // depends on a separate timer landing between repaint cycles.
@@ -1355,8 +1361,9 @@ pub fn spawn_source(app: AppHandle) {
                 ("forecast", emit_forecast),
                 ("conditions", emit_conditions),
                 ("dashboard", emit_dashboard),
+                ("sessioninfo", emit_sessioninfo),
             ];
-            let mut base_targets = [""; 14];
+            let mut base_targets = [""; 15];
             let mut base_target_count = 0;
             for (label, should_emit) in base_emissions {
                 if should_emit {
@@ -1379,6 +1386,7 @@ pub fn spawn_source(app: AppHandle) {
                 performance.emitted_forecast += u64::from(emit_forecast);
                 performance.emitted_conditions += u64::from(emit_conditions);
                 performance.emitted_dashboard += u64::from(emit_dashboard);
+                performance.emitted_sessioninfo += u64::from(emit_sessioninfo);
             }
             if cycle_due(cycle, CONTROL_CYCLES) {
                 let _ = app.emit_to("control", "telemetry://frame", &frame);

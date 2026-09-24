@@ -54,6 +54,8 @@ on their runtime or source code.
   last/best/predicted lap, fuel, virtual energy, range, hybrid battery, engine
   map, traction control, ABS, brake bias, lights, wipers and air/track
   temperature.
+- Optional Session Info line or column with a game/system clock, session type and
+  time, weather, track limits, track, laps remaining and air/track temperatures.
 - Startup diagnostics for failures on other computers.
 - Release changelog history available from the control panel.
 

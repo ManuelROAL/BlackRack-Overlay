@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title data-i18n="title.sessioninfo">Información de sesión</title>
+  </head>
+  <body class="sessioninfo-body">
+    <main class="sessioninfo-shell" data-layout="line" data-tauri-drag-region>
+      <div class="sessioninfo-items" id="sessioninfo-items" data-tauri-drag-region>
+        <span class="sessioninfo-item" data-field="sessionType"><b data-i18n="sessioninfo.session">SESIÓN</b><span id="session-type">--</span></span>
+        <span class="sessioninfo-item" data-field="clock"><b data-i18n="sessioninfo.clockLabel">HORA</b><span id="clock-value">--</span></span>
+        <span class="sessioninfo-item" data-field="trackName"><b data-i18n="sessioninfo.track">PISTA</b><span id="track-name">--</span></span>
+        <span class="sessioninfo-item" data-field="timeRemaining"><b data-i18n="sessioninfo.time">TIEMPO</b><span id="time-remaining">--</span></span>
+        <span class="sessioninfo-item" data-field="lapsRemaining"><b data-i18n="sessioninfo.laps">VUELTAS</b><span id="laps-remaining">--</span></span>
+        <span class="sessioninfo-item" data-field="lapProgress"><b data-i18n="sessioninfo.lap">VUELTA</b><span id="lap-progress">--</span></span>
+        <span class="sessioninfo-item" data-field="trackTemperature"><b data-i18n="sessioninfo.trackTemp">PISTA</b><span id="track-temperature">--</span></span>
+        <span class="sessioninfo-item" data-field="airTemperature"><b data-i18n="sessioninfo.airTemp">AIRE</b><span id="air-temperature">--</span></span>
+        <span class="sessioninfo-item" data-field="weather"><b data-i18n="sessioninfo.weatherLabel">CLIMA</b><img id="weather-icon" alt="" aria-hidden="true" /><span id="weather-value">--</span></span>
+        <span class="sessioninfo-item" data-field="trackLimits"><b data-i18n="sessioninfo.trackLimitsLabel">LÍMITES</b><span id="track-limits">--</span></span>
+      </div>
+    </main>
+    <script type="module" src="/src/sessioninfo.ts"></script>
+  </body>
+</html>

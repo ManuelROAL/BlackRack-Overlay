@@ -22,7 +22,7 @@ use tauri::{
 };
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 
-const OVERLAY_LABELS: [&str; 17] = [
+const OVERLAY_LABELS: [&str; 18] = [
     "delta",
     "timing",
     "stinthistory",
@@ -40,6 +40,7 @@ const OVERLAY_LABELS: [&str; 17] = [
     "forecast",
     "conditions",
     "dashboard",
+    "sessioninfo",
 ];
 
 const TRANSPARENT_BACKGROUND: Color = Color(0, 0, 0, 0);
@@ -1378,6 +1379,7 @@ fn default_overlay_geometry(label: &str) -> (f64, f64, f64, f64) {
         "forecast" => (1020.0, 530.0, 366.0, 112.0),
         "conditions" => (1020.0, 410.0, 390.0, 90.0),
         "dashboard" => (620.0, 640.0, 362.0, 54.0),
+        "sessioninfo" => (620.0, 700.0, 520.0, 54.0),
         _ => (20.0, 20.0, 360.0, 180.0),
     }
 }
@@ -2108,12 +2110,15 @@ fn is_valid_overlay_shortcut(shortcut: &str) -> bool {
 
 #[cfg(test)]
 mod shortcut_validation_tests {
-    use super::{default_overlay_shortcuts, is_valid_shortcut, overlay_label_for_shortcut_action};
+    use super::{
+        default_overlay_shortcuts, is_valid_shortcut, overlay_label_for_shortcut_action,
+        OVERLAY_LABELS,
+    };
 
     #[test]
     fn overlay_defaults_are_deterministic_and_cover_every_label() {
         let defaults = default_overlay_shortcuts();
-        assert_eq!(defaults.len(), 17);
+        assert_eq!(defaults.len(), OVERLAY_LABELS.len());
         assert!(defaults.values().all(String::is_empty));
     }
 
