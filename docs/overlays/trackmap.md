@@ -94,6 +94,8 @@ TypeScript fetches static geometry, interpolates and renders it.
   existing halo and leader star retain their placement. A null colour restores
   class colour. Settings and imported profiles retain only a validated bounded
   PNG data URL; arbitrary image strings are never used as CSS.
+- When a custom player image is selected, its marker stays above other vehicles
+  and the pit prediction when their positions overlap.
 - Image selection accepts PNG, JPEG and WebP up to 1 MiB and 256×256 pixels.
   The frontend reads dimensions from the file header before bitmap decoding,
   rejects animated PNG/WebP, then scales proportionally into a 128×128 canvas

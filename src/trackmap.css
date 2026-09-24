@@ -116,6 +116,10 @@
   z-index: 10;
 }
 
+.vehicle-marker.is-player.has-custom-icon {
+  z-index: 11;
+}
+
 .pit-prediction-marker {
   position: absolute;
   top: 0;
