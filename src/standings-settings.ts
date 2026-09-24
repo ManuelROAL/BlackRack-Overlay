@@ -47,6 +47,7 @@ export interface StandingsSettings {
   driverNameFormat: DriverNameFormat;
   combineLapTimes: boolean;
   deltaLapCount: number;
+  deltaReference: "last_lap" | "best_lap";
   invertDeltaLayout: boolean;
 }
 
@@ -138,6 +139,7 @@ export const defaultStandingsSettings = (): StandingsSettings => {
     driverNameFormat: DEFAULT_DRIVER_NAME_FORMAT,
     combineLapTimes: false,
     deltaLapCount: 3,
+    deltaReference: "last_lap",
     invertDeltaLayout: false
   };
 };
@@ -160,6 +162,7 @@ export const readStandingsSettings = (): StandingsSettings => {
       driverNameFormat?: unknown;
       combineLapTimes?: boolean;
       deltaLapCount?: number;
+      deltaReference?: unknown;
       invertDeltaLayout?: boolean;
     };
     for (const column of STANDINGS_COLUMNS) {
@@ -200,7 +203,10 @@ export const readStandingsSettings = (): StandingsSettings => {
       settings.driverNameFormat = stored.driverNameFormat;
     }
     if (typeof stored.combineLapTimes === "boolean") settings.combineLapTimes = stored.combineLapTimes;
-    settings.deltaLapCount = integerInRange(stored.deltaLapCount, settings.deltaLapCount, 2, 5);
+    settings.deltaLapCount = integerInRange(stored.deltaLapCount, settings.deltaLapCount, 1, 5);
+    if (stored.deltaReference === "last_lap" || stored.deltaReference === "best_lap") {
+      settings.deltaReference = stored.deltaReference;
+    }
     if (typeof stored.invertDeltaLayout === "boolean") settings.invertDeltaLayout = stored.invertDeltaLayout;
   } catch {
     localStorage.removeItem(STANDINGS_SETTINGS_KEY);

@@ -822,6 +822,49 @@ fn standings_delta_uses_player_minus_opponent_and_keeps_empty_slots() {
 }
 
 #[test]
+fn standings_history_seeds_first_sample_last_lap_for_delta_without_averaging() {
+    let mut history = CarHistory::default();
+    let entry = LmuStandingEntry {
+        total_laps: 3,
+        last_lap_seconds: 101.5,
+        lap_start_elapsed_seconds: 300.0,
+        elapsed_seconds: 302.0,
+        ..LmuStandingEntry::default()
+    };
+
+    history.update(&entry, 50.0);
+
+    assert_eq!(history.delta_lap_times(), [0.0, 0.0, 0.0, 0.0, 101.5]);
+    assert!(history.recent_lap_times.is_empty());
+}
+
+#[test]
+fn standings_best_lap_delta_uses_player_minus_rival_and_missing_is_none() {
+    let player = LmuStandingEntry {
+        best_lap_seconds: 101.25,
+        ..LmuStandingEntry::default()
+    };
+    let rival = LmuStandingEntry {
+        best_lap_seconds: 102.0,
+        ..LmuStandingEntry::default()
+    };
+    assert_eq!(
+        LmuTelemetrySource::best_lap_delta_seconds(Some(&player), &rival),
+        Some(-0.75)
+    );
+
+    let missing = LmuStandingEntry::default();
+    assert_eq!(
+        LmuTelemetrySource::best_lap_delta_seconds(Some(&player), &missing),
+        None
+    );
+    assert_eq!(
+        LmuTelemetrySource::best_lap_delta_seconds(None, &rival),
+        None
+    );
+}
+
+#[test]
 fn out_lap_stays_active_until_the_next_finish_line_crossing() {
     let mut history = CarHistory::default();
     let mut entry = LmuStandingEntry {

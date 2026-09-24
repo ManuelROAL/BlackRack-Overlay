@@ -3,6 +3,18 @@
 use super::*;
 
 impl LmuTelemetrySource {
+    /// Returns the player's best lap minus the rival's best lap. Values that
+    /// are absent or outside the normal lap-time range are not a delta.
+    pub(super) fn best_lap_delta_seconds(
+        player: Option<&LmuStandingEntry>,
+        rival: &LmuStandingEntry,
+    ) -> Option<f64> {
+        let player_best = player.map(|entry| entry.best_lap_seconds)?;
+        (CarHistory::valid_lap_time(player_best)
+            && CarHistory::valid_lap_time(rival.best_lap_seconds))
+        .then_some(player_best - rival.best_lap_seconds)
+    }
+
     pub(super) fn rest_finish_status(value: &str) -> Option<u32> {
         match value.trim().to_ascii_uppercase().as_str() {
             "FSTAT_FINISHED" | "FINISHED" => Some(1),
@@ -302,6 +314,7 @@ impl LmuTelemetrySource {
                 relative_ahead_seconds,
                 relative_behind_seconds,
                 best_lap_seconds: entry.best_lap_seconds.max(0.0),
+                best_lap_delta_seconds: Self::best_lap_delta_seconds(player_entry, entry),
                 last_lap_seconds: history.last_lap_seconds(entry.last_lap_seconds),
                 average_lap_seconds,
                 last_lap_delta_seconds: [None; 5],

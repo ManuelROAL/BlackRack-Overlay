@@ -901,6 +901,7 @@ if (import.meta.env.DEV && new URLSearchParams(window.location.search).has("prev
       last_lap_seconds: index % 4 === 2 ? 0 : 105.12 + classIndex * 15 + index * 0.44,
       just_crossed_finish_line: false,
       last_lap_delta_seconds: index % 4 === 2 ? null : [-0.342, 0.118, null, -0.041, index % 3 === 0 ? 0 : 0.205],
+      best_lap_delta_seconds: index % 4 === 2 ? null : (index - 2) * 0.17,
       average_lap_seconds: 105.4 + classIndex * 15 + index * 0.35,
       virtual_energy_active: true,
       virtual_energy_percent: classIndex === 1 ? 45.9 + index * 4.8 : 70.0 + index * 3.0,

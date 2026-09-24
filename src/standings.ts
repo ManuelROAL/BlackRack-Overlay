@@ -44,7 +44,10 @@ const activeColumns = () =>
     .map((column) => column.id === "position" && !raceSession
       ? { ...column, width: column.width - POSITION_CHANGE_WIDTH }
       : column.id === "delta"
-        ? { ...column, width: Math.max(column.width, settings.deltaLapCount * 22 + 6) }
+        ? {
+            ...column,
+            width: Math.max(column.width, (settings.deltaReference === "best_lap" ? 1 : settings.deltaLapCount) * 22 + 6)
+          }
         : column);
 const columnExpansionRatio = (id: StandingsColumnId): number => {
   if (id === "driver" || id === "manufacturer" || id === "badge" || id === "tire") return 0.5;
@@ -174,7 +177,12 @@ const icon = (source: string, className: string, title = ""): HTMLImageElement =
 };
 
 const columnLabel = (column: { id: StandingsColumnId; header: string }): HTMLElement => {
-  const label = node("span", "column-label", column.id === "tire" ? "" : column.header);
+  const header = column.id === "delta"
+    ? settings.deltaReference === "last_lap" && settings.deltaLapCount > 1
+      ? t("settings.deltaLastLaps", { count: settings.deltaLapCount })
+      : "DELTA"
+    : column.header;
+  const label = node("span", "column-label", column.id === "tire" ? "" : header);
   label.dataset.column = column.id;
   if (column.id === "tire") label.append(icon(tiresIconUrl, "column-label-icon", t("common.tires")));
   return label;
@@ -196,7 +204,9 @@ const formatRecentLapDelta = (value: number | null): string => {
 
 const recentLapDeltaCell = (entry: StandingEntry): HTMLElement => {
   const cell = node("span", "recent-lap-deltas");
-  const values = (entry.last_lap_delta_seconds ?? []).slice(-settings.deltaLapCount);
+  const values = settings.deltaReference === "best_lap"
+    ? [entry.best_lap_delta_seconds]
+    : (entry.last_lap_delta_seconds ?? []).slice(-settings.deltaLapCount);
   if (settings.invertDeltaLayout) values.reverse();
   for (const value of values) {
     const item = node("span", "recent-lap-delta", formatRecentLapDelta(value));
@@ -510,7 +520,7 @@ const cellSignature = (entry: StandingEntry, column: StandingsColumnId, trackLim
       : `${formatLapTime(entry.best_lap_seconds)}|${entry.best_lap_seconds > 0}|${entry.has_fastest_lap}`;
     case "last": return `${entry.is_out_lap ? "OUT" : formatLapTime(entry.last_lap_seconds)}|${formatLapTime(entry.best_lap_seconds)}|${entry.has_fastest_lap}|${entry.last_lap_valid}`;
     case "average": return formatLapTime(entry.average_lap_seconds);
-    case "delta": return `${JSON.stringify(entry.last_lap_delta_seconds)}|${settings.deltaLapCount}|${settings.invertDeltaLayout}|${entry.is_player}`;
+    case "delta": return `${settings.deltaReference}|${JSON.stringify(entry.last_lap_delta_seconds)}|${entry.best_lap_delta_seconds}|${settings.deltaLapCount}|${settings.invertDeltaLayout}|${entry.is_player}`;
     case "energy": return raceSession && entry.virtual_energy_active && entry.virtual_energy_percent > 0
       ? `${entry.virtual_energy_percent >= 99.95 ? "100" : decimal(entry.virtual_energy_percent, 1)}|${entry.virtual_energy_per_lap > 0 ? decimal(entry.virtual_energy_per_lap, 2) : ""}`
       : "--";
@@ -1051,6 +1061,7 @@ if (import.meta.env.DEV && new URLSearchParams(window.location.search).has("prev
       last_lap_seconds: index % 4 === 2 ? 0 : 105.12 + classIndex * 15 + index * 0.44,
       just_crossed_finish_line: false,
       last_lap_delta_seconds: index % 4 === 2 ? null : [-0.342, 0.118, null, -0.041, index % 3 === 0 ? 0 : 0.205],
+      best_lap_delta_seconds: index % 4 === 2 ? null : (index - 2) * 0.17,
       average_lap_seconds: 105.4 + classIndex * 15 + index * 0.35,
       virtual_energy_active: true,
       virtual_energy_percent: classIndex === 1 ? 45.9 + index * 4.8 : 70.0 + index * 3.0,

@@ -91,10 +91,13 @@ shared `standings_models` module.
 - AVG 5 keeps the latest five completed plausible times, rejects values below the
   official valid best and excludes laps slower than 120% of the best plausible
   recent lap. Clean validity remains mandatory for consumption learning.
-- The optional DELTA column compares each car's last 2–5 recorded lap times with
-  the player's matching recent laps. It is signed as player minus opponent:
-  negative means the player was faster and positive means slower. Missing
-  records remain unavailable, and the display can reverse oldest/newest order.
+- The optional DELTA column can compare each car's best lap or its last 1–5
+  recorded lap times with the player's matching data. Last Lap is the default
+  reference. Deltas use player minus opponent: negative means the player was
+  faster and positive means slower. Missing records remain unavailable, and
+  the last-lap display can reverse oldest/newest order. When no REST lap history
+  is available, seed the current official last lap on the first stable sample
+  if the car has completed a lap.
 - `OUT` replaces last-lap time for the complete pit-out lap and retains its orange
   state rather than best-lap coloring.
 - The header's total is the player's projected completed race distance, using

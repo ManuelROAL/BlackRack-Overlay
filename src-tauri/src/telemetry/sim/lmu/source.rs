@@ -814,6 +814,16 @@ impl CarHistory {
         let current_lap_seconds = entry.elapsed_seconds - lap_start;
         let official_last_lap = Self::normalize_official_lap(entry.last_lap_seconds);
         let official_last_lap_invalid = Self::official_lap_is_invalid(entry.last_lap_seconds);
+        // Shared memory exposes the previous completed lap on the first
+        // sample of a session. Seed only the last-lap delta ring here; the lap
+        // is deliberately excluded from AVG. Keep this independent of lap
+        // start reconstruction because that timestamp can be unavailable.
+        if self.last_total_laps.is_none()
+            && entry.total_laps > 0
+            && Self::valid_lap_time(official_last_lap)
+        {
+            self.push_delta_lap_time(official_last_lap);
+        }
         let stable_lap_start = lap_start.is_finite()
             && lap_start > 0.0
             && current_lap_seconds.is_finite()

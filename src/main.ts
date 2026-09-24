@@ -1907,7 +1907,12 @@ const applyProfileData = async (data: OverlayProfileData): Promise<void> => {
       columns: { ...defaultStandings.columns, ...data.standings?.columns },
       header: { ...defaultStandings.header, ...data.standings?.header },
       combineLapTimes: data.standings?.combineLapTimes ?? defaultStandings.combineLapTimes,
-      deltaLapCount: data.standings?.deltaLapCount ?? defaultStandings.deltaLapCount,
+      deltaLapCount: Number.isInteger(data.standings?.deltaLapCount)
+        ? Math.max(1, Math.min(Number(data.standings?.deltaLapCount), 5))
+        : defaultStandings.deltaLapCount,
+      deltaReference: data.standings?.deltaReference === "best_lap"
+        ? "best_lap"
+        : defaultStandings.deltaReference,
       invertDeltaLayout: data.standings?.invertDeltaLayout ?? defaultStandings.invertDeltaLayout
     };
     relativeSettings = {
@@ -2928,6 +2933,8 @@ const parseOverlayConfiguration = (
     || !Number.isInteger(standings.otherClassRows) || Number(standings.otherClassRows) < 1
     || Number(standings.otherClassRows) > 15
     || typeof standings.showOtherClasses !== "boolean"
+    || (standings.deltaLapCount !== undefined && (!Number.isInteger(standings.deltaLapCount) || Number(standings.deltaLapCount) < 1 || Number(standings.deltaLapCount) > 5))
+    || (standings.deltaReference !== undefined && !["last_lap", "best_lap"].includes(String(standings.deltaReference)))
     || (standings.pitInformationLayout !== undefined && !["inline", "above", "column"].includes(String(standings.pitInformationLayout)))
     || (standings.driverNameFormat !== undefined && !isDriverNameFormat(standings.driverNameFormat))) {
     throw new Error(t("config.invalidStandings"));
@@ -3131,6 +3138,10 @@ const parseOverlayConfiguration = (
         header: normalizedStandingsHeader,
         pitInformationLayout: (standings.pitInformationLayout ?? "inline") as StandingsSettings["pitInformationLayout"],
         combineLapTimes: standings.combineLapTimes === true,
+        deltaLapCount: Number.isInteger(standings.deltaLapCount)
+          ? Math.max(1, Math.min(Number(standings.deltaLapCount), 5))
+          : defaultStandings.deltaLapCount,
+        deltaReference: standings.deltaReference === "best_lap" ? "best_lap" : "last_lap",
         driverNameFormat: isDriverNameFormat(standings.driverNameFormat)
           ? standings.driverNameFormat
           : defaultStandings.driverNameFormat
@@ -3756,8 +3767,9 @@ const bindDeltaSettings = (
     count.value = String(target.deltaLapCount);
     count.addEventListener("change", () => {
       const parsed = Number(count.value);
+      const minimum = settings === "standings" ? 1 : 2;
       const value = Number.isFinite(parsed)
-        ? Math.max(2, Math.min(Math.round(parsed), 5))
+        ? Math.max(minimum, Math.min(Math.round(parsed), 5))
         : target.deltaLapCount;
       count.value = String(value);
       if (settings === "standings") {
@@ -3785,6 +3797,17 @@ const bindDeltaSettings = (
 
 bindDeltaSettings("standings-delta-lap-count", "standings-invert-delta-layout", "standings");
 bindDeltaSettings("relative-delta-lap-count", "relative-invert-delta-layout", "relative");
+
+const standingsDeltaReference = document.getElementById("standings-delta-reference") as HTMLSelectElement | null;
+if (standingsDeltaReference) {
+  standingsDeltaReference.value = standingsSettings.deltaReference;
+  standingsDeltaReference.addEventListener("change", () => {
+    const value = standingsDeltaReference.value === "best_lap" ? "best_lap" : "last_lap";
+    standingsDeltaReference.value = value;
+    standingsSettings = { ...standingsSettings, deltaReference: value };
+    persistStandingsSettings();
+  });
+}
 
 const bindLapTimeCombination = (id: string, overlay: "standings" | "relative"): void => {
   const input = document.getElementById(id) as HTMLInputElement | null;

@@ -420,7 +420,14 @@
             </label>
             <label class="standings-row-setting">
               <span data-i18n="settings.deltaLaps">VUELTAS DELTA</span>
-              <input id="standings-delta-lap-count" type="number" min="2" max="5" step="1" />
+              <input id="standings-delta-lap-count" type="number" min="1" max="5" step="1" />
+            </label>
+            <label class="standings-name-format-setting">
+              <span data-i18n="settings.deltaReference">REFERENCIA DELTA</span>
+              <select id="standings-delta-reference">
+                <option value="last_lap" data-i18n="settings.deltaReferenceLastLap">Última vuelta</option>
+                <option value="best_lap" data-i18n="settings.deltaReferenceBestLap">Mejor vuelta</option>
+              </select>
             </label>
             <label class="standings-setting-toggle">
               <input id="standings-invert-delta-layout" type="checkbox" />

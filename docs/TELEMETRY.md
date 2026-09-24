@@ -115,9 +115,13 @@ restore per-overlay native listeners or direct cross-realm object events.
   treat the missing official result as invalid. Do not use scoring's `mCountLapFlag`: it also represents
   laps that are uncounted or not timed and is not a track-limit validity signal.
 - The shared `StandingEntry` contract carries five recent-lap delta slots for
-  Standings and Relative. Rust compares each vehicle against the player's
-  matching lap history as `player - opponent`; a slot is unavailable when either
-  recorded lap is missing, while a measured invalid lap may still contribute.
+  Standings and Relative, plus a best-lap delta for the Standings reference
+  selector. Rust compares each vehicle against
+  the player's matching lap history as `player - opponent`; a slot is unavailable
+  when either recorded lap is missing, while a measured invalid lap may still
+  contribute. Seed a valid current `mLastLapTime` into recent-lap history on the
+  first stable sample when `total_laps > 0`, so Standings remains useful when
+  optional REST history is absent.
 - At the timing line, suppress a stale near-finish scoring distance while the
   telemetry lap counter and new-lap timer have already advanced. Consumers must
   not observe that one-frame source disagreement as a backwards lap jump.

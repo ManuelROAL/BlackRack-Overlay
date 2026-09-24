@@ -28,6 +28,7 @@ export interface StandingEntry {
   last_lap_seconds: number;
   just_crossed_finish_line: boolean;
   last_lap_delta_seconds: Array<number | null> | null;
+  best_lap_delta_seconds: number | null;
   average_lap_seconds: number;
   virtual_energy_active: boolean;
   virtual_energy_percent: number;

@@ -564,6 +564,10 @@ pub struct StandingEntry {
     relative_ahead_seconds: f64,
     relative_behind_seconds: f64,
     best_lap_seconds: f64,
+    /// Best-lap delta in seconds, using the convention player minus rival.
+    /// `None` means that either best lap is missing or outside the plausible
+    /// lap-time range.
+    best_lap_delta_seconds: Option<f64>,
     last_lap_seconds: f64,
     average_lap_seconds: f64,
     last_lap_delta_seconds: [Option<f64>; 5],
