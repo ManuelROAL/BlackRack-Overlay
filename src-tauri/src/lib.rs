@@ -1007,6 +1007,7 @@ fn create_control_window(app: &AppHandle) -> Result<(), String> {
         .center()
         .build()
         .map_err(|error| startup_log::command_error("control_window_failed", error))?;
+    startup_log::record("window created label=control");
     Ok(())
 }
 
@@ -1069,17 +1070,30 @@ fn create_overlay_host(app: &AppHandle, monitor_index: usize) -> Result<WebviewW
     register_native_overlay_host(&window)?;
     #[cfg(windows)]
     start_native_overlay_input_tracker()?;
+    startup_log::record(format!(
+        "overlay host created label={label} monitor={monitor_index}"
+    ));
     Ok(window)
 }
 
 fn close_overlay_host(host: WebviewWindow) -> Option<mpsc::Receiver<()>> {
+    let label = host.label().to_string();
     let (sender, receiver) = mpsc::channel();
     host.on_window_event(move |event| {
         if matches!(event, WindowEvent::Destroyed) {
             let _ = sender.send(());
         }
     });
-    host.close().ok().map(|_| receiver)
+    match host.close() {
+        Ok(()) => Some(receiver),
+        Err(error) => {
+            startup_log::record(format!(
+                "overlay host close failed label={label} error={}",
+                startup_log::sanitize(&error.to_string(), 500)
+            ));
+            None
+        }
+    }
 }
 
 async fn wait_for_overlay_hosts(hosts: Vec<WebviewWindow>) {
@@ -2621,6 +2635,7 @@ pub fn run() {
                     }
                 }
                 tauri::WindowEvent::Destroyed => {
+                    startup_log::record(format!("window destroyed label={}", window.label()));
                     let mut focused_windows = control
                         .focused_windows
                         .lock()
@@ -2632,19 +2647,28 @@ pub fn run() {
                 {
                     control.shutdown.store(true, Ordering::Relaxed);
                     save_control_window_position(window);
-                    startup_log::record(
-                        "session end status=normal reason=control_window_close_requested",
-                    );
+                    startup_log::record("shutdown requested reason=control_window_close_requested");
                     window.app_handle().exit(0);
+                }
+                tauri::WindowEvent::CloseRequested { .. }
+                    if window.label().starts_with(OVERLAY_HOST_PREFIX) =>
+                {
+                    startup_log::record(format!(
+                        "overlay host close requested label={}",
+                        window.label()
+                    ));
                 }
                 _ => {}
             }
         })
-        .run(tauri::generate_context!())
+        .build(tauri::generate_context!())
         .unwrap_or_else(|error| {
             startup_log::record(format!("fatal Tauri error cause={error} details={error:?}"));
             panic!("error al ejecutar BlackRack Overlay: {error}");
+        })
+        .run(|_, event| {
+            if matches!(event, tauri::RunEvent::Exit) {
+                startup_log::record("session end status=normal reason=event_loop_exit");
+            }
         });
-
-    startup_log::record("session end status=normal reason=event_loop_finished");
 }

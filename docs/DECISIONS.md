@@ -205,7 +205,10 @@ in `docs/overlays/` and should not be duplicated here.
   Uncaught errors, unhandled promise rejections and explicit frontend
   `console.error` calls are persisted there with duplicate/rate limiting. Rust
   panics record their cause, source location and backtrace, normal exits carry an
-  explicit end marker, and known credential fields are redacted.
+  explicit end marker, and known credential fields are redacted. Window
+  lifecycle milestones and telemetry shutdown are recorded; the next launch
+  reports when the previous session ended without a definitive normal or panic
+  marker, which helps identify native crashes without running crash-path code.
 - Release checksums accompany artifacts but are not required to run the installer.
 
 ## Documentation ownership

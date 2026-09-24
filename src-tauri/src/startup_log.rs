@@ -115,6 +115,89 @@ fn prune_session_logs(directory: &Path, keep: usize) {
     }
 }
 
+fn newest_previous_log(directory: &Path) -> Option<PathBuf> {
+    let mut logs = fs::read_dir(directory)
+        .ok()?
+        .filter_map(Result::ok)
+        .filter_map(|entry| {
+            let path = entry.path();
+            let name = path.file_name()?.to_str()?;
+            (path.is_file() && name.starts_with("startup-") && name.ends_with(".log"))
+                .then_some(path)
+        })
+        .filter(|path| !session_process_is_running(path))
+        .collect::<Vec<_>>();
+    logs.sort_by(|left, right| {
+        let left_modified = fs::metadata(left)
+            .and_then(|metadata| metadata.modified())
+            .ok();
+        let right_modified = fs::metadata(right)
+            .and_then(|metadata| metadata.modified())
+            .ok();
+        left_modified
+            .cmp(&right_modified)
+            .then_with(|| left.cmp(right))
+    });
+    logs.pop()
+}
+
+fn session_pid(path: &Path) -> Option<u32> {
+    let stem = path.file_stem()?.to_str()?;
+    let mut parts = stem.strip_prefix("startup-")?.split('-');
+    parts.next()?.parse::<u128>().ok()?;
+    parts.next()?.parse().ok()
+}
+
+fn session_process_is_running(path: &Path) -> bool {
+    let Some(pid) = session_pid(path) else {
+        return false;
+    };
+
+    #[cfg(windows)]
+    {
+        let handle = unsafe {
+            windows_sys::Win32::System::Threading::OpenProcess(
+                windows_sys::Win32::System::Threading::PROCESS_QUERY_LIMITED_INFORMATION,
+                0,
+                pid,
+            )
+        };
+        if handle.is_null() {
+            return false;
+        }
+        unsafe {
+            windows_sys::Win32::Foundation::CloseHandle(handle);
+        }
+        true
+    }
+
+    #[cfg(not(windows))]
+    {
+        let _ = pid;
+        false
+    }
+}
+
+fn is_definitive_end_marker(line: &str) -> bool {
+    let message = line
+        .split_once(' ')
+        .map(|(_, message)| message)
+        .unwrap_or(line);
+    message.starts_with("session end status=normal ")
+        || message.starts_with("session end status=crashed ")
+}
+
+fn incomplete_session_line(contents: &str) -> Option<String> {
+    let last_line = contents
+        .lines()
+        .rev()
+        .find(|line| !line.trim().is_empty())?;
+    if contents.lines().any(is_definitive_end_marker) {
+        return None;
+    }
+    Some(sanitize(last_line, 300))
+}
+
 fn create_session_log(directory: &Path, started_at: u128, pid: u32) -> (PathBuf, Option<File>) {
     for suffix in 0..100 {
         let path = session_log_path(directory, started_at, pid, suffix);
@@ -131,6 +214,11 @@ pub(crate) fn initialize() -> PathBuf {
     let directory = log_directory();
     let _ = fs::create_dir_all(&directory);
     prune_session_logs(&directory, MAX_SESSION_LOGS.saturating_sub(1));
+    let previous = newest_previous_log(&directory).and_then(|path| {
+        let contents = fs::read_to_string(&path).ok()?;
+        let last_line = incomplete_session_line(&contents)?;
+        Some((path, last_line))
+    });
 
     let started_at = timestamp_millis();
     let pid = std::process::id();
@@ -145,6 +233,12 @@ pub(crate) fn initialize() -> PathBuf {
         std::env::consts::OS,
         std::env::consts::ARCH
     ));
+    if let Some((previous_path, last_line)) = previous {
+        record(format!(
+            "previous session incomplete path={} last_line={last_line}",
+            sanitize(&previous_path.display().to_string(), 500)
+        ));
+    }
 
     let previous_hook = std::panic::take_hook();
     std::panic::set_hook(Box::new(move |info| {
@@ -262,7 +356,7 @@ fn redact_json_web_tokens(mut value: String) -> String {
     }
 }
 
-fn sanitize(value: &str, maximum: usize) -> String {
+pub(crate) fn sanitize(value: &str, maximum: usize) -> String {
     let mut sanitized = truncate_chars(value, maximum)
         .replace('\r', "\\r")
         .replace('\n', "\\n");
@@ -307,7 +401,9 @@ pub(crate) fn record_frontend_error(source: &str, kind: &str, message: &str, sta
 
 #[cfg(test)]
 mod tests {
-    use super::{prune_session_logs, sanitize, session_log_path};
+    use super::{
+        incomplete_session_line, prune_session_logs, sanitize, session_log_path, session_pid,
+    };
     use std::fs;
     use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -322,6 +418,46 @@ mod tests {
             session_log_path(directory, 123, 456, 0),
             directory.join("startup-123-456.log")
         );
+    }
+
+    #[test]
+    fn previous_log_classification_requires_a_definitive_final_marker() {
+        assert_eq!(
+            incomplete_session_line("123 startup started\n"),
+            Some("123 startup started".into())
+        );
+        assert_eq!(
+            incomplete_session_line("123 session end status=normal reason=event_loop_finished\n"),
+            None
+        );
+        assert_eq!(
+            incomplete_session_line("123 session end status=crashed cause=panic\n"),
+            None
+        );
+        assert_eq!(
+            incomplete_session_line("123 note=session end status=normal was observed\n"),
+            Some("123 note=session end status=normal was observed".into())
+        );
+        assert_eq!(
+            incomplete_session_line(
+                "123 session end status=normal reason=event_loop_finished\n456 telemetry shutdown observed\n"
+            ),
+            None
+        );
+        assert_eq!(incomplete_session_line(""), None);
+    }
+
+    #[test]
+    fn session_pid_reads_the_process_id_from_a_log_name() {
+        assert_eq!(
+            session_pid(std::path::Path::new("startup-123456-7788.log")),
+            Some(7788)
+        );
+        assert_eq!(
+            session_pid(std::path::Path::new("startup-123456-7788-1.log")),
+            Some(7788)
+        );
+        assert_eq!(session_pid(std::path::Path::new("other.log")), None);
     }
 
     #[test]

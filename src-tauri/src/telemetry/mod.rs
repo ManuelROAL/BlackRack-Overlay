@@ -1164,6 +1164,7 @@ pub fn spawn_source(app: AppHandle) {
         let mut track_map_model = track_map_model::TrackMapModelState::default();
         let mut delta_engine = delta_records::DeltaEngine::new(app_data_directory.clone());
         let mut cycle: u64 = 0;
+        let telemetry_started = Instant::now();
 
         loop {
             if app
@@ -1171,6 +1172,10 @@ pub fn spawn_source(app: AppHandle) {
                 .shutdown
                 .load(Ordering::Relaxed)
             {
+                crate::startup_log::record(format!(
+                    "telemetry shutdown observed cycles={cycle} elapsed_ms={}",
+                    telemetry_started.elapsed().as_millis()
+                ));
                 break;
             }
             let cycle_started = Instant::now();
