@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "version": "0.8.6",
+  "packageUrl": "https://github.com/ManuelROAL/BlackRack-Overlay/releases/download/v0.8.6/BlackRack.Overlay_0.8.6_x64-setup.exe",
+  "sha256": "9d9059af01ccc540e96b38b0c89defa06cd821821ebc374d67c95b81092f84c4",
+  "fileName": "BlackRack.Overlay_0.8.6_x64-setup.exe",
+  "releasePageUrl": "https://github.com/ManuelROAL/BlackRack-Overlay/releases/tag/v0.8.6",
+  "updateTitle": "BlackRack Overlay 0.8.6",
+  "fullTitle": "BlackRack Overlay 0.8.6",
+  "changelog": [
+    "El Track Map en solitario muestra la posición del jugador y el color de clase.",
+    "La sección Cambios del cálculo de parada se puede ocultar desde los ajustes.",
+    "Mejorada la consistencia del Driver Rating y la restauración del foco al editar."
+  ],
+  "localized": {
+    "es": {
+      "updateTitle": "BlackRack Overlay 0.8.6",
+      "fullTitle": "BlackRack Overlay 0.8.6",
+      "changelog": [
+        "El Track Map en solitario muestra la posición del jugador y el color de clase.",
+        "La sección Cambios del cálculo de parada se puede ocultar desde los ajustes.",
+        "Mejorada la consistencia del Driver Rating y la restauración del foco al editar."
+      ]
+    },
+    "en": {
+      "updateTitle": "BlackRack Overlay 0.8.6",
+      "fullTitle": "BlackRack Overlay 0.8.6",
+      "changelog": [
+        "Solo Track Map shows the player's position and class colour.",
+        "The Changes section of the pit-stop calculation can be hidden in settings.",
+        "Improved Driver Rating consistency and focus restoration after editing."
+      ]
+    }
+  }
+}
