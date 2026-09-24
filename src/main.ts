@@ -22,6 +22,7 @@ import {
   LOCALE_OPTIONS,
   LOCALE_STORAGE_KEY,
   SUPPORTED_LOCALES,
+  sentenceCase,
   setLocale,
   t,
   type Locale,
@@ -1139,7 +1140,7 @@ if (deltaModeSelect) {
   deltaModeSelect.replaceChildren(...DELTA_MODES.map(({ value, labelKey }) => {
     const option = document.createElement("option");
     option.value = value;
-    option.textContent = t(labelKey);
+    option.textContent = sentenceCase(t(labelKey));
     return option;
   }));
   deltaModeSelect.value = deltaSettings.mode;
@@ -1283,7 +1284,7 @@ if (timingSectorReferenceSelect) {
   timingSectorReferenceSelect.replaceChildren(...TIMING_SECTOR_REFERENCES.map(({ value, labelKey }) => {
     const option = document.createElement("option");
     option.value = value;
-    option.textContent = t(labelKey);
+    option.textContent = sentenceCase(t(labelKey));
     return option;
   }));
   timingSectorReferenceSelect.value = timingSettings.sectorReference;
@@ -3920,7 +3921,7 @@ const bindDriverNameFormat = (
   const select = document.getElementById(id) as HTMLSelectElement | null;
   if (!select) return;
   for (const format of DRIVER_NAME_FORMATS) {
-    select.add(new Option(t(format.labelKey), format.id));
+    select.add(new Option(sentenceCase(t(format.labelKey)), format.id));
   }
   select.value = current();
   select.addEventListener("change", () => {

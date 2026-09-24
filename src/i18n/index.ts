@@ -35,6 +35,15 @@ let timeOfDayFormatter = new Intl.DateTimeFormat(locale, {
 });
 
 export const getLocale = (): Locale => locale;
+export const sentenceCase = (value: string): string => {
+  const characters = Array.from(value.toLocaleLowerCase(locale));
+  const firstLetter = characters.findIndex((character) =>
+    character.toLocaleUpperCase(locale) !== character.toLocaleLowerCase(locale)
+  );
+  if (firstLetter >= 0) characters[firstLetter] = characters[firstLetter].toLocaleUpperCase(locale);
+  return characters.join("");
+};
+
 export const setLocale = (next: Locale): void => {
   locale = next;
   localStorage.setItem(LOCALE_STORAGE_KEY, next);
@@ -81,7 +90,12 @@ export const applyTranslations = (root: ParentNode = document): void => {
   document.documentElement.lang = locale;
   root.querySelectorAll<HTMLElement>("[data-i18n]").forEach((element) => {
     const key = element.dataset.i18n as TranslationKey | undefined;
-    if (key) element.textContent = t(key);
+    if (key) {
+      const message = t(key);
+      element.textContent = element.tagName === "OPTION" && element.closest("[data-settings-for]")
+        ? sentenceCase(message)
+        : message;
+    }
   });
   applyAttribute(root, "data-i18n-title", "title");
   applyAttribute(root, "data-i18n-aria-label", "aria-label");

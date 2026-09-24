@@ -3053,6 +3053,7 @@ select {
   cursor: pointer;
   font-weight: 800;
   outline: none;
+  text-transform: none;
 }
 
 [data-settings-for].standings-settings-section select:focus {
@@ -3062,4 +3063,5 @@ select {
 [data-settings-for].standings-settings-section select option {
   color: #dce2e7;
   background: #121923;
+  text-transform: none;
 }
