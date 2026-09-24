@@ -274,11 +274,12 @@ interface ShortcutBindingStatus {
 }
 
 type HideOverlayShortcutAction = `hide_${OverlayId}`;
-type ShortcutAction = "interaction_mode" | "show_panel" | HideOverlayShortcutAction;
+type ShortcutAction = "interaction_mode" | "show_panel" | "toggle_overlays" | HideOverlayShortcutAction;
 
 interface ShortcutSettingsStatus {
   interaction_mode: ShortcutBindingStatus;
   show_panel: ShortcutBindingStatus;
+  toggle_overlays: ShortcutBindingStatus;
   /** Optional while older backend builds are still in use. */
   hide_overlays?: Partial<Record<OverlayId, ShortcutBindingStatus>>;
 }
@@ -942,7 +943,8 @@ const syncBrowserSourcePreferences = (): void => {
 
 const shortcutInputs: Partial<Record<ShortcutAction, HTMLInputElement | null>> = {
   interaction_mode: document.getElementById("shortcut-interaction-mode") as HTMLInputElement | null,
-  show_panel: document.getElementById("shortcut-show-panel") as HTMLInputElement | null
+  show_panel: document.getElementById("shortcut-show-panel") as HTMLInputElement | null,
+  toggle_overlays: document.getElementById("shortcut-toggle-overlays") as HTMLInputElement | null
 };
 
 const setShortcutMessage = (message: string, state: "normal" | "error" | "success" = "normal"): void => {
@@ -954,7 +956,7 @@ const setShortcutMessage = (message: string, state: "normal" | "error" | "succes
 };
 
 const renderShortcutSettings = (status: ShortcutSettingsStatus): void => {
-  for (const action of ["interaction_mode", "show_panel"] as const) {
+  for (const action of ["interaction_mode", "show_panel", "toggle_overlays"] as const) {
     const input = shortcutInputs[action];
     const binding = status[action];
     if (input) {
@@ -984,6 +986,7 @@ const renderShortcutSettings = (status: ShortcutSettingsStatus): void => {
   const unavailable = [
     status.interaction_mode,
     status.show_panel,
+    status.toggle_overlays,
     ...overlayIds.map((id) => status.hide_overlays?.[id]).filter(
       (binding): binding is ShortcutBindingStatus => Boolean(binding)
     )
@@ -1078,7 +1081,7 @@ const bindShortcutCapture = (action: ShortcutAction, input: HTMLInputElement): v
   });
 };
 
-for (const action of ["interaction_mode", "show_panel"] as const) {
+for (const action of ["interaction_mode", "show_panel", "toggle_overlays"] as const) {
   const input = shortcutInputs[action];
   if (input) bindShortcutCapture(action, input);
 }

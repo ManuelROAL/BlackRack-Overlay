@@ -104,6 +104,7 @@ pub(crate) fn require_control_window(window: &WebviewWindow) -> Result<(), Strin
 struct OverlayControl {
     click_through: AtomicBool,
     auto_hidden: AtomicBool,
+    shortcut_hidden: AtomicBool,
     shutdown: AtomicBool,
     focused_windows: Mutex<HashSet<String>>,
     desired_visible: Mutex<HashSet<&'static str>>,
@@ -115,8 +116,14 @@ struct OverlayControl {
 struct ShortcutSettings {
     interaction_mode: String,
     show_panel: String,
+    #[serde(default = "default_toggle_overlays_shortcut")]
+    toggle_overlays: String,
     #[serde(default = "default_overlay_shortcuts")]
     hide_overlays: HashMap<String, String>,
+}
+
+fn default_toggle_overlays_shortcut() -> String {
+    "Ctrl+Shift+H".into()
 }
 
 fn default_overlay_shortcuts() -> HashMap<String, String> {
@@ -137,6 +144,7 @@ impl Default for ShortcutSettings {
         Self {
             interaction_mode: "Ctrl+Shift+O".into(),
             show_panel: "Ctrl+Shift+M".into(),
+            toggle_overlays: default_toggle_overlays_shortcut(),
             hide_overlays: default_overlay_shortcuts(),
         }
     }
@@ -147,8 +155,10 @@ struct ShortcutRuntime {
     settings: ShortcutSettings,
     active_interaction_mode: Option<String>,
     active_show_panel: Option<String>,
+    active_toggle_overlays: Option<String>,
     interaction_mode_error: Option<String>,
     show_panel_error: Option<String>,
+    toggle_overlays_error: Option<String>,
     active_hide_overlays: HashMap<String, String>,
     hide_overlays_error: HashMap<String, String>,
 }
@@ -236,6 +246,7 @@ struct ShortcutBindingStatus {
 struct ShortcutSettingsStatus {
     interaction_mode: ShortcutBindingStatus,
     show_panel: ShortcutBindingStatus,
+    toggle_overlays: ShortcutBindingStatus,
     hide_overlays: HashMap<String, ShortcutBindingStatus>,
 }
 
@@ -1104,15 +1115,7 @@ async fn sync_overlay_hosts(
         create_overlay_host(&app, index)?;
     }
 
-    if !app
-        .state::<OverlayControl>()
-        .auto_hidden
-        .load(Ordering::Relaxed)
-    {
-        for_each_overlay_host(&app, |host| {
-            let _ = host.show();
-        });
-    }
+    refresh_overlay_host_visibility(&app);
 
     let requested_set = requested.iter().copied().collect();
     remove_overlay_hosts_except(&app, &requested_set).await;
@@ -1169,7 +1172,41 @@ fn for_each_overlay_host(app: &AppHandle, mut action: impl FnMut(&WebviewWindow)
 
 pub(crate) fn overlay_is_active(app: &AppHandle, label: &str) -> bool {
     let control = app.state::<OverlayControl>();
-    !control.auto_hidden.load(Ordering::Relaxed) && overlay_is_enabled(app, label)
+    !control.auto_hidden.load(Ordering::Relaxed)
+        && !control.shortcut_hidden.load(Ordering::Relaxed)
+        && overlay_is_enabled(app, label)
+}
+
+fn overlays_are_temporarily_hidden(control: &OverlayControl) -> bool {
+    control.auto_hidden.load(Ordering::Relaxed) || control.shortcut_hidden.load(Ordering::Relaxed)
+}
+
+fn refresh_overlay_host_visibility(app: &AppHandle) {
+    let visibility_app = app.clone();
+    if let Err(error) = app.run_on_main_thread(move || {
+        let control = visibility_app.state::<OverlayControl>();
+        apply_overlay_host_visibility(&visibility_app, &control);
+    }) {
+        startup_log::record(format!(
+            "could not schedule overlay host visibility update: {error}"
+        ));
+    }
+}
+
+fn apply_overlay_host_visibility(app: &AppHandle, control: &OverlayControl) {
+    let should_show = !overlays_are_temporarily_hidden(control)
+        && !control
+            .desired_visible
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .is_empty();
+    for_each_overlay_host(app, |window| {
+        if should_show {
+            let _ = window.show();
+        } else {
+            let _ = window.hide();
+        }
+    });
 }
 
 pub(crate) fn overlay_is_enabled(app: &AppHandle, label: &str) -> bool {
@@ -1221,23 +1258,7 @@ pub(crate) fn update_overlay_auto_visibility(app: &AppHandle, frame: &telemetry:
         return;
     }
 
-    if should_hide {
-        for_each_overlay_host(app, |window| {
-            let _ = window.hide();
-        });
-        return;
-    }
-
-    let has_desired_overlays = !control
-        .desired_visible
-        .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner())
-        .is_empty();
-    if has_desired_overlays {
-        for_each_overlay_host(app, |window| {
-            let _ = window.show();
-        });
-    }
+    refresh_overlay_host_visibility(app);
 }
 
 #[tauri::command]
@@ -1275,7 +1296,7 @@ fn set_overlay_visible_state(
         }
     }
 
-    emit_overlay_visibility_state(app, control, label, visible)
+    emit_overlay_visibility_state(app, label, visible)
 }
 
 fn toggle_overlay_visible_state(
@@ -1298,12 +1319,11 @@ fn toggle_overlay_visible_state(
         }
     };
 
-    emit_overlay_visibility_state(app, control, label, visible)
+    emit_overlay_visibility_state(app, label, visible)
 }
 
 fn emit_overlay_visibility_state(
     app: &AppHandle,
-    control: &OverlayControl,
     label: &'static str,
     visible: bool,
 ) -> Result<bool, String> {
@@ -1313,17 +1333,7 @@ fn emit_overlay_visibility_state(
     )
     .map_err(|error| startup_log::command_error("overlay_visibility_failed", error))?;
 
-    if !control.auto_hidden.load(Ordering::Relaxed)
-        && !control
-            .desired_visible
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .is_empty()
-    {
-        for_each_overlay_host(app, |window| {
-            let _ = window.show();
-        });
-    }
+    refresh_overlay_host_visibility(app);
 
     Ok(visible)
 }
@@ -1732,6 +1742,7 @@ fn load_shortcut_settings(app: &AppHandle) -> ShortcutSettings {
         Ok(mut settings)
             if is_valid_shortcut(&settings.interaction_mode)
                 && is_valid_shortcut(&settings.show_panel)
+                && is_valid_shortcut(&settings.toggle_overlays)
                 && settings.hide_overlays.len() == OVERLAY_LABELS.len()
                 && OVERLAY_LABELS.iter().all(|label| {
                     settings
@@ -1966,6 +1977,22 @@ fn register_panel_shortcut(app: &AppHandle, shortcut: &str) -> Result<(), String
         .map_err(|error| error.to_string())
 }
 
+fn toggle_all_overlays_shortcut(app: &AppHandle) {
+    let control = app.state::<OverlayControl>();
+    control.shortcut_hidden.fetch_xor(true, Ordering::Relaxed);
+    refresh_overlay_host_visibility(app);
+}
+
+fn register_toggle_overlays_shortcut(app: &AppHandle, shortcut: &str) -> Result<(), String> {
+    app.global_shortcut()
+        .on_shortcut(shortcut, |app, _, event| {
+            if event.state() == ShortcutState::Pressed {
+                toggle_all_overlays_shortcut(app);
+            }
+        })
+        .map_err(|error| error.to_string())
+}
+
 fn register_overlay_shortcut(
     app: &AppHandle,
     label: &'static str,
@@ -2043,6 +2070,11 @@ fn shortcut_status(runtime: &ShortcutRuntime) -> ShortcutSettingsStatus {
             shortcut: runtime.settings.show_panel.clone(),
             active: runtime.active_show_panel.is_some(),
             error: runtime.show_panel_error.clone(),
+        },
+        toggle_overlays: ShortcutBindingStatus {
+            shortcut: runtime.settings.toggle_overlays.clone(),
+            active: runtime.active_toggle_overlays.is_some(),
+            error: runtime.toggle_overlays_error.clone(),
         },
         hide_overlays,
     }
@@ -2137,6 +2169,15 @@ mod shortcut_validation_tests {
         assert!(super::is_valid_overlay_shortcut(""));
         assert!(!is_valid_shortcut(""));
     }
+
+    #[test]
+    fn legacy_shortcut_settings_get_global_overlay_toggle_default() {
+        let settings: super::ShortcutSettings = serde_json::from_str(
+            r#"{"interaction_mode":"Ctrl+Shift+O","show_panel":"Ctrl+Shift+M","hide_overlays":{}}"#,
+        )
+        .unwrap();
+        assert_eq!(settings.toggle_overlays, "Ctrl+Shift+H");
+    }
 }
 
 #[tauri::command]
@@ -2175,6 +2216,7 @@ fn set_shortcut(
         let old_active = match action.as_str() {
             "interaction_mode" => runtime.active_interaction_mode.clone(),
             "show_panel" => runtime.active_show_panel.clone(),
+            "toggle_overlays" => runtime.active_toggle_overlays.clone(),
             value if overlay_label_for_shortcut_action(value).is_some() => runtime
                 .active_hide_overlays
                 .get(overlay_label_for_shortcut_action(value).unwrap())
@@ -2190,6 +2232,10 @@ fn set_shortcut(
             old_settings.interaction_mode.as_str(),
         ),
         ("show_panel".to_string(), old_settings.show_panel.as_str()),
+        (
+            "toggle_overlays".to_string(),
+            old_settings.toggle_overlays.as_str(),
+        ),
     ];
     configured_shortcuts.extend(OVERLAY_LABELS.iter().map(|label| {
         (
@@ -2243,6 +2289,8 @@ fn set_shortcut(
         new_settings.interaction_mode = shortcut.clone();
     } else if action == "show_panel" {
         new_settings.show_panel = shortcut.clone();
+    } else if action == "toggle_overlays" {
+        new_settings.toggle_overlays = shortcut.clone();
     } else {
         new_settings.hide_overlays.insert(
             overlay_label_for_shortcut_action(&action).unwrap().into(),
@@ -2274,6 +2322,10 @@ fn set_shortcut(
             runtime.active_show_panel = Some(shortcut.clone());
             runtime.show_panel_error = None;
         }
+        "toggle_overlays" => {
+            runtime.active_toggle_overlays = Some(shortcut.clone());
+            runtime.toggle_overlays_error = None;
+        }
         _ => {
             let label = overlay_label_for_shortcut_action(&action).unwrap();
             if shortcut.is_empty() {
@@ -2294,6 +2346,7 @@ fn register_shortcut_action(app: &AppHandle, action: &str, shortcut: &str) -> Re
     match action {
         "interaction_mode" => register_interaction_shortcut(app, shortcut),
         "show_panel" => register_panel_shortcut(app, shortcut),
+        "toggle_overlays" => register_toggle_overlays_shortcut(app, shortcut),
         value => {
             let label = overlay_label_for_shortcut_action(value)
                 .ok_or_else(|| "unknown_action".to_string())?;
@@ -2315,6 +2368,7 @@ pub fn run() {
         .manage(OverlayControl {
             click_through: AtomicBool::new(DEFAULT_CLICK_THROUGH),
             auto_hidden: AtomicBool::new(true),
+            shortcut_hidden: AtomicBool::new(false),
             shutdown: AtomicBool::new(false),
             focused_windows: Mutex::new(HashSet::new()),
             desired_visible: Mutex::new(HashSet::new()),
@@ -2454,6 +2508,11 @@ pub fn run() {
                     )
                 })
                 .collect();
+            // Preserve bindings saved before the global toggle was introduced.
+            // If one already uses the new default, let that binding win and
+            // report the global shortcut as unavailable until the user changes it.
+            let toggle_overlays_result =
+                register_toggle_overlays_shortcut(app.handle(), &settings.toggle_overlays);
             let shortcut_control = app.state::<ShortcutControl>();
             let mut runtime = shortcut_control
                 .0
@@ -2489,6 +2548,22 @@ pub fn run() {
                     startup_log::record(format!(
                         "warning: {} unavailable; continuing without it: {error}",
                         settings.show_panel
+                    ));
+                }
+            }
+            match toggle_overlays_result {
+                Ok(()) => {
+                    runtime.active_toggle_overlays = Some(settings.toggle_overlays.clone());
+                    startup_log::record(format!(
+                        "shortcut {} registered for toggling overlays",
+                        settings.toggle_overlays
+                    ));
+                }
+                Err(error) => {
+                    runtime.toggle_overlays_error = Some(error.clone());
+                    startup_log::record(format!(
+                        "warning: {} unavailable; continuing without it: {error}",
+                        settings.toggle_overlays
                     ));
                 }
             }

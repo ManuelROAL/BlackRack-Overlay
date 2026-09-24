@@ -61,6 +61,11 @@ assignments; per-overlay mode restores those assignments.
   the window that was active before editing regains focus so simulator controls
   such as Escape continue to reach the game.
 - Every overlay card has a configurable hotkey to show or hide that overlay.
+  General settings also provide a configurable global shortcut (default
+  `Ctrl+Shift+H`) that temporarily hides or shows every active overlay. This
+  runtime hide state leaves profile visibility unchanged and composes with
+  automatic LMU hiding: hosts show only when neither hide state is active and
+  at least one overlay is desired.
   The shared capture flow persists each `hide_<overlay-id>` binding and mirrors
   external `overlay://visibility` events in the card and active profile. The
   default is empty (inactive); Delete or Backspace removes an assigned binding.

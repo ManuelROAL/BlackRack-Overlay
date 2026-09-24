@@ -128,6 +128,9 @@ in `docs/overlays/` and should not be duplicated here.
 - Disabled panels remove their documents. Automatic LMU visibility hides/shows
   hosts without rebuilding active panels; host windows are created or closed only
   when the set of active monitor assignments changes.
+- The global hide/show shortcut is a separate runtime state from profile
+  visibility. Effective host visibility requires at least one desired overlay
+  and neither global shortcut hiding nor automatic LMU hiding to be active.
 
 ## Data and performance ownership
 

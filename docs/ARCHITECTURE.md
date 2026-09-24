@@ -33,8 +33,10 @@ Tauri events    analysis JSONL/strategy CSV    browser-source SSE
   - Forces both the native window and WebView backgrounds to transparent RGBA;
     this is explicit because release WebView2 builds must not fall back to an
     opaque black surface.
-  - Tracks desired visibility separately from automatic hiding. Losing LMU focus
-    to the control panel keeps the host visible so configuration can be previewed.
+  - Tracks each overlay's desired visibility separately from temporary global
+    shortcut hiding and automatic LMU hiding. Hosts show only when at least one
+    overlay is desired and neither temporary hide state is active. Losing LMU
+    focus to the control panel keeps the host visible so configuration can be previewed.
   - Applies click-through interaction mode.
   - Registers configurable global shortcuts without crashing if a binding is
     already occupied.
@@ -144,6 +146,9 @@ Tauri events    analysis JSONL/strategy CSV    browser-source SSE
 - `src/overlay-profiles.ts`: profile/binding storage model and validation. The
   control panel owns capture and application; the composite host and overlays
   never read profiles, only the live keys a profile writes.
+- General settings expose a configurable global shortcut (default `Ctrl+Shift+H`)
+  that temporarily hides or shows all active overlays without changing profile
+  visibility. It composes with automatic LMU hiding.
 - The control panel exposes one `hide_<overlay-id>` shortcut per overlay card,
   using the shared `get_shortcut_settings`/`set_shortcut` contract and reflecting
   external `overlay://visibility` events. These bindings are empty and inactive
