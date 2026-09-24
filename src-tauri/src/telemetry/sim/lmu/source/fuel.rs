@@ -190,6 +190,7 @@ impl LmuTelemetrySource {
         lap_changed: bool,
         completed_is_clean: bool,
     ) -> (f64, f64) {
+        self.fuel_added_last_lap = 0.0;
         if Self::player_in_pits(snapshot) {
             if let Some(previous) = self.fuel_previous_sample {
                 let added = snapshot.fuel_liters - previous;
@@ -201,6 +202,7 @@ impl LmuTelemetrySource {
         self.fuel_previous_sample = Some(snapshot.fuel_liters);
 
         if lap_changed {
+            self.fuel_added_last_lap = self.fuel_added_this_lap;
             if let Some(previous_start) = self.fuel_at_lap_start {
                 let consumed = previous_start + self.fuel_added_this_lap - snapshot.fuel_liters;
                 if (0.1..30.0).contains(&consumed) {
@@ -252,6 +254,7 @@ impl LmuTelemetrySource {
         lap_changed: bool,
         completed_is_clean: bool,
     ) -> (f64, f64, f64) {
+        self.energy_added_last_lap = 0.0;
         let current = Self::virtual_energy_percent(snapshot.virtual_energy);
         if !Self::uses_virtual_energy(snapshot) {
             self.energy_at_lap_start = None;
@@ -272,6 +275,7 @@ impl LmuTelemetrySource {
         self.energy_previous_sample = Some(current);
 
         if lap_changed {
+            self.energy_added_last_lap = self.energy_added_this_lap;
             if let Some(previous_start) = self.energy_at_lap_start {
                 let consumed = previous_start + self.energy_added_this_lap - current;
                 if (0.05..100.0).contains(&consumed) {

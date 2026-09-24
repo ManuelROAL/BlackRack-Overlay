@@ -33,12 +33,14 @@ impl LmuTelemetrySource {
         self.fuel_at_lap_start = None;
         self.fuel_previous_sample = None;
         self.fuel_added_this_lap = 0.0;
+        self.fuel_added_last_lap = 0.0;
         self.fuel_per_lap = None;
         self.fuel_clean_laps = LapConsumptionWindow::default();
         self.fuel_last_lap = None;
         self.energy_at_lap_start = None;
         self.energy_previous_sample = None;
         self.energy_added_this_lap = 0.0;
+        self.energy_added_last_lap = 0.0;
         self.energy_per_lap = None;
         self.energy_clean_laps = LapConsumptionWindow::default();
         self.energy_last_lap = None;

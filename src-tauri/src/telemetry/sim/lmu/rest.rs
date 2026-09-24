@@ -294,7 +294,12 @@ impl RestWeatherSession {
             sky_label: node.sky.string_value.clone(),
             temperature_c: node.temperature.current_value,
             rain_chance_percent: node.rain_chance.current_value.clamp(0.0, 100.0),
-            humidity_percent: node.humidity.current_value.clamp(0.0, 100.0),
+            humidity_percent: node
+                .humidity
+                .as_ref()
+                .and_then(|humidity| humidity.current_value)
+                .filter(|value| value.is_finite())
+                .map(|value| value.clamp(0.0, 100.0)),
             minutes_from_now: None,
         })
         .collect()
@@ -329,7 +334,7 @@ pub(super) struct RestWeatherNode {
     #[serde(rename = "WNV_SKY")]
     pub sky: RestWeatherMetric,
     #[serde(rename = "WNV_HUMIDITY")]
-    pub humidity: RestWeatherMetric,
+    pub humidity: Option<RestWeatherHumidityMetric>,
     #[serde(rename = "WNV_WINDSPEED")]
     pub wind_speed: RestWeatherMetric,
     #[serde(rename = "WNV_WINDDIRECTION")]
@@ -340,6 +345,13 @@ pub(super) struct RestWeatherNode {
 #[serde(default, rename_all = "camelCase")]
 pub(super) struct RestWeatherMetric {
     pub current_value: f64,
+    pub string_value: String,
+}
+
+#[derive(Clone, Debug, Default, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub(super) struct RestWeatherHumidityMetric {
+    pub current_value: Option<f64>,
     pub string_value: String,
 }
 
@@ -1471,9 +1483,28 @@ mod tests {
         assert_eq!(nodes[0].rain_chance_percent, 5.0);
         assert_eq!(nodes[2].sky, 4);
         assert_eq!(nodes[2].rain_chance_percent, 85.0);
-        assert_eq!(nodes[4].humidity_percent, 60.0);
+        assert_eq!(nodes[0].humidity_percent, Some(40.0));
+        assert_eq!(nodes[4].humidity_percent, Some(60.0));
         assert_eq!(weather.wind_at(0), Some((7.0, 90.0)));
         assert_eq!(weather.wind_at(1), None);
+    }
+
+    #[test]
+    fn weather_humidity_preserves_zero_and_marks_missing_metrics_unavailable() {
+        let weather: RestWeatherSession = serde_json::from_str(
+            r#"{
+              "START": {"WNV_HUMIDITY": {"currentValue": 0, "stringValue": "0 %"}},
+              "NODE_25": {"WNV_HUMIDITY": {}},
+              "NODE_50": {}, "NODE_75": {}, "FINISH": {}
+            }"#,
+        )
+        .unwrap();
+
+        let nodes = weather.forecast_nodes();
+
+        assert_eq!(nodes[0].humidity_percent, Some(0.0));
+        assert_eq!(nodes[1].humidity_percent, None);
+        assert_eq!(nodes[2].humidity_percent, None);
     }
 
     #[test]

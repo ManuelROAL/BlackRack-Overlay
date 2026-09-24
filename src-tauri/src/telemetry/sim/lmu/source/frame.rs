@@ -65,9 +65,11 @@ impl TelemetrySource for LmuTelemetrySource {
             self.fuel_at_lap_start = None;
             self.fuel_previous_sample = None;
             self.fuel_added_this_lap = 0.0;
+            self.fuel_added_last_lap = 0.0;
             self.energy_at_lap_start = None;
             self.energy_previous_sample = None;
             self.energy_added_this_lap = 0.0;
+            self.energy_added_last_lap = 0.0;
             self.consumption_profiler.reset_lap();
             self.tire_wear_tracker.reset();
             self.rejoin_hold_frames = 0;
@@ -147,9 +149,11 @@ impl TelemetrySource for LmuTelemetrySource {
             self.fuel_at_lap_start = None;
             self.fuel_previous_sample = None;
             self.fuel_added_this_lap = 0.0;
+            self.fuel_added_last_lap = 0.0;
             self.energy_at_lap_start = None;
             self.energy_previous_sample = None;
             self.energy_added_this_lap = 0.0;
+            self.energy_added_last_lap = 0.0;
             self.consumption_profiler.reset_lap();
             self.tire_wear_tracker.reset();
             self.player_lap_distance.reset();
@@ -722,8 +726,7 @@ impl TelemetrySource for LmuTelemetrySource {
                     .ok()
                     .and_then(|index| model.nodes.get(index))
             })
-            .map(|node| node.humidity_percent)
-            .unwrap_or(0.0);
+            .and_then(|node| node.humidity_percent);
         let rest_wind = weather_forecast.as_ref().and_then(|model| {
             usize::try_from(model.current_index).ok().and_then(|index| {
                 self.local_rest
@@ -850,6 +853,7 @@ impl TelemetrySource for LmuTelemetrySource {
             force_feedback,
             fuel_liters: snapshot.fuel_liters.max(0.0),
             fuel_added_this_lap: self.fuel_added_this_lap,
+            fuel_added_last_lap: self.fuel_added_last_lap,
             fuel_capacity_liters: snapshot.fuel_capacity_liters.max(1.0),
             fuel_per_lap,
             fuel_last_lap: self.fuel_last_lap.unwrap_or(0.0),
@@ -898,6 +902,7 @@ impl TelemetrySource for LmuTelemetrySource {
             virtual_energy_percent,
             virtual_energy_raw: snapshot.virtual_energy,
             virtual_energy_added_this_lap: self.energy_added_this_lap,
+            virtual_energy_added_last_lap: self.energy_added_last_lap,
             virtual_energy_per_lap,
             virtual_energy_last_lap: self.energy_last_lap.unwrap_or(0.0),
             virtual_energy_qualifying_lap: self.energy_qualifying_lap.unwrap_or(0.0),

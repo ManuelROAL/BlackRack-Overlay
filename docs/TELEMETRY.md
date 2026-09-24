@@ -89,6 +89,11 @@ restore per-overlay native listeners or direct cross-realm object events.
   explicitly permits it.
 - Preserve unavailable values as unavailable rather than converting them to real
   zeroes.
+- The current forecast humidity is nullable: `0` is a valid humidity reading,
+  while `null` means REST omitted or invalidated the metric or no fresh current
+  forecast node is available. A lap-boundary frame carries the completed lap's
+  `fuel_added_last_lap` and `virtual_energy_added_last_lap`; the corresponding
+  `*_added_this_lap` fields continue to represent the in-progress lap.
 - `resource_autonomy` is the shared projected fuel, energy and limiting lap range.
   Rust publishes it independently of Fuel strategy demand. Dashboard and Fuel use
   it directly; null means unavailable and zero means exhausted with a valid

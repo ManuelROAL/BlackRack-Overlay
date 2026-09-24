@@ -684,14 +684,16 @@ impl CurrentLap {
             fuel_used: if frame.fuel_last_lap.is_finite() && frame.fuel_last_lap > 0.0 {
                 frame.fuel_last_lap
             } else {
-                (self.start_fuel + frame.fuel_added_this_lap - frame.fuel_liters).max(0.0)
+                (self.start_fuel + frame.fuel_added_last_lap - frame.fuel_liters).max(0.0)
             },
             energy_used: if frame.virtual_energy_last_lap.is_finite()
                 && frame.virtual_energy_last_lap > 0.0
             {
                 frame.virtual_energy_last_lap
             } else {
-                (self.start_energy - frame.virtual_energy_percent).max(0.0)
+                (self.start_energy + frame.virtual_energy_added_last_lap
+                    - frame.virtual_energy_percent)
+                    .max(0.0)
             },
             tire_used: if self.start_tire >= 0.0 && frame.player_tire_remaining_percent >= 0.0 {
                 (self.start_tire - frame.player_tire_remaining_percent).max(0.0)
@@ -2331,6 +2333,24 @@ mod tests {
     }
 
     #[test]
+    fn completed_pit_lap_counts_energy_charged_during_the_lap_when_last_lap_is_missing() {
+        let mut start = active_frame();
+        start.virtual_energy_percent = 82.0;
+        let mut lap = CurrentLap::new(&start);
+        lap.points = linear_lap(100.0, 1_000.0).points;
+        let mut boundary = start;
+        boundary.last_lap_seconds = 100.0;
+        boundary.virtual_energy_percent = 90.0;
+        boundary.virtual_energy_last_lap = 0.0;
+        boundary.virtual_energy_added_last_lap = 12.5;
+
+        let completed = lap.finish(&boundary, 1_000.0).unwrap();
+
+        // 82% at the start + 12.5% charged - 90% at the boundary = 4.5% used.
+        assert_eq!(completed.energy_used, 4.5);
+    }
+
+    #[test]
     fn completed_pit_lap_counts_fuel_added_during_the_lap() {
         let mut start = active_frame();
         start.fuel_liters = 50.0;
@@ -2339,7 +2359,8 @@ mod tests {
         let mut boundary = start;
         boundary.last_lap_seconds = 100.0;
         boundary.fuel_liters = 67.5;
-        boundary.fuel_added_this_lap = 20.0;
+        boundary.fuel_last_lap = 0.0;
+        boundary.fuel_added_last_lap = 20.0;
 
         let completed = lap.finish(&boundary, 1_000.0).unwrap();
 

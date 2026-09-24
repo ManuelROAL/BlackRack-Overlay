@@ -40,9 +40,9 @@
 - `mTrackGripLevel` is converted from LMU's categorical scale to
   25/50/75/90 percent for levels 1/2/3/4; zero and unknown levels remain
   unavailable. Current humidity comes from the humidity of the forecast node
-  covering the present moment; it degrades to unavailable when the forecast is
-  missing or stale. The grip scale remains provisional until confirmed by a live
-  capture.
+  covering the present moment; a reported 0% is valid, while a missing or
+  invalid metric and a missing or stale forecast remain unavailable. The grip
+  scale remains provisional until confirmed by a live capture.
 ## Presentation
 
 - Keep the panel as two compact rows. The header shows the localized live weather

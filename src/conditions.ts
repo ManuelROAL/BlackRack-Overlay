@@ -126,7 +126,7 @@ const render = (frame: TelemetryFrame): void => {
     const rotation = `rotate(${frame.wind_relative_direction_degrees.toFixed(1)}deg)`;
     if (windArrow.style.transform !== rotation) windArrow.style.transform = rotation;
   }
-  setText(values.humidity, formatPercent(frame.current_humidity_percent > 0 ? frame.current_humidity_percent : NaN));
+  setText(values.humidity, formatPercent(frame.current_humidity_percent ?? NaN));
   setText(values.rain, formatPercent(frame.rest_weather_available ? frame.rain_percent : NaN));
   setText(values.grip, formatPercent(frame.player_grip_percent > 0 ? frame.player_grip_percent : NaN));
   setText(values.wetness, formatPercent(frame.rest_weather_available ? frame.track_wetness_percent : NaN));

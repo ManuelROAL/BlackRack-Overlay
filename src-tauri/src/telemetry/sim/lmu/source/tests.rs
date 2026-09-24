@@ -2072,6 +2072,44 @@ fn pit_lap_consumption_includes_the_resource_added_during_the_lap() {
     assert!(source.fuel_per_lap.is_none());
     assert!((source.energy_last_lap.unwrap() - 3.0).abs() < 0.001);
     assert!(source.energy_per_lap.is_none());
+    assert!((source.fuel_added_last_lap - 20.0).abs() < 0.001);
+    assert!((source.energy_added_last_lap - 30.0).abs() < 0.001);
+}
+
+#[test]
+fn pit_resource_added_on_the_lap_boundary_is_included_in_last_lap_totals() {
+    let mut source = LmuTelemetrySource::new();
+    let mut snapshot = LmuSnapshot {
+        vehicle_class_id: 0,
+        lap_number: 1,
+        fuel_liters: 50.0,
+        virtual_energy: 0.60,
+        standings_count: 1,
+        ..LmuSnapshot::default()
+    };
+    source.update_session(10);
+    snapshot.standings[0].is_player = 1;
+
+    source.update_energy_estimate(&snapshot, true, false);
+    source.update_fuel_estimate(&snapshot, true, false);
+
+    snapshot.standings[0].in_pits = 1;
+    snapshot.fuel_liters = 60.0;
+    snapshot.virtual_energy = 0.70;
+    source.update_energy_estimate(&snapshot, false, false);
+    source.update_fuel_estimate(&snapshot, false, false);
+
+    // This boundary sample is still in the pits and adds another 8 L / 8%.
+    snapshot.lap_number = 2;
+    snapshot.fuel_liters = 68.0;
+    snapshot.virtual_energy = 0.78;
+    source.update_energy_estimate(&snapshot, true, false);
+    source.update_fuel_estimate(&snapshot, true, false);
+
+    assert!((source.fuel_added_last_lap - 18.0).abs() < 0.001);
+    assert!((source.energy_added_last_lap - 18.0).abs() < 0.001);
+    assert_eq!(source.fuel_added_this_lap, 0.0);
+    assert_eq!(source.energy_added_this_lap, 0.0);
 }
 
 #[test]

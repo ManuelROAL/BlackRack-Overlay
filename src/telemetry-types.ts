@@ -90,7 +90,7 @@ export interface WeatherForecastNode {
   sky_label: string;
   temperature_c: number;
   rain_chance_percent: number;
-  humidity_percent: number;
+  humidity_percent: number | null;
   minutes_from_now: number | null;
 }
 
@@ -221,7 +221,7 @@ export interface TelemetryFrame {
   track_wetness_min_percent: number;
   track_wetness_max_percent: number;
   weather_forecast: WeatherForecastModel;
-  current_humidity_percent: number;
+  current_humidity_percent: number | null;
   wind_speed_ms: number;
   wind_direction_degrees: number;
   wind_relative_direction_degrees: number;
@@ -281,6 +281,7 @@ export interface TelemetryFrame {
   force_feedback: number;
   fuel_liters: number;
   fuel_added_this_lap: number;
+  fuel_added_last_lap: number;
   fuel_capacity_liters: number;
   fuel_per_lap: number;
   fuel_last_lap: number;
@@ -306,6 +307,7 @@ export interface TelemetryFrame {
   virtual_energy_percent: number;
   virtual_energy_raw: number;
   virtual_energy_added_this_lap: number;
+  virtual_energy_added_last_lap: number;
   virtual_energy_per_lap: number;
   virtual_energy_last_lap: number;
   virtual_energy_qualifying_lap: number;
