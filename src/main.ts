@@ -2327,10 +2327,7 @@ createProfileButton?.addEventListener("click", () => {
 });
 
 const gettingStarted = document.getElementById("getting-started") as HTMLDetailsElement;
-const GETTING_STARTED_KEY = "blackrack-overlay.getting-started.v1";
-gettingStarted.open = localStorage.getItem(GETTING_STARTED_KEY) !== "done";
 document.getElementById("start-done")?.addEventListener("click", () => {
-  localStorage.setItem(GETTING_STARTED_KEY, "done");
   gettingStarted.open = false;
   gettingStarted.querySelector("summary")?.focus();
 });
