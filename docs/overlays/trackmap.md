@@ -89,6 +89,18 @@ TypeScript fetches static geometry, interpolates and renders it.
 - The player keeps its class-position label in a 28 px circle and has a larger
   lime halo advanced by telemetry events. It pulses in Smooth and Balanced and is
   static in Efficiency. Never replace its label with `P`.
+- The player alone may override its class colour or use a custom image. The image
+  is clipped inside the 28 px disc; its position label stays above it, while the
+  existing halo and leader star retain their placement. A null colour restores
+  class colour. Settings and imported profiles retain only a validated bounded
+  PNG data URL; arbitrary image strings are never used as CSS.
+- Image selection accepts PNG, JPEG and WebP up to 1 MiB and 256×256 pixels.
+  The frontend reads dimensions from the file header before bitmap decoding,
+  rejects animated PNG/WebP, then scales proportionally into a 128×128 canvas
+  and encodes a static PNG. The normalized PNG is capped at 96 KiB binary / 128
+  KiB data URL characters. Its maximum
+  decoded RGBA bitmap is 64 KiB; the encoded setting adds at most 96 KiB, plus
+  small object/string overhead. GIF, SVG and animated formats are excluded.
 - Only the overall leader receives a static gold star. Keep the complete leader
   marker above normal vehicles and distinct from the player's halo; class leaders
   have no special mark.

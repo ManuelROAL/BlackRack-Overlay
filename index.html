@@ -815,6 +815,20 @@
               <span></span>
               <b data-i18n="settings.mapPrediction">Mostrar posici&oacute;n P tras la parada</b>
             </label>
+            <label class="select-field trackmap-player-color-field">
+              <span data-i18n="settings.mapPlayerColor">Color del coche propio</span>
+              <input id="trackmap-player-color" type="color" value="#e33b3b" />
+              <button id="trackmap-player-color-reset" type="button" data-i18n="settings.mapPlayerColorReset">Color de clase</button>
+              <small id="trackmap-player-color-mode" aria-live="polite"></small>
+            </label>
+            <div class="trackmap-player-image-field">
+              <span data-i18n="settings.mapPlayerImage">Icono personalizado</span>
+              <button id="trackmap-player-image-choose" type="button" aria-controls="trackmap-player-image" data-i18n="settings.mapPlayerImageChoose">Elegir imagen</button>
+              <input id="trackmap-player-image" type="file" accept="image/png,image/jpeg,image/webp" hidden />
+              <button id="trackmap-player-image-remove" type="button" data-i18n="settings.mapPlayerImageRemove">Retirar imagen</button>
+              <small data-i18n="settings.mapPlayerImageLimits">PNG, JPEG o WebP · hasta 1 MiB y 256×256 px</small>
+              <p id="trackmap-player-image-status" aria-live="polite"></p>
+            </div>
           </div>
           <p class="settings-note" data-i18n="settings.mapNote">El mapa contin&uacute;a aprendiendo el tr&aacute;nsito por boxes aunque se oculte la predicci&oacute;n.</p>
         </section>

@@ -179,6 +179,27 @@
   animation: none;
 }
 
+.vehicle-player-icon {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  pointer-events: none;
+}
+
+.vehicle-marker.is-player.has-custom-color .vehicle-label,
+.vehicle-marker.is-player.has-custom-icon .vehicle-label {
+  position: relative;
+  z-index: 1;
+  padding: 2px 3px;
+  border-radius: 4px;
+  background: rgb(8 11 15 / 78%);
+  color: #fff;
+  text-shadow: 0 1px 2px #000;
+}
+
 .vehicle-marker.is-player .marker-halo,
 .vehicle-marker.is-causing-yellow .marker-halo {
   display: block;

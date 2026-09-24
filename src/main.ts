@@ -84,6 +84,7 @@ import {
 import {
   defaultTrackMapSettings,
   readTrackMapSettings,
+  normalizeTrackMapSettings,
   TRACK_MAP_SETTINGS_KEY,
   type TrackMapSettings
 } from "./trackmap-settings";
@@ -1265,10 +1266,143 @@ const trackMapPitPrediction = document.getElementById("trackmap-pit-prediction")
 if (trackMapPitPrediction) {
   trackMapPitPrediction.checked = trackMapSettings.showPitPrediction;
   trackMapPitPrediction.addEventListener("change", () => {
-    trackMapSettings = { showPitPrediction: trackMapPitPrediction.checked };
+    trackMapSettings = { ...trackMapSettings, showPitPrediction: trackMapPitPrediction.checked };
     persistTrackMapSettings();
   });
 }
+
+const mapColor = document.getElementById("trackmap-player-color") as HTMLInputElement | null;
+const mapColorMode = document.getElementById("trackmap-player-color-mode");
+const mapImage = document.getElementById("trackmap-player-image") as HTMLInputElement | null;
+const mapChooseImage = document.getElementById("trackmap-player-image-choose") as HTMLButtonElement | null;
+const mapRemoveImage = document.getElementById("trackmap-player-image-remove") as HTMLButtonElement | null;
+const mapResetColor = document.getElementById("trackmap-player-color-reset") as HTMLButtonElement | null;
+const mapImageStatus = document.getElementById("trackmap-player-image-status");
+let mapIconUploadGeneration = 0;
+const syncMapStyleControls = (): void => {
+  if (mapColor) mapColor.value = trackMapSettings.playerColor ?? "#e33b3b";
+  if (mapColorMode) mapColorMode.textContent = t(trackMapSettings.playerColor
+    ? "settings.mapPlayerColorCustom" : "settings.mapPlayerColorClass");
+  if (mapResetColor) mapResetColor.disabled = trackMapSettings.playerColor === null;
+  if (mapRemoveImage) mapRemoveImage.disabled = !trackMapSettings.playerIconDataUrl;
+};
+syncMapStyleControls();
+mapColor?.addEventListener("input", () => {
+  trackMapSettings = { ...trackMapSettings, playerColor: mapColor.value };
+  syncMapStyleControls();
+  persistTrackMapSettings();
+});
+mapResetColor?.addEventListener("click", () => {
+  trackMapSettings = { ...trackMapSettings, playerColor: null };
+  syncMapStyleControls();
+  persistTrackMapSettings();
+});
+mapRemoveImage?.addEventListener("click", () => {
+  mapIconUploadGeneration += 1;
+  trackMapSettings = { ...trackMapSettings, playerIconDataUrl: null };
+  if (mapImage) mapImage.value = "";
+  if (mapImageStatus) mapImageStatus.textContent = "";
+  syncMapStyleControls();
+  persistTrackMapSettings();
+});
+mapChooseImage?.addEventListener("click", () => mapImage?.click());
+const imageDimensions = (bytes: Uint8Array): [number, number] | null => {
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  if (bytes.length >= 33 && bytes[0] === 137 && bytes[1] === 80 && bytes[2] === 78 && bytes[3] === 71
+    && bytes[4] === 13 && bytes[5] === 10 && bytes[6] === 26 && bytes[7] === 10) {
+    if (view.getUint32(8) !== 13 || String.fromCharCode(...bytes.slice(12, 16)) !== "IHDR") return null;
+    const dimensions: [number, number] = [view.getUint32(16), view.getUint32(20)];
+    let offset = 8;
+    let chunkCount = 0;
+    let hasImageData = false;
+    let hasEnd = false;
+    while (offset + 12 <= bytes.length) {
+      if (++chunkCount > 1024) return null;
+      const length = view.getUint32(offset);
+      if (length > bytes.length - offset - 12) return null;
+      const type = String.fromCharCode(...bytes.slice(offset + 4, offset + 8));
+      if (type === "acTL" || type === "fcTL" || type === "fdAT") return null;
+      if (type === "IDAT") hasImageData = true;
+      offset += length + 12;
+      if (type === "IEND") {
+        hasEnd = length === 0 && offset === bytes.length;
+        break;
+      }
+    }
+    return hasImageData && hasEnd ? dimensions : null;
+  }
+  if (bytes[0] === 0xff && bytes[1] === 0xd8) {
+    let i = 2;
+    while (i + 9 < bytes.length) {
+      if (bytes[i++] !== 0xff) continue;
+      let marker = bytes[i++]; while (marker === 0xff) marker = bytes[i++];
+      if (marker === 0xd8 || marker === 0xd9 || (marker >= 0xd0 && marker <= 0xd7)) continue;
+      const length = view.getUint16(i); if (length < 2 || i + length > bytes.length) return null;
+      if ([0xc0,0xc1,0xc2,0xc3,0xc5,0xc6,0xc7,0xc9,0xca,0xcb,0xcd,0xce,0xcf].includes(marker)) return [view.getUint16(i + 5), view.getUint16(i + 3)];
+      i += length;
+    }
+  }
+  if (bytes.length >= 30 && String.fromCharCode(...bytes.slice(0,4)) === "RIFF" && String.fromCharCode(...bytes.slice(8,12)) === "WEBP") {
+    const riffEnd = view.getUint32(4, true) + 8;
+    if (riffEnd !== bytes.length) return null;
+    let offset = 12;
+    let chunks = 0;
+    while (offset + 8 <= riffEnd) {
+      if (++chunks > 1024) return null;
+      const type = String.fromCharCode(...bytes.slice(offset, offset + 4));
+      const length = view.getUint32(offset + 4, true);
+      if (type === "ANIM" || type === "ANMF" || length > riffEnd - offset - 8) return null;
+      offset += 8 + length + (length & 1);
+    }
+    if (offset !== riffEnd) return null;
+    const kind = String.fromCharCode(...bytes.slice(12,16));
+    if (kind === "VP8X") {
+      if (bytes[20] & 0x02) return null;
+      return [1 + bytes[24] + (bytes[25]<<8) + (bytes[26]<<16), 1 + bytes[27] + (bytes[28]<<8) + (bytes[29]<<16)];
+    }
+    if (kind === "VP8L" && bytes[20] === 0x2f) return [1 + bytes[21] + ((bytes[22]&0x3f)<<8), 1 + (bytes[22]>>6) + (bytes[23]<<2) + ((bytes[24]&0x0f)<<10)];
+    if (kind === "VP8 " && bytes[23] === 0x9d && bytes[24] === 0x01 && bytes[25] === 0x2a) return [view.getUint16(26,true)&0x3fff, view.getUint16(28,true)&0x3fff];
+  }
+  return null;
+};
+mapImage?.addEventListener("change", async () => {
+  const generation = ++mapIconUploadGeneration;
+  const file = mapImage.files?.[0]; if (!file) return;
+  const fail = (key: "settings.mapImageSizeError" | "settings.mapImageFormatError" | "settings.mapImageDimensionError" | "settings.mapImageOutputError"): void => {
+    if (generation !== mapIconUploadGeneration) return;
+    if (mapImageStatus) mapImageStatus.textContent = t(key);
+    mapImage.value = "";
+  };
+  if (file.size > 1024 * 1024) { fail("settings.mapImageSizeError"); return; }
+  try {
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    if (generation !== mapIconUploadGeneration) return;
+    const dims = imageDimensions(bytes);
+    const isPng = bytes[0] === 137 && bytes[1] === 80 && bytes[2] === 78 && bytes[3] === 71;
+    const isJpeg = bytes[0] === 0xff && bytes[1] === 0xd8;
+    const isWebp = String.fromCharCode(...bytes.slice(0, 4)) === "RIFF" && String.fromCharCode(...bytes.slice(8, 12)) === "WEBP";
+    if (!dims || !((file.type === "image/png" && isPng) || (file.type === "image/jpeg" && isJpeg)
+      || (file.type === "image/webp" && isWebp))) { fail("settings.mapImageFormatError"); return; }
+    if (dims[0] < 1 || dims[1] < 1 || dims[0] > 256 || dims[1] > 256) { fail("settings.mapImageDimensionError"); return; }
+    const bitmap = await createImageBitmap(new Blob([bytes], { type: file.type }));
+    if (generation !== mapIconUploadGeneration) { bitmap.close(); return; }
+    const scale = Math.min(128 / bitmap.width, 128 / bitmap.height);
+    const width = Math.max(1, Math.round(bitmap.width * scale));
+    const height = Math.max(1, Math.round(bitmap.height * scale));
+    const canvas = document.createElement("canvas"); canvas.width = 128; canvas.height = 128;
+    try {
+      canvas.getContext("2d")!.drawImage(bitmap, (128 - width) / 2, (128 - height) / 2, width, height);
+    } finally {
+      bitmap.close();
+    }
+    const dataUrl = canvas.toDataURL("image/png");
+    const normalized = normalizeTrackMapSettings({ ...trackMapSettings, playerIconDataUrl: dataUrl });
+    if (!normalized.playerIconDataUrl || dataUrl.length > 128 * 1024) { fail("settings.mapImageOutputError"); return; }
+    trackMapSettings = normalized;
+    if (mapImageStatus) mapImageStatus.textContent = t("settings.mapImageReady");
+    syncMapStyleControls(); persistTrackMapSettings();
+  } catch { fail("settings.mapImageFormatError"); }
+});
 
 const fuelScenarioMode = document.getElementById("fuel-scenario-mode") as HTMLSelectElement | null;
 const fuelRefuelMargin = document.getElementById("fuel-refuel-margin") as HTMLInputElement | null;
@@ -1787,7 +1921,7 @@ const applyProfileData = async (data: OverlayProfileData): Promise<void> => {
     drivingSettings = data.driving;
     deltaSettings = data.delta;
     timingSettings = normalizeTimingSettings(data.timing);
-    trackMapSettings = data.trackMap;
+    trackMapSettings = normalizeTrackMapSettings(data.trackMap);
     fuelSettings = normalizeFuelSettings(data.fuel);
     tiresSettings = data.tires;
     conditionsSettings = data.conditions;
@@ -2870,10 +3004,10 @@ const parseOverlayConfiguration = (
     times: normalizedTiming.times ?? defaultTiming.times,
     timeOrder: normalizedTimingOrder
   };
-  const normalizedTrackMap = trackMap ?? defaultTrackMapSettings();
-  if (typeof normalizedTrackMap.showPitPrediction !== "boolean") {
+  if (trackMap && typeof trackMap.showPitPrediction !== "boolean") {
     throw new Error(t("config.invalidMap"));
   }
+  const normalizedTrackMap = normalizeTrackMapSettings(trackMap ?? defaultTrackMapSettings());
   const normalizedFuel = fuel ?? defaultFuelSettings();
   if (normalizedFuel.energyMarginPercent !== undefined
     && (typeof normalizedFuel.energyMarginPercent !== "number"

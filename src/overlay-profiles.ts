@@ -17,7 +17,7 @@ import { isQualifyingSession, isRaceSession } from "./session-phase";
 import type { StandingsSettings } from "./standings-settings";
 import type { TimingSettings } from "./timing-settings";
 import type { TiresSettings } from "./tires-settings";
-import type { TrackMapSettings } from "./trackmap-settings";
+import { normalizeTrackMapSettings, type TrackMapSettings } from "./trackmap-settings";
 
 export const OVERLAY_PROFILES_KEY = "blackrack-overlay.profiles.v1";
 export const PROFILE_BINDINGS_KEY = "blackrack-overlay.profile-bindings.v1";
@@ -141,7 +141,10 @@ export const normalizeProfiles = (
     profiles.push({
       id,
       name: sanitizeProfileName(profile.name, `${fallbackName} ${profiles.length + 1}`),
-      data: data as unknown as OverlayProfileData
+      data: {
+        ...data,
+        trackMap: normalizeTrackMapSettings(data.trackMap)
+      } as unknown as OverlayProfileData
     });
     if (profiles.length >= MAX_OVERLAY_PROFILES) break;
   }

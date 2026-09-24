@@ -2925,3 +2925,30 @@ select {
   border-radius: 6px;
   font-size: 12px;
 }
+
+.trackmap-player-color-field,
+.trackmap-player-image-field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.trackmap-player-color-field input[type="color"] {
+  width: 42px;
+  height: 32px;
+  padding: 2px;
+}
+
+.trackmap-player-color-field small,
+.trackmap-player-image-field small,
+.trackmap-player-image-field p {
+  width: 100%;
+  margin: 0;
+  color: #aeb8c4;
+}
+
+.trackmap-player-image-field { width: 100%; margin-top: 12px; }
+.trackmap-player-image-field p:empty { display: none; }
+.trackmap-player-color-field button:disabled,
+.trackmap-player-image-field button:disabled { opacity: 0.45; cursor: default; }

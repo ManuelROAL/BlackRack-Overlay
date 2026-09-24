@@ -5,7 +5,7 @@ import { bindOverlayInteractionMode } from "./overlay-interaction";
 import { bindOverlayTransparency } from "./overlay-appearance";
 import { createOverlayPerformanceTracker } from "./overlay-performance";
 import { invokeRuntime, isTauriRuntime, listenRuntimeEvent, listenTelemetry } from "./runtime-events";
-import { readTrackMapSettings, type TrackMapSettings } from "./trackmap-settings";
+import { normalizeTrackMapSettings, readTrackMapSettings, type TrackMapSettings } from "./trackmap-settings";
 import type { TelemetryFrame, TrackMapVehicle } from "./telemetry-types";
 import { t } from "./i18n";
 
@@ -51,6 +51,8 @@ interface MarkerView {
   isPlayer: boolean;
   transform: string;
   color: string;
+  customColor: string | null;
+  icon: string;
   labelValue: string;
   inPits: boolean;
   causingYellow: boolean;
@@ -505,6 +507,8 @@ const createMarker = (vehicle: TrackMapVehicle): MarkerView => {
     isPlayer: vehicle.is_player,
     transform: "",
     color: "",
+    customColor: null,
+    icon: "",
     labelValue: "",
     inPits: false,
     causingYellow: false,
@@ -561,10 +565,32 @@ const renderVehicles = (vehicles: TrackMapVehicle[], trackLength: number): void 
     }
     const [x, y] = markerPosition(vehicle, trackLength);
     setMarkerPosition(marker, x, y);
-    const color = classColor(vehicle.vehicle_class);
+    const color = marker.isPlayer ? trackMapSettings.playerColor ?? classColor(vehicle.vehicle_class) : classColor(vehicle.vehicle_class);
     if (marker.color !== color) {
       marker.color = color;
       marker.disc.style.backgroundColor = color;
+    }
+    const customColor = marker.isPlayer ? trackMapSettings.playerColor : null;
+    if (marker.customColor !== customColor) {
+      marker.customColor = customColor;
+      marker.root.classList.toggle("has-custom-color", customColor !== null);
+    }
+    const icon = marker.isPlayer ? trackMapSettings.playerIconDataUrl ?? "" : "";
+    if (marker.icon !== icon) {
+      marker.icon = icon;
+      const image = marker.disc.querySelector<HTMLImageElement>(".vehicle-player-icon");
+      if (icon) {
+        const playerImage = image ?? document.createElement("img");
+        playerImage.className = "vehicle-player-icon";
+        playerImage.alt = "";
+        playerImage.draggable = false;
+        playerImage.src = icon;
+        if (!image) marker.disc.prepend(playerImage);
+        marker.root.classList.add("has-custom-icon");
+      } else {
+        image?.remove();
+        marker.root.classList.remove("has-custom-icon");
+      }
     }
     const labelValue = String(classPosition);
     if (marker.labelValue !== labelValue) {
@@ -624,8 +650,8 @@ void listenTelemetry((frame) => renderPerformance.measure(
   () => render(frame), frame.track_map_vehicles.length
 ));
 void listenRuntimeEvent<TrackMapSettings>("trackmap://settings", (settings) => {
-  trackMapSettings = settings;
-  if (!settings.showPitPrediction) renderPitPrediction(null, 0);
+  trackMapSettings = normalizeTrackMapSettings(settings);
+  if (!trackMapSettings.showPitPrediction) renderPitPrediction(null, 0);
 });
 
 if (import.meta.env.DEV && new URLSearchParams(window.location.search).has("preview")) {
