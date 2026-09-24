@@ -369,6 +369,44 @@ select {
   border-bottom: 1px solid rgb(255 255 255 / 7%);
 }
 
+.general-settings-section > summary.settings-section-heading {
+  position: relative;
+  padding-right: 42px;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+
+.general-settings-section > summary.settings-section-heading::-webkit-details-marker {
+  display: none;
+}
+
+.general-settings-section > summary.settings-section-heading::after {
+  position: absolute;
+  top: 50%;
+  right: 18px;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid #a9b3bd;
+  border-bottom: 2px solid #a9b3bd;
+  content: "";
+  transform: translateY(-70%) rotate(45deg);
+  transition: transform 140ms ease;
+}
+
+.general-settings-section:not([open]) > summary.settings-section-heading {
+  border-bottom: 0;
+}
+
+.general-settings-section:not([open]) > summary.settings-section-heading::after {
+  transform: translateY(-50%) rotate(-45deg);
+}
+
+.general-settings-section > summary.settings-section-heading:focus-visible {
+  outline: 2px solid #d8ff3e;
+  outline-offset: -3px;
+}
+
 .general-settings-section > .global-setting-group:last-child {
   border-bottom: 0;
 }
@@ -894,7 +932,20 @@ select {
 }
 
 .update-setting-group {
-  align-items: start;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.update-setting-group > summary.settings-section-heading {
+  grid-column: 1;
+  grid-row: 1;
+  border-bottom: 0;
+}
+
+.update-setting-group > .update-actions {
+  grid-column: 2;
+  grid-row: 1;
+  padding-right: 14px;
 }
 
 .update-actions {
@@ -2834,7 +2885,8 @@ select {
   .global-setting-group,
   .paired-setting-group,
   .performance-profile-list,
-  .configuration-export {
+  .configuration-export,
+  .update-setting-group {
     grid-template-columns: 1fr;
   }
 
@@ -2849,6 +2901,17 @@ select {
   .configuration-transfer-actions,
   .update-actions {
     width: 100%;
+  }
+
+  .update-setting-group > summary.settings-section-heading,
+  .update-setting-group > .update-actions {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
+  .update-setting-group > .update-actions {
+    justify-content: start;
+    padding: 0 14px 12px;
   }
 
   .update-actions button {

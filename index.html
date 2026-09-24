@@ -63,23 +63,21 @@
         </div>
       </details>
 
-      <section class="general-settings-section general-settings-accent" data-view-section="general">
-        <div class="global-setting-group update-setting-group">
-          <div class="global-setting-copy">
-            <span data-i18n="update.heading">ACTUALIZACIONES</span>
-            <strong data-i18n="update.title">Mantén BlackRack al día</strong>
-            <small id="update-status" aria-live="polite" data-i18n="update.initial">La comprobación automática se realiza cada seis horas.</small>
-          </div>
-          <div class="update-actions">
-            <button id="check-for-updates" type="button" data-i18n="update.check">BUSCAR ACTUALIZACIONES</button>
-            <button id="install-update" type="button" data-i18n="update.install" hidden>DESCARGAR E INSTALAR</button>
-          </div>
-          <div id="update-details" class="update-details" hidden>
-            <strong id="update-version"></strong>
-            <ul id="update-changelog"></ul>
-          </div>
+      <details class="general-settings-section general-settings-accent update-setting-group" data-view-section="general" open>
+        <summary class="settings-section-heading global-setting-copy">
+          <span data-i18n="update.heading">ACTUALIZACIONES</span>
+          <strong data-i18n="update.title">Mantén BlackRack al día</strong>
+          <small id="update-status" aria-live="polite" data-i18n="update.initial">La comprobación automática se realiza cada seis horas.</small>
+        </summary>
+        <div class="update-actions">
+          <button id="check-for-updates" type="button" data-i18n="update.check">BUSCAR ACTUALIZACIONES</button>
+          <button id="install-update" type="button" data-i18n="update.install" hidden>DESCARGAR E INSTALAR</button>
         </div>
-      </section>
+        <div id="update-details" class="update-details" hidden>
+          <strong id="update-version"></strong>
+          <ul id="update-changelog"></ul>
+        </div>
+      </details>
 
       <section class="general-settings-section release-notes-section" data-view-section="changelog" aria-label="Historial de cambios" data-i18n-aria-label="changelog.aria">
         <header class="settings-section-heading">
@@ -117,11 +115,11 @@
         <p id="overlay-filter-empty" class="overlay-filter-empty" hidden data-i18n="filter.empty">No hay overlays que coincidan.</p>
       </section>
 
-      <section class="general-settings-section" data-view-section="general" aria-label="Pantalla y apariencia" data-i18n-aria-label="display.aria">
-        <header class="settings-section-heading">
+      <details class="general-settings-section" data-view-section="general" aria-label="Pantalla y apariencia" data-i18n-aria-label="display.aria" open>
+        <summary class="settings-section-heading">
           <span data-i18n="display.heading">PANTALLA</span>
           <strong data-i18n="display.title">Dónde y cómo se ven los overlays</strong>
-        </header>
+        </summary>
         <div class="global-setting-group display-settings-group">
           <div class="paired-setting monitor-setting">
             <div class="global-setting-copy">
@@ -177,13 +175,13 @@
             </label>
           </div>
         </div>
-      </section>
+      </details>
 
-      <section class="general-settings-section" data-view-section="general" aria-label="Modo de seguimiento" data-i18n-aria-label="follow.groupAria">
-        <header class="settings-section-heading">
+      <details class="general-settings-section" data-view-section="general" aria-label="Modo de seguimiento" data-i18n-aria-label="follow.groupAria" open>
+        <summary class="settings-section-heading">
           <span data-i18n="follow.heading">MODO</span>
           <strong data-i18n="follow.sub">A qué coche siguen los overlays</strong>
-        </header>
+        </summary>
         <div class="global-setting-group overlay-mode-group">
           <div class="overlay-mode-list" role="group" aria-label="Modo de seguimiento" data-i18n-aria-label="follow.groupAria">
             <button type="button" data-overlay-mode="game" aria-pressed="false">
@@ -243,13 +241,13 @@
           </div>
           <p id="overlay-profile-status" aria-live="polite"></p>
         </div>
-      </section>
+      </details>
 
-      <section class="general-settings-section general-settings-accent" data-view-section="general" aria-label="Perfil de rendimiento" data-i18n-aria-label="performance.aria">
-        <header class="settings-section-heading">
+      <details class="general-settings-section general-settings-accent" data-view-section="general" aria-label="Perfil de rendimiento" data-i18n-aria-label="performance.aria" open>
+        <summary class="settings-section-heading">
           <span data-i18n="performance.heading">RENDIMIENTO</span>
           <strong data-i18n="performance.title">Elige el equilibrio para tu equipo</strong>
-        </header>
+        </summary>
         <div class="performance-profile-list" role="group" aria-label="Perfiles de rendimiento" data-i18n-aria-label="performance.groupAria">
           <button type="button" data-performance-profile="smooth" aria-pressed="false">
             <span class="performance-profile-icon">50</span>
@@ -276,13 +274,13 @@
             <em data-i18n="performance.efficiencyMeta">MENOR CARGA</em>
           </button>
         </div>
-      </section>
+      </details>
 
-      <section class="general-settings-section" data-view-section="general" aria-label="Idioma, unidades y atajos" data-i18n-aria-label="general.appAria">
-        <header class="settings-section-heading">
+      <details class="general-settings-section" data-view-section="general" aria-label="Idioma, unidades y atajos" data-i18n-aria-label="general.appAria" open>
+        <summary class="settings-section-heading">
           <span data-i18n="general.appHeading">APLICACIÓN</span>
           <strong data-i18n="general.appTitle">Idioma, unidades y atajos de teclado</strong>
-        </header>
+        </summary>
         <div class="global-setting-group">
           <div class="global-setting-copy">
             <span data-i18n="general.language">IDIOMA</span>
@@ -349,13 +347,13 @@
             </button>
           </div>
         </div>
-      </section>
+      </details>
 
-      <section class="general-settings-section" data-view-section="general" aria-label="Importar o exportar configuración" data-i18n-aria-label="config.aria">
-        <header class="settings-section-heading">
+      <details class="general-settings-section" data-view-section="general" aria-label="Importar o exportar configuración" data-i18n-aria-label="config.aria" open>
+        <summary class="settings-section-heading">
           <span data-i18n="config.backup">COPIA DE SEGURIDAD</span>
           <strong data-i18n="config.title">Configuración completa de overlays</strong>
-        </header>
+        </summary>
         <div class="configuration-export">
           <div>
             <small data-i18n="config.sub">Guarda o restaura idioma, visibilidad, opciones, monitor, posición y tamaño con un único JSON.</small>
@@ -366,7 +364,7 @@
           </div>
           <p id="export-overlay-configuration-status" aria-live="polite" data-i18n="config.chooseDestination">ELIGE EL ARCHIVO O LA CARPETA DE DESTINO</p>
         </div>
-      </section>
+      </details>
 
       <section class="overlay-list" data-view-section="overlays" aria-label="Overlays disponibles" data-i18n-aria-label="overlay.listAria">
       

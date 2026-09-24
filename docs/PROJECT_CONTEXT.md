@@ -15,6 +15,8 @@ on their runtime or source code.
 
 - Tauri control panel that selects independent overlay panels hosted together in
   one transparent WebView per monitor that has visible overlays.
+- General settings sections can be collapsed from their headings to compact the
+  control panel.
 - Signed delta bar with overall, session, stint and last-lap references,
   backed by persistent lap/stint records.
 - Timing panel with selectable lap-time rows, three-sector feedback
