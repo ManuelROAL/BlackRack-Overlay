@@ -50,12 +50,11 @@ select {
 }
 
 .control-mark {
-  padding: 7px 8px 6px;
-  border-radius: 5px;
-  color: #080a0d;
-  background: #d8ff3e;
-  font-size: 14px;
-  font-weight: 900;
+  display: block;
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  object-fit: cover;
 }
 
 .control-brand div {
