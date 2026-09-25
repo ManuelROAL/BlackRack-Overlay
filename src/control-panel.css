@@ -1713,6 +1713,36 @@ select {
   margin: 0 16px;
 }
 
+[data-settings-for="chat"] > .standings-name-format-setting {
+  max-width: 360px;
+  margin: 0 16px 14px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+[data-settings-for="chat"] .standings-name-format-setting > span {
+  grid-column: 1 / -1;
+}
+
+[data-settings-for="chat"] #chat-max-messages {
+  grid-column: 1;
+  grid-row: 2;
+  width: 100%;
+  height: 4px;
+  padding: 0;
+  border: 0;
+  accent-color: #d8ff3e;
+  cursor: pointer;
+}
+
+[data-settings-for="chat"] #chat-max-messages-value {
+  grid-column: 2;
+  grid-row: 2;
+  color: #b8c2cc;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
 [data-settings-for="liftcoast"] > .liftcoast-display-mode-field {
   max-width: 260px;
   margin: 0 16px 14px;

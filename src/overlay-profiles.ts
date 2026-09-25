@@ -1,5 +1,6 @@
 import type { CompositeLayout } from "./composite-layout";
 import type { ConditionsSettings } from "./conditions-settings";
+import { normalizeChatSettings, type ChatSettings } from "./chat-settings";
 import type { DashboardSettings } from "./dashboard-settings";
 import type { DeltaSettings } from "./delta-settings";
 import type { DrivingSettings } from "./driving-settings";
@@ -80,6 +81,8 @@ export interface OverlayProfileData {
   liftCoast?: LiftCoastSettings;
   /** Optional so older profiles retain the original visible changes block. */
   pitstop?: PitStopSettings;
+  /** Optional for profiles saved before the chat message limit was added. */
+  chat?: ChatSettings;
 }
 
 export interface OverlayProfile {
@@ -146,6 +149,7 @@ export const normalizeProfiles = (
       name: sanitizeProfileName(profile.name, `${fallbackName} ${profiles.length + 1}`),
       data: {
         ...data,
+        chat: normalizeChatSettings(data.chat),
         trackMap: normalizeTrackMapSettings(data.trackMap)
       } as unknown as OverlayProfileData
     });

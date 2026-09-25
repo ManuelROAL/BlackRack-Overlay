@@ -56,7 +56,8 @@ on their runtime or source code.
   temperature.
 - Optional Session Info line or column with a game/system clock, session type and
   time, weather, track limits, track, laps remaining and air/track temperatures.
-- Optional read-only in-game chat view with the latest eight messages.
+- Optional read-only in-game chat view with a configurable latest-message limit
+  from one to eight.
 - Startup diagnostics for failures on other computers.
 - Release changelog history available from the control panel.
 

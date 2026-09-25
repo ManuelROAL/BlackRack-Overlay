@@ -942,6 +942,18 @@
             <span></span>
           </label>
         </article>
+        <section class="standings-settings-section" data-settings-for="chat" hidden>
+          <header class="settings-section-heading">
+            <span data-i18n="settings.chat">CHAT EN JUEGO</span>
+            <strong data-i18n="settings.chatLimit">Límite de mensajes</strong>
+          </header>
+          <label class="standings-name-format-setting">
+            <span data-i18n="settings.chatMaxMessages">Mensajes visibles</span>
+            <input id="chat-max-messages" type="range" min="1" max="8" step="1" value="8"
+              aria-label="Máximo de mensajes visibles" data-i18n-aria-label="settings.chatMaxMessagesAria" />
+            <output id="chat-max-messages-value" for="chat-max-messages">8</output>
+          </label>
+        </section>
 
       </section>
 

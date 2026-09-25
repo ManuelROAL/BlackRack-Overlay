@@ -2,6 +2,7 @@ import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import "./i18n/overlay";
 import { invoke } from "@tauri-apps/api/core";
 import { installFrontendDiagnostics } from "./frontend-diagnostics";
+import type { ChatSettings } from "./chat-settings";
 import type { TelemetryFrame } from "./telemetry-types";
 
 export interface ChatMessage {
@@ -123,8 +124,17 @@ export const listenTelemetry = (
   return Promise.resolve(() => events.close());
 };
 
-export const listenChat = (handler: (update: ChatUpdate) => void): Promise<UnlistenFn> => {
-  if (isTauriRuntime()) return listenRuntimeEvent<ChatUpdate>("chat://update", handler);
+export const listenChat = (
+  handler: (update: ChatUpdate) => void,
+  settingsHandler?: (settings: ChatSettings) => void
+): Promise<UnlistenFn> => {
+  if (isTauriRuntime()) {
+    const listeners = [listenRuntimeEvent<ChatUpdate>("chat://update", handler)];
+    if (settingsHandler) {
+      listeners.push(listenRuntimeEvent<ChatSettings>("chat://settings", settingsHandler));
+    }
+    return Promise.all(listeners).then((unlisten) => () => unlisten.forEach((stop) => stop()));
+  }
 
   const events = new EventSource("/api/events?overlay=chat&chat_only=1");
   const onChat = (event: MessageEvent<string>): void => {
@@ -135,6 +145,16 @@ export const listenChat = (handler: (update: ChatUpdate) => void): Promise<Unlis
     }
   };
   events.addEventListener("chat", onChat as EventListener);
+  if (settingsHandler) {
+    const onSettings = (event: MessageEvent<string>): void => {
+      try {
+        settingsHandler(JSON.parse(event.data) as ChatSettings);
+      } catch (error) {
+        console.error("Ajustes de chat local no válidos:", error);
+      }
+    };
+    events.addEventListener("chat-settings", onSettings as EventListener);
+  }
   return Promise.resolve(() => events.close());
 };
 

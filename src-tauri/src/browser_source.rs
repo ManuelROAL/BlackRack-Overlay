@@ -108,6 +108,7 @@ struct BrowserSourceService {
     dropped_frames: AtomicU64,
     state: Mutex<ServiceState>,
     preferences: RwLock<serde_json::Value>,
+    chat_settings_pending: AtomicBool,
 }
 
 static SERVICE: OnceLock<BrowserSourceService> = OnceLock::new();
@@ -138,6 +139,7 @@ pub(crate) fn configure(app: &AppHandle) {
             error: None,
         }),
         preferences: RwLock::new(serde_json::json!({})),
+        chat_settings_pending: AtomicBool::new(false),
     });
 
     if enabled {
@@ -241,10 +243,20 @@ pub(crate) fn set_preferences(preferences: serde_json::Value) {
     let Some(service) = service() else {
         return;
     };
-    *service
-        .preferences
-        .write()
-        .unwrap_or_else(|poisoned| poisoned.into_inner()) = preferences;
+    let chat_settings_changed = {
+        let mut stored = service
+            .preferences
+            .write()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        let changed = stored.get("chat") != preferences.get("chat");
+        *stored = preferences;
+        changed
+    };
+    if chat_settings_changed {
+        // Preferences are coalesced out of band from droppable telemetry/chat
+        // snapshots, so a busy frame queue cannot lose the latest setting.
+        service.chat_settings_pending.store(true, Ordering::Release);
+    }
 }
 
 pub(crate) fn publish_frame(frame: &TelemetryFrame) {
@@ -460,6 +472,34 @@ fn server_loop(
             }
             broadcast = true;
         }
+        let chat_settings = service().and_then(|service| {
+            service
+                .chat_settings_pending
+                .swap(false, Ordering::AcqRel)
+                .then(|| {
+                    service
+                        .preferences
+                        .read()
+                        .unwrap_or_else(|poisoned| poisoned.into_inner())
+                        .get("chat")
+                        .cloned()
+                })
+                .flatten()
+        });
+        if let Some(settings) = chat_settings {
+            if let Ok(json) = serde_json::to_string(&settings) {
+                let message = format!("event: chat-settings\ndata: {json}\n\n");
+                let chat_bit = BROWSER_OVERLAYS
+                    .iter()
+                    .position(|(name, _)| *name == "chat")
+                    .map_or(0, |index| 1 << index);
+                subscribers.retain_mut(|subscriber| {
+                    subscriber.overlay_demand & chat_bit == 0
+                        || subscriber.stream.write_all(message.as_bytes()).is_ok()
+                });
+                broadcast = true;
+            }
+        }
         if broadcast {
             publish_subscriber_demand(&subscribers);
         }
@@ -631,7 +671,11 @@ fn serve_request(stream: &mut TcpStream, request_path: &str, app: &AppHandle) {
             })
             .unwrap_or_else(|| serde_json::json!({}));
         let json = serde_json::to_string(&settings).unwrap_or_else(|_| "{}".into());
-        let script = browser_source_settings_script(&json);
+        let script = format!(
+            "{base}(()=>{{const p={json};if(p.chat)localStorage.setItem('blackrack-overlay.chat-settings.v1',JSON.stringify(p.chat));}})();",
+            base = browser_source_settings_script(&json),
+            json = json
+        );
         write_response(
             stream,
             200,

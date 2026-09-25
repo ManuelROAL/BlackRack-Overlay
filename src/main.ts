@@ -5,6 +5,14 @@ import { open, save } from "@tauri-apps/plugin-dialog";
 import "./control-panel.css";
 import "./dashboard-settings.css";
 import { backendErrorMessage } from "./backend-errors";
+import {
+  CHAT_SETTINGS_EVENT,
+  CHAT_SETTINGS_KEY,
+  defaultChatSettings,
+  normalizeChatSettings,
+  readChatSettings,
+  type ChatSettings
+} from "./chat-settings";
 import { installFrontendDiagnostics } from "./frontend-diagnostics";
 import {
   applyDisplayUnits,
@@ -326,7 +334,7 @@ interface UpdateProgress {
 
 interface OverlayConfigurationExport {
   format: "blackrack-overlay-configuration";
-  schemaVersion: 25;
+  schemaVersion: 26;
   exportedAt: string;
   ui: { locale: Locale; displayUnits: DisplayUnits };
   profiles: OverlayProfile[];
@@ -358,6 +366,7 @@ interface OverlayConfigurationExport {
     sessionInfo: SessionInfoSettings;
     liftCoast: LiftCoastSettings;
     pitstop: PitStopSettings;
+    chat: ChatSettings;
     performanceProfile: PerformanceProfile;
     spectatorMode: boolean;
     teamMode: boolean;
@@ -526,7 +535,7 @@ if (localeSelect) {
   });
 }
 
-const CURRENT_CONFIGURATION_SCHEMA = 25;
+const CURRENT_CONFIGURATION_SCHEMA = 26;
 const CURRENT_CONFIGURATION_FORMAT = "blackrack-overlay-configuration";
 const LEGACY_CONFIGURATION_FORMAT = "lmu-overlay-configuration";
 const overlayIds: OverlayId[] = ["delta", "timing", "stinthistory", "driving", "liftcoast", "tires", "damage", "standings", "relative", "fuel", "pitstop", "flags", "rejoin", "trackmap", "forecast", "conditions", "dashboard", "sessioninfo", "chat"];
@@ -873,6 +882,7 @@ let tiresSettings: TiresSettings = readTiresSettings();
 let conditionsSettings: ConditionsSettings = readConditionsSettings();
 let dashboardSettings: DashboardSettings = readDashboardSettings();
 let sessionInfoSettings: SessionInfoSettings = readSessionInfoSettings();
+let chatSettings: ChatSettings = readChatSettings();
 let liftCoastSettings: LiftCoastSettings = readLiftCoastSettings();
 let pitStopSettings: PitStopSettings = readPitStopSettings();
 let displayUnits: DisplayUnits = readDisplayUnits();
@@ -939,6 +949,7 @@ const syncBrowserSourcePreferences = (): void => {
       sessionInfo: sessionInfoSettings,
       liftCoast: liftCoastSettings,
       pitstop: pitStopSettings,
+      chat: chatSettings,
       displayUnits,
       transparency: effectiveOverlayTransparency(overlayTransparency, overlayTransparencyScope),
       fontSize: effectiveOverlayFontSize(overlayFontSize, overlayFontSizeScope),
@@ -1750,6 +1761,14 @@ const applyOverlayConfigurationDefaults = (id: OverlayId, events: Promise<unknow
     sessionInfoSettings = defaultSessionInfoSettings();
     localStorage.setItem(SESSIONINFO_SETTINGS_KEY, JSON.stringify(sessionInfoSettings));
     events.push(emit("sessioninfo://settings", sessionInfoSettings));
+  } else if (id === "chat") {
+    chatSettings = defaultChatSettings();
+    localStorage.setItem(CHAT_SETTINGS_KEY, JSON.stringify(chatSettings));
+    events.push(emit(CHAT_SETTINGS_EVENT, chatSettings));
+    const input = document.getElementById("chat-max-messages") as HTMLInputElement | null;
+    const output = document.getElementById("chat-max-messages-value");
+    if (input) input.value = String(chatSettings.maxMessages);
+    if (output) output.textContent = String(chatSettings.maxMessages);
   } else if (id === "liftcoast") {
     liftCoastSettings = defaultLiftCoastSettings();
     localStorage.setItem(LIFTCOAST_SETTINGS_KEY, JSON.stringify(liftCoastSettings));
@@ -1853,7 +1872,8 @@ const captureProfileData = (previous?: OverlayProfileData): OverlayProfileData =
     dashboard: dashboardSettings,
     sessionInfo: sessionInfoSettings,
     liftCoast: liftCoastSettings,
-    pitstop: pitStopSettings
+    pitstop: pitStopSettings,
+    chat: chatSettings
   };
 };
 
@@ -1881,7 +1901,8 @@ const defaultProfileData = (layout: CompositeLayout): OverlayProfileData => ({
   dashboard: defaultDashboardSettings(),
   sessionInfo: defaultSessionInfoSettings(),
   liftCoast: defaultLiftCoastSettings(),
-  pitstop: defaultPitStopSettings()
+  pitstop: defaultPitStopSettings(),
+  chat: defaultChatSettings()
 });
 
 let activeMode: OverlayMode = modeFromFlags(spectatorMode, teamMode);
@@ -1999,6 +2020,7 @@ const applyProfileData = async (data: OverlayProfileData): Promise<void> => {
     sessionInfoSettings = normalizeSessionInfoSettings(data.sessionInfo) ?? defaultSessionInfoSettings();
     liftCoastSettings = normalizeLiftCoastSettings(data.liftCoast) ?? defaultLiftCoastSettings();
     pitStopSettings = normalizePitStopSettings(data.pitstop) ?? defaultPitStopSettings();
+    chatSettings = normalizeChatSettings(data.chat);
     overlayTransparencyScope = data.transparency.scope;
     overlayFontSizeScope = data.fontSize.scope;
     const monitorFallback = await resolveOverlayMonitor();
@@ -2027,6 +2049,7 @@ const applyProfileData = async (data: OverlayProfileData): Promise<void> => {
     localStorage.setItem(SESSIONINFO_SETTINGS_KEY, JSON.stringify(sessionInfoSettings));
     localStorage.setItem(LIFTCOAST_SETTINGS_KEY, JSON.stringify(liftCoastSettings));
     localStorage.setItem(PITSTOP_SETTINGS_KEY, JSON.stringify(pitStopSettings));
+    localStorage.setItem(CHAT_SETTINGS_KEY, JSON.stringify(chatSettings));
     localStorage.setItem(OVERLAY_TRANSPARENCY_KEY, JSON.stringify(overlayTransparency));
     localStorage.setItem(OVERLAY_TRANSPARENCY_SCOPE_KEY, JSON.stringify(overlayTransparencyScope));
     localStorage.setItem(OVERLAY_FONT_SIZE_KEY, JSON.stringify(overlayFontSize));
@@ -2048,7 +2071,8 @@ const applyProfileData = async (data: OverlayProfileData): Promise<void> => {
       emit("dashboard://settings", dashboardSettings),
       emit("sessioninfo://settings", sessionInfoSettings),
       emit("liftcoast://settings", liftCoastSettings),
-      emit("pitstop://settings", pitStopSettings)
+      emit("pitstop://settings", pitStopSettings),
+      emit(CHAT_SETTINGS_EVENT, chatSettings)
     ];
     for (const id of overlayIds) {
       events.push(emit("overlay://background-transparency", {
@@ -2875,6 +2899,7 @@ const parseOverlayConfiguration = (
   const sessionInfo = configurationObject(overlays?.sessionInfo);
   const liftCoast = configurationObject(overlays?.liftCoast);
   const pitstop = configurationObject(overlays?.pitstop);
+  const chat = configurationObject(overlays?.chat);
   const importedProfiles = root?.profiles;
   const importedBindings = root?.modeBindings;
   const importedSessionBindings = root?.sessionBindings;
@@ -2915,6 +2940,7 @@ const parseOverlayConfiguration = (
     || (numericSchemaVersion >= 16 && !conditions)
     || (numericSchemaVersion >= 18 && !dashboard)
     || (numericSchemaVersion >= 25 && !sessionInfo)
+    || (numericSchemaVersion >= 26 && !chat)
     || (numericSchemaVersion >= 20 && !liftCoast)
     || (numericSchemaVersion >= 23 && !pitstop)) {
     throw new Error(t("config.incompatible"));
@@ -3134,6 +3160,12 @@ const parseOverlayConfiguration = (
   if (!normalizedPitStop) {
     throw new Error(t("config.invalidPitStop"));
   }
+  const normalizedChat = normalizeChatSettings(chat ?? defaultChatSettings());
+  if ((overlays?.chat !== undefined && !chat)
+    || (chat && (typeof chat.maxMessages !== "number" || !Number.isInteger(chat.maxMessages)
+    || chat.maxMessages < 1 || chat.maxMessages > 8))) {
+    throw new Error(t("config.invalidChat"));
+  }
   const fallbackVisibility = defaultVisibility();
   for (const id of overlayIds) {
     if (visibility[id] === undefined) visibility[id] = fallbackVisibility[id];
@@ -3246,6 +3278,7 @@ const parseOverlayConfiguration = (
       sessionInfo: normalizedSessionInfo,
       liftCoast: normalizedLiftCoast,
       pitstop: normalizedPitStop,
+      chat: normalizedChat,
       performanceProfile: isPerformanceProfile(importedPerformanceProfile)
         ? importedPerformanceProfile
         : DEFAULT_PERFORMANCE_PROFILE,
@@ -3271,7 +3304,8 @@ const parseOverlayConfiguration = (
     dashboard: result.overlays.dashboard,
     sessionInfo: result.overlays.sessionInfo,
     liftCoast: result.overlays.liftCoast,
-    pitstop: result.overlays.pitstop
+    pitstop: result.overlays.pitstop,
+    chat: result.overlays.chat
   };
   // Documents written before schema 17 carry a single configuration; it becomes
   // the one profile every mode starts bound to.
@@ -3371,6 +3405,7 @@ const applyImportedConfiguration = (configuration: OverlayConfigurationExport): 
     [SESSIONINFO_SETTINGS_KEY, configuration.overlays.sessionInfo],
     [LIFTCOAST_SETTINGS_KEY, configuration.overlays.liftCoast],
     [PITSTOP_SETTINGS_KEY, configuration.overlays.pitstop],
+    [CHAT_SETTINGS_KEY, configuration.overlays.chat],
     [PERFORMANCE_PROFILE_KEY, configuration.overlays.performanceProfile],
     [SPECTATOR_MODE_KEY, configuration.overlays.spectatorMode && !configuration.overlays.teamMode],
     [TEAM_MODE_KEY, configuration.overlays.teamMode],
@@ -3442,6 +3477,7 @@ exportConfigurationButton?.addEventListener("click", () => {
         sessionInfo: sessionInfoSettings,
         liftCoast: liftCoastSettings,
         pitstop: pitStopSettings,
+        chat: chatSettings,
         performanceProfile,
         spectatorMode,
         teamMode
@@ -3767,6 +3803,21 @@ if (dashboardPitTarget) {
   });
 }
 const sessionInfoOptions = document.getElementById("sessioninfo-options");
+const chatMaxMessages = document.getElementById("chat-max-messages") as HTMLInputElement | null;
+const chatMaxMessagesValue = document.getElementById("chat-max-messages-value");
+if (chatMaxMessages) {
+  chatMaxMessages.value = String(chatSettings.maxMessages);
+  if (chatMaxMessagesValue) chatMaxMessagesValue.textContent = String(chatSettings.maxMessages);
+  chatMaxMessages.addEventListener("input", () => {
+    chatSettings = normalizeChatSettings({ maxMessages: Number(chatMaxMessages.value) });
+    chatMaxMessages.value = String(chatSettings.maxMessages);
+    if (chatMaxMessagesValue) chatMaxMessagesValue.textContent = String(chatSettings.maxMessages);
+    localStorage.setItem(CHAT_SETTINGS_KEY, JSON.stringify(chatSettings));
+    void emit(CHAT_SETTINGS_EVENT, chatSettings);
+    syncBrowserSourcePreferences();
+    onLiveSettingsChanged();
+  });
+}
 const sessionInfoLayout = document.getElementById("sessioninfo-layout") as HTMLSelectElement | null;
 if (sessionInfoLayout) {
   sessionInfoLayout.value = sessionInfoSettings.layout;

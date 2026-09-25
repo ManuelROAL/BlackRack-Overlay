@@ -4,6 +4,7 @@ import { fitOverlayToContentBox } from "./overlay-fit";
 import { bindOverlayInteractionMode } from "./overlay-interaction";
 import { createOverlayPerformanceTracker } from "./overlay-performance";
 import { bindOverlayTransparency } from "./overlay-appearance";
+import { normalizeChatSettings, readChatSettings } from "./chat-settings";
 import { listenChat } from "./runtime-events";
 
 interface ChatMessage {
@@ -26,7 +27,6 @@ interface RenderedMessage {
   textValue: string;
 }
 
-const MAX_MESSAGES = 8;
 const MAX_REMEMBERED_MESSAGES = 64;
 const CHAT_IDLE_TIMEOUT_MS = 20_000;
 const panel = document.getElementById("chat-panel")!;
@@ -35,9 +35,13 @@ const list = document.getElementById("chat-messages")!;
 const renderPerformance = createOverlayPerformanceTracker("chat");
 const rendered = new Map<string, RenderedMessage>();
 const knownMessages = new Map<string, { name: string; text: string }>();
+let chatSettings = readChatSettings();
+let latestSnapshot: ChatSnapshot = { replace: true, messages: [] };
 let inactivityTimer = 0;
 
-fitOverlayToContentBox(panel);
+if (document.documentElement.dataset.browserSource !== "true") {
+  fitOverlayToContentBox(panel);
+}
 bindOverlayTransparency("chat");
 bindOverlayInteractionMode();
 
@@ -88,13 +92,12 @@ const showForRecentMessage = (): void => {
 
 const render = (snapshot: ChatSnapshot): void => {
   if (!snapshot?.replace || !Array.isArray(snapshot.messages)) return;
-  const messages = snapshot.messages
+  const validMessages = snapshot.messages
     .filter((message): message is ChatMessage =>
       typeof message?.id === "string" && message.id.length > 0 && message.id.length <= 128
-      && typeof message.name === "string" && typeof message.text === "string")
-    .slice(-MAX_MESSAGES);
+      && typeof message.name === "string" && typeof message.text === "string");
   let hasNewMessage = false;
-  for (const message of messages) {
+  for (const message of validMessages) {
     const known = knownMessages.get(message.id);
     if (!known || known.name !== message.name || known.text !== message.text) {
       hasNewMessage = true;
@@ -106,6 +109,7 @@ const render = (snapshot: ChatSnapshot): void => {
     if (oldestId === undefined) break;
     knownMessages.delete(oldestId);
   }
+  const messages = validMessages.slice(-chatSettings.maxMessages);
   const nextIds = messages.map(({ id }) => id);
 
   for (const [id, entry] of rendered) {
@@ -137,9 +141,18 @@ const render = (snapshot: ChatSnapshot): void => {
   if (hasNewMessage) showForRecentMessage();
 };
 
-void listenChat((snapshot: ChatSnapshot) =>
-  renderPerformance.measure(() => render(snapshot), snapshot.messages?.length ?? 0)
-);
+void listenChat((snapshot: ChatSnapshot) => {
+  latestSnapshot = snapshot;
+  renderPerformance.measure(() => render(snapshot), snapshot.messages?.length ?? 0);
+}, (payload) => {
+  const next = normalizeChatSettings(payload);
+  if (next.maxMessages === chatSettings.maxMessages) return;
+  chatSettings = next;
+  renderPerformance.measure(
+    () => render(latestSnapshot),
+    latestSnapshot.messages.length
+  );
+});
 
 if (import.meta.env.DEV) {
   const params = new URLSearchParams(window.location.search);

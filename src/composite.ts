@@ -620,6 +620,7 @@ for (const event of [
   "sessioninfo://settings",
   "liftcoast://settings",
   "pitstop://settings",
+  "chat://settings",
   "overlay://background-transparency",
   "overlay://font-size",
   "display-units://change",
@@ -671,10 +672,16 @@ window.addEventListener("message", (event: MessageEvent<RuntimeMessage>) => {
       : overlay === "timing"
         ? current.width / nextSize.width
         : Math.min(current.width / nextSize.width, current.height / nextSize.height));
+    const nextHeight = nextSize.height * scale;
     const fitted = fitPlacementToMonitor({
       ...current,
       width: nextSize.width * scale,
-      height: nextSize.height * scale,
+      height: nextHeight,
+      // Chat stays anchored at the bottom of its saved box, even when the
+      // first measurement after a host restart changes its intrinsic height.
+      ...(overlay === "chat"
+        ? { y: current.y + current.height - nextHeight }
+        : {}),
       scale
     });
     const changed = Math.abs(fitted.width - current.width) > 0.5
