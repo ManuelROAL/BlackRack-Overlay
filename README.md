@@ -7,9 +7,9 @@ Overlays de telemetría configurables para **Le Mans Ultimate** en Windows.
 [Apoyar el proyecto](https://ko-fi.com/blackrack)
 
 BlackRack Overlay muestra información de conducción, tiempos, clasificación,
-neumáticos, daños, combustible, energía, boxes, banderas, mapa y condiciones de
-pista sobre el simulador. Es gratuito y no necesita SimHub, Node.js, Rust ni
-Tauri para funcionar.
+Session Info, Chat, neumáticos, daños, combustible, energía, boxes, banderas,
+mapa y condiciones de pista sobre el simulador. Es gratuito y no necesita
+SimHub, Node.js, Rust ni Tauri para funcionar.
 
 ## Requisitos
 
@@ -50,6 +50,7 @@ de navegador en OBS.
 
 - `Ctrl+Shift+O`: alternar entre modo Juego y Edición.
 - `Ctrl+Shift+M`: mostrar el panel de control.
+- `Ctrl+Shift+H`: mostrar u ocultar todos los overlays.
 
 Puedes cambiar los atajos en **General > Aplicación**.
 
@@ -61,21 +62,22 @@ descarga, usa el archivo `SHA256SUMS.txt` incluido en la release.
 
 ## Soporte
 
-Desde **Integraciones > Soporte** puedes copiar un resumen de diagnóstico. Incluye
+Desde **Registro de telemetría > Diagnóstico** puedes copiar un resumen de diagnóstico. Incluye
 ese resumen, los pasos para reproducir el problema y una captura si es necesario.
 No contiene tickets, tokens ni credenciales.
 
 ## English
 
 BlackRack Overlay is a free, configurable telemetry overlay for **Le Mans
-Ultimate** on 64-bit Windows. It provides driving, timing, standings, tyre,
-damage, fuel, energy, pit, flag, track-map and weather information over the
-simulator.
+Ultimate** on 64-bit Windows. It provides driving, timing, standings, Session
+Info, Chat, tyre, damage, fuel, energy, pit, flag, track-map and weather
+information over the simulator.
 
 Download the [latest release](https://github.com/ManuelROAL/BlackRack-Overlay/releases/latest),
 run the installer, select the language and monitor in **General**, then enable
 the overlays you need. No SimHub, Node.js, Rust or Tauri installation is
-required.
+required. Version 0.9.0 adds configurable units, a global visibility shortcut
+(`Ctrl+Shift+H`) and rollback requests for earlier releases.
 
 The control panel checks for updates automatically and on demand. Downloads are
 verified with SHA-256 before installation. The installer is not digitally signed,

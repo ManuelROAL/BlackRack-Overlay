@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "version": "0.9.0",
+  "packageUrl": "https://github.com/ManuelROAL/BlackRack-Overlay/releases/download/v0.9.0/BlackRack.Overlay_0.9.0_x64-setup.exe",
+  "sha256": "349894150bd0f8e4e36c91db9efd82534a32a8d516abe4e82e52a268888b36dd",
+  "fileName": "BlackRack.Overlay_0.9.0_x64-setup.exe",
+  "releasePageUrl": "https://github.com/ManuelROAL/BlackRack-Overlay/releases/tag/v0.9.0",
+  "updateTitle": "BlackRack Overlay 0.9.0",
+  "fullTitle": "BlackRack Overlay 0.9.0",
+  "changelog": [
+    "Añadidos los overlays Session Info y Chat.",
+    "Nuevas unidades configurables, atajos globales, secciones plegables y personalización del Track Map.",
+    "El delta de Standings puede usar la mejor vuelta como referencia.",
+    "Mejoradas las actualizaciones, la limpieza de telemetría y los diagnósticos de estabilidad; Novedades permite solicitar versiones anteriores.",
+    "Añadidos un enlace opcional de apoyo por PayPal y una sugerencia de OpenKneeboard para VR."
+  ],
+  "localized": {
+    "es": {
+      "updateTitle": "BlackRack Overlay 0.9.0",
+      "fullTitle": "BlackRack Overlay 0.9.0",
+      "changelog": [
+        "Añadidos los overlays Session Info y Chat.",
+        "Nuevas unidades configurables, atajos globales, secciones plegables y personalización del Track Map.",
+        "El delta de Standings puede usar la mejor vuelta como referencia.",
+        "Mejoradas las actualizaciones, la limpieza de telemetría y los diagnósticos de estabilidad; Novedades permite solicitar versiones anteriores.",
+        "Añadidos un enlace opcional de apoyo por PayPal y una sugerencia de OpenKneeboard para VR."
+      ]
+    },
+    "en": {
+      "updateTitle": "BlackRack Overlay 0.9.0",
+      "fullTitle": "BlackRack Overlay 0.9.0",
+      "changelog": [
+        "Added the Session Info and Chat overlays.",
+        "Added configurable units, global shortcuts, collapsible sections and Track Map customization.",
+        "Standings delta can use the best lap as its reference.",
+        "Improved updates, telemetry cleanup and stability diagnostics; Novedades can request earlier releases.",
+        "Added an optional PayPal support link and an OpenKneeboard hint for VR."
+      ]
+    }
+  }
+}
