@@ -24,6 +24,7 @@ UI behavior, telemetry semantics, cadence and special invariants.
 | Current conditions | [conditions.md](conditions.md) | `conditions.html` | `/conditions` | 20/12.5/~8 Hz by profile |
 | Dashboard | [dashboard.md](dashboard.md) | `dashboard.html` | `/dashboard` | 50 Hz |
 | Session Info | [sessioninfo.md](sessioninfo.md) | `sessioninfo.html` | `/sessioninfo` | secondary cadence (25/12.5/~8 Hz) |
+| In-game chat | [chat.md](chat.md) | `chat.html` | `/chat` | 0.5 Hz while requested |
 
 `src/overlay-appearance.ts`'s `OverlayId` is the roster every other surface has to
 match. `npm run check:overlays` reads each of them back and reports drift: this

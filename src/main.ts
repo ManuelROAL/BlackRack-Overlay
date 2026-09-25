@@ -529,7 +529,7 @@ if (localeSelect) {
 const CURRENT_CONFIGURATION_SCHEMA = 25;
 const CURRENT_CONFIGURATION_FORMAT = "blackrack-overlay-configuration";
 const LEGACY_CONFIGURATION_FORMAT = "lmu-overlay-configuration";
-const overlayIds: OverlayId[] = ["delta", "timing", "stinthistory", "driving", "liftcoast", "tires", "damage", "standings", "relative", "fuel", "pitstop", "flags", "rejoin", "trackmap", "forecast", "conditions", "dashboard", "sessioninfo"];
+const overlayIds: OverlayId[] = ["delta", "timing", "stinthistory", "driving", "liftcoast", "tires", "damage", "standings", "relative", "fuel", "pitstop", "flags", "rejoin", "trackmap", "forecast", "conditions", "dashboard", "sessioninfo", "chat"];
 const storageKey = "blackrack-overlay.visible-windows.v1";
 
 const defaultVisibility = (): Record<OverlayId, boolean> => Object.fromEntries(
@@ -1802,6 +1802,31 @@ const layoutIsComplete = (layout: unknown): layout is CompositeLayout =>
   layout !== null && typeof layout === "object"
     && overlayIds.every((id) => (layout as Record<string, unknown>)[id] !== undefined);
 
+const completeProfileLayout = async (value: unknown): Promise<CompositeLayout> => {
+  const fallback = await ensureCompositeLayout();
+  const source = value !== null && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {};
+  return Object.fromEntries(overlayIds.map((id) => {
+    const placement = source[id];
+    if (!placement || typeof placement !== "object" || Array.isArray(placement)) {
+      return [id, fallback[id]];
+    }
+    const candidate = placement as Record<string, unknown>;
+    const valid = candidate.overlay === id
+      && [candidate.x, candidate.y, candidate.width, candidate.height]
+        .every((number) => typeof number === "number" && Number.isFinite(number))
+      && Number(candidate.width) > 0 && Number(candidate.height) > 0
+      && (candidate.monitor === undefined
+        || (typeof candidate.monitor === "number"
+          && Number.isInteger(candidate.monitor) && candidate.monitor >= 0))
+      && (candidate.scale === undefined
+        || (typeof candidate.scale === "number"
+          && Number.isFinite(candidate.scale) && candidate.scale > 0));
+    return [id, valid ? candidate : fallback[id]];
+  })) as unknown as CompositeLayout;
+};
+
 const captureProfileData = (previous?: OverlayProfileData): OverlayProfileData => {
   const layout = readCompositeLayout();
   return {
@@ -1938,6 +1963,7 @@ void ensureCompositeLayout()
 const applyProfileData = async (data: OverlayProfileData): Promise<void> => {
   applyingProfile = true;
   try {
+    const profileLayout = await completeProfileLayout(data.layout);
     const defaultStandings = defaultStandingsSettings();
     const defaultRelative = defaultRelativeSettings();
     standingsSettings = {
@@ -2005,9 +2031,7 @@ const applyProfileData = async (data: OverlayProfileData): Promise<void> => {
     localStorage.setItem(OVERLAY_TRANSPARENCY_SCOPE_KEY, JSON.stringify(overlayTransparencyScope));
     localStorage.setItem(OVERLAY_FONT_SIZE_KEY, JSON.stringify(overlayFontSize));
     localStorage.setItem(OVERLAY_FONT_SIZE_SCOPE_KEY, JSON.stringify(overlayFontSizeScope));
-    if (layoutIsComplete(data.layout)) {
-      localStorage.setItem(COMPOSITE_LAYOUT_KEY, JSON.stringify(data.layout));
-    }
+    localStorage.setItem(COMPOSITE_LAYOUT_KEY, JSON.stringify(profileLayout));
 
     const effectiveTransparency = effectiveOverlayTransparency(overlayTransparency, overlayTransparencyScope);
     const effectiveFontSize = effectiveOverlayFontSize(overlayFontSize, overlayFontSizeScope);
@@ -3307,7 +3331,7 @@ const normalizeImportedMonitor = async (
         mode: profile.data.monitorScope?.mode === "global" ? "global" : "individual",
         globalMonitor: monitor
       }),
-      layout: normalizeLayout(profile.data.layout)
+      layout: normalizeLayout({ ...configuration.overlays.layout, ...profile.data.layout })
     }
   }));
   return {

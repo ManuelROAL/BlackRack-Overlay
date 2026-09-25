@@ -56,6 +56,8 @@ Tauri events    analysis JSONL/strategy CSV    browser-source SSE
     Standings/Relative share one batch when due, Track Map uses its stripped batch,
     and the remaining active overlays share the base-frame batch.
   - Owns JSONL analysis logging and top-level performance samples.
+  - Emits bounded chat snapshots on `chat://update` only when the REST worker
+    has a new snapshot; chat text stays out of telemetry frames and analysis logs.
 - `src-tauri/src/telemetry/strategy_log.rs`
   - Aggregates the existing player frame in memory and writes one user-facing CSV
     row per complete lap for external stint and strategy analysis.
@@ -79,6 +81,8 @@ Tauri events    analysis JSONL/strategy CSV    browser-source SSE
   `vehicle.rs`, `weather.rs`, `tests.rs`).
 - `sim/lmu/rest.rs`
   - Polls local REST on background threads and exposes only fresh cached values.
+  - Polls `/rest/chat/` on a separate, demand-gated 0.5 Hz worker while the native
+    Chat panel or its OBS route is active. Snapshots are capped at eight messages.
 - `sim/lmu/driver_ranks.rs`, `sim/lmu/event_split.rs`, `sim/lmu/racecontrol.rs`
   - Authenticate and enrich online sessions without blocking the hot loop.
 - `sim/lmu/trackmap.rs`, `sim/lmu/install.rs`
@@ -103,6 +107,8 @@ Tauri events    analysis JSONL/strategy CSV    browser-source SSE
     interval, and keeps a tighter accept poll only while it is serving requests.
   - Frames published while that thread is behind are dropped on purpose; the
     count is reported in the browser source status and in the startup log.
+  - Chat uses a separate named SSE event on the same demand-filtered `/api/events`
+    connection and is serialized only for a browser client requesting `/chat`.
 
 ## Frontend ownership
 
@@ -126,7 +132,8 @@ Tauri events    analysis JSONL/strategy CSV    browser-source SSE
 - `src/composite-layout.ts`: persisted position, size and monitor assignment.
 - `src/telemetry-types.ts`: TypeScript mirror of serialized Rust types.
 - `src/runtime-events.ts`: Tauri, composite-frame messaging or browser-source SSE
-  abstraction.
+  abstraction. The Chat route uses a separate named SSE event and never opens a
+  telemetry frame subscription.
 - `src/frontend-diagnostics.ts`: persists uncaught errors, unhandled promise
   rejections and explicit `console.error` calls in the per-session diagnostic log,
   while retaining the original browser-console output and bounding duplicate

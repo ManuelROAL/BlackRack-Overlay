@@ -7,6 +7,10 @@ impl TelemetrySource for LmuTelemetrySource {
         super::super::DESCRIPTOR
     }
 
+    fn take_chat_updates(&mut self) -> Vec<crate::telemetry::ChatUpdate> {
+        self.local_rest.take_chat_updates()
+    }
+
     fn next_frame(&mut self, demand: TelemetryDemand) -> TelemetryFrame {
         let TelemetryDemand {
             include_standings,
@@ -18,6 +22,7 @@ impl TelemetrySource for LmuTelemetrySource {
             include_rest_standings,
             include_rest_supplement,
             include_rest_weather,
+            include_chat,
         } = demand;
         const TRANSIENT_SNAPSHOT_HOLD: Duration = Duration::from_secs(2);
         const STANDINGS_STATE_INTERVAL: Duration = Duration::from_millis(200);
@@ -53,6 +58,7 @@ impl TelemetrySource for LmuTelemetrySource {
             include_rest_standings,
             include_rest_supplement,
             include_rest_weather,
+            include_chat,
             Self::weather_session_key(snapshot.session_type),
         );
         let rest_us = rest_started.elapsed().as_micros();

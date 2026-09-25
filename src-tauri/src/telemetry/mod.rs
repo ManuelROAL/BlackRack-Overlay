@@ -919,6 +919,19 @@ pub struct WeatherForecastModel {
     nodes: Vec<WeatherForecastNode>,
 }
 
+#[derive(Clone, Serialize)]
+pub(crate) struct ChatMessage {
+    pub(crate) id: String,
+    pub(crate) name: String,
+    pub(crate) text: String,
+}
+
+#[derive(Clone, Serialize)]
+pub(crate) struct ChatUpdate {
+    pub(crate) replace: bool,
+    pub(crate) messages: Vec<ChatMessage>,
+}
+
 #[derive(Clone, Copy, Default)]
 struct TelemetryDemand {
     include_standings: bool,
@@ -930,6 +943,7 @@ struct TelemetryDemand {
     include_rest_standings: bool,
     include_rest_supplement: bool,
     include_rest_weather: bool,
+    include_chat: bool,
 }
 
 impl TelemetryFrame {
@@ -1234,6 +1248,8 @@ pub fn spawn_source(app: AppHandle) {
             let rest_weather_requested = overlay_requested("forecast")
                 || overlay_requested("conditions")
                 || overlay_requested("sessioninfo");
+            let chat_requested = super::overlay_is_active(&app, "chat")
+                || crate::browser_source::overlay_has_clients("chat");
             let mut frame = source.next_frame(TelemetryDemand {
                 include_standings: standings_requested,
                 include_track_map: track_map_requested,
@@ -1244,7 +1260,12 @@ pub fn spawn_source(app: AppHandle) {
                 include_rest_standings: rest_standings_requested,
                 include_rest_supplement: rest_supplement_requested,
                 include_rest_weather: rest_weather_requested,
+                include_chat: chat_requested,
             });
+            for update in source.take_chat_updates() {
+                let _ = crate::emit_chat_update(&app, &update);
+                crate::browser_source::publish_chat_update(&update);
+            }
             frame.spectator_mode = observer_mode();
             frame.performance_profile = tuning.profile.name();
             // The Dashboard draws the delta and the lap times, and both view

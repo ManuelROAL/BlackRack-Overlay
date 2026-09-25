@@ -22,7 +22,7 @@ use tauri::{
 };
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 
-const OVERLAY_LABELS: [&str; 18] = [
+const OVERLAY_LABELS: [&str; 19] = [
     "delta",
     "timing",
     "stinthistory",
@@ -41,6 +41,7 @@ const OVERLAY_LABELS: [&str; 18] = [
     "conditions",
     "dashboard",
     "sessioninfo",
+    "chat",
 ];
 
 const TRANSPARENT_BACKGROUND: Color = Color(0, 0, 0, 0);
@@ -1251,6 +1252,13 @@ pub(crate) fn emit_overlay_frames<T: Serialize>(
         .is_ok()
 }
 
+pub(crate) fn emit_chat_update(
+    app: &AppHandle,
+    update: &telemetry::ChatUpdate,
+) -> tauri::Result<()> {
+    app.emit("chat://update", update)
+}
+
 fn is_overlay_host_target(target: &EventTarget) -> bool {
     match target {
         EventTarget::Window { label }
@@ -1394,6 +1402,7 @@ fn default_overlay_geometry(label: &str) -> (f64, f64, f64, f64) {
         "conditions" => (1020.0, 410.0, 390.0, 90.0),
         "dashboard" => (620.0, 640.0, 362.0, 54.0),
         "sessioninfo" => (620.0, 700.0, 520.0, 54.0),
+        "chat" => (1240.0, 70.0, 404.0, 184.0),
         _ => (20.0, 20.0, 360.0, 180.0),
     }
 }

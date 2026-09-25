@@ -56,6 +56,7 @@ on their runtime or source code.
   temperature.
 - Optional Session Info line or column with a game/system clock, session type and
   time, weather, track limits, track, laps remaining and air/track temperatures.
+- Optional read-only in-game chat view with the latest eight messages.
 - Startup diagnostics for failures on other computers.
 - Release changelog history available from the control panel.
 
@@ -65,6 +66,8 @@ on their runtime or source code.
    primary real-time source and must remain authoritative for critical telemetry.
 2. LMU local REST service at `127.0.0.1:6397`, used for fields that are more
    reliable or only exposed there (standings supplement, weather and strategy).
+   Its `/rest/chat/` endpoint also feeds the chat overlay only while that overlay
+   or its OBS browser source has an active consumer.
 3. RaceControl/RaceOS client endpoints, authenticated with LMU's local session
    ticket, for DR/SR profiles and the online-event split.
 4. Mock telemetry when no simulator is available.
@@ -113,6 +116,8 @@ their native panel or matching OBS route active. Relative and detailed damage ru
 at 20 Hz, while standings history/identity state is maintained at 10 Hz.
 Local REST standings, supplement and weather workers also stop independently when
 their overlay/observer/logging consumers are absent.
+The in-game chat REST worker is separately demand-gated, polls at 0.5 Hz while
+requested, and emits a bounded chat event outside the 50 Hz telemetry frame.
 
 The backend optimizations are compiled and covered by the Rust regression suite,
 but still need a new real-race/replay performance capture to quantify the

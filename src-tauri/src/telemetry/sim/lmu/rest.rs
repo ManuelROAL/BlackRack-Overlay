@@ -4,6 +4,7 @@ use reqwest::blocking::Client;
 #[cfg(not(test))]
 use serde::de::DeserializeOwned;
 use serde::Deserialize;
+use serde_json::Value;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering};
 #[cfg(not(test))]
@@ -17,6 +18,7 @@ use std::time::{Duration, Instant};
 const STANDINGS_DEMAND: u8 = 1 << 0;
 const SUPPLEMENT_DEMAND: u8 = 1 << 1;
 const WEATHER_DEMAND: u8 = 1 << 2;
+const CHAT_DEMAND: u8 = 1 << 3;
 
 /// `connected` only says the game is running with its plugin loaded, which is
 /// already true at the main menu. The supplement worker additionally needs the
@@ -29,11 +31,13 @@ fn rest_demand(
     standings_requested: bool,
     supplement_requested: bool,
     weather_requested: bool,
+    chat_requested: bool,
 ) -> u8 {
     if connected {
         (u8::from(standings_requested) * STANDINGS_DEMAND)
             | (u8::from(supplement_requested && player_has_vehicle) * SUPPLEMENT_DEMAND)
             | (u8::from(weather_requested) * WEATHER_DEMAND)
+            | (u8::from(chat_requested) * CHAT_DEMAND)
     } else {
         0
     }
@@ -55,6 +59,8 @@ const WEATHER_MAX_AGE: Duration = Duration::from_secs(5);
 const GARAGE_INTERVAL: Duration = Duration::from_secs(5);
 #[cfg(not(test))]
 const WEATHER_INTERVAL: Duration = Duration::from_secs(1);
+#[cfg(not(test))]
+const CHAT_INTERVAL: Duration = Duration::from_secs(2);
 #[cfg(not(test))]
 const REQUEST_TIMEOUT: Duration = Duration::from_millis(400);
 /// The compounds a car carries and their optimal temperatures do not change
@@ -382,11 +388,77 @@ struct WeatherUpdate {
     weather: RestWeatherSession,
 }
 
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
+enum ChatTimestampOrder {
+    Number(i64),
+    Text(String),
+    Missing(usize),
+}
+
+fn parse_chat_messages(value: &Value) -> Option<Vec<crate::telemetry::ChatMessage>> {
+    let entries = value
+        .as_array()
+        .or_else(|| value.get("Messages").and_then(Value::as_array))?;
+    let mut messages = Vec::new();
+    for (index, entry) in entries.iter().enumerate() {
+        let Some(raw) = entry.get("Message").and_then(Value::as_str) else {
+            continue;
+        };
+        let Some((name, text)) = raw.split_once(':') else {
+            continue;
+        };
+        let (name, text) = (name.trim(), text.trim());
+        if name.is_empty() || text.is_empty() {
+            continue;
+        }
+        let timestamp_value = entry.get("Timestamp");
+        let timestamp_text = timestamp_value.and_then(Value::as_str);
+        let timestamp_number = timestamp_value
+            .and_then(Value::as_i64)
+            .or_else(|| timestamp_text.and_then(|text| text.parse::<i64>().ok()));
+        let timestamp_order = timestamp_number
+            .map(ChatTimestampOrder::Number)
+            .or_else(|| timestamp_text.map(|text| ChatTimestampOrder::Text(text.to_owned())))
+            .unwrap_or(ChatTimestampOrder::Missing(index));
+        let id = timestamp_value
+            .and_then(|value| {
+                value
+                    .as_i64()
+                    .map(|number| number.to_string())
+                    .or_else(|| value.as_str().map(ToOwned::to_owned))
+            })
+            .unwrap_or_else(|| index.to_string());
+        messages.push((
+            timestamp_order,
+            index,
+            crate::telemetry::ChatMessage {
+                id,
+                name: name.to_owned(),
+                text: text.to_owned(),
+            },
+        ));
+    }
+    messages.sort_by(|(left, left_index, _), (right, right_index, _)| {
+        left.cmp(right).then_with(|| left_index.cmp(right_index))
+    });
+    let mut messages = messages
+        .into_iter()
+        .map(|(_, _, message)| message)
+        .collect::<Vec<_>>();
+    if messages.len() > 8 {
+        messages.drain(..messages.len() - 8);
+    }
+    Some(messages)
+}
+
 #[derive(Default)]
 pub(super) struct LocalRestResolver {
     standings_receiver: Option<Receiver<StandingsUpdate>>,
     supplement_receiver: Option<Receiver<SupplementUpdate>>,
     weather_receiver: Option<Receiver<WeatherUpdate>>,
+    chat_receiver: Option<Receiver<crate::telemetry::ChatUpdate>>,
+    chat_updates: Vec<crate::telemetry::ChatUpdate>,
+    chat_snapshot_nonempty: bool,
     weather_session: Arc<Mutex<String>>,
     standings_by_slot: HashMap<i32, RestStanding>,
     standings_by_name: HashMap<String, RestStanding>,
@@ -431,7 +503,7 @@ impl LocalRestResolver {
         let demand = Arc::new(AtomicU8::new(0));
         let session_generation = Arc::new(AtomicU64::new(0));
         let stop = Arc::new(AtomicBool::new(false));
-        let mut workers = Vec::with_capacity(3);
+        let mut workers = Vec::with_capacity(4);
         let (standings_sender, standings_receiver) = mpsc::channel();
         let standings_demand = Arc::clone(&demand);
         let standings_generation = Arc::clone(&session_generation);
@@ -475,6 +547,44 @@ impl LocalRestResolver {
                     }
                 }
                 sleep_remaining(started, STANDINGS_INTERVAL);
+            }
+        }));
+
+        let (chat_sender, chat_receiver) = mpsc::sync_channel(1);
+        let chat_demand = Arc::clone(&demand);
+        let chat_stop = Arc::clone(&stop);
+        workers.push(thread::spawn(move || {
+            let Some(client) = http_client() else {
+                return;
+            };
+            loop {
+                if chat_stop.load(Ordering::Relaxed) {
+                    break;
+                }
+                if chat_demand.load(Ordering::Relaxed) & CHAT_DEMAND == 0 {
+                    thread::sleep(Duration::from_secs(1));
+                    continue;
+                }
+                let started = Instant::now();
+                if let Ok(response) = client.get(format!("{LOCAL_API}/rest/chat/")).send() {
+                    if let Ok(value) = response.json::<Value>() {
+                        if let Some(messages) = parse_chat_messages(&value) {
+                            if chat_demand.load(Ordering::Relaxed) & CHAT_DEMAND == 0 {
+                                sleep_remaining(started, CHAT_INTERVAL);
+                                continue;
+                            }
+                            let update = crate::telemetry::ChatUpdate {
+                                replace: true,
+                                messages,
+                            };
+                            match chat_sender.try_send(update) {
+                                Ok(()) | Err(mpsc::TrySendError::Full(_)) => {}
+                                Err(mpsc::TrySendError::Disconnected(_)) => break,
+                            }
+                        }
+                    }
+                }
+                sleep_remaining(started, CHAT_INTERVAL);
             }
         }));
 
@@ -621,6 +731,7 @@ impl LocalRestResolver {
         resolver.standings_receiver = Some(standings_receiver);
         resolver.supplement_receiver = Some(supplement_receiver);
         resolver.weather_receiver = Some(weather_receiver);
+        resolver.chat_receiver = Some(chat_receiver);
         resolver.weather_session = weather_session;
         resolver.demand = demand;
         resolver.session_generation = session_generation;
@@ -641,6 +752,7 @@ impl LocalRestResolver {
         standings_requested: bool,
         supplement_requested: bool,
         weather_requested: bool,
+        chat_requested: bool,
         weather_session: &str,
     ) {
         let demand = rest_demand(
@@ -649,8 +761,16 @@ impl LocalRestResolver {
             standings_requested,
             supplement_requested,
             weather_requested,
+            chat_requested,
         );
         self.demand.store(demand, Ordering::Relaxed);
+        if let Some(receiver) = self.chat_receiver.as_ref() {
+            for update in receiver.try_iter() {
+                self.chat_snapshot_nonempty = !update.messages.is_empty();
+                self.chat_updates.clear();
+                self.chat_updates.push(update);
+            }
+        }
         {
             let mut slot = self
                 .weather_session
@@ -749,6 +869,10 @@ impl LocalRestResolver {
         }
     }
 
+    pub(super) fn take_chat_updates(&mut self) -> Vec<crate::telemetry::ChatUpdate> {
+        std::mem::take(&mut self.chat_updates)
+    }
+
     #[cfg(test)]
     pub(super) fn seed_standings(&mut self, standings: Vec<RestStanding>) {
         self.standings_by_slot.clear();
@@ -806,6 +930,20 @@ impl LocalRestResolver {
     }
 
     pub(super) fn reset_session_history(&mut self) {
+        if self.chat_snapshot_nonempty {
+            self.chat_updates.clear();
+            self.chat_updates.push(crate::telemetry::ChatUpdate {
+                replace: true,
+                messages: Vec::new(),
+            });
+        } else if !self
+            .chat_updates
+            .iter()
+            .any(|update| update.messages.is_empty())
+        {
+            self.chat_updates.clear();
+        }
+        self.chat_snapshot_nonempty = false;
         self.session_generation.fetch_add(1, Ordering::AcqRel);
         self.standings_by_slot.clear();
         self.standings_by_name.clear();
@@ -1171,7 +1309,7 @@ mod tests {
         pit_refill_targets, rest_demand, steering_range, team_info_for_player, LocalRestResolver,
         RestGarageData, RestPitStopEstimate, RestRepairAndRefuel, RestSessionInfo, RestStanding,
         RestStandingHistory, RestTeamInfo, RestTireManagement, RestVehicleDamage,
-        RestWeatherSession, StandingsUpdate, STANDINGS_DEMAND, SUPPLEMENT_DEMAND,
+        RestWeatherSession, StandingsUpdate, CHAT_DEMAND, STANDINGS_DEMAND, SUPPLEMENT_DEMAND,
         SUPPLEMENT_MAX_AGE, WEATHER_DEMAND,
     };
     use std::collections::HashMap;
@@ -1179,10 +1317,49 @@ mod tests {
 
     #[test]
     fn rest_workers_follow_independent_connected_demands() {
-        assert_eq!(rest_demand(false, true, true, true, true), 0);
-        assert_eq!(rest_demand(true, true, false, false, false), 0);
-        assert_eq!(rest_demand(true, true, true, false, false).count_ones(), 1);
-        assert_eq!(rest_demand(true, true, false, true, true).count_ones(), 2);
+        assert_eq!(rest_demand(false, true, true, true, true, true), 0);
+        assert_eq!(rest_demand(true, true, false, false, false, false), 0);
+        assert_eq!(
+            rest_demand(true, true, false, false, false, true),
+            CHAT_DEMAND
+        );
+        assert_eq!(
+            rest_demand(true, true, true, false, false, false).count_ones(),
+            1
+        );
+        assert_eq!(
+            rest_demand(true, true, false, true, true, false).count_ones(),
+            2
+        );
+    }
+
+    #[test]
+    fn chat_parser_splits_first_colon_trims_caps_and_preserves_int64_ids() {
+        let value = serde_json::json!([
+            {"Message":" Driver: hello: world ","Timestamp":9223372036854775000_i64},
+            {"Message":" Empty:   ","Timestamp":2},
+            {"Message":"missing separator","Timestamp":3}
+        ]);
+        let parsed = super::parse_chat_messages(&value).unwrap();
+        assert_eq!(parsed.len(), 1);
+        assert_eq!(parsed[0].name, "Driver");
+        assert_eq!(parsed[0].text, "hello: world");
+        assert_eq!(parsed[0].id, "9223372036854775000");
+        assert!(super::parse_chat_messages(&serde_json::json!({"unexpected": []})).is_none());
+
+        let unsorted = serde_json::json!([
+            {"Message":"nine: n","Timestamp":9},
+            {"Message":"one: n","Timestamp":1},
+            {"Message":"two: n","Timestamp":2}
+        ]);
+        let sorted = super::parse_chat_messages(&unsorted).unwrap();
+        assert_eq!(
+            sorted
+                .iter()
+                .map(|message| message.id.as_str())
+                .collect::<Vec<_>>(),
+            vec!["1", "2", "9"]
+        );
     }
 
     /// Every endpoint the supplement worker polls lives under `/rest/garage/`
@@ -1190,8 +1367,8 @@ mod tests {
     /// anyway is what closed the game, so being connected is not enough.
     #[test]
     fn the_supplement_worker_waits_for_the_player_to_have_a_vehicle() {
-        let without_vehicle = rest_demand(true, false, true, true, true);
-        let with_vehicle = rest_demand(true, true, true, true, true);
+        let without_vehicle = rest_demand(true, false, true, true, true, false);
+        let with_vehicle = rest_demand(true, true, true, true, true, false);
         assert_eq!(without_vehicle & SUPPLEMENT_DEMAND, 0);
         assert_ne!(with_vehicle & SUPPLEMENT_DEMAND, 0);
         // Standings and weather answer about the session, not the car, so they
@@ -1289,7 +1466,7 @@ mod tests {
             .unwrap();
 
         resolver.reset_session_history();
-        resolver.refresh(true, true, true, false, false, "");
+        resolver.refresh(true, true, true, false, false, false, "");
 
         assert!(resolver.standings_by_slot.is_empty());
         assert!(resolver.standings_by_name.is_empty());
@@ -1395,10 +1572,10 @@ mod tests {
             suspension: [0.2, 0.79, 0.4, 0.6],
         });
 
-        resolver.refresh(true, true, false, true, false, "RACE");
+        resolver.refresh(true, true, false, true, false, false, "RACE");
         assert_eq!(resolver.aero_damage(), Some(0.28));
 
-        resolver.refresh(false, false, false, false, false, "");
+        resolver.refresh(false, false, false, false, false, false, "");
         assert!(resolver.aero_damage().is_none());
         assert!(resolver.suspension_damage().is_none());
 

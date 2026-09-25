@@ -30,7 +30,7 @@ const MAX_ACCEPTS_PER_ITERATION: usize = 2;
 const REQUEST_READ_ATTEMPTS: usize = 8;
 const REQUEST_READ_TIMEOUT: Duration = Duration::from_millis(50);
 const HTML_SECURITY_POLICY: &str = "default-src 'self'; connect-src 'self' ws://localhost:6398 ws://127.0.0.1:6398; img-src 'self' data:; style-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'self'; object-src 'none'";
-const BROWSER_OVERLAYS: [(&str, &str); 18] = [
+const BROWSER_OVERLAYS: [(&str, &str); 19] = [
     ("standings", "standings.html"),
     ("relative", "relative.html"),
     ("fuel", "fuel.html"),
@@ -49,6 +49,7 @@ const BROWSER_OVERLAYS: [(&str, &str); 18] = [
     ("conditions", "conditions.html"),
     ("dashboard", "dashboard.html"),
     ("sessioninfo", "sessioninfo.html"),
+    ("chat", "chat.html"),
 ];
 const ALL_OVERLAY_DEMANDS: u32 = (1 << BROWSER_OVERLAYS.len()) - 1;
 
@@ -100,6 +101,7 @@ struct ServiceState {
 struct BrowserSourceService {
     enabled: AtomicBool,
     clients: AtomicUsize,
+    frame_clients: AtomicUsize,
     overlay_demands: AtomicU32,
     // Frames published while the server thread is behind are dropped on purpose;
     // the counter keeps that visible in the browser source status.
@@ -126,6 +128,7 @@ pub(crate) fn configure(app: &AppHandle) {
     let _ = SERVICE.set(BrowserSourceService {
         enabled: AtomicBool::new(false),
         clients: AtomicUsize::new(0),
+        frame_clients: AtomicUsize::new(0),
         overlay_demands: AtomicU32::new(0),
         dropped_frames: AtomicU64::new(0),
         state: Mutex::new(ServiceState {
@@ -203,6 +206,7 @@ pub(crate) fn set_enabled(enabled: bool) -> BrowserSourceStatus {
     } else if !enabled {
         service.enabled.store(false, Ordering::Relaxed);
         service.clients.store(0, Ordering::Relaxed);
+        service.frame_clients.store(0, Ordering::Relaxed);
         service.overlay_demands.store(0, Ordering::Relaxed);
         if let Some(runtime) = state.runtime.take() {
             let _ = runtime.shutdown.send(());
@@ -247,7 +251,9 @@ pub(crate) fn publish_frame(frame: &TelemetryFrame) {
     let Some(service) = service() else {
         return;
     };
-    if !service.enabled.load(Ordering::Relaxed) || service.clients.load(Ordering::Relaxed) == 0 {
+    if !service.enabled.load(Ordering::Relaxed)
+        || service.frame_clients.load(Ordering::Relaxed) == 0
+    {
         return;
     }
     let sender = {
@@ -262,6 +268,27 @@ pub(crate) fn publish_frame(frame: &TelemetryFrame) {
     };
     if let Ok(json) = serde_json::to_string(frame) {
         if sender.try_send(json).is_err() {
+            service.dropped_frames.fetch_add(1, Ordering::Relaxed);
+        }
+    }
+}
+
+pub(crate) fn publish_chat_update(update: &crate::telemetry::ChatUpdate) {
+    let Some(service) = service() else {
+        return;
+    };
+    if !service.enabled.load(Ordering::Relaxed) || !overlay_has_clients("chat") {
+        return;
+    }
+    let sender = service
+        .state
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .runtime
+        .as_ref()
+        .map(|runtime| runtime.frames.clone());
+    if let (Some(sender), Ok(json)) = (sender, serde_json::to_string(update)) {
+        if sender.try_send(format!("event:chat\n{json}")).is_err() {
             service.dropped_frames.fetch_add(1, Ordering::Relaxed);
         }
     }
@@ -325,6 +352,7 @@ fn server_loop(
     struct Subscriber {
         stream: TcpStream,
         overlay_demand: u32,
+        include_frames: bool,
     }
 
     // The loop parks on the frame channel, so a published frame wakes it at once
@@ -336,6 +364,13 @@ fn server_loop(
     let publish_subscriber_demand = |subscribers: &[Subscriber]| {
         if let Some(service) = service() {
             service.clients.store(subscribers.len(), Ordering::Relaxed);
+            service.frame_clients.store(
+                subscribers
+                    .iter()
+                    .filter(|subscriber| subscriber.include_frames)
+                    .count(),
+                Ordering::Relaxed,
+            );
             service.overlay_demands.store(
                 subscribers
                     .iter()
@@ -381,6 +416,7 @@ fn server_loop(
                     subscribers.push(Subscriber {
                         stream,
                         overlay_demand: event_overlay_demand(&target),
+                        include_frames: !event_stream_is_chat_only(&target),
                     });
                 }
             } else if path == "/api/trackmap" {
@@ -405,9 +441,23 @@ fn server_loop(
         };
         let mut broadcast = false;
         while let Some(frame) = pending.take().or_else(|| frames.try_recv().ok()) {
-            let message = format!("data: {frame}\n\n");
-            subscribers
-                .retain_mut(|subscriber| subscriber.stream.write_all(message.as_bytes()).is_ok());
+            if let Some(json) = frame.strip_prefix("event:chat\n") {
+                let message = format!("event: chat\ndata: {json}\n\n");
+                let chat_bit = BROWSER_OVERLAYS
+                    .iter()
+                    .position(|(name, _)| *name == "chat")
+                    .map_or(0, |index| 1 << index);
+                subscribers.retain_mut(|subscriber| {
+                    subscriber.overlay_demand & chat_bit == 0
+                        || subscriber.stream.write_all(message.as_bytes()).is_ok()
+                });
+            } else {
+                let message = format!("data: {frame}\n\n");
+                subscribers.retain_mut(|subscriber| {
+                    !subscriber.include_frames
+                        || subscriber.stream.write_all(message.as_bytes()).is_ok()
+                });
+            }
             broadcast = true;
         }
         if broadcast {
@@ -416,6 +466,7 @@ fn server_loop(
     }
     if let Some(service) = service() {
         service.clients.store(0, Ordering::Relaxed);
+        service.frame_clients.store(0, Ordering::Relaxed);
         service.overlay_demands.store(0, Ordering::Relaxed);
     }
 }
@@ -433,6 +484,12 @@ fn event_overlay_demand(target: &str) -> u32 {
                 .position(|(candidate, _)| *candidate == label)
         })
         .map_or(ALL_OVERLAY_DEMANDS, |index| 1 << index)
+}
+
+fn event_stream_is_chat_only(target: &str) -> bool {
+    target
+        .split_once('?')
+        .is_some_and(|(_, query)| query.split('&').any(|part| part == "chat_only=1"))
 }
 
 struct RequestHead {
@@ -662,8 +719,9 @@ fn browser_overlay_entry(request_path: &str) -> Option<&'static str> {
 #[cfg(test)]
 mod tests {
     use super::{
-        browser_overlay_entry, browser_source_settings_script, event_overlay_demand, host_allowed,
-        is_safe_asset_path, origin_allowed, BROWSER_OVERLAYS,
+        browser_overlay_entry, browser_source_settings_script, event_overlay_demand,
+        event_stream_is_chat_only, host_allowed, is_safe_asset_path, origin_allowed,
+        BROWSER_OVERLAYS,
     };
 
     #[test]
@@ -751,6 +809,14 @@ mod tests {
         assert_ne!(standings, fuel);
         assert_eq!(standings.count_ones(), 1);
         assert_eq!(fuel.count_ones(), 1);
+    }
+
+    #[test]
+    fn chat_only_event_clients_skip_telemetry_frames() {
+        assert!(event_stream_is_chat_only(
+            "/api/events?overlay=chat&chat_only=1"
+        ));
+        assert!(!event_stream_is_chat_only("/api/events?overlay=chat"));
     }
 
     #[test]

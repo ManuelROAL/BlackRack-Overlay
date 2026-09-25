@@ -115,6 +115,9 @@ pub(crate) struct SourceDescriptor {
 pub(crate) trait TelemetrySource: Send + 'static {
     fn descriptor(&self) -> SourceDescriptor;
     fn next_frame(&mut self, demand: TelemetryDemand) -> TelemetryFrame;
+    fn take_chat_updates(&mut self) -> Vec<super::ChatUpdate> {
+        Vec::new()
+    }
 }
 
 /// One simulator the app can read, with the probe that says whether it can be
@@ -284,6 +287,7 @@ struct SelectedSource {
     app_data: PathBuf,
     active: Box<dyn TelemetrySource>,
     on_mock: bool,
+    clear_chat_pending: bool,
     probe_at: Instant,
     /// The `PREFERENCE_GENERATION` this source has already reacted to.
     preference_generation: u64,
@@ -307,6 +311,7 @@ impl SelectedSource {
         set_active(source.descriptor());
         self.active = source;
         self.on_mock = false;
+        self.clear_chat_pending = true;
     }
 
     /// Reacts to a preference change immediately rather than waiting for a
@@ -331,6 +336,7 @@ impl SelectedSource {
         self.on_mock = source.descriptor().id == "mock";
         set_active(source.descriptor());
         self.active = source;
+        self.clear_chat_pending = true;
     }
 }
 
@@ -354,6 +360,17 @@ impl TelemetrySource for SelectedSource {
         }
         frame
     }
+
+    fn take_chat_updates(&mut self) -> Vec<super::ChatUpdate> {
+        if self.clear_chat_pending {
+            self.clear_chat_pending = false;
+            return vec![super::ChatUpdate {
+                replace: true,
+                messages: Vec::new(),
+            }];
+        }
+        self.active.take_chat_updates()
+    }
 }
 
 /// Picks the first allowed simulator whose telemetry can be read, and keeps
@@ -371,6 +388,7 @@ pub(crate) fn detect(app_data: &Path) -> Box<dyn TelemetrySource> {
         app_data: app_data.to_path_buf(),
         active,
         on_mock,
+        clear_chat_pending: false,
         probe_at: Instant::now() + PROBE_INTERVAL,
         preference_generation: PREFERENCE_GENERATION.load(Ordering::Relaxed),
     })

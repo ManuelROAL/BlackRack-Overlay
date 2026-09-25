@@ -4,6 +4,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import "./composite.css";
 import { applyTranslations, getLocale, t } from "./i18n";
 import { installFrontendDiagnostics } from "./frontend-diagnostics";
+import type { ChatUpdate } from "./runtime-events";
 import {
   COMPOSITE_LAYOUT_KEY,
   clampPanelCoordinate,
@@ -63,7 +64,7 @@ interface TelemetryBatch {
 const overlayIds: OverlayId[] = [
   "delta", "timing", "stinthistory", "driving", "liftcoast", "tires", "damage", "standings",
   "relative", "fuel", "pitstop", "flags", "rejoin", "trackmap",
-  "forecast", "conditions", "dashboard", "sessioninfo"
+  "forecast", "conditions", "dashboard", "sessioninfo", "chat"
 ];
 // Projected into every overlay on top of its own allowlist: an overlay has to
 // know what the active simulator can report before it decides what to draw.
@@ -159,13 +160,15 @@ const telemetryFields: Record<OverlayId, readonly (keyof TelemetryFrame)[]> = {
     "session_total_laps_estimated", "rest_weather_available", "track_temperature_c",
     "ambient_temperature_c", "cloud_coverage", "rain_percent", "track_limits_steps",
     "track_limits_steps_per_penalty"
-  ]
+  ],
+  chat: []
 };
 const overlayTitleKeys: Record<OverlayId, import("./i18n").TranslationKey> = {
   delta: "card.delta", timing: "card.timing", stinthistory: "card.stintHistory", driving: "card.driving", liftcoast: "card.liftcoast", tires: "card.tires",
   damage: "card.damage", standings: "card.standings", relative: "card.relative", fuel: "card.fuel",
   pitstop: "card.pitstop", flags: "card.flags", rejoin: "card.rejoin", trackmap: "card.trackmap",
-  forecast: "card.forecast", conditions: "card.conditions", dashboard: "card.dashboard", sessioninfo: "card.sessioninfo"
+  forecast: "card.forecast", conditions: "card.conditions", dashboard: "card.dashboard", sessioninfo: "card.sessioninfo",
+  chat: "card.chat"
 };
 const overlayTitle = (overlay: OverlayId): string => t(overlayTitleKeys[overlay]).toLocaleUpperCase(getLocale());
 
@@ -597,6 +600,10 @@ void listen<TelemetryBatch>("telemetry://batch", ({ payload }) => {
     latestFrames.set(overlay, frame);
     postEvent(overlay, "telemetry://frame", frame);
   }
+});
+
+void listen<ChatUpdate>("chat://update", ({ payload }) => {
+  if (frames.has("chat")) postEvent("chat", "chat://update", payload);
 });
 
 for (const event of [

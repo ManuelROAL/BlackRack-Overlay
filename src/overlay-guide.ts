@@ -145,6 +145,13 @@ export const OVERLAY_GUIDE: Record<OverlayId, OverlayGuideEntry> = {
     purpose: "guide.sessioninfo.purpose",
     reading: "guide.sessioninfo.reading",
     tip: "guide.sessioninfo.tip"
+  },
+  chat: {
+    icon: "CHAT",
+    title: "card.chat",
+    purpose: "guide.chat.purpose",
+    reading: "guide.chat.reading",
+    tip: "guide.chat.tip"
   }
 };
 
@@ -166,5 +173,6 @@ export const OVERLAY_GUIDE_ORDER = [
   "forecast",
   "conditions",
   "dashboard",
-  "sessioninfo"
+  "sessioninfo",
+  "chat"
 ] as const satisfies readonly OverlayId[];

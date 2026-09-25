@@ -43,7 +43,8 @@ export default defineConfig({
         forecast: "forecast.html",
         conditions: "conditions.html",
         dashboard: "dashboard.html",
-        sessioninfo: "sessioninfo.html"
+        sessioninfo: "sessioninfo.html",
+        chat: "chat.html"
       }
     }
   },

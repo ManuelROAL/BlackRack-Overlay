@@ -4,6 +4,17 @@ import { invoke } from "@tauri-apps/api/core";
 import { installFrontendDiagnostics } from "./frontend-diagnostics";
 import type { TelemetryFrame } from "./telemetry-types";
 
+export interface ChatMessage {
+  id: string;
+  name: string;
+  text: string;
+}
+
+export interface ChatUpdate {
+  replace: boolean;
+  messages: ChatMessage[];
+}
+
 declare global {
   interface Window {
     __TAURI_INTERNALS__?: unknown;
@@ -109,6 +120,21 @@ export const listenTelemetry = (
       console.error("Trama de telemetría local no válida:", error);
     }
   };
+  return Promise.resolve(() => events.close());
+};
+
+export const listenChat = (handler: (update: ChatUpdate) => void): Promise<UnlistenFn> => {
+  if (isTauriRuntime()) return listenRuntimeEvent<ChatUpdate>("chat://update", handler);
+
+  const events = new EventSource("/api/events?overlay=chat&chat_only=1");
+  const onChat = (event: MessageEvent<string>): void => {
+    try {
+      handler(JSON.parse(event.data) as ChatUpdate);
+    } catch (error) {
+      console.error("Mensaje de chat local no válido:", error);
+    }
+  };
+  events.addEventListener("chat", onChat as EventListener);
   return Promise.resolve(() => events.close());
 };
 
