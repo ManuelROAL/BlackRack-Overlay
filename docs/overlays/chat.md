@@ -16,8 +16,9 @@
 ## Layout and behavior
 
 - Show local `HH:mm` reception time, sender and message text in a compact,
-  transparent panel. Keep the panel fully invisible while its snapshot is empty;
-  show it when messages arrive and hide it again when the snapshot clears.
+  transparent panel. Keep it invisible until a message arrives, then hide it
+  after 20 seconds without a new message. Show it again when another message
+  arrives; repeated snapshots of the same messages do not reset the timer.
 - This is a read-only view. It does not send chat messages, retain history after
   the bounded live window, or persist any message data.
 - Keep the panel responsive to standard transparency and text-size preferences,

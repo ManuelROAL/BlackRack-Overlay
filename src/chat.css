@@ -38,8 +38,11 @@
   display: none;
 }
 
-.chat-panel[data-empty="true"] {
+.chat-panel[data-visible="false"] {
   visibility: hidden;
+}
+
+.chat-panel[data-empty="true"] {
   border-color: rgb(255 255 255 / 7%);
   border-left-color: rgb(216 255 62 / 45%);
   box-shadow: none;

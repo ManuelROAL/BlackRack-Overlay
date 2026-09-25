@@ -27,11 +27,15 @@ interface RenderedMessage {
 }
 
 const MAX_MESSAGES = 8;
+const MAX_REMEMBERED_MESSAGES = 64;
+const CHAT_IDLE_TIMEOUT_MS = 20_000;
 const panel = document.getElementById("chat-panel")!;
 const empty = document.getElementById("chat-empty")!;
 const list = document.getElementById("chat-messages")!;
 const renderPerformance = createOverlayPerformanceTracker("chat");
 const rendered = new Map<string, RenderedMessage>();
+const knownMessages = new Map<string, { name: string; text: string }>();
+let inactivityTimer = 0;
 
 fitOverlayToContentBox(panel);
 bindOverlayTransparency("chat");
@@ -73,6 +77,15 @@ const updateMessage = (entry: RenderedMessage, message: ChatMessage): void => {
   }
 };
 
+const showForRecentMessage = (): void => {
+  panel.dataset.visible = "true";
+  if (inactivityTimer) window.clearTimeout(inactivityTimer);
+  inactivityTimer = window.setTimeout(() => {
+    panel.dataset.visible = "false";
+    inactivityTimer = 0;
+  }, CHAT_IDLE_TIMEOUT_MS);
+};
+
 const render = (snapshot: ChatSnapshot): void => {
   if (!snapshot?.replace || !Array.isArray(snapshot.messages)) return;
   const messages = snapshot.messages
@@ -80,6 +93,19 @@ const render = (snapshot: ChatSnapshot): void => {
       typeof message?.id === "string" && message.id.length > 0 && message.id.length <= 128
       && typeof message.name === "string" && typeof message.text === "string")
     .slice(-MAX_MESSAGES);
+  let hasNewMessage = false;
+  for (const message of messages) {
+    const known = knownMessages.get(message.id);
+    if (!known || known.name !== message.name || known.text !== message.text) {
+      hasNewMessage = true;
+      knownMessages.set(message.id, { name: message.name, text: message.text });
+    }
+  }
+  while (knownMessages.size > MAX_REMEMBERED_MESSAGES) {
+    const oldestId = knownMessages.keys().next().value;
+    if (oldestId === undefined) break;
+    knownMessages.delete(oldestId);
+  }
   const nextIds = messages.map(({ id }) => id);
 
   for (const [id, entry] of rendered) {
@@ -108,6 +134,7 @@ const render = (snapshot: ChatSnapshot): void => {
 
   empty.hidden = messages.length > 0;
   panel.dataset.empty = String(messages.length === 0);
+  if (hasNewMessage) showForRecentMessage();
 };
 
 void listenChat((snapshot: ChatSnapshot) =>
