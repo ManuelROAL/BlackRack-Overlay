@@ -46,6 +46,13 @@ en el idioma seleccionado. Los campos legacy (`updateTitle`, `fullTitle` y
 `changelog`) deben conservarse como fallback para las versiones instaladas que
 todavía no conocen las traducciones localizadas.
 
+Cada entrega publicada debe adjuntar también `manifest.json` en la release con
+tag `v<version>`. La vista **Novedades** permite instalar una versión anterior
+desde su entrada, pero el comando solo recibe el número de versión: el backend
+obtiene el manifiesto desde la URL fija de esa release, comprueba que el número
+coincida y vuelve a verificar el SHA-256 antes de ejecutar el instalador. La
+opción aparece solo para versiones anteriores a la instalada y pide confirmación.
+
 El panel también incluye en la vista **Novedades** todos los manifiestos
 `release/*/manifest.json` incluidos en la compilación, ordenados por versión.
 Al añadir una entrega al repositorio, su manifiesto pasa a formar parte del

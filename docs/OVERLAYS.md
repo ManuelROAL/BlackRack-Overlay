@@ -230,6 +230,9 @@ assignments; per-overlay mode restores those assignments.
   Exclude learned telemetry, diagnostic logs, session state and credentials.
   Imports retain known values from older product/schema versions, fill settings
   introduced later with current defaults and tolerate unknown additive fields.
+- The **Novedades** view lists localized release notes and offers installation
+  for published versions older than the installed version. Confirm the selected
+  version before starting the verified download and in-place installer flow.
 - A common support card remains below the visible content in Overlays, General
   and Integrations, immediately above the shortcut footer. Its Ko-fi and PayPal
   buttons open their fixed project URLs in the system browser and never embed

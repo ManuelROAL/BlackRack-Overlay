@@ -991,6 +991,18 @@ select {
   padding: 14px;
 }
 
+.rollback-status {
+  margin: 0;
+  padding: 0 14px;
+  color: #d8ff3e;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.rollback-status:empty {
+  display: none;
+}
+
 .release-note {
   display: grid;
   gap: 8px;
@@ -1016,6 +1028,29 @@ select {
 .release-note header strong {
   color: #edf1f4;
   font-size: 15px;
+}
+
+.release-note-install {
+  justify-self: start;
+  margin-top: 2px;
+  padding: 7px 10px;
+  border: 1px solid rgb(216 255 62 / 34%);
+  border-radius: 5px;
+  color: #d8ff3e;
+  background: rgb(216 255 62 / 7%);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .06em;
+}
+
+.release-note-install:hover:not(:disabled) {
+  border-color: rgb(216 255 62 / 60%);
+  background: rgb(216 255 62 / 14%);
+}
+
+.release-note-install:disabled {
+  cursor: wait;
+  opacity: .55;
 }
 
 .release-note ul {

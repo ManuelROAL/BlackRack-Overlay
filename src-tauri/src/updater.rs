@@ -179,6 +179,55 @@ pub(crate) async fn download_and_install_update(
 }
 
 #[tauri::command]
+pub(crate) async fn rollback_to_version(
+    window: tauri::WebviewWindow,
+    app: tauri::AppHandle,
+    version: String,
+) -> Result<(), String> {
+    crate::require_control_window(&window)?;
+    if parse_version(&version).is_none() {
+        return Err("rollback_version_invalid".into());
+    }
+
+    #[cfg(windows)]
+    {
+        let worker_app = app.clone();
+        tauri::async_runtime::spawn_blocking(move || {
+            let _update_lock = UpdateLock::acquire()?;
+            let manifest = fetch_manifest_for_version(&version)?;
+            if manifest.version != version {
+                return Err("rollback_manifest_mismatch".into());
+            }
+            if !is_newer_version(env!("CARGO_PKG_VERSION"), &version) {
+                return Err("rollback_version_not_older".into());
+            }
+
+            let installer = download_installer(&worker_app, &manifest)?;
+            emit_progress(
+                &worker_app,
+                UpdateProgress {
+                    stage: "installing",
+                    downloaded_bytes: 0,
+                    total_bytes: None,
+                    percent: None,
+                },
+            );
+            spawn_update_helper(installer, &manifest.sha256)
+        })
+        .await
+        .map_err(|_| "update_worker_failed")??;
+        app.exit(0);
+        return Ok(());
+    }
+
+    #[cfg(not(windows))]
+    {
+        let _ = app;
+        Err("updates_windows_only".into())
+    }
+}
+
+#[tauri::command]
 pub(crate) fn get_update_status(window: tauri::WebviewWindow) -> Result<Option<String>, String> {
     crate::require_control_window(&window)?;
 
@@ -225,13 +274,33 @@ fn secure_redirect_policy() -> reqwest::redirect::Policy {
 
 #[cfg(windows)]
 fn fetch_manifest() -> Result<UpdateManifest, String> {
-    let manifest_url = validate_https_url(UPDATE_MANIFEST_URL)?;
+    fetch_manifest_at(UPDATE_MANIFEST_URL, "update_manifest_unavailable")
+}
+
+#[cfg(windows)]
+fn fetch_manifest_for_version(version: &str) -> Result<UpdateManifest, String> {
+    // The version is restricted to numeric dotted components before it is used
+    // in the path, so the frontend cannot select an arbitrary manifest URL.
+    let manifest_url = format!(
+        "https://github.com/ManuelROAL/BlackRack-Overlay/releases/download/v{version}/manifest.json"
+    );
+    fetch_manifest_at(&manifest_url, "rollback_release_unavailable").map_err(|error| {
+        match error.as_str() {
+            "update_manifest_invalid" => "rollback_manifest_invalid".into(),
+            _ => error,
+        }
+    })
+}
+
+#[cfg(windows)]
+fn fetch_manifest_at(url: &str, unavailable_code: &'static str) -> Result<UpdateManifest, String> {
+    let manifest_url = validate_https_url(url)?;
     let response = http_client()?
         .get(manifest_url)
         .send()
-        .map_err(|_| "update_manifest_unavailable")?
+        .map_err(|_| unavailable_code)?
         .error_for_status()
-        .map_err(|_| "update_manifest_unavailable")?;
+        .map_err(|_| unavailable_code)?;
 
     if response
         .content_length()
@@ -239,7 +308,13 @@ fn fetch_manifest() -> Result<UpdateManifest, String> {
     {
         return Err("update_manifest_invalid".into());
     }
-    let body = read_limited_manifest(response)?;
+    let body = read_limited_manifest(response).map_err(|error| {
+        if error == "update_manifest_unavailable" {
+            unavailable_code.into()
+        } else {
+            error
+        }
+    })?;
 
     let manifest: UpdateManifest =
         serde_json::from_slice(&body).map_err(|_| "update_manifest_invalid")?;

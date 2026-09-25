@@ -599,7 +599,18 @@ const updateDetails = document.getElementById("update-details");
 const updateVersion = document.getElementById("update-version");
 const updateChangelog = document.getElementById("update-changelog");
 const releaseNotesList = document.getElementById("release-notes-list");
+const rollbackStatus = document.getElementById("rollback-status");
 let updateRequestInFlight = false;
+let installedAppVersion: string | null = null;
+let rollbackInProgress = false;
+
+const setUpdateControlsDisabled = (disabled: boolean): void => {
+  if (updateCheckButton) updateCheckButton.disabled = disabled;
+  if (installUpdateButton && !installUpdateButton.hidden) installUpdateButton.disabled = disabled;
+  for (const button of document.querySelectorAll<HTMLButtonElement>("[data-release-version]")) {
+    button.disabled = disabled;
+  }
+};
 
 const renderUpdateInfo = (info: UpdateInfo | null): void => {
   if (!updateDetails || !updateVersion || !updateChangelog || !installUpdateButton) return;
@@ -622,9 +633,10 @@ const renderUpdateInfo = (info: UpdateInfo | null): void => {
 
 const setUpdateStatus = (message: string): void => {
   if (updateStatus) updateStatus.textContent = message;
+  if (rollbackInProgress && rollbackStatus) rollbackStatus.textContent = message;
 };
 
-const renderReleaseNotes = (): void => {
+const renderReleaseNotes = (currentVersion: string): void => {
   if (!releaseNotesList) return;
   releaseNotesList.replaceChildren();
   for (const release of RELEASE_NOTES) {
@@ -648,11 +660,18 @@ const renderReleaseNotes = (): void => {
     }
 
     article.append(header, changelog);
+    if (isNewerUpdateVersion(currentVersion, release.version)) {
+      const rollback = document.createElement("button");
+      rollback.type = "button";
+      rollback.className = "release-note-install";
+      rollback.dataset.releaseVersion = release.version;
+      rollback.textContent = t("rollback.button", { version: release.version });
+      rollback.addEventListener("click", () => void installPreviousVersion(release.version));
+      article.append(rollback);
+    }
     releaseNotesList.append(article);
   }
 };
-
-renderReleaseNotes();
 
 const readStoredUpdate = (): UpdateInfo | null => {
   const raw = localStorage.getItem(UPDATE_AVAILABLE_STORAGE_KEY);
@@ -723,10 +742,8 @@ const restoreStoredUpdate = (currentVersion: string): void => {
 const checkForUpdates = async (manual: boolean): Promise<void> => {
   if (updateRequestInFlight) return;
   updateRequestInFlight = true;
-  if (updateCheckButton) {
-    updateCheckButton.disabled = true;
-    if (manual) updateCheckButton.textContent = t("update.checking");
-  }
+  setUpdateControlsDisabled(true);
+  if (manual && updateCheckButton) updateCheckButton.textContent = t("update.checking");
   try {
     const result = await invoke<UpdateCheckResponse>("check_for_update");
     localStorage.setItem(UPDATE_CHECK_STORAGE_KEY, String(Date.now()));
@@ -744,8 +761,8 @@ const checkForUpdates = async (manual: boolean): Promise<void> => {
     setUpdateStatus(t("update.unavailable"));
   } finally {
     updateRequestInFlight = false;
+    setUpdateControlsDisabled(false);
     if (updateCheckButton) {
-      updateCheckButton.disabled = false;
       if (manual) updateCheckButton.textContent = t("update.check");
     }
   }
@@ -754,18 +771,46 @@ const checkForUpdates = async (manual: boolean): Promise<void> => {
 const installUpdate = async (): Promise<void> => {
   if (updateRequestInFlight || !installUpdateButton) return;
   updateRequestInFlight = true;
-  installUpdateButton.disabled = true;
-  if (updateCheckButton) updateCheckButton.disabled = true;
+  setUpdateControlsDisabled(true);
   setUpdateStatus(t("update.downloadingUnknown"));
   try {
     await invoke("download_and_install_update");
   } catch (error) {
     console.error("No se pudo instalar la actualización", error);
     setUpdateStatus(t("update.failed"));
-    installUpdateButton.disabled = false;
-    if (updateCheckButton) updateCheckButton.disabled = false;
+    setUpdateControlsDisabled(false);
   } finally {
     updateRequestInFlight = false;
+  }
+};
+
+const installPreviousVersion = async (version: string): Promise<void> => {
+  if (updateRequestInFlight || !installedAppVersion
+    || !isNewerUpdateVersion(installedAppVersion, version)) return;
+  updateRequestInFlight = true;
+  setUpdateControlsDisabled(true);
+  const confirmed = await confirmReset(t("rollback.confirmMessage", { version }), {
+    heading: t("rollback.confirmHeading"),
+    title: t("rollback.confirmTitle"),
+    confirmLabel: t("rollback.confirmAction")
+  });
+  if (!confirmed) {
+    updateRequestInFlight = false;
+    setUpdateControlsDisabled(false);
+    return;
+  }
+
+  rollbackInProgress = true;
+  setUpdateStatus(t("rollback.installing", { version }));
+  try {
+    await invoke("rollback_to_version", { version });
+  } catch (error) {
+    console.error(`No se pudo instalar BlackRack Overlay v${version}`, error);
+    setUpdateStatus(t("rollback.failed", { version }));
+  } finally {
+    rollbackInProgress = false;
+    updateRequestInFlight = false;
+    setUpdateControlsDisabled(false);
   }
 };
 
@@ -785,7 +830,9 @@ void listen<UpdateProgress>("update://progress", ({ payload }) => {
 
 void getVersion()
   .then((version) => {
+    installedAppVersion = version;
     if (appVersion) appVersion.textContent = `v${version}`;
+    renderReleaseNotes(version);
     restoreStoredUpdate(version);
   })
   .catch((error) => {
@@ -1629,14 +1676,23 @@ const renderFontSizeMode = (): void => {
   for (const range of fontSizeRanges.values()) range.disabled = overlayFontSizeScope.mode === "global";
 };
 
-const confirmReset = (message: string): Promise<boolean> => {
+const confirmReset = (
+  message: string,
+  labels: { heading?: string; title?: string; confirmLabel?: string } = {}
+): Promise<boolean> => {
   const dialog = document.getElementById("reset-confirmation") as HTMLDialogElement | null;
+  const headingElement = document.getElementById("reset-confirmation-heading");
+  const titleElement = document.getElementById("reset-confirmation-title");
   const messageElement = document.getElementById("reset-confirmation-message");
-  if (!dialog || !messageElement) return Promise.resolve(false);
+  const confirmButton = dialog?.querySelector<HTMLButtonElement>('button[value="confirm"]');
+  if (!dialog || !headingElement || !titleElement || !messageElement || !confirmButton) return Promise.resolve(false);
+  headingElement.textContent = labels.heading ?? t("reset.heading");
+  titleElement.textContent = labels.title ?? t("reset.title");
   messageElement.textContent = message;
+  confirmButton.textContent = labels.confirmLabel ?? t("reset.confirm");
   dialog.returnValue = "cancel";
   dialog.showModal();
-  dialog.querySelector<HTMLButtonElement>('button[value="confirm"]')?.focus();
+  confirmButton.focus();
   return new Promise((resolve) => {
     dialog.addEventListener("close", () => resolve(dialog.returnValue === "confirm"), { once: true });
   });

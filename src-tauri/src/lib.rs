@@ -2448,6 +2448,7 @@ pub fn run() {
             open_paypal_page,
             updater::check_for_update,
             updater::download_and_install_update,
+            updater::rollback_to_version,
             updater::get_update_status,
             get_shortcut_settings,
             set_shortcut,

@@ -194,6 +194,10 @@ in `docs/overlays/` and should not be duplicated here.
   result for the next application start.
   Each download uses its own operation directory under the update cache so
   separate app instances cannot overwrite one another's package.
+  The localized release history can request an explicitly confirmed rollback by
+  version. The backend constructs the versioned GitHub manifest URL itself,
+  requires the manifest to match and be older than the installed version, and
+  sends the installer through the same download, SHA-256 and helper checks.
   Update failures are non-fatal and do not affect telemetry.
 - OBS browser source is localhost-only, optional and off by default.
 - OBS pages normally mirror the application locale. A supported `?lang=` query is

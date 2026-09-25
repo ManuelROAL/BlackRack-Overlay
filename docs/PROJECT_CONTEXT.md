@@ -93,6 +93,10 @@ remove enrichment such as DR/SR or split data, but must not stop the overlays.
   to close the app before launching NSIS with update/relaunch flags. Installations
   are serialized across app instances and helper failures are surfaced after the
   next start. The check is optional and never participates in telemetry startup.
+  The release history also offers explicitly confirmed installation of an older
+  published version. Rust accepts only the version, fetches that tag's manifest,
+  requires it to match and be older than the installed version, then reuses the
+  same hash-verified installer flow.
 - Web assets, icons, logos, flags, badges and Roboto Condensed are embedded in
   the executable through Tauri's `frontendDist`; the installer does not deploy a
   separate `web/` directory.

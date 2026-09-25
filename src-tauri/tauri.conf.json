@@ -28,6 +28,7 @@
     "shortDescription": "Overlays de telemetría para Le Mans Ultimate",
     "longDescription": "Overlays de telemetría, standings, estrategia de combustible y energía, banderas y avisos para Le Mans Ultimate.",
     "windows": {
+      "allowDowngrades": true,
       "webviewInstallMode": {
         "type": "embedBootstrapper"
       },

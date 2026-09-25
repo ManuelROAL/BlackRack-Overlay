@@ -141,6 +141,9 @@ Tauri events    analysis JSONL/strategy CSV    browser-source SSE
   the backend retains the latest 20 session files.
 - `src/release-notes.ts`: imports the checked-in `release/*/manifest.json` files,
   orders them by version and selects localized notes for the control panel.
+  The changelog offers rollback actions only for releases older than the
+  installed version; the frontend sends only the selected version to the Rust
+  updater, which fetches and verifies that release's manifest and installer.
 - `src/backend-errors.ts`: translates the stable snake_case codes commands reject
   with. Backend `Result::Err` payloads returned to a webview are codes, never
   prose; `startup_log::command_error` records the English detail in the session
