@@ -46,6 +46,19 @@ body,
   pointer-events: none;
 }
 
+.editing .composite-panel[data-overlay="chat"] iframe {
+  pointer-events: auto;
+}
+
+.editing .composite-panel[data-overlay="chat"] .composite-panel-chrome {
+  pointer-events: none;
+}
+
+.editing .composite-panel[data-overlay="chat"] .composite-panel-label,
+.editing .composite-panel[data-overlay="chat"] .composite-resize {
+  pointer-events: auto;
+}
+
 .composite-panel-chrome {
   position: absolute;
   z-index: 10;

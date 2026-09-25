@@ -13,6 +13,7 @@ html[data-browser-source="true"] .chat-body {
 
 .chat-panel {
   width: 404px;
+  max-height: var(--chat-max-height, 240px);
   overflow: hidden;
   border: 1px solid rgb(255 255 255 / 12%);
   border-left: 2px solid #d8ff3e;
@@ -28,8 +29,11 @@ html[data-browser-source="true"] .chat-body {
 .chat-messages {
   display: flex;
   flex-direction: column;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: 2px;
+  max-height: calc(var(--chat-max-height, 240px) - 12px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
   margin: 0;
   padding: 5px 6px;
   list-style: none;
@@ -59,12 +63,13 @@ html[data-browser-source="true"] .chat-body {
 
 .chat-message {
   display: grid;
+  flex: 0 0 auto;
   min-width: 0;
   min-height: 19px;
   grid-template-columns: 34px max-content minmax(0, 1fr);
-  align-items: center;
+  align-items: start;
   gap: 6px;
-  overflow: hidden;
+  overflow: visible;
   padding: 1px 3px;
   border-radius: 3px;
   background: rgb(255 255 255 / 3%);
@@ -89,11 +94,13 @@ html[data-browser-source="true"] .chat-body {
 
 .chat-text {
   min-width: 0;
-  overflow: hidden;
+  overflow-wrap: anywhere;
   color: #f1f3f5;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: pre-wrap;
 }
+
+.chat-messages::-webkit-scrollbar { width: 5px; }
+.chat-messages::-webkit-scrollbar-thumb { border-radius: 4px; background: rgb(216 255 62 / 42%); }
 
 html.composite-embed .chat-panel {
   box-shadow: 0 2px 6px rgb(0 0 0 / 45%);

@@ -25,6 +25,10 @@
 - Keep the panel invisible until a message arrives, then hide it after 20
   seconds without a new message. Show it again when another message arrives;
   repeated snapshots of the same messages do not reset the timer.
+- Wrap long message text across lines and cap the message list at a configurable
+  maximum height (80–400 design pixels, default 240). Older content remains
+  reachable by scrolling while editing the composite overlay or in the OBS
+  browser source; game click-through never captures pointer input.
 - This is a read-only view. It does not send chat messages, retain history after
   the bounded live window, or persist any message data.
 - Keep the panel responsive to standard transparency and text-size preferences,

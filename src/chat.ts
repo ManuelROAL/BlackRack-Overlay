@@ -39,6 +39,11 @@ let chatSettings = readChatSettings();
 let latestSnapshot: ChatSnapshot = { replace: true, messages: [] };
 let inactivityTimer = 0;
 
+const applyMaxHeight = (): void => {
+  panel.style.setProperty("--chat-max-height", `${chatSettings.maxHeight}px`);
+};
+applyMaxHeight();
+
 if (document.documentElement.dataset.browserSource !== "true") {
   fitOverlayToContentBox(panel);
 }
@@ -90,7 +95,7 @@ const showForRecentMessage = (): void => {
   }, CHAT_IDLE_TIMEOUT_MS);
 };
 
-const render = (snapshot: ChatSnapshot): void => {
+const render = (snapshot: ChatSnapshot, forceScrollToBottom = false): void => {
   if (!snapshot?.replace || !Array.isArray(snapshot.messages)) return;
   const validMessages = snapshot.messages
     .filter((message): message is ChatMessage =>
@@ -119,6 +124,8 @@ const render = (snapshot: ChatSnapshot): void => {
     }
   }
 
+  const wasAtBottom = forceScrollToBottom
+    || list.scrollHeight - list.clientHeight - list.scrollTop <= 2;
   for (const message of messages) {
     let entry = rendered.get(message.id);
     if (!entry) {
@@ -135,6 +142,7 @@ const render = (snapshot: ChatSnapshot): void => {
     for (const id of nextIds) fragment.append(rendered.get(id)!.element);
     list.append(fragment);
   }
+  if (wasAtBottom) list.scrollTop = list.scrollHeight;
 
   empty.hidden = messages.length > 0;
   panel.dataset.empty = String(messages.length === 0);
@@ -146,10 +154,11 @@ void listenChat((snapshot: ChatSnapshot) => {
   renderPerformance.measure(() => render(snapshot), snapshot.messages?.length ?? 0);
 }, (payload) => {
   const next = normalizeChatSettings(payload);
-  if (next.maxMessages === chatSettings.maxMessages) return;
+  if (next.maxMessages === chatSettings.maxMessages && next.maxHeight === chatSettings.maxHeight) return;
   chatSettings = next;
+  applyMaxHeight();
   renderPerformance.measure(
-    () => render(latestSnapshot),
+    () => render(latestSnapshot, true),
     latestSnapshot.messages.length
   );
 });

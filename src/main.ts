@@ -334,7 +334,7 @@ interface UpdateProgress {
 
 interface OverlayConfigurationExport {
   format: "blackrack-overlay-configuration";
-  schemaVersion: 26;
+  schemaVersion: 27;
   exportedAt: string;
   ui: { locale: Locale; displayUnits: DisplayUnits };
   profiles: OverlayProfile[];
@@ -535,7 +535,7 @@ if (localeSelect) {
   });
 }
 
-const CURRENT_CONFIGURATION_SCHEMA = 26;
+const CURRENT_CONFIGURATION_SCHEMA = 27;
 const CURRENT_CONFIGURATION_FORMAT = "blackrack-overlay-configuration";
 const LEGACY_CONFIGURATION_FORMAT = "lmu-overlay-configuration";
 const overlayIds: OverlayId[] = ["delta", "timing", "stinthistory", "driving", "liftcoast", "tires", "damage", "standings", "relative", "fuel", "pitstop", "flags", "rejoin", "trackmap", "forecast", "conditions", "dashboard", "sessioninfo", "chat"];
@@ -1767,8 +1767,12 @@ const applyOverlayConfigurationDefaults = (id: OverlayId, events: Promise<unknow
     events.push(emit(CHAT_SETTINGS_EVENT, chatSettings));
     const input = document.getElementById("chat-max-messages") as HTMLInputElement | null;
     const output = document.getElementById("chat-max-messages-value");
+    const heightInput = document.getElementById("chat-max-height") as HTMLInputElement | null;
+    const heightOutput = document.getElementById("chat-max-height-value");
     if (input) input.value = String(chatSettings.maxMessages);
     if (output) output.textContent = String(chatSettings.maxMessages);
+    if (heightInput) heightInput.value = String(chatSettings.maxHeight);
+    if (heightOutput) heightOutput.textContent = `${chatSettings.maxHeight} px`;
   } else if (id === "liftcoast") {
     liftCoastSettings = defaultLiftCoastSettings();
     localStorage.setItem(LIFTCOAST_SETTINGS_KEY, JSON.stringify(liftCoastSettings));
@@ -3161,9 +3165,15 @@ const parseOverlayConfiguration = (
     throw new Error(t("config.invalidPitStop"));
   }
   const normalizedChat = normalizeChatSettings(chat ?? defaultChatSettings());
-  if ((overlays?.chat !== undefined && !chat)
-    || (chat && (typeof chat.maxMessages !== "number" || !Number.isInteger(chat.maxMessages)
-    || chat.maxMessages < 1 || chat.maxMessages > 8))) {
+  const invalidChatSettings = chat !== null && (
+    typeof chat.maxMessages !== "number" || !Number.isInteger(chat.maxMessages)
+    || chat.maxMessages < 1 || chat.maxMessages > 8
+    || (chat.maxHeight !== undefined && (typeof chat.maxHeight !== "number"
+      || !Number.isInteger(chat.maxHeight) || chat.maxHeight < 80 || chat.maxHeight > 400
+      || (chat.maxHeight - 80) % 20 !== 0))
+    || (numericSchemaVersion >= 27 && chat.maxHeight === undefined)
+  );
+  if ((overlays?.chat !== undefined && !chat) || invalidChatSettings) {
     throw new Error(t("config.invalidChat"));
   }
   const fallbackVisibility = defaultVisibility();
@@ -3809,9 +3819,24 @@ if (chatMaxMessages) {
   chatMaxMessages.value = String(chatSettings.maxMessages);
   if (chatMaxMessagesValue) chatMaxMessagesValue.textContent = String(chatSettings.maxMessages);
   chatMaxMessages.addEventListener("input", () => {
-    chatSettings = normalizeChatSettings({ maxMessages: Number(chatMaxMessages.value) });
+    chatSettings = normalizeChatSettings({ ...chatSettings, maxMessages: Number(chatMaxMessages.value) });
     chatMaxMessages.value = String(chatSettings.maxMessages);
     if (chatMaxMessagesValue) chatMaxMessagesValue.textContent = String(chatSettings.maxMessages);
+    localStorage.setItem(CHAT_SETTINGS_KEY, JSON.stringify(chatSettings));
+    void emit(CHAT_SETTINGS_EVENT, chatSettings);
+    syncBrowserSourcePreferences();
+    onLiveSettingsChanged();
+  });
+}
+const chatMaxHeight = document.getElementById("chat-max-height") as HTMLInputElement | null;
+const chatMaxHeightValue = document.getElementById("chat-max-height-value");
+if (chatMaxHeight) {
+  chatMaxHeight.value = String(chatSettings.maxHeight);
+  if (chatMaxHeightValue) chatMaxHeightValue.textContent = `${chatSettings.maxHeight} px`;
+  chatMaxHeight.addEventListener("input", () => {
+    chatSettings = normalizeChatSettings({ ...chatSettings, maxHeight: Number(chatMaxHeight.value) });
+    chatMaxHeight.value = String(chatSettings.maxHeight);
+    if (chatMaxHeightValue) chatMaxHeightValue.textContent = `${chatSettings.maxHeight} px`;
     localStorage.setItem(CHAT_SETTINGS_KEY, JSON.stringify(chatSettings));
     void emit(CHAT_SETTINGS_EVENT, chatSettings);
     syncBrowserSourcePreferences();

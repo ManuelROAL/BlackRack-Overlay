@@ -1743,6 +1743,25 @@ select {
   text-align: right;
 }
 
+[data-settings-for="chat"] #chat-max-height {
+  grid-column: 1;
+  grid-row: 2;
+  width: 100%;
+  height: 4px;
+  padding: 0;
+  border: 0;
+  accent-color: #d8ff3e;
+  cursor: pointer;
+}
+
+[data-settings-for="chat"] #chat-max-height-value {
+  grid-column: 2;
+  grid-row: 2;
+  color: #b8c2cc;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
 [data-settings-for="liftcoast"] > .liftcoast-display-mode-field {
   max-width: 260px;
   margin: 0 16px 14px;

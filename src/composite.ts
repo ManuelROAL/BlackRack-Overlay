@@ -517,10 +517,17 @@ const createPanel = (overlay: OverlayId, placement: OverlayPlacement): void => {
 
   const chrome = document.createElement("div");
   chrome.className = "composite-panel-chrome";
-  chrome.addEventListener("pointerdown", (event) => bindPointerMove(event, overlay, "move"));
+  chrome.addEventListener("pointerdown", (event) => {
+    if (overlay === "chat" && event.target !== chrome) return;
+    bindPointerMove(event, overlay, "move");
+  });
   const label = document.createElement("span");
   label.className = "composite-panel-label";
   label.textContent = overlayTitle(overlay);
+  label.addEventListener("pointerdown", (event) => {
+    event.stopPropagation();
+    bindPointerMove(event, overlay, "move");
+  });
   const resize = document.createElement("button");
   resize.className = "composite-resize";
   resize.type = "button";
