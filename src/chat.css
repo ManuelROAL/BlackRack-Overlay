@@ -39,6 +39,7 @@
 }
 
 .chat-panel[data-empty="true"] {
+  visibility: hidden;
   border-color: rgb(255 255 255 / 7%);
   border-left-color: rgb(216 255 62 / 45%);
   box-shadow: none;
