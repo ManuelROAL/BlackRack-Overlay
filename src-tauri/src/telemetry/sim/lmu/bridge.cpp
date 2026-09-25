@@ -4,6 +4,7 @@
 #include <cmath>
 #include <cstdint>
 #include <cstring>
+#include <iterator>
 #include <optional>
 #include <utility>
 
@@ -186,6 +187,19 @@ SharedMemoryLayout* shared_memory = nullptr;
 std::optional<SharedMemoryLock> shared_memory_lock;
 SharedMemoryObjectOut copied_memory{};
 
+bool has_shared_memory_event(const SharedMemoryGeneric& generic,
+                             SharedMemoryEvent event) {
+    return std::find(std::begin(generic.events), std::end(generic.events), event)
+        != std::end(generic.events);
+}
+
+void clear_session_data(SharedMemoryObjectOut& memory) {
+    std::memset(&memory.scoring, 0, sizeof(memory.scoring));
+    memory.scoring.scoringInfo.mVehicle = memory.scoring.vehScoringInfo;
+    memory.scoring.scoringInfo.mResultsStream = memory.scoring.scoringStream;
+    std::memset(&memory.telemetry, 0, sizeof(memory.telemetry));
+}
+
 // The SDK helper copies counts and stream sizes supplied by the game without
 // checking them against the fixed-size arrays in SharedMemoryObjectOut. A
 // transient or incompatible shared-memory frame must not be allowed to write
@@ -195,7 +209,7 @@ void copy_shared_memory_bounded(SharedMemoryObjectOut& destination,
                                 const SharedMemoryObjectOut& source) {
     std::memcpy(&destination.generic, &source.generic, sizeof(SharedMemoryGeneric));
 
-    if (source.generic.events[SME_UPDATE_SCORING]) {
+    if (has_shared_memory_event(source.generic, SME_UPDATE_SCORING)) {
         std::memcpy(&destination.scoring.scoringInfo,
                     &source.scoring.scoringInfo,
                     sizeof(ScoringInfoV01));
@@ -223,7 +237,7 @@ void copy_shared_memory_bounded(SharedMemoryObjectOut& destination,
         destination.scoring.scoringInfo.mResultsStream = &destination.scoring.scoringStream[0];
     }
 
-    if (source.generic.events[SME_UPDATE_TELEMETRY]) {
+    if (has_shared_memory_event(source.generic, SME_UPDATE_TELEMETRY)) {
         const size_t vehicle_count = std::min(
             static_cast<size_t>(source.telemetry.activeVehicles),
             MAX_VEHICLES);
@@ -235,12 +249,19 @@ void copy_shared_memory_bounded(SharedMemoryObjectOut& destination,
                     vehicle_count * sizeof(TelemInfoV01));
     }
 
-    if (source.generic.events[SME_ENTER]
-        || source.generic.events[SME_EXIT]
-        || source.generic.events[SME_SET_ENVIRONMENT]) {
+    if (has_shared_memory_event(source.generic, SME_ENTER)
+        || has_shared_memory_event(source.generic, SME_EXIT)
+        || has_shared_memory_event(source.generic, SME_SET_ENVIRONMENT)) {
         std::memcpy(&destination.paths,
                     &source.paths,
                     sizeof(SharedMemoryPathData));
+    }
+
+    // The SDK publishes scoring and telemetry only on their update events.
+    // Without this reset, its retained shared-memory snapshot can keep the last
+    // race's player and standings alive after LMU reports that the session ended.
+    if (has_shared_memory_event(source.generic, SME_END_SESSION)) {
+        clear_session_data(destination);
     }
 }
 

@@ -102,6 +102,10 @@ assignments; per-overlay mode restores those assignments.
   the game is not realtime or the player is in the garage. Session phases alone
   —including the pre-session server wait, the session timer and a
   checkered/finished phase—never hide overlays.
+  When LMU explicitly reports `SME_END_SESSION`, invalidate its retained scoring
+  and telemetry snapshot so previous-session values clear as the game returns to
+  the menu. Do not use phase 0 as a substitute; the pre-session server wait also
+  uses that phase.
   Spectator and team modes permit non-realtime viewing. Spectator mode treats the
   currently watched entry as the reference vehicle; team mode keeps the player's
   registered team car as the reference regardless of the active camera. They are
