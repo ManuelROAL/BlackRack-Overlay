@@ -396,12 +396,19 @@ enum ChatTimestampOrder {
 }
 
 fn parse_chat_messages(value: &Value) -> Option<Vec<crate::telemetry::ChatMessage>> {
-    let entries = value
-        .as_array()
-        .or_else(|| value.get("Messages").and_then(Value::as_array))?;
+    let entries = value.as_array().or_else(|| {
+        value
+            .get("Messages")
+            .or_else(|| value.get("messages"))
+            .and_then(Value::as_array)
+    })?;
     let mut messages = Vec::new();
     for (index, entry) in entries.iter().enumerate() {
-        let Some(raw) = entry.get("Message").and_then(Value::as_str) else {
+        let Some(raw) = entry
+            .get("Message")
+            .or_else(|| entry.get("message"))
+            .and_then(Value::as_str)
+        else {
             continue;
         };
         let Some((name, text)) = raw.split_once(':') else {
@@ -411,7 +418,7 @@ fn parse_chat_messages(value: &Value) -> Option<Vec<crate::telemetry::ChatMessag
         if name.is_empty() || text.is_empty() {
             continue;
         }
-        let timestamp_value = entry.get("Timestamp");
+        let timestamp_value = entry.get("Timestamp").or_else(|| entry.get("timestamp"));
         let timestamp_text = timestamp_value.and_then(Value::as_str);
         let timestamp_number = timestamp_value
             .and_then(Value::as_i64)
@@ -1346,6 +1353,14 @@ mod tests {
         assert_eq!(parsed[0].text, "hello: world");
         assert_eq!(parsed[0].id, "9223372036854775000");
         assert!(super::parse_chat_messages(&serde_json::json!({"unexpected": []})).is_none());
+
+        let camel_case = serde_json::json!([
+            {"message":"Driver: hello", "timestamp":10}
+        ]);
+        let parsed_camel_case = super::parse_chat_messages(&camel_case).unwrap();
+        assert_eq!(parsed_camel_case[0].id, "10");
+        assert_eq!(parsed_camel_case[0].name, "Driver");
+        assert_eq!(parsed_camel_case[0].text, "hello");
 
         let unsorted = serde_json::json!([
             {"Message":"nine: n","Timestamp":9},
