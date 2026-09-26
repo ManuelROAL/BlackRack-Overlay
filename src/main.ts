@@ -3121,6 +3121,7 @@ const parseOverlayConfiguration = (
   if (driving && (!completeBooleanRecord(driving.graphPedals, drivingPedalIds)
     || !completeBooleanRecord(driving.inputPedals, drivingPedalIds)
     || (driving.showGraph !== undefined && typeof driving.showGraph !== "boolean")
+    || (driving.showPedalLabels !== undefined && typeof driving.showPedalLabels !== "boolean")
     || typeof driving.showSteering !== "boolean"
     || typeof driving.showForceFeedback !== "boolean"
     || typeof driving.showSpeed !== "boolean"
@@ -3341,6 +3342,9 @@ const parseOverlayConfiguration = (
         showGraph: typeof driving.showGraph === "boolean"
           ? driving.showGraph
           : defaultDriving.showGraph,
+        showPedalLabels: typeof driving.showPedalLabels === "boolean"
+          ? driving.showPedalLabels
+          : defaultDriving.showPedalLabels,
         showRpmLeds: typeof driving.showRpmLeds === "boolean"
           ? driving.showRpmLeds
           : defaultDriving.showRpmLeds
@@ -4198,6 +4202,11 @@ for (const [key, label] of [
     persistDrivingSettings();
   });
 }
+
+appendToggle(drivingInputPedals, t("settings.pedalLabels"), drivingSettings.showPedalLabels, (checked) => {
+  drivingSettings = { ...drivingSettings, showPedalLabels: checked };
+  persistDrivingSettings();
+});
 
 const graphPositionSelect = document.getElementById("driving-graph-position") as HTMLSelectElement | null;
 if (graphPositionSelect) {

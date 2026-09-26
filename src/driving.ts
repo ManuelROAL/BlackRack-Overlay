@@ -179,6 +179,8 @@ const applySettings = (next: DrivingSettings): void => {
   for (const { id } of DRIVING_PEDALS) {
     const input = document.querySelector<HTMLElement>(`[data-input-pedal="${id}"]`);
     if (input) input.hidden = !settings.inputPedals[id];
+    const label = input?.querySelector<HTMLElement>("span");
+    if (label) label.hidden = !settings.showPedalLabels;
   }
   if (pedalPanel) {
     pedalPanel.hidden = inputCount === 0;

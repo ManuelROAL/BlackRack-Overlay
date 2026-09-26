@@ -5,6 +5,7 @@ export interface DrivingSettings {
   graphPedals: Record<DrivingPedalId, boolean>;
   inputPedals: Record<DrivingPedalId, boolean>;
   showGraph: boolean;
+  showPedalLabels: boolean;
   showSteering: boolean;
   showForceFeedback: boolean;
   showSpeed: boolean;
@@ -23,6 +24,7 @@ export const defaultDrivingSettings = (): DrivingSettings => ({
   graphPedals: { throttle: true, brake: true, clutch: true },
   inputPedals: { throttle: true, brake: true, clutch: true },
   showGraph: true,
+  showPedalLabels: true,
   showSteering: true,
   showForceFeedback: true,
   showSpeed: true,
@@ -37,6 +39,7 @@ export const readDrivingSettings = (): DrivingSettings => {
       graphPedals?: Partial<Record<DrivingPedalId, boolean>>;
       inputPedals?: Partial<Record<DrivingPedalId, boolean>>;
       showGraph?: boolean;
+      showPedalLabels?: unknown;
       showSteering?: boolean;
       showForceFeedback?: boolean;
       showSpeed?: boolean;
@@ -53,6 +56,7 @@ export const readDrivingSettings = (): DrivingSettings => {
       }
     }
     if (typeof stored.showGraph === "boolean") settings.showGraph = stored.showGraph;
+    if (typeof stored.showPedalLabels === "boolean") settings.showPedalLabels = stored.showPedalLabels;
     if (typeof stored.showSteering === "boolean") settings.showSteering = stored.showSteering;
     if (typeof stored.showForceFeedback === "boolean") {
       settings.showForceFeedback = stored.showForceFeedback;

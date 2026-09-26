@@ -56,6 +56,8 @@
 - The complete graph is optional without losing its selected pedal traces. Graph
   pedals and current-input pedals are independently selectable. Steering, FFB,
   speed, gear and the RPM strip are independently selectable too.
+- Labels beneath the current-input pedal bars can be hidden independently; the
+  pedal bars and numeric values remain visible. Labels are shown by default.
 - Compact panel width when a complete block is hidden while preserving current
   visual scale. Mirror every option in OBS browser-source preferences.
 - Keep gear, speed and the FFB readout vertically separated throughout the
