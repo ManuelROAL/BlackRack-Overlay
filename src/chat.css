@@ -78,6 +78,7 @@ html[data-browser-source="true"] .chat-body {
 }
 
 .chat-time {
+  align-self: center;
   color: #7f8a96;
   font-size: calc(9px * var(--overlay-font-scale, 1));
   font-variant-numeric: tabular-nums;
