@@ -175,6 +175,7 @@ const applySettings = (next: DrivingSettings): void => {
   const graphCount = visiblePedalCount(settings.graphPedals);
   const inputCount = visiblePedalCount(settings.inputPedals);
   if (trailingPanel) trailingPanel.hidden = !settings.showGraph || graphCount === 0;
+  if (trailingPanel) trailingPanel.style.order = settings.graphPosition === "left" ? "-1" : "3";
   for (const { id } of DRIVING_PEDALS) {
     const input = document.querySelector<HTMLElement>(`[data-input-pedal="${id}"]`);
     if (input) input.hidden = !settings.inputPedals[id];
@@ -198,6 +199,12 @@ const applySettings = (next: DrivingSettings): void => {
   if (driveDial) {
     driveDial.hidden = !settings.showGear && !settings.showSteering
       && !settings.showSpeed && !settings.showForceFeedback;
+  }
+  const orderedPanels = [driveDial, pedalPanel, trailingPanel]
+    .filter((panel): panel is HTMLElement => panel !== null && !panel.hidden)
+    .sort((left, right) => Number(left.style.order || 0) - Number(right.style.order || 0));
+  for (const [index, panel] of orderedPanels.entries()) {
+    panel.style.borderLeft = index === 0 ? "0" : "1px solid rgb(255 255 255 / 11%)";
   }
   const rpmLedStrip = elements.get("rpm-leds");
   if (rpmLedStrip) rpmLedStrip.hidden = !settings.showRpmLeds;

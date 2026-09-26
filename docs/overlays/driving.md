@@ -34,6 +34,9 @@
 - Left-to-right composition is: a circular dial combining the rotating
   steering-centre arc, central gear, speed and the FFB bar below it;
   clutch/brake/throttle meters; and the wide five-second trace.
+- The settings section can place the complete trace at the left or right edge;
+  it defaults to the right. The dial and current-input meters retain their
+  relative order, and hidden or compact blocks keep their existing widths.
 - An optional 12-segment RPM strip spans the top of the panel. Based on the
   established TinyPedal behavior rather than copied source, it illuminates
   progressively from 84% to 96% of `max_rpm`, symmetrically from both outer

@@ -2069,7 +2069,14 @@ const applyProfileData = async (data: OverlayProfileData): Promise<void> => {
       deltaLapCount: data.relative?.deltaLapCount ?? defaultRelative.deltaLapCount,
       invertDeltaLayout: data.relative?.invertDeltaLayout ?? defaultRelative.invertDeltaLayout
     };
-    drivingSettings = data.driving;
+    const defaultDriving = defaultDrivingSettings();
+    drivingSettings = {
+      ...defaultDriving,
+      ...data.driving,
+      graphPosition: data.driving?.graphPosition === "left" || data.driving?.graphPosition === "right"
+        ? data.driving.graphPosition
+        : defaultDriving.graphPosition
+    };
     deltaSettings = data.delta;
     timingSettings = normalizeTimingSettings(data.timing);
     trackMapSettings = normalizeTrackMapSettings(data.trackMap);
@@ -3118,7 +3125,8 @@ const parseOverlayConfiguration = (
     || typeof driving.showForceFeedback !== "boolean"
     || typeof driving.showSpeed !== "boolean"
     || typeof driving.showGear !== "boolean"
-    || (driving.showRpmLeds !== undefined && typeof driving.showRpmLeds !== "boolean"))) {
+    || (driving.showRpmLeds !== undefined && typeof driving.showRpmLeds !== "boolean")
+    || (driving.graphPosition !== undefined && driving.graphPosition !== "left" && driving.graphPosition !== "right"))) {
     throw new Error(t("config.invalidDriving"));
   }
   const normalizedDelta = delta ?? defaultDeltaSettings();
@@ -3327,6 +3335,9 @@ const parseOverlayConfiguration = (
       },
       driving: driving ? {
         ...(driving as unknown as DrivingSettings),
+        graphPosition: driving.graphPosition === "left" || driving.graphPosition === "right"
+          ? driving.graphPosition
+          : defaultDriving.graphPosition,
         showGraph: typeof driving.showGraph === "boolean"
           ? driving.showGraph
           : defaultDriving.showGraph,
@@ -4184,6 +4195,16 @@ for (const [key, label] of [
 ] as const) {
   appendToggle(drivingReadoutOptions, label, drivingSettings[key], (checked) => {
     drivingSettings = { ...drivingSettings, [key]: checked };
+    persistDrivingSettings();
+  });
+}
+
+const graphPositionSelect = document.getElementById("driving-graph-position") as HTMLSelectElement | null;
+if (graphPositionSelect) {
+  graphPositionSelect.value = drivingSettings.graphPosition;
+  graphPositionSelect.addEventListener("change", () => {
+    const graphPosition = graphPositionSelect.value === "left" ? "left" : "right";
+    drivingSettings = { ...drivingSettings, graphPosition };
     persistDrivingSettings();
   });
 }

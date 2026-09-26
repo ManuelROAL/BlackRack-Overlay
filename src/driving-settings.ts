@@ -1,6 +1,7 @@
 export type DrivingPedalId = "throttle" | "brake" | "clutch";
 
 export interface DrivingSettings {
+  graphPosition: "left" | "right";
   graphPedals: Record<DrivingPedalId, boolean>;
   inputPedals: Record<DrivingPedalId, boolean>;
   showGraph: boolean;
@@ -18,6 +19,7 @@ export const DRIVING_PEDALS = [
 ] as const;
 
 export const defaultDrivingSettings = (): DrivingSettings => ({
+  graphPosition: "right",
   graphPedals: { throttle: true, brake: true, clutch: true },
   inputPedals: { throttle: true, brake: true, clutch: true },
   showGraph: true,
@@ -40,6 +42,7 @@ export const readDrivingSettings = (): DrivingSettings => {
       showSpeed?: boolean;
       showGear?: boolean;
       showRpmLeds?: boolean;
+      graphPosition?: unknown;
     };
     for (const { id } of DRIVING_PEDALS) {
       if (typeof stored.graphPedals?.[id] === "boolean") {
@@ -57,6 +60,9 @@ export const readDrivingSettings = (): DrivingSettings => {
     if (typeof stored.showSpeed === "boolean") settings.showSpeed = stored.showSpeed;
     if (typeof stored.showGear === "boolean") settings.showGear = stored.showGear;
     if (typeof stored.showRpmLeds === "boolean") settings.showRpmLeds = stored.showRpmLeds;
+    if (stored.graphPosition === "left" || stored.graphPosition === "right") {
+      settings.graphPosition = stored.graphPosition;
+    }
   } catch {
     localStorage.removeItem(DRIVING_SETTINGS_KEY);
   }
