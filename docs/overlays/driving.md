@@ -39,9 +39,11 @@
   subtly framed surface. Pedal meters use clear value and abbreviated label
   hierarchy above clean segmented tracks. Keep green for throttle, coral for
   brake and cyan for clutch; TC remains blue and ABS yellow.
-- The settings section can place the complete trace at the left or right edge;
-  it defaults to the right. The dial and current-input meters retain their
-  relative order, and hidden or compact blocks keep their existing widths.
+- The settings section assigns the graph, current-input meters and driving-data
+  dial independently to the left, center or right. Every location is exclusive:
+  choosing an occupied location swaps the two sections. Defaults are driving
+  data left, inputs center and graph right. Older profiles with the graph at the
+  left retain their historical graph → dial → inputs order.
 - An optional 12-segment RPM strip spans the top of the panel. Based on the
   established TinyPedal behavior rather than copied source, it illuminates
   progressively from 84% to 96% of `max_rpm`, symmetrically from both outer

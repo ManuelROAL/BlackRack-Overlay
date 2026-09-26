@@ -175,7 +175,11 @@ const applySettings = (next: DrivingSettings): void => {
   const graphCount = visiblePedalCount(settings.graphPedals);
   const inputCount = visiblePedalCount(settings.inputPedals);
   if (trailingPanel) trailingPanel.hidden = !settings.showGraph || graphCount === 0;
-  if (trailingPanel) trailingPanel.style.order = settings.graphPosition === "left" ? "-1" : "3";
+  const order = (position: DrivingSettings["graphPosition"]): string =>
+    String(({ left: 1, center: 2, right: 3 })[position]);
+  if (trailingPanel) trailingPanel.style.order = order(settings.graphPosition);
+  if (pedalPanel) pedalPanel.style.order = order(settings.inputPosition);
+  if (driveDial) driveDial.style.order = order(settings.dataPosition);
   for (const { id } of DRIVING_PEDALS) {
     const input = document.querySelector<HTMLElement>(`[data-input-pedal="${id}"]`);
     if (input) input.hidden = !settings.inputPedals[id];

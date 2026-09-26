@@ -64,8 +64,12 @@ import {
 } from "./relative-settings";
 import {
   defaultDrivingSettings,
+  assignDrivingPanelPosition,
   DRIVING_PEDALS,
   DRIVING_SETTINGS_KEY,
+  normalizeDrivingSettings,
+  type DrivingPanelId,
+  type DrivingPanelPosition,
   readDrivingSettings,
   type DrivingPedalId,
   type DrivingSettings
@@ -2069,14 +2073,7 @@ const applyProfileData = async (data: OverlayProfileData): Promise<void> => {
       deltaLapCount: data.relative?.deltaLapCount ?? defaultRelative.deltaLapCount,
       invertDeltaLayout: data.relative?.invertDeltaLayout ?? defaultRelative.invertDeltaLayout
     };
-    const defaultDriving = defaultDrivingSettings();
-    drivingSettings = {
-      ...defaultDriving,
-      ...data.driving,
-      graphPosition: data.driving?.graphPosition === "left" || data.driving?.graphPosition === "right"
-        ? data.driving.graphPosition
-        : defaultDriving.graphPosition
-    };
+    drivingSettings = normalizeDrivingSettings(data.driving);
     deltaSettings = data.delta;
     timingSettings = normalizeTimingSettings(data.timing);
     trackMapSettings = normalizeTrackMapSettings(data.trackMap);
@@ -3127,7 +3124,9 @@ const parseOverlayConfiguration = (
     || typeof driving.showSpeed !== "boolean"
     || typeof driving.showGear !== "boolean"
     || (driving.showRpmLeds !== undefined && typeof driving.showRpmLeds !== "boolean")
-    || (driving.graphPosition !== undefined && driving.graphPosition !== "left" && driving.graphPosition !== "right"))) {
+    || (driving.graphPosition !== undefined && !["left", "center", "right"].includes(String(driving.graphPosition)))
+    || (driving.inputPosition !== undefined && !["left", "center", "right"].includes(String(driving.inputPosition)))
+    || (driving.dataPosition !== undefined && !["left", "center", "right"].includes(String(driving.dataPosition))))) {
     throw new Error(t("config.invalidDriving"));
   }
   const normalizedDelta = delta ?? defaultDeltaSettings();
@@ -3334,21 +3333,7 @@ const parseOverlayConfiguration = (
           ? relative.driverNameFormat
           : defaultRelative.driverNameFormat
       },
-      driving: driving ? {
-        ...(driving as unknown as DrivingSettings),
-        graphPosition: driving.graphPosition === "left" || driving.graphPosition === "right"
-          ? driving.graphPosition
-          : defaultDriving.graphPosition,
-        showGraph: typeof driving.showGraph === "boolean"
-          ? driving.showGraph
-          : defaultDriving.showGraph,
-        showPedalLabels: typeof driving.showPedalLabels === "boolean"
-          ? driving.showPedalLabels
-          : defaultDriving.showPedalLabels,
-        showRpmLeds: typeof driving.showRpmLeds === "boolean"
-          ? driving.showRpmLeds
-          : defaultDriving.showRpmLeds
-      } : defaultDriving,
+      driving: normalizeDrivingSettings(driving as unknown as Partial<DrivingSettings> | null),
       delta: normalizedDelta as unknown as DeltaSettings,
       timing: normalizedTimingWithTimes as unknown as TimingSettings,
       trackMap: normalizedTrackMap as unknown as TrackMapSettings,
@@ -4208,12 +4193,25 @@ appendToggle(drivingInputPedals, t("settings.pedalLabels"), drivingSettings.show
   persistDrivingSettings();
 });
 
-const graphPositionSelect = document.getElementById("driving-graph-position") as HTMLSelectElement | null;
-if (graphPositionSelect) {
-  graphPositionSelect.value = drivingSettings.graphPosition;
-  graphPositionSelect.addEventListener("change", () => {
-    const graphPosition = graphPositionSelect.value === "left" ? "left" : "right";
-    drivingSettings = { ...drivingSettings, graphPosition };
+const drivingPanelPositionSelects: Partial<Record<DrivingPanelId, HTMLSelectElement | null>> = {
+  graph: document.getElementById("driving-graph-position") as HTMLSelectElement | null,
+  inputs: document.getElementById("driving-input-position") as HTMLSelectElement | null,
+  data: document.getElementById("driving-data-position") as HTMLSelectElement | null
+};
+const drivingPositionKey: Record<DrivingPanelId, "graphPosition" | "inputPosition" | "dataPosition"> = {
+  graph: "graphPosition", inputs: "inputPosition", data: "dataPosition"
+};
+const syncDrivingPositionSelects = (): void => {
+  for (const [panel, select] of Object.entries(drivingPanelPositionSelects) as [DrivingPanelId, HTMLSelectElement | null][]) {
+    if (select) select.value = drivingSettings[drivingPositionKey[panel]];
+  }
+};
+syncDrivingPositionSelects();
+for (const [panel, select] of Object.entries(drivingPanelPositionSelects) as [DrivingPanelId, HTMLSelectElement | null][]) {
+  select?.addEventListener("change", () => {
+    const position = select.value as DrivingPanelPosition;
+    drivingSettings = assignDrivingPanelPosition(drivingSettings, panel, position);
+    syncDrivingPositionSelects();
     persistDrivingSettings();
   });
 }
