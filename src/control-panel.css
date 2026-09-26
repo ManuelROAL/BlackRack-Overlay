@@ -1601,6 +1601,12 @@ select {
   letter-spacing: 0.1em;
 }
 
+.driving-graph-position-label {
+  display: inline-block;
+  padding-top: 0;
+  vertical-align: middle;
+}
+
 .header-options {
   padding-top: 10px;
   padding-bottom: 4px;
