@@ -1,6 +1,6 @@
 use super::{
     fuel_energy_ratio, lmu_snapshot_size, rear_wing_detached, suspension_damage_by_wheel_percent,
-    suspension_damage_percent, synchronized_lap_progress, CarHistory, LmuSnapshot,
+    suspension_damage_percent, synchronized_lap_progress, CachedTire, CarHistory, LmuSnapshot,
     LmuStandingEntry, LmuTelemetrySource, PlayerLapDistanceEstimator, PlayerLapDistanceSample,
     PlayerLapTimeHistory, SessionContext, TireWearTracker,
 };
@@ -8,6 +8,14 @@ use crate::telemetry::sim::lmu::event_split::DriverRankSettings;
 use crate::telemetry::sim::lmu::rest::{RestCompoundCondition, RestStanding};
 use crate::telemetry::StandingEntry;
 use std::collections::{HashMap, HashSet};
+
+fn tracker_compounds(compound: &str) -> [&str; 4] {
+    [compound; 4]
+}
+
+fn compound_keys(compounds: &[String; 4]) -> [&str; 4] {
+    std::array::from_fn(|index| compounds[index].as_str())
+}
 
 fn lap_distance_sample(
     raw_distance: f64,
@@ -200,16 +208,38 @@ fn wind_arrow_is_relative_to_vehicle_orientation() {
 #[test]
 fn flat_spot_wear_only_accumulates_during_a_localized_slide() {
     let mut tracker = TireWearTracker::default();
-    tracker.update([100.0; 4], [0.0; 4], [0.0; 4], 0.0, false);
+    tracker.update(
+        [100.0; 4],
+        tracker_compounds("S"),
+        [0.0; 4],
+        [0.0; 4],
+        0.0,
+        false,
+    );
 
-    let normal_wear = tracker.update([99.9; 4], [-0.1; 4], [0.8; 4], 0.0, false);
+    let normal_wear = tracker.update(
+        [99.9; 4],
+        tracker_compounds("S"),
+        [-0.1; 4],
+        [0.8; 4],
+        0.0,
+        false,
+    );
     assert_eq!(normal_wear, [0.0; 4]);
 
-    let low_grip_wear = tracker.update([99.8; 4], [-0.5; 4], [0.4; 4], 0.0, false);
+    let low_grip_wear = tracker.update(
+        [99.8; 4],
+        tracker_compounds("S"),
+        [-0.5; 4],
+        [0.4; 4],
+        0.0,
+        false,
+    );
     assert_eq!(low_grip_wear, [0.0; 4]);
 
     let slide_wear = tracker.update(
         [99.6, 99.7, 99.8, 99.8],
+        tracker_compounds("S"),
         [-0.5, -0.5, 0.0, 0.0],
         [0.8, 0.6, 0.8, 0.8],
         0.0,
@@ -224,10 +254,18 @@ fn flat_spot_wear_only_accumulates_during_a_localized_slide() {
 #[test]
 fn flat_spot_wear_uses_braking_as_a_fallback_when_sliding_fraction_is_missing() {
     let mut tracker = TireWearTracker::default();
-    tracker.update([100.0; 4], [0.0; 4], [0.0; 4], 0.0, false);
+    tracker.update(
+        [100.0; 4],
+        tracker_compounds("S"),
+        [0.0; 4],
+        [0.0; 4],
+        0.0,
+        false,
+    );
 
     let lock_wear = tracker.update(
         [99.8, 99.9, 100.0, 100.0],
+        tracker_compounds("S"),
         [-0.5, -0.5, 0.0, 0.0],
         [0.0; 4],
         0.7,
@@ -243,26 +281,282 @@ fn flat_spot_wear_uses_braking_as_a_fallback_when_sliding_fraction_is_missing() 
 #[test]
 fn flat_spot_wear_resets_when_tyres_are_changed_in_pits() {
     let mut tracker = TireWearTracker::default();
-    tracker.update([90.0; 4], [0.0; 4], [0.0; 4], 0.0, false);
-    tracker.update([89.5; 4], [-0.5; 4], [0.8; 4], 0.0, false);
+    tracker.update(
+        [90.0; 4],
+        tracker_compounds("S"),
+        [0.0; 4],
+        [0.0; 4],
+        0.0,
+        false,
+    );
+    tracker.update(
+        [89.5; 4],
+        tracker_compounds("S"),
+        [-0.5; 4],
+        [0.8; 4],
+        0.0,
+        false,
+    );
 
-    let after_change = tracker.update([100.0; 4], [0.0; 4], [0.0; 4], 0.0, true);
+    let after_change = tracker.update(
+        [100.0; 4],
+        tracker_compounds("S"),
+        [0.0; 4],
+        [0.0; 4],
+        0.0,
+        true,
+    );
     assert_eq!(after_change, [0.0; 4]);
 }
 
 #[test]
 fn flat_spot_wear_is_retained_while_the_player_is_in_the_garage() {
     let mut tracker = TireWearTracker::default();
-    tracker.update([90.0; 4], [0.0; 4], [0.0; 4], 0.0, false);
-    tracker.update([89.5; 4], [-0.5; 4], [0.8; 4], 0.0, false);
+    tracker.update(
+        [90.0; 4],
+        tracker_compounds("S"),
+        [0.0; 4],
+        [0.0; 4],
+        0.0,
+        false,
+    );
+    tracker.update(
+        [89.5; 4],
+        tracker_compounds("S"),
+        [-0.5; 4],
+        [0.8; 4],
+        0.0,
+        false,
+    );
 
     tracker.reset_unless_in_garage(true);
-    let after_garage = tracker.update([89.5; 4], [0.0; 4], [0.0; 4], 0.0, true);
+    let after_garage = tracker.update(
+        [89.5; 4],
+        tracker_compounds("S"),
+        [0.0; 4],
+        [0.0; 4],
+        0.0,
+        true,
+    );
     assert_eq!(after_garage, [0.5; 4]);
 
     tracker.reset_unless_in_garage(false);
-    let after_car_selection = tracker.update([89.5; 4], [0.0; 4], [0.0; 4], 0.0, false);
+    let after_car_selection = tracker.update(
+        [89.5; 4],
+        tracker_compounds("S"),
+        [0.0; 4],
+        [0.0; 4],
+        0.0,
+        false,
+    );
     assert_eq!(after_car_selection, [0.0; 4]);
+}
+
+#[test]
+fn flat_spot_profile_returns_with_the_same_compound_tread_and_corner() {
+    let mut tracker = TireWearTracker::default();
+    tracker.update(
+        [90.0; 4],
+        tracker_compounds("S"),
+        [0.0; 4],
+        [0.0; 4],
+        0.0,
+        false,
+    );
+    tracker.update(
+        [89.5, 90.0, 90.0, 90.0],
+        tracker_compounds("S"),
+        [-0.5, 0.0, 0.0, 0.0],
+        [0.8; 4],
+        0.0,
+        false,
+    );
+    assert!((tracker.flat_spot_wear[0] - 0.5).abs() < 0.001);
+
+    tracker.update(
+        [100.0; 4],
+        tracker_compounds("M"),
+        [0.0; 4],
+        [0.0; 4],
+        0.0,
+        true,
+    );
+    let restored = tracker.update(
+        [89.0, 100.0, 100.0, 100.0],
+        tracker_compounds("S"),
+        [0.0; 4],
+        [0.0; 4],
+        0.0,
+        true,
+    );
+    assert!((restored[0] - 0.5).abs() < 0.001);
+}
+
+#[test]
+fn flat_spot_profiles_do_not_cross_compound_or_wheel_position() {
+    let mut tracker = TireWearTracker::default();
+    tracker.update(
+        [90.0; 4],
+        tracker_compounds("S"),
+        [0.0; 4],
+        [0.0; 4],
+        0.0,
+        false,
+    );
+    tracker.update(
+        [89.0, 90.0, 90.0, 90.0],
+        tracker_compounds("S"),
+        [-0.5, 0.0, 0.0, 0.0],
+        [0.8; 4],
+        0.0,
+        false,
+    );
+    tracker.update(
+        [100.0; 4],
+        tracker_compounds("M"),
+        [0.0; 4],
+        [0.0; 4],
+        0.0,
+        true,
+    );
+    let new_compound = tracker.update(
+        [89.0, 90.0, 90.0, 90.0],
+        tracker_compounds("H"),
+        [0.0; 4],
+        [0.0; 4],
+        0.0,
+        true,
+    );
+    assert_eq!(new_compound[0], 0.0);
+
+    // The original profile belongs to FL; a similar tire installed at FR is new.
+    let other_corner = tracker.update(
+        [89.0, 89.0, 90.0, 90.0],
+        tracker_compounds("S"),
+        [0.0; 4],
+        [0.0; 4],
+        0.0,
+        true,
+    );
+    assert_eq!(other_corner[1], 0.0);
+}
+
+#[test]
+fn flat_spot_profiles_use_the_named_compound_instead_of_the_shared_enum() {
+    let medium = LmuTelemetrySource::tire_compounds(&[3; 4], ("Medium", "Medium"));
+    let hard = LmuTelemetrySource::tire_compounds(&[3; 4], ("Hard", "Hard"));
+    let mut tracker = TireWearTracker::default();
+    tracker.update(
+        [90.0; 4],
+        compound_keys(&medium),
+        [0.0; 4],
+        [0.0; 4],
+        0.0,
+        false,
+    );
+    tracker.update(
+        [89.5; 4],
+        compound_keys(&medium),
+        [-0.5; 4],
+        [0.8; 4],
+        0.0,
+        false,
+    );
+
+    let hard_mounted = tracker.update(
+        [89.5; 4],
+        compound_keys(&hard),
+        [0.0; 4],
+        [0.0; 4],
+        0.0,
+        true,
+    );
+    assert_eq!(hard_mounted, [0.0; 4]);
+}
+
+#[test]
+fn compound_only_tire_changes_clear_the_previous_tire_life_baseline() {
+    let mut tracker = TireWearTracker::default();
+    tracker.update(
+        [90.0; 4],
+        tracker_compounds("S"),
+        [0.0; 4],
+        [0.0; 4],
+        0.0,
+        false,
+    );
+    tracker.last_lap_wear = Some([1.0; 4]);
+    tracker.lap_start_remaining = Some([90.0; 4]);
+
+    tracker.update(
+        [90.0; 4],
+        tracker_compounds("M"),
+        [0.0; 4],
+        [0.0; 4],
+        0.0,
+        false,
+    );
+
+    assert_eq!(tracker.last_lap_wear, None);
+    assert_eq!(tracker.lap_start_remaining, None);
+}
+
+#[test]
+fn flat_spot_profiles_do_not_match_a_different_tread_signature() {
+    let mut tracker = TireWearTracker::default();
+    tracker.update(
+        [90.0; 4],
+        tracker_compounds("S"),
+        [0.0; 4],
+        [0.0; 4],
+        0.0,
+        false,
+    );
+    tracker.update(
+        [89.5; 4],
+        tracker_compounds("S"),
+        [-0.5; 4],
+        [0.8; 4],
+        0.0,
+        false,
+    );
+    tracker.update(
+        [100.0; 4],
+        tracker_compounds("M"),
+        [0.0; 4],
+        [0.0; 4],
+        0.0,
+        true,
+    );
+
+    let different_tread = tracker.update(
+        [88.5; 4],
+        tracker_compounds("S"),
+        [0.0; 4],
+        [0.0; 4],
+        0.0,
+        true,
+    );
+    assert_eq!(different_tread, [0.0; 4]);
+}
+
+#[test]
+fn ambiguous_flat_spot_matches_are_not_restored() {
+    let mut tracker = TireWearTracker::default();
+    tracker.cache[0].push_back(CachedTire {
+        compound: "S".to_owned(),
+        remaining: 90.0,
+        flat_spot: 0.5,
+    });
+    tracker.cache[0].push_back(CachedTire {
+        compound: "S".to_owned(),
+        remaining: 90.0,
+        flat_spot: 1.0,
+    });
+
+    let restored = TireWearTracker::restore(&mut tracker.cache[0], "S", 90.0);
+    assert_eq!(restored, None);
+    assert!(tracker.cache[0].is_empty());
 }
 
 #[test]
@@ -276,8 +570,22 @@ fn tire_life_uses_clean_lap_wear_and_the_limiting_wheel() {
     assert_eq!(model.remaining_stints, 4.9);
     assert_eq!(model.projected_remaining_percent, [78.0, 58.0, 38.0]);
 
-    tracker.update([98.0, 99.0, 99.0, 99.0], [0.0; 4], [0.0; 4], 0.0, false);
-    tracker.update([100.0; 4], [0.0; 4], [0.0; 4], 0.0, true);
+    tracker.update(
+        [98.0, 99.0, 99.0, 99.0],
+        tracker_compounds("S"),
+        [0.0; 4],
+        [0.0; 4],
+        0.0,
+        false,
+    );
+    tracker.update(
+        [100.0; 4],
+        tracker_compounds("S"),
+        [0.0; 4],
+        [0.0; 4],
+        0.0,
+        true,
+    );
     assert!(tracker.life_model([100.0; 4], 10.0).is_none());
 }
 

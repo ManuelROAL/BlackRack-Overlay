@@ -487,23 +487,42 @@ fn ffi_snapshot_layout_ok() -> bool {
     })
 }
 
+#[derive(Clone)]
+struct CachedTire {
+    compound: String,
+    remaining: f64,
+    flat_spot: f64,
+}
+
 #[derive(Default)]
 struct TireWearTracker {
     last_remaining: [Option<f64>; 4],
     flat_spot_wear: [f64; 4],
     lap_start_remaining: Option<[f64; 4]>,
     last_lap_wear: Option<[f64; 4]>,
+    last_compound: [Option<String>; 4],
+    // Cache slots use LMU's wheel order: front-left, front-right, rear-left,
+    // rear-right. Position is therefore part of every tire's identity.
+    cache: [VecDeque<CachedTire>; 4],
 }
 
 impl TireWearTracker {
     const LOCK_SLIP_RATIO: f64 = -0.3;
     const MIN_SLIDING_FRACTION: f64 = 0.5;
+    // Tread can vary slightly between shared-memory samples. Keep matching
+    // tight so separate used tires are not mistaken for the same tire.
+    const TREAD_MATCH_TOLERANCE: f64 = 0.5;
+    const TREAD_SWAP_THRESHOLD: f64 = 0.5;
+    const TREAD_MATCH_TIE_TOLERANCE: f64 = 0.01;
+    const MAX_CACHED_TIRES_PER_WHEEL: usize = 32;
 
     fn reset(&mut self) {
         self.last_remaining = [None; 4];
         self.flat_spot_wear = [0.0; 4];
         self.lap_start_remaining = None;
         self.last_lap_wear = None;
+        self.last_compound = std::array::from_fn(|_| None);
+        self.cache = std::array::from_fn(|_| VecDeque::new());
     }
 
     fn reset_unless_in_garage(&mut self, player_in_garage: bool) {
@@ -515,6 +534,7 @@ impl TireWearTracker {
     fn update(
         &mut self,
         remaining: [f64; 4],
+        compounds: [&str; 4],
         slip_ratio: [f64; 4],
         sliding_fraction: [f64; 4],
         brake: f64,
@@ -527,29 +547,103 @@ impl TireWearTracker {
                 continue;
             }
 
-            if let Some(previous) = self.last_remaining[index] {
-                let wear = previous - current;
-                if wear > 0.0
-                    && slip_ratio[index] < Self::LOCK_SLIP_RATIO
-                    && (brake > 0.02 || sliding_fraction[index] >= Self::MIN_SLIDING_FRACTION)
-                {
-                    self.flat_spot_wear[index] += wear;
-                }
+            let compound = (!matches!(compounds[index], "" | "?")).then_some(compounds[index]);
+            let old_compound = self.last_compound[index].as_deref();
+            let previous_remaining = self.last_remaining[index];
+            let compound_changed =
+                matches!((old_compound, compound), (Some(old), Some(new)) if old != new);
+            let tread_discontinuity = in_pits
+                && previous_remaining
+                    .map(|previous| (current - previous).abs() > Self::TREAD_SWAP_THRESHOLD)
+                    .unwrap_or(false);
+            let swapped = compound_changed || tread_discontinuity;
 
-                // Un aumento de goma en boxes identifica un cambio de neumático.
-                // Una caída imposible también descarta la muestra anterior.
-                if in_pits && !(0.0..=1.0).contains(&wear) {
-                    self.flat_spot_wear[index] = 0.0;
-                    if wear < -1.0 {
-                        self.last_lap_wear = None;
-                        self.lap_start_remaining = None;
+            if swapped {
+                if let (Some(old_compound), Some(previous)) = (old_compound, previous_remaining) {
+                    Self::archive(
+                        &mut self.cache[index],
+                        CachedTire {
+                            compound: old_compound.to_owned(),
+                            remaining: previous,
+                            flat_spot: self.flat_spot_wear[index].clamp(0.0, 100.0),
+                        },
+                    );
+                }
+                self.flat_spot_wear[index] = compound
+                    .and_then(|compound| Self::restore(&mut self.cache[index], compound, current))
+                    .unwrap_or(0.0);
+                self.last_lap_wear = None;
+                self.lap_start_remaining = None;
+                self.last_compound[index] = compound.map(str::to_owned);
+            } else {
+                if let Some(previous) = self.last_remaining[index] {
+                    let wear = previous - current;
+                    if wear > 0.0
+                        && slip_ratio[index] < Self::LOCK_SLIP_RATIO
+                        && (brake > 0.02 || sliding_fraction[index] >= Self::MIN_SLIDING_FRACTION)
+                    {
+                        self.flat_spot_wear[index] += wear;
                     }
+                }
+                if compound.is_some() {
+                    self.last_compound[index] = compound.map(str::to_owned);
                 }
             }
             self.last_remaining[index] = Some(current);
         }
 
         self.flat_spot_wear.map(|value| value.clamp(0.0, 100.0))
+    }
+
+    fn archive(cache: &mut VecDeque<CachedTire>, tire: CachedTire) {
+        cache.push_back(tire);
+        while cache.len() > Self::MAX_CACHED_TIRES_PER_WHEEL {
+            cache.pop_front();
+        }
+    }
+
+    fn restore(cache: &mut VecDeque<CachedTire>, compound: &str, remaining: f64) -> Option<f64> {
+        let best_distance = cache
+            .iter()
+            .filter(|entry| {
+                entry.compound == compound
+                    && (entry.remaining - remaining).abs() <= Self::TREAD_MATCH_TOLERANCE
+            })
+            .map(|entry| (entry.remaining - remaining).abs())
+            .fold(f64::INFINITY, f64::min);
+        if !best_distance.is_finite() {
+            return None;
+        }
+
+        let best_indices: Vec<_> = cache
+            .iter()
+            .enumerate()
+            .filter(|(_, entry)| {
+                entry.compound == compound
+                    && (entry.remaining - remaining).abs() <= Self::TREAD_MATCH_TOLERANCE
+                    && ((entry.remaining - remaining).abs() - best_distance).abs()
+                        <= Self::TREAD_MATCH_TIE_TOLERANCE
+            })
+            .map(|(index, _)| index)
+            .collect();
+        let first = *best_indices.first()?;
+        let flat_spot = cache[first].flat_spot;
+        let estimates_agree = best_indices.iter().all(|&index| {
+            (cache[index].flat_spot - flat_spot).abs() <= Self::TREAD_MATCH_TIE_TOLERANCE
+        });
+
+        if estimates_agree {
+            cache.remove(first);
+            Some(flat_spot)
+        } else {
+            // The tread signature identifies multiple different histories.
+            // Consume those candidates rather than letting stale records be
+            // assigned to a later tire with the same ambiguous signature.
+            for index in best_indices.into_iter().rev() {
+                cache.remove(index);
+            }
+            None
+        }
     }
 
     fn observe_lap(&mut self, remaining: [f64; 4], lap_changed: bool, completed_is_clean: bool) {

@@ -43,9 +43,20 @@ Detailed Damage (`damage.md`).
   counting a freely rotating lateral slide.
   Because LMU may leave the contact-patch fraction unavailable, active braking is
   the fallback qualifier for a wheel already below the same slip-ratio threshold.
-  Retain the estimate while the player's car is inactive in its garage stall.
-  Reset after a pit tyre change, selecting another car, or starting a new
-  session.
+- Keep an in-memory, session-scoped flat-spot history per wheel position in
+  LMU's front-left, front-right, rear-left, rear-right order. Identify a tyre by
+  its resolved compound label and remaining tread percentage at that position.
+  On a tyre change, cache the outgoing estimate and restore a prior one only
+  when the closest cached tread is within 0.5 percentage points and all equally
+  close matches agree on the flat-spot estimate. Start unmatched tyres at 0%.
+  If equally close matches disagree, discard those ambiguous candidates and use
+  0% rather than assigning an arbitrary value. Detect a change from a compound
+  change or a tread jump greater than 0.5 percentage points in the pits or
+  garage. Keep at most 32 removed tyres per position and clear the history on
+  disconnect, car change or session change. Retain it while the player's car is
+  inactive in its garage. Tyres already carrying flat spots before the overlay
+  observes them cannot be reconstructed because shared memory does not publish
+  their flat-spot value.
 - Compound, puncture and detached-wheel states come from each telemetry wheel.
 - Tyre and brake colors reuse the shared heatmaps in `src/temperature-colors.ts`,
   including rounded values before band selection. The tyre ramp is Dox's, in his
