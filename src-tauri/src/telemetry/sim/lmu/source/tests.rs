@@ -251,6 +251,21 @@ fn flat_spot_wear_resets_when_tyres_are_changed_in_pits() {
 }
 
 #[test]
+fn flat_spot_wear_is_retained_while_the_player_is_in_the_garage() {
+    let mut tracker = TireWearTracker::default();
+    tracker.update([90.0; 4], [0.0; 4], [0.0; 4], 0.0, false);
+    tracker.update([89.5; 4], [-0.5; 4], [0.8; 4], 0.0, false);
+
+    tracker.reset_unless_in_garage(true);
+    let after_garage = tracker.update([89.5; 4], [0.0; 4], [0.0; 4], 0.0, true);
+    assert_eq!(after_garage, [0.5; 4]);
+
+    tracker.reset_unless_in_garage(false);
+    let after_car_selection = tracker.update([89.5; 4], [0.0; 4], [0.0; 4], 0.0, false);
+    assert_eq!(after_car_selection, [0.0; 4]);
+}
+
+#[test]
 fn tire_life_uses_clean_lap_wear_and_the_limiting_wheel() {
     let mut tracker = TireWearTracker::default();
     tracker.observe_lap([100.0; 4], true, false);

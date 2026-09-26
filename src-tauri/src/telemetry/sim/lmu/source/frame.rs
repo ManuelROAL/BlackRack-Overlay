@@ -161,7 +161,8 @@ impl TelemetrySource for LmuTelemetrySource {
             self.energy_added_this_lap = 0.0;
             self.energy_added_last_lap = 0.0;
             self.consumption_profiler.reset_lap();
-            self.tire_wear_tracker.reset();
+            self.tire_wear_tracker
+                .reset_unless_in_garage(snapshot.player_in_garage != 0);
             self.player_lap_distance.reset();
             self.player_lap_times.reset();
             // Do not let the next selected vehicle inherit a roster that was

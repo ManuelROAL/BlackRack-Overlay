@@ -43,7 +43,9 @@ Detailed Damage (`damage.md`).
   counting a freely rotating lateral slide.
   Because LMU may leave the contact-patch fraction unavailable, active braking is
   the fallback qualifier for a wheel already below the same slip-ratio threshold.
-  Reset after a pit tyre change or new session.
+  Retain the estimate while the player's car is inactive in its garage stall.
+  Reset after a pit tyre change, selecting another car, or starting a new
+  session.
 - Compound, puncture and detached-wheel states come from each telemetry wheel.
 - Tyre and brake colors reuse the shared heatmaps in `src/temperature-colors.ts`,
   including rounded values before band selection. The tyre ramp is Dox's, in his

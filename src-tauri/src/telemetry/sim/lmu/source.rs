@@ -506,6 +506,12 @@ impl TireWearTracker {
         self.last_lap_wear = None;
     }
 
+    fn reset_unless_in_garage(&mut self, player_in_garage: bool) {
+        if !player_in_garage {
+            self.reset();
+        }
+    }
+
     fn update(
         &mut self,
         remaining: [f64; 4],
