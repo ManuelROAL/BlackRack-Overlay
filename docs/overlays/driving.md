@@ -28,12 +28,17 @@
 
 ## Layout and configuration
 
-- Keep one continuous compact dark surface with thin internal separators and a
-  restrained lime edge accent, not independent cards.
+- Keep one continuous compact dark surface with a restrained dark gradient,
+  rounded neutral shell, thin internal separators and a 2 px lime edge accent.
+  The dial, pedal meters and history trace remain visually related areas, not
+  independent cards; avoid decorative blur or extra animation.
 - Use a 468 × 120 px base surface before optional blocks compact its width.
-- Left-to-right composition is: a circular dial combining the rotating
-  steering-centre arc, central gear, speed and the FFB bar below it;
-  clutch/brake/throttle meters; and the wide five-second trace.
+- Left-to-right composition is: a crisp circular dial combining the rotating
+  steering-centre arc, prominent central gear, speed and the FFB bar below it;
+  clutch/brake/throttle meters; and the wide five-second trace in a quiet,
+  subtly framed surface. Pedal meters use clear value and abbreviated label
+  hierarchy above clean segmented tracks. Keep green for throttle, coral for
+  brake and cyan for clutch; TC remains blue and ABS yellow.
 - The settings section can place the complete trace at the left or right edge;
   it defaults to the right. The dial and current-input meters retain their
   relative order, and hidden or compact blocks keep their existing widths.
@@ -56,8 +61,9 @@
 - The complete graph is optional without losing its selected pedal traces. Graph
   pedals and current-input pedals are independently selectable. Steering, FFB,
   speed, gear and the RPM strip are independently selectable too.
-- Labels beneath the current-input pedal bars can be hidden independently; the
-  pedal bars and numeric values remain visible. Labels are shown by default.
+- Abbreviated labels above the current-input pedal bars can be hidden
+  independently; the pedal bars and numeric values remain visible. Labels are
+  shown by default.
 - Compact panel width when a complete block is hidden while preserving current
   visual scale. Mirror every option in OBS browser-source preferences.
 - Keep gear, speed and the FFB readout vertically separated throughout the
