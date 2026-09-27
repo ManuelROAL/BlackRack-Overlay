@@ -60,11 +60,11 @@ the prepared vehicle IDs and formats them; it must not repeat domain selection.
   active timer and `L<lap> · duration · count` states as Standings.
 - Column visibility and order are independent from Standings. Signals remains
   fixed at the transparent far right. Relative has no column-label row or footer.
-- The lap column exists only during a race. Outside one it is the count of laps
-  each driver has completed since joining the session, so two adjacent rows carry
-  unrelated numbers. Hide it in practice, qualifying and warmup and restore it
-  when the race starts, without rewriting the saved configuration; the grid and
-  the design width follow the visible set on each session change. Position change
+- Lap-column visibility follows the active session profile in practice,
+  qualifying, warmup and race. Outside a race it counts the laps each driver has
+  completed since joining the session, so adjacent rows can carry unrelated
+  numbers; configure its visibility independently for each session profile. The
+  grid and design width follow the active profile's visible set. Position change
   is race-only for the same reason as in Standings.
 - Driver-name format is independent from Standings and supports full name,
   initial plus surname, name plus surname initial, surname only, name only and

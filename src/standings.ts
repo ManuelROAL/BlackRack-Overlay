@@ -30,17 +30,13 @@ import { applyDisplayUnits, formatTemperatureValue, temperatureUnit, type Displa
 
 let settings = readStandingsSettings();
 const STANDINGS_EMPTY_HEIGHT = 72;
-// GAP e INT miden progreso físico en pista contra una tabla que fuera de
-// carrera está ordenada por mejor vuelta, así que solo se muestran en carrera.
-// La configuración del usuario se conserva y vuelve sola al empezar la carrera.
-const RACE_ONLY_COLUMNS = new Set<StandingsColumnId>(["gap", "interval"]);
+// La visibilidad de columnas sigue el perfil activo de cada sesión.
 let raceSession = true;
 // Ancho de la pista del cambio de posición más su separación dentro de la
 // celda: sin indicador la columna sobra justo eso y dejaría el hueco vacío.
 const POSITION_CHANGE_WIDTH = 19;
 const activeColumns = () =>
   visibleStandingsColumns(settings)
-    .filter(({ id }) => raceSession || !RACE_ONLY_COLUMNS.has(id))
     .map((column) => column.id === "position" && !raceSession
       ? { ...column, width: column.width - POSITION_CHANGE_WIDTH }
       : column.id === "delta"

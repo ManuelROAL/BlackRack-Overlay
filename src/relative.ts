@@ -20,10 +20,7 @@ import { formatClock as formatRealClock, formatNumber, formatTimeOfDay, t, type 
 import { applyDisplayUnits, formatTemperatureValue, temperatureUnit, type DisplayUnits } from "./display-units";
 
 let relativeSettings = readRelativeSettings();
-// V es el contador de vueltas de la sesión: fuera de carrera cada piloto lleva
-// las suyas desde que entró y el número no relaciona a dos filas contiguas.
-// La configuración del usuario se conserva y vuelve sola al empezar la carrera.
-const RACE_ONLY_COLUMNS = new Set<RelativeColumnId>(["lap"]);
+// La visibilidad de columnas sigue el perfil activo de cada sesión.
 let raceSession = true;
 // Ancho de la pista del cambio de posición más su separación dentro de la
 // celda: sin indicador la columna sobra justo eso y dejaría el hueco vacío.
@@ -31,7 +28,6 @@ const POSITION_CHANGE_WIDTH = 19;
 const positionChangeVisible = () => raceSession && relativeSettings.options.positionChange;
 const activeColumns = () =>
   visibleRelativeColumns(relativeSettings)
-    .filter(({ id }) => raceSession || !RACE_ONLY_COLUMNS.has(id))
     .map((column) => column.id === "position" && !positionChangeVisible()
       ? { ...column, width: column.width - POSITION_CHANGE_WIDTH }
       : column.id === "delta"

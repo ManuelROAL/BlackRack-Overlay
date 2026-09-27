@@ -39,13 +39,12 @@ duplicate selection or timing semantics.
 - Reordering preserves the category-header boundary: identity columns without a
   label remain inside the colored category heading, while labeled data columns
   remain outside it. Signals stays fixed at the far right.
-- GAP and INT exist only during a race. They measure continuous progress on
-  track, and outside a race the table is ordered by best lap, so the value would
-  compare cars that are not racing each other and would report a lap difference
-  purely because one of them joined the session earlier. Hide both columns in
-  practice, qualifying and warmup, and restore them when the race starts. Hiding
-  never rewrites the saved configuration: the grid, the design width and the
-  category-header span follow the visible set on each session change.
+- GAP and INT visibility follows the active session profile in practice,
+  qualifying, warmup and race. Outside a race the table is ordered by best lap,
+  while these values measure continuous progress on track; lap differences can
+  reflect cars joining at different times, so each session profile can choose
+  whether to show them. The grid, design width and category-header span follow
+  the active profile's visible set.
 - The position-change marker is also race-only. Starting positions are recorded
   only in a race, so every row would otherwise print the same fixed dash.
 - Use the session-assigned number. Driver-name presentation is independently
