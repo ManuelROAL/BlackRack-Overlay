@@ -83,14 +83,8 @@ fn main() {
     println!("cargo:rustc-check-cfg=cfg(lmu_sdk)");
     println!("cargo:rerun-if-env-changed=LMU_SHARED_MEMORY_SDK");
     println!("cargo:rerun-if-changed=src/telemetry/sim/lmu/bridge.cpp");
-    println!("cargo:rerun-if-changed=src/wheel_input.cpp");
 
     if env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("windows") {
-        let mut native = cc::Build::new();
-        native
-            .cpp(true)
-            .file("src/wheel_input.cpp")
-            .flag_if_supported("/std:c++17");
         if let Some(sdk) = find_lmu_sdk() {
             println!(
                 "cargo:warning=Compilando con el SDK de LMU en {}",
@@ -103,13 +97,17 @@ fn main() {
                     install_directory.display()
                 );
             }
-            native.file("src/telemetry/sim/lmu/bridge.cpp").include(sdk);
+            cc::Build::new()
+                .cpp(true)
+                .file("src/telemetry/sim/lmu/bridge.cpp")
+                .include(sdk)
+                .flag_if_supported("/std:c++17")
+                .compile("blackrack_native");
         } else {
             println!(
                 "cargo:warning=No se encontró el SDK de LMU; se compilará con telemetría simulada"
             );
         }
-        native.compile("blackrack_native");
     }
 
     tauri_build::build();

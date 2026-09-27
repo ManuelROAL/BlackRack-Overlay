@@ -3,8 +3,6 @@ mod browser_source;
 mod startup_log;
 mod telemetry;
 mod updater;
-#[cfg(windows)]
-mod wheel_input;
 
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
@@ -120,6 +118,9 @@ struct ShortcutSettings {
     show_panel: String,
     #[serde(default = "default_toggle_overlays_shortcut")]
     toggle_overlays: String,
+    /// Optional; empty leaves the Delta reference mode to the panel only.
+    #[serde(default)]
+    cycle_delta_mode: String,
     #[serde(default = "default_overlay_shortcuts")]
     hide_overlays: HashMap<String, String>,
 }
@@ -147,6 +148,7 @@ impl Default for ShortcutSettings {
             interaction_mode: "Ctrl+Shift+O".into(),
             show_panel: "Ctrl+Shift+M".into(),
             toggle_overlays: default_toggle_overlays_shortcut(),
+            cycle_delta_mode: String::new(),
             hide_overlays: default_overlay_shortcuts(),
         }
     }
@@ -158,9 +160,11 @@ struct ShortcutRuntime {
     active_interaction_mode: Option<String>,
     active_show_panel: Option<String>,
     active_toggle_overlays: Option<String>,
+    active_cycle_delta_mode: Option<String>,
     interaction_mode_error: Option<String>,
     show_panel_error: Option<String>,
     toggle_overlays_error: Option<String>,
+    cycle_delta_mode_error: Option<String>,
     active_hide_overlays: HashMap<String, String>,
     hide_overlays_error: HashMap<String, String>,
 }
@@ -249,6 +253,7 @@ struct ShortcutSettingsStatus {
     interaction_mode: ShortcutBindingStatus,
     show_panel: ShortcutBindingStatus,
     toggle_overlays: ShortcutBindingStatus,
+    cycle_delta_mode: ShortcutBindingStatus,
     hide_overlays: HashMap<String, ShortcutBindingStatus>,
 }
 
@@ -1768,12 +1773,13 @@ fn load_shortcut_settings(app: &AppHandle) -> ShortcutSettings {
             if is_valid_shortcut(&settings.interaction_mode)
                 && is_valid_shortcut(&settings.show_panel)
                 && is_valid_shortcut(&settings.toggle_overlays)
+                && is_valid_optional_shortcut(&settings.cycle_delta_mode)
                 && settings.hide_overlays.len() == OVERLAY_LABELS.len()
                 && OVERLAY_LABELS.iter().all(|label| {
                     settings
                         .hide_overlays
                         .get(*label)
-                        .is_some_and(|shortcut| is_valid_overlay_shortcut(shortcut))
+                        .is_some_and(|shortcut| is_valid_optional_shortcut(shortcut))
                 }) =>
         {
             for label in OVERLAY_LABELS {
@@ -2018,6 +2024,20 @@ fn register_toggle_overlays_shortcut(app: &AppHandle, shortcut: &str) -> Result<
         .map_err(|error| error.to_string())
 }
 
+fn register_cycle_delta_mode_shortcut(app: &AppHandle, shortcut: &str) -> Result<(), String> {
+    if shortcut.is_empty() {
+        return Ok(());
+    }
+    app.global_shortcut()
+        .on_shortcut(shortcut, |app, _, event| {
+            if event.state() == ShortcutState::Pressed && overlay_is_enabled(app, "delta") {
+                let mode = telemetry::cycle_delta_mode();
+                let _ = app.emit("delta://mode-changed", mode);
+            }
+        })
+        .map_err(|error| error.to_string())
+}
+
 fn register_overlay_shortcut(
     app: &AppHandle,
     label: &'static str,
@@ -2101,6 +2121,11 @@ fn shortcut_status(runtime: &ShortcutRuntime) -> ShortcutSettingsStatus {
             active: runtime.active_toggle_overlays.is_some(),
             error: runtime.toggle_overlays_error.clone(),
         },
+        cycle_delta_mode: ShortcutBindingStatus {
+            shortcut: runtime.settings.cycle_delta_mode.clone(),
+            active: runtime.active_cycle_delta_mode.is_some(),
+            error: runtime.cycle_delta_mode_error.clone(),
+        },
         hide_overlays,
     }
 }
@@ -2127,7 +2152,7 @@ fn is_valid_shortcut(shortcut: &str) -> bool {
     segments > 1
 }
 
-fn is_valid_overlay_shortcut(shortcut: &str) -> bool {
+fn is_valid_optional_shortcut(shortcut: &str) -> bool {
     shortcut.is_empty() || is_valid_shortcut(shortcut)
 }
 
@@ -2194,7 +2219,7 @@ mod shortcut_validation_tests {
 
     #[test]
     fn overlay_shortcuts_may_be_empty_but_global_shortcuts_may_not() {
-        assert!(super::is_valid_overlay_shortcut(""));
+        assert!(super::is_valid_optional_shortcut(""));
         assert!(!is_valid_shortcut(""));
     }
 
@@ -2205,6 +2230,7 @@ mod shortcut_validation_tests {
         )
         .unwrap();
         assert_eq!(settings.toggle_overlays, "Ctrl+Shift+H");
+        assert!(settings.cycle_delta_mode.is_empty());
     }
 }
 
@@ -2227,9 +2253,10 @@ fn set_shortcut(
 ) -> Result<ShortcutSettingsStatus, String> {
     require_control_window(&window)?;
     let shortcut = shortcut.trim().replace(' ', "");
-    let is_overlay_action = overlay_label_for_shortcut_action(&action).is_some();
-    if !(if is_overlay_action {
-        is_valid_overlay_shortcut(&shortcut)
+    let is_optional_action =
+        action == "cycle_delta_mode" || overlay_label_for_shortcut_action(&action).is_some();
+    if !(if is_optional_action {
+        is_valid_optional_shortcut(&shortcut)
     } else {
         is_valid_shortcut(&shortcut)
     }) {
@@ -2245,6 +2272,7 @@ fn set_shortcut(
             "interaction_mode" => runtime.active_interaction_mode.clone(),
             "show_panel" => runtime.active_show_panel.clone(),
             "toggle_overlays" => runtime.active_toggle_overlays.clone(),
+            "cycle_delta_mode" => runtime.active_cycle_delta_mode.clone(),
             value if overlay_label_for_shortcut_action(value).is_some() => runtime
                 .active_hide_overlays
                 .get(overlay_label_for_shortcut_action(value).unwrap())
@@ -2263,6 +2291,10 @@ fn set_shortcut(
         (
             "toggle_overlays".to_string(),
             old_settings.toggle_overlays.as_str(),
+        ),
+        (
+            "cycle_delta_mode".to_string(),
+            old_settings.cycle_delta_mode.as_str(),
         ),
     ];
     configured_shortcuts.extend(OVERLAY_LABELS.iter().map(|label| {
@@ -2319,6 +2351,8 @@ fn set_shortcut(
         new_settings.show_panel = shortcut.clone();
     } else if action == "toggle_overlays" {
         new_settings.toggle_overlays = shortcut.clone();
+    } else if action == "cycle_delta_mode" {
+        new_settings.cycle_delta_mode = shortcut.clone();
     } else {
         new_settings.hide_overlays.insert(
             overlay_label_for_shortcut_action(&action).unwrap().into(),
@@ -2354,6 +2388,10 @@ fn set_shortcut(
             runtime.active_toggle_overlays = Some(shortcut.clone());
             runtime.toggle_overlays_error = None;
         }
+        "cycle_delta_mode" => {
+            runtime.active_cycle_delta_mode = (!shortcut.is_empty()).then(|| shortcut.clone());
+            runtime.cycle_delta_mode_error = None;
+        }
         _ => {
             let label = overlay_label_for_shortcut_action(&action).unwrap();
             if shortcut.is_empty() {
@@ -2375,6 +2413,7 @@ fn register_shortcut_action(app: &AppHandle, action: &str, shortcut: &str) -> Re
         "interaction_mode" => register_interaction_shortcut(app, shortcut),
         "show_panel" => register_panel_shortcut(app, shortcut),
         "toggle_overlays" => register_toggle_overlays_shortcut(app, shortcut),
+        "cycle_delta_mode" => register_cycle_delta_mode_shortcut(app, shortcut),
         value => {
             let label = overlay_label_for_shortcut_action(value)
                 .ok_or_else(|| "unknown_action".to_string())?;
@@ -2404,8 +2443,6 @@ pub fn run() {
             edit_previous_foreground_window: Mutex::new(None),
         })
         .manage(ShortcutControl(Mutex::new(ShortcutRuntime::default())));
-    #[cfg(windows)]
-    let builder = builder.manage(wheel_input::WheelInputControl::default());
 
     builder
         .invoke_handler(tauri::generate_handler![
@@ -2453,15 +2490,7 @@ pub fn run() {
             get_shortcut_settings,
             set_shortcut,
             export_overlay_configuration,
-            import_overlay_configuration,
-            #[cfg(windows)]
-            wheel_input::get_wheel_input_status,
-            #[cfg(windows)]
-            wheel_input::capture_delta_wheel_button,
-            #[cfg(windows)]
-            wheel_input::cancel_delta_wheel_button_capture,
-            #[cfg(windows)]
-            wheel_input::clear_delta_wheel_button
+            import_overlay_configuration
         ])
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_dialog::init())
@@ -2472,10 +2501,6 @@ pub fn run() {
                 startup_log::record("control window available");
                 if let Some(position) = load_control_window_position() {
                     let _ = panel.set_position(PhysicalPosition::new(position.x, position.y));
-                }
-                #[cfg(windows)]
-                if let Ok(hwnd) = panel.hwnd() {
-                    wheel_input::spawn(app.handle().clone(), hwnd.0 as isize);
                 }
                 if panel
                     .inner_size()
@@ -2542,6 +2567,8 @@ pub fn run() {
             // report the global shortcut as unavailable until the user changes it.
             let toggle_overlays_result =
                 register_toggle_overlays_shortcut(app.handle(), &settings.toggle_overlays);
+            let cycle_delta_mode_result =
+                register_cycle_delta_mode_shortcut(app.handle(), &settings.cycle_delta_mode);
             let shortcut_control = app.state::<ShortcutControl>();
             let mut runtime = shortcut_control
                 .0
@@ -2594,6 +2621,24 @@ pub fn run() {
                         "warning: {} unavailable; continuing without it: {error}",
                         settings.toggle_overlays
                     ));
+                }
+            }
+            if !settings.cycle_delta_mode.is_empty() {
+                match cycle_delta_mode_result {
+                    Ok(()) => {
+                        runtime.active_cycle_delta_mode = Some(settings.cycle_delta_mode.clone());
+                        startup_log::record(format!(
+                            "shortcut {} registered for cycling delta mode",
+                            settings.cycle_delta_mode
+                        ));
+                    }
+                    Err(error) => {
+                        runtime.cycle_delta_mode_error = Some(error.clone());
+                        startup_log::record(format!(
+                            "warning: {} unavailable; continuing without it: {error}",
+                            settings.cycle_delta_mode
+                        ));
+                    }
                 }
             }
             for (label, result) in overlay_results {

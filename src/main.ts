@@ -295,21 +295,16 @@ interface ShortcutBindingStatus {
 }
 
 type HideOverlayShortcutAction = `hide_${OverlayId}`;
-type ShortcutAction = "interaction_mode" | "show_panel" | "toggle_overlays" | HideOverlayShortcutAction;
+type ShortcutAction = "interaction_mode" | "show_panel" | "toggle_overlays" | "cycle_delta_mode" | HideOverlayShortcutAction;
 
 interface ShortcutSettingsStatus {
   interaction_mode: ShortcutBindingStatus;
   show_panel: ShortcutBindingStatus;
   toggle_overlays: ShortcutBindingStatus;
   /** Optional while older backend builds are still in use. */
+  cycle_delta_mode?: ShortcutBindingStatus;
+  /** Optional while older backend builds are still in use. */
   hide_overlays?: Partial<Record<OverlayId, ShortcutBindingStatus>>;
-}
-
-interface WheelInputStatus {
-  available: boolean;
-  capturing: boolean;
-  binding: { deviceId: string; deviceName: string; button: number } | null;
-  error: string | null;
 }
 
 interface BrowserSourceStatus {
@@ -1018,7 +1013,21 @@ const syncBrowserSourcePreferences = (): void => {
 const shortcutInputs: Partial<Record<ShortcutAction, HTMLInputElement | null>> = {
   interaction_mode: document.getElementById("shortcut-interaction-mode") as HTMLInputElement | null,
   show_panel: document.getElementById("shortcut-show-panel") as HTMLInputElement | null,
-  toggle_overlays: document.getElementById("shortcut-toggle-overlays") as HTMLInputElement | null
+  toggle_overlays: document.getElementById("shortcut-toggle-overlays") as HTMLInputElement | null,
+  cycle_delta_mode: document.getElementById("shortcut-cycle-delta-mode") as HTMLInputElement | null
+};
+
+/** Shortcuts that may be left empty; Delete or Backspace clears them. */
+const isOptionalShortcutAction = (action: ShortcutAction): boolean =>
+  action === "cycle_delta_mode" || action.startsWith("hide_");
+
+const renderOptionalShortcut = (input: HTMLInputElement, binding: ShortcutBindingStatus): void => {
+  const disabled = !binding.shortcut;
+  input.value = binding.shortcut;
+  input.dataset.state = binding.active ? "active" : disabled ? "disabled" : "error";
+  input.title = binding.error
+    ? `${t("shortcuts.unavailable")}: ${binding.error}`
+    : t(disabled ? "shortcuts.disabled" : binding.active ? "shortcuts.active" : "shortcuts.unavailable");
 };
 
 const setShortcutMessage = (message: string, state: "normal" | "error" | "success" = "normal"): void => {
@@ -1043,13 +1052,10 @@ const renderShortcutSettings = (status: ShortcutSettingsStatus): void => {
   for (const id of overlayIds) {
     const input = overlayShortcutInputs.get(id);
     const binding = status.hide_overlays?.[id];
-    if (!input || !binding) continue;
-    const disabled = !binding.shortcut;
-    input.value = binding.shortcut;
-    input.dataset.state = binding.active ? "active" : disabled ? "disabled" : "error";
-    input.title = binding.error
-      ? `${t("shortcuts.unavailable")}: ${binding.error}`
-      : t(disabled ? "shortcuts.disabled" : binding.active ? "shortcuts.active" : "shortcuts.unavailable");
+    if (input && binding) renderOptionalShortcut(input, binding);
+  }
+  if (shortcutInputs.cycle_delta_mode && status.cycle_delta_mode) {
+    renderOptionalShortcut(shortcutInputs.cycle_delta_mode, status.cycle_delta_mode);
   }
 
   const interactionFooter = document.getElementById("footer-interaction-shortcut");
@@ -1061,7 +1067,7 @@ const renderShortcutSettings = (status: ShortcutSettingsStatus): void => {
     status.interaction_mode,
     status.show_panel,
     status.toggle_overlays,
-    ...overlayIds.map((id) => status.hide_overlays?.[id]).filter(
+    ...[status.cycle_delta_mode, ...overlayIds.map((id) => status.hide_overlays?.[id])].filter(
       (binding): binding is ShortcutBindingStatus => Boolean(binding)
     )
   ].find((binding) => Boolean(binding.shortcut) && !binding.active);
@@ -1139,7 +1145,7 @@ const bindShortcutCapture = (action: ShortcutAction, input: HTMLInputElement): v
     }
     if (
       (event.key === "Delete" || event.key === "Backspace")
-      && action.startsWith("hide_")
+      && isOptionalShortcutAction(action)
     ) {
       input.value = "";
       input.blur();
@@ -1155,7 +1161,7 @@ const bindShortcutCapture = (action: ShortcutAction, input: HTMLInputElement): v
   });
 };
 
-for (const action of ["interaction_mode", "show_panel", "toggle_overlays"] as const) {
+for (const action of ["interaction_mode", "show_panel", "toggle_overlays", "cycle_delta_mode"] as const) {
   const input = shortcutInputs[action];
   if (input) bindShortcutCapture(action, input);
 }
@@ -1213,37 +1219,6 @@ if (deltaModeSelect) {
   });
 }
 
-const wheelBindingOutput = document.getElementById("delta-wheel-binding") as HTMLOutputElement | null;
-const wheelCaptureButton = document.getElementById("capture-delta-wheel-button") as HTMLButtonElement | null;
-const wheelClearButton = document.getElementById("clear-delta-wheel-button") as HTMLButtonElement | null;
-const wheelMessage = document.getElementById("delta-wheel-message");
-let wheelInputStatus: WheelInputStatus | null = null;
-
-const renderWheelInputStatus = (status: WheelInputStatus): void => {
-  wheelInputStatus = status;
-  if (wheelBindingOutput) {
-    wheelBindingOutput.textContent = status.binding
-      ? t("wheel.saved", { device: status.binding.deviceName, button: status.binding.button + 1 })
-      : t("wheel.unassigned");
-    wheelBindingOutput.title = wheelBindingOutput.textContent;
-  }
-  if (wheelCaptureButton) {
-    wheelCaptureButton.disabled = !status.available || status.capturing;
-    wheelCaptureButton.textContent = t(status.capturing ? "wheel.capturing" : "wheel.assign");
-  }
-  if (wheelClearButton) wheelClearButton.disabled = !status.binding || status.capturing;
-  if (wheelMessage) {
-    wheelMessage.textContent = t(
-      status.error === "persistence_failed"
-        ? "wheel.error"
-        : !status.available
-          ? "wheel.unavailable"
-          : status.capturing
-            ? "wheel.capturing"
-            : "wheel.instruction"
-    );
-  }
-};
 const persistFuelSettings = (): void => {
   localStorage.setItem(FUEL_SETTINGS_KEY, JSON.stringify(fuelSettings));
   void emit("fuel://settings", fuelSettings);
@@ -1287,29 +1262,6 @@ const persistPitStopSettings = (): void => {
   syncBrowserSourcePreferences();
 };
 
-wheelCaptureButton?.addEventListener("click", () => {
-  void invoke<WheelInputStatus>("capture_delta_wheel_button")
-    .then(renderWheelInputStatus)
-    .catch(() => { if (wheelMessage) wheelMessage.textContent = t("wheel.unavailable"); });
-});
-wheelClearButton?.addEventListener("click", () => {
-  void invoke<WheelInputStatus>("clear_delta_wheel_button")
-    .then(renderWheelInputStatus)
-    .catch(() => { if (wheelMessage) wheelMessage.textContent = t("wheel.error"); });
-});
-window.addEventListener("keydown", (event) => {
-  if (event.key !== "Escape" || !wheelInputStatus?.capturing) return;
-  event.preventDefault();
-  event.stopPropagation();
-  void invoke<WheelInputStatus>("cancel_delta_wheel_button_capture")
-    .then(renderWheelInputStatus)
-    .catch(() => { if (wheelMessage) wheelMessage.textContent = t("wheel.error"); });
-});
-void listen<WheelInputStatus>("wheel-input://status", ({ payload }) => renderWheelInputStatus(payload))
-  .catch(reportInitializationError("wheel input listener"));
-void invoke<WheelInputStatus>("get_wheel_input_status").then(renderWheelInputStatus).catch(() => {
-  renderWheelInputStatus({ available: false, capturing: false, binding: null, error: "unavailable" });
-});
 void listen<import("./delta-settings").DeltaMode>("delta://mode-changed", ({ payload: mode }) => {
   if (!isDeltaMode(mode)) return;
   deltaSettings = { ...deltaSettings, mode };

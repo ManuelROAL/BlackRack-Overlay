@@ -20,15 +20,15 @@ gap between the two halves. When the reference mode changes, its localized name
 appears below the value for 1.8 seconds, then the compact presentation returns.
 Mini-sector and reference details remain configuration/backend concerns.
 
-The control panel can bind one DirectInput wheel/controller button. Each press
-advances to the next reference mode, wraps from Last lap to Overall best and
-skips Off while cycling; pressing it when Delta is Off starts at Overall best.
-The binding is detected on the press edge and changes modes only while the Delta
-overlay is enabled. It is stored in `wheel-input.json` and is intentionally
-outside configuration import/export because it identifies local hardware.
-Pressing Escape while the control panel is waiting cancels capture without
-removing the existing binding.
-Unavailable binding actions use the normal disabled cursor, not a busy indicator.
+The optional `cycle_delta_mode` global keyboard shortcut (General settings,
+empty by default, stored in `shortcuts.json`) advances to the next reference
+mode, wraps from Last lap to Overall best and skips Off while cycling; pressing
+it when Delta is Off starts at Overall best. It changes modes only while the
+Delta overlay is enabled. A wheel button is supported by mapping it to that key
+combination in the wheel software or SimHub. The application no longer polls
+game controllers itself: the previous always-on DirectInput/WinMM thread loaded
+vendor drivers into the process and was the leading suspect for
+`STATUS_HEAP_CORRUPTION` crashes.
 
 ## Files and ownership
 
@@ -36,9 +36,8 @@ Unavailable binding actions use the normal disabled cursor, not a busy indicator
 - `src/delta-settings.ts`: mode and visual-range persistence.
 - `src-tauri/src/telemetry/delta_records.rs`: lap reconstruction, reference
   selection, delta calculation, stint aggregation and storage.
-- `src-tauri/src/wheel_input.rs`, `src-tauri/src/wheel_input.cpp`: persisted
-  wheel-button binding and background DirectInput polling, with WinMM fallback
-  for controllers whose buttons are unavailable through DirectInput while LMU runs.
+- `src-tauri/src/lib.rs`: `cycle_delta_mode` shortcut registration, which calls
+  `delta_records::cycle_mode` and emits `delta://mode-changed`.
 - `src/composite.ts`, `src/composite-layout.ts`: shared-host projection and layout.
 - `src-tauri/src/browser_source.rs`: `/delta` OBS route and mirrored preferences.
 
@@ -171,8 +170,8 @@ excluded from configuration import/export and configuration reset.
 - `cargo test --manifest-path src-tauri\Cargo.toml --lib` covers interpolation,
   sector sizing, optimal-sector composition and SQLite reference round trips.
 - `npm.cmd run build` covers the standalone, composite and OBS entries.
-- Live Windows validation should bind a wheel button, confirm one change per
-  press with LMU focused, verify wraparound and reconnect the device.
+- Live Windows validation should bind the cycle shortcut, confirm one change per
+  press with LMU focused, verify wraparound and that clearing it unregisters it.
 - Live LMU validation should cover a clean lap, invalid lap, pit passage, session
   reset, stint transition, vehicle/track change and application restart.
 

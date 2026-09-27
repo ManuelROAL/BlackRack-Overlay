@@ -163,6 +163,9 @@ Tauri events    analysis JSONL/strategy CSV    browser-source SSE
   using the shared `get_shortcut_settings`/`set_shortcut` contract and reflecting
   external `overlay://visibility` events. These bindings are empty and inactive
   by default; Delete or Backspace clears an assigned overlay binding.
+- General settings also expose an optional `cycle_delta_mode` global shortcut,
+  empty by default and cleared the same way, that advances the Delta reference
+  mode. The application does not read game controllers itself.
 - `src/overlay-performance.ts`: optional five-second frontend render metrics.
 
 Every overlay has a separate CSS file. `src/styles.css` contains only genuinely

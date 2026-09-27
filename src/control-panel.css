@@ -1406,37 +1406,6 @@ select {
   color: #79e99d;
 }
 
-.delta-wheel-binding {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 130px auto auto;
-  align-items: center;
-  gap: 7px;
-  padding: 0 16px 10px;
-}
-
-.delta-wheel-binding > div { display: grid; gap: 3px; }
-.delta-wheel-binding span,
-.delta-wheel-binding strong { font-size: 12px; }
-.delta-wheel-binding span { color: #8b98a5; font-weight: 900; }
-.delta-wheel-binding strong { color: #dce2e7; }
-
-.delta-wheel-binding output,
-.delta-wheel-binding button {
-  padding: 7px 8px;
-  border: 1px solid rgb(255 255 255 / 13%);
-  border-radius: 5px;
-  color: #e8edf1;
-  background: #111720;
-  font-size: 11px;
-  font-weight: 900;
-  text-align: center;
-}
-
-.delta-wheel-binding button { cursor: pointer; }
-.delta-wheel-binding output { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.delta-wheel-binding button:hover { border-color: rgb(216 255 62 / 55%); color: #d8ff3e; }
-.delta-wheel-binding button:disabled { cursor: default; opacity: 0.45; }
-
 .standings-settings-section {
   grid-column: 1 / -1;
   margin: 0;

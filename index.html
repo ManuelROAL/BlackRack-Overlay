@@ -175,6 +175,14 @@
             </label>
             <label class="shortcut-setting">
               <span>
+                <b data-i18n="shortcuts.cycleDeltaMode">Cambiar referencia de Delta</b>
+                <small data-i18n="shortcuts.cycleDeltaModeSub">Avanza al siguiente modo de referencia con el overlay Delta activo.</small>
+              </span>
+              <input id="shortcut-cycle-delta-mode" type="text" readonly
+                aria-label="Atajo para cambiar el modo de referencia de Delta" data-i18n-aria-label="shortcuts.cycleDeltaModeAria" />
+            </label>
+            <label class="shortcut-setting">
+              <span>
                 <b data-i18n="shortcuts.interaction">Modo juego / edición</b>
                 <small data-i18n="shortcuts.interactionSub">Activa o desactiva la interacción con los overlays.</small>
               </span>
@@ -764,16 +772,6 @@
               </select>
             </label>
           </div>
-          <div class="delta-wheel-binding">
-            <div>
-              <span data-i18n="wheel.heading">BOTÓN DEL VOLANTE</span>
-              <strong data-i18n="wheel.sub">Avanza por los modos de referencia</strong>
-            </div>
-            <output id="delta-wheel-binding" data-i18n="wheel.unassigned">SIN ASIGNAR</output>
-            <button id="capture-delta-wheel-button" type="button" data-i18n="wheel.assign">ASIGNAR</button>
-            <button id="clear-delta-wheel-button" type="button" data-i18n="wheel.clear">QUITAR</button>
-          </div>
-          <p id="delta-wheel-message" class="settings-note" aria-live="polite" data-i18n="wheel.instruction">Pulsa Asignar y después el botón deseado del volante.</p>
           <p class="settings-note" data-i18n="settings.deltaNote">Las referencias globales y el historial se guardan localmente por coche y circuito.</p>
         </section>
 
