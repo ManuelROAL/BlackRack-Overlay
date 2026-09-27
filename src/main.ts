@@ -2349,7 +2349,11 @@ const applyResolvedProfile = async (): Promise<void> => {
 const deleteProfile = async (id: string): Promise<void> => {
   const profile = profileState.profiles.find((candidate) => candidate.id === id);
   if (!profile || profileState.profiles.length <= 1) return;
-  if (!await confirmReset(t("profiles.deleteConfirm", { name: profile.name }))) return;
+  if (!await confirmReset(t("profiles.deleteConfirm", { name: profile.name }), {
+    heading: t("profiles.deleteHeading"),
+    title: t("profiles.deleteTitle"),
+    confirmLabel: t("profiles.deleteAction")
+  })) return;
   flushProfileSnapshot();
   const remaining = profileState.profiles.filter((candidate) => candidate.id !== id);
   const requested = Object.fromEntries(OVERLAY_MODES.map((mode) => [
