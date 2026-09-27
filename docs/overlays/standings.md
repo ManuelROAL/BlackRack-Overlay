@@ -220,10 +220,11 @@ shared `standings_models` module.
 - Opponent track-limit steps come from the matched all-vehicle telemetry slot.
   Unmatched means unavailable (`--`), not zero. Four raw SDK steps equal one game
   point. Warning thresholds are 60% and 80% of the session penalty threshold.
-- NRG compares all-driver virtual energy only for regulated Hypercar/LMGT3
-  during a race, because comparing rivals' energy assumes a shared strategy.
-  Never substitute the player's fuel percentage; other classes and every
-  non-race session display `--`.
+- NRG shows each regulated Hypercar/LMGT3's virtual energy whenever telemetry
+  marks it active, in any session. Outside races, read it as each car's current
+  resource rather than a shared strategy comparison, since starting loads can
+  differ. Never substitute the player's fuel percentage; other classes and
+  unavailable values display `--`.
 - Opponent damage is shared-memory integrity inverted: dents plus 50 points for a
   detached body part or 100 for a detached wheel, clamped to 100%.
 - Signals may show yellow cause, pit, garage, stop/go and supported penalties.

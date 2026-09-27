@@ -517,7 +517,7 @@ const cellSignature = (entry: StandingEntry, column: StandingsColumnId, trackLim
     case "last": return `${entry.is_out_lap ? "OUT" : formatLapTime(entry.last_lap_seconds)}|${formatLapTime(entry.best_lap_seconds)}|${entry.has_fastest_lap}|${entry.last_lap_valid}`;
     case "average": return formatLapTime(entry.average_lap_seconds);
     case "delta": return `${settings.deltaReference}|${JSON.stringify(entry.last_lap_delta_seconds)}|${entry.best_lap_delta_seconds}|${settings.deltaLapCount}|${settings.invertDeltaLayout}|${entry.is_player}`;
-    case "energy": return raceSession && entry.virtual_energy_active && entry.virtual_energy_percent > 0
+    case "energy": return entry.virtual_energy_active && entry.virtual_energy_percent > 0
       ? `${entry.virtual_energy_percent >= 99.95 ? "100" : decimal(entry.virtual_energy_percent, 1)}|${entry.virtual_energy_per_lap > 0 ? decimal(entry.virtual_energy_per_lap, 2) : ""}`
       : "--";
     case "damage": return Math.round(entry.damage_percent).toString();
@@ -598,9 +598,7 @@ const createCell = (entry: StandingEntry, column: StandingsColumnId, trackLimit:
     case "delta": return recentLapDeltaCell(entry);
     case "energy": {
       const cell = node("div", "standing-energy");
-      // Comparar la energía de los rivales solo tiene sentido con una
-      // estrategia común: fuera de carrera cada coche lleva la carga que quiere.
-      if (raceSession && entry.virtual_energy_active && entry.virtual_energy_percent > 0) {
+      if (entry.virtual_energy_active && entry.virtual_energy_percent > 0) {
         const percentage = entry.virtual_energy_percent >= 99.95 ? "100%" : `${decimal(entry.virtual_energy_percent, 1)}%`;
         cell.append(node("b", undefined, percentage));
         if (entry.virtual_energy_per_lap > 0) {

@@ -452,7 +452,7 @@ const cellSignature = (entry: StandingEntry, column: RelativeColumnId, trackLimi
     case "last": return `${entry.is_out_lap ? "OUT" : formatLapTime(entry.last_lap_seconds)}|${formatLapTime(entry.best_lap_seconds)}|${entry.has_fastest_lap}|${entry.last_lap_valid}`;
     case "average": return formatLapTime(entry.average_lap_seconds);
     case "delta": return `${JSON.stringify(entry.last_lap_delta_seconds)}|${relativeSettings.deltaLapCount}|${relativeSettings.invertDeltaLayout}|${entry.is_player}`;
-    case "energy": return raceSession && entry.virtual_energy_active && entry.virtual_energy_percent > 0
+    case "energy": return entry.virtual_energy_active && entry.virtual_energy_percent > 0
       ? `${entry.virtual_energy_percent >= 99.95 ? "100" : decimal(entry.virtual_energy_percent, 1)}|${entry.virtual_energy_per_lap > 0 ? decimal(entry.virtual_energy_per_lap, 2) : ""}`
       : "--";
     case "damage": return Math.round(entry.damage_percent).toString();
@@ -535,7 +535,7 @@ const createCell = (entry: StandingEntry, column: RelativeColumnId, trackLimit: 
     case "delta": return recentLapDeltaCell(entry);
     case "energy": {
       const cell = node("div", "standing-energy");
-      if (raceSession && entry.virtual_energy_active && entry.virtual_energy_percent > 0) {
+      if (entry.virtual_energy_active && entry.virtual_energy_percent > 0) {
         const percentage = entry.virtual_energy_percent >= 99.95 ? "100%" : `${decimal(entry.virtual_energy_percent, 1)}%`;
         cell.append(node("b", undefined, percentage));
         if (entry.virtual_energy_per_lap > 0) {
