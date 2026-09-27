@@ -1682,7 +1682,7 @@ const renderFontSizeMode = (): void => {
 
 const confirmReset = (
   message: string,
-  labels: { heading?: string; title?: string; confirmLabel?: string } = {}
+  labels: { heading?: string; title?: string; confirmLabel?: string; danger?: boolean } = {}
 ): Promise<boolean> => {
   const dialog = document.getElementById("reset-confirmation") as HTMLDialogElement | null;
   const headingElement = document.getElementById("reset-confirmation-heading");
@@ -1694,6 +1694,7 @@ const confirmReset = (
   titleElement.textContent = labels.title ?? t("reset.title");
   messageElement.textContent = message;
   confirmButton.textContent = labels.confirmLabel ?? t("reset.confirm");
+  confirmButton.classList.toggle("danger", labels.danger === true);
   dialog.returnValue = "cancel";
   dialog.showModal();
   confirmButton.focus();
@@ -2352,7 +2353,8 @@ const deleteProfile = async (id: string): Promise<void> => {
   if (!await confirmReset(t("profiles.deleteConfirm", { name: profile.name }), {
     heading: t("profiles.deleteHeading"),
     title: t("profiles.deleteTitle"),
-    confirmLabel: t("profiles.deleteAction")
+    confirmLabel: t("profiles.deleteAction"),
+    danger: true
   })) return;
   flushProfileSnapshot();
   const remaining = profileState.profiles.filter((candidate) => candidate.id !== id);

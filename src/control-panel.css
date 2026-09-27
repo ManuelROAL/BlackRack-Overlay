@@ -2321,6 +2321,18 @@ select {
   background: #e2ff70;
 }
 
+.reset-confirmation-actions .primary.danger {
+  border-color: #ff6c6c;
+  color: #16090b;
+  background: #ff6c6c;
+}
+
+.reset-confirmation-actions .primary.danger:hover {
+  color: #16090b;
+  border-color: #ff8790;
+  background: #ff8790;
+}
+
 .overlay-guide {
   width: min(720px, calc(100vw - 36px));
   max-height: min(720px, calc(100vh - 36px));
