@@ -55,9 +55,14 @@ documented cadence in `docs/overlays/README.md`:
   Relative routes request the enriched roster; legacy clients without a route
   retain full demand for compatibility.
 
-Native delivery uses filtered `telemetry://batch` events. Each monitor host
-forwards only locally mounted named targets and projects the frame through the
-reused allowlist in `src/composite.ts` before same-origin `postMessage`. Do not
+Native delivery sends one batch per source cycle over each monitor host's
+`subscribe_overlay_telemetry` IPC channel, as raw JSON bytes. The batch names
+every overlay due that cycle and carries only the union of their fields from
+`src/overlay-telemetry-fields.json`. Each host forwards only locally mounted
+targets and projects the frame onto each overlay's list from the same table
+before same-origin `postMessage`. Do not move per-cycle telemetry back to Tauri
+events: an event is delivered by evaluating a new script with the payload
+embedded, and at this cadence that fills the host's old generation. Do not
 restore per-overlay native listeners or direct cross-realm object events.
 
 ## Identity and session state

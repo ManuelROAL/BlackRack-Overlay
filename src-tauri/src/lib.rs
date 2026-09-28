@@ -14,9 +14,10 @@ use std::sync::OnceLock;
 use std::sync::{mpsc, Mutex};
 #[cfg(windows)]
 use std::time::Duration;
+use tauri::ipc::{Channel, InvokeResponseBody};
 use tauri::{
-    window::Color, AppHandle, Emitter, EventTarget, Manager, PhysicalPosition, PhysicalSize,
-    Position, Size, State, WebviewUrl, WebviewWindow, WebviewWindowBuilder, WindowEvent,
+    window::Color, AppHandle, Emitter, Manager, PhysicalPosition, PhysicalSize, Position, Size,
+    State, WebviewUrl, WebviewWindow, WebviewWindowBuilder, WindowEvent,
 };
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 
@@ -1238,23 +1239,51 @@ pub(crate) fn overlay_is_enabled(app: &AppHandle, label: &str) -> bool {
         .contains(label)
 }
 
-#[derive(Serialize)]
-struct OverlayFrameBatch<'a, T> {
-    targets: &'a [&'a str],
-    frame: &'a T,
+/// The telemetry channel of each overlay host, by window label.
+///
+/// Telemetry does not travel as an event: Tauri delivers events by evaluating a
+/// new script with the payload embedded, and at the overlay cadence that left
+/// V8 compiling megabytes of one-off code a second into the host's old
+/// generation. A channel carrying raw bytes has the host fetch and parse them.
+#[derive(Default)]
+struct OverlayTelemetryChannels(Mutex<HashMap<String, Channel>>);
+
+#[tauri::command]
+fn subscribe_overlay_telemetry(
+    window: WebviewWindow,
+    channels: State<'_, OverlayTelemetryChannels>,
+    channel: Channel,
+) -> Result<(), String> {
+    if !window.label().starts_with(OVERLAY_HOST_PREFIX) {
+        return Err("overlay_host_required".into());
+    }
+    // A reloaded host subscribes again; its new channel replaces the old one.
+    channels
+        .0
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .insert(window.label().to_string(), channel);
+    Ok(())
 }
 
-pub(crate) fn emit_overlay_frames<T: Serialize>(
-    app: &AppHandle,
-    targets: &[&str],
-    frame: &T,
-) -> bool {
-    if targets.is_empty() {
-        return false;
-    }
-    let batch = OverlayFrameBatch { targets, frame };
-    app.emit_filter("telemetry://batch", &batch, is_overlay_host_target)
-        .is_ok()
+fn forget_overlay_telemetry_channel(app: &AppHandle, label: &str) {
+    app.state::<OverlayTelemetryChannels>()
+        .0
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .remove(label);
+}
+
+/// Sends one serialized overlay batch to every subscribed host. Each host
+/// forwards only the targets it has mounted.
+pub(crate) fn emit_overlay_batch(app: &AppHandle, batch: Vec<u8>) -> bool {
+    let channels = app.state::<OverlayTelemetryChannels>();
+    let mut channels = channels
+        .0
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    channels.retain(|_, channel| channel.send(InvokeResponseBody::Raw(batch.clone())).is_ok());
+    !channels.is_empty()
 }
 
 pub(crate) fn emit_chat_update(
@@ -1262,16 +1291,6 @@ pub(crate) fn emit_chat_update(
     update: &telemetry::ChatUpdate,
 ) -> tauri::Result<()> {
     app.emit("chat://update", update)
-}
-
-fn is_overlay_host_target(target: &EventTarget) -> bool {
-    match target {
-        EventTarget::Window { label }
-        | EventTarget::Webview { label }
-        | EventTarget::WebviewWindow { label }
-        | EventTarget::AnyLabel { label } => label.starts_with(OVERLAY_HOST_PREFIX),
-        _ => false,
-    }
 }
 
 pub(crate) fn update_overlay_auto_visibility(app: &AppHandle, frame: &telemetry::TelemetryFrame) {
@@ -2456,7 +2475,8 @@ pub fn run() {
             #[cfg(windows)]
             edit_previous_foreground_window: Mutex::new(None),
         })
-        .manage(ShortcutControl(Mutex::new(ShortcutRuntime::default())));
+        .manage(ShortcutControl(Mutex::new(ShortcutRuntime::default())))
+        .manage(OverlayTelemetryChannels::default());
 
     builder
         .invoke_handler(tauri::generate_handler![
@@ -2470,6 +2490,7 @@ pub fn run() {
             get_interaction_mode,
             set_overlay_interaction_regions,
             set_overlay_host_bounds,
+            subscribe_overlay_telemetry,
             sync_overlay_hosts,
             toggle_interaction_mode_command,
             get_telemetry_logging,
@@ -2707,6 +2728,7 @@ pub fn run() {
                 }
                 tauri::WindowEvent::Destroyed => {
                     startup_log::record(format!("window destroyed label={}", window.label()));
+                    forget_overlay_telemetry_channel(window.app_handle(), window.label());
                     let mut focused_windows = control
                         .focused_windows
                         .lock()

@@ -30,8 +30,8 @@ UI behavior, telemetry semantics, cadence and special invariants.
 match. `npm run check:overlays` reads each of them back and reports drift: this
 index and the per-overlay documents, the HTML entries and renderers, the control
 panel and OBS route lists, the Vite `input` map, `OVERLAY_LABELS` in `lib.rs`,
-`BROWSER_OVERLAYS` in `browser_source.rs`, `overlayIds` plus `telemetryFields`
-in `src/composite.ts` and `overlayIds` in `src/composite-layout.ts`. It also
+`BROWSER_OVERLAYS` in `browser_source.rs`, `overlayIds` in `src/composite.ts`, the
+field table in `src/overlay-telemetry-fields.json` and `overlayIds` in `src/composite-layout.ts`. It also
 checks that every `<id>://settings` event an overlay listens for is on the
 composite host's forwarding list. Adding or renaming an overlay means updating
 all of them.

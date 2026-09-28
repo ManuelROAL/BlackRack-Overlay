@@ -3,6 +3,7 @@ mod consumption_profile;
 mod delta_records;
 mod dr_estimate_log;
 mod fuel_strategy;
+mod overlay_projection;
 mod pit_traversal;
 mod sim;
 mod standings_math;
@@ -1309,36 +1310,10 @@ pub fn spawn_source(app: AppHandle) {
             let emission_started = Instant::now();
             let emit_standings = standings_due && standings_visible;
             let emit_relative = relative_due && relative_visible;
-            let mut standings_targets = [""; 2];
-            let mut standings_target_count = 0;
-            if emit_standings {
-                standings_targets[standings_target_count] = "standings";
-                standings_target_count += 1;
-            }
-            if emit_relative {
-                standings_targets[standings_target_count] = "relative";
-                standings_target_count += 1;
-            }
-            if super::emit_overlay_frames(
-                &app,
-                &standings_targets[..standings_target_count],
-                &frame,
-            ) {
-                if emit_standings {
-                    performance.emitted_standings += 1;
-                }
-                if emit_relative {
-                    performance.emitted_relative += 1;
-                }
-            }
+            let emit_track_map = track_map_due && track_map_visible;
             if standings_due {
                 crate::browser_source::publish_frame(&frame);
             }
-            frame.standings.clear();
-            if track_map_due && track_map_visible {
-                let _ = super::emit_overlay_frames(&app, &["trackmap"], &frame);
-            }
-            frame.track_map_vehicles.clear();
 
             let driving_due = cycle_due(cycle, tuning.fast_overlay_cycles);
             let emit_delta = driving_due && super::overlay_is_active(&app, "delta");
@@ -1375,7 +1350,12 @@ pub fn spawn_source(app: AppHandle) {
             let emit_rejoin =
                 cycle_due(cycle, rejoin_cycles) && super::overlay_is_active(&app, "rejoin");
 
-            let base_emissions = [
+            // Every overlay due this cycle shares one batch, serialized once and
+            // reduced to the fields its targets read. See overlay_projection.
+            let emissions = [
+                ("standings", emit_standings),
+                ("relative", emit_relative),
+                ("trackmap", emit_track_map),
                 ("delta", emit_delta),
                 ("timing", emit_timing),
                 ("stinthistory", emit_stint_history),
@@ -1392,15 +1372,22 @@ pub fn spawn_source(app: AppHandle) {
                 ("dashboard", emit_dashboard),
                 ("sessioninfo", emit_sessioninfo),
             ];
-            let mut base_targets = [""; 15];
-            let mut base_target_count = 0;
-            for (label, should_emit) in base_emissions {
+            let mut targets = [""; 18];
+            let mut target_count = 0;
+            for (label, should_emit) in emissions {
                 if should_emit {
-                    base_targets[base_target_count] = label;
-                    base_target_count += 1;
+                    targets[target_count] = label;
+                    target_count += 1;
                 }
             }
-            if super::emit_overlay_frames(&app, &base_targets[..base_target_count], &frame) {
+            let delivered =
+                match overlay_projection::overlay_batch_bytes(&frame, &targets[..target_count]) {
+                    Ok(Some(batch)) => super::emit_overlay_batch(&app, batch),
+                    _ => false,
+                };
+            if delivered {
+                performance.emitted_standings += u64::from(emit_standings);
+                performance.emitted_relative += u64::from(emit_relative);
                 performance.emitted_delta += u64::from(emit_delta);
                 performance.emitted_timing += u64::from(emit_timing);
                 performance.emitted_stint_history += u64::from(emit_stint_history);
@@ -1417,6 +1404,10 @@ pub fn spawn_source(app: AppHandle) {
                 performance.emitted_dashboard += u64::from(emit_dashboard);
                 performance.emitted_sessioninfo += u64::from(emit_sessioninfo);
             }
+            // The roster and the map coordinates are the bulk of the frame; the
+            // control panel and the analysis log never read them.
+            frame.standings.clear();
+            frame.track_map_vehicles.clear();
             if cycle_due(cycle, CONTROL_CYCLES) {
                 let _ = app.emit_to("control", "telemetry://frame", &frame);
             }

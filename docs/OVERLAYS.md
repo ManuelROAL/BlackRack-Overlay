@@ -245,13 +245,16 @@ assignments; per-overlay mode restores those assignments.
   `src/i18n/`; keep telemetry values and stable IDs semantic. A locale change
   reloads the composite and mounted documents instead of adding work to hot
   telemetry render paths.
-- Composite hosts consume grouped `telemetry://batch` events, forward only named
-  locally mounted targets, and project each frame onto the reused per-overlay
-  allowlist in `src/composite.ts` before same-origin `postMessage`.
+- Composite hosts receive one grouped batch per cycle on an IPC channel, forward
+  only named locally mounted targets, and project each frame onto the per-overlay
+  allowlist in `src/overlay-telemetry-fields.json` before same-origin
+  `postMessage`. The backend serializes only the fields its targets need from
+  the same table.
 - Native visibility and the exact connected OBS route jointly define backend
   demand. Disabled overlays do not build their presentation models; an unrelated
   OBS page must not activate another overlay's calculations.
-- Update that allowlist whenever a renderer consumes a serialized field. Do not
+- Update that allowlist whenever a renderer consumes a serialized field; the
+  backend drops any field it does not list. Do not
   restore per-overlay native listeners or direct cross-realm object events.
 - The optional browser server listens only on `http://127.0.0.1:47636`, uses a
   single SSE endpoint, and remains completely inactive when disabled.

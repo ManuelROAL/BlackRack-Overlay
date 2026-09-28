@@ -1,4 +1,4 @@
-import { invoke } from "@tauri-apps/api/core";
+import { invoke, transformCallback } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import "./composite.css";
@@ -17,6 +17,7 @@ import {
 } from "./composite-layout";
 import type { OverlayId } from "./overlay-appearance";
 import type { InteractionMode, TelemetryFrame } from "./telemetry-types";
+import overlayTelemetryFields from "./overlay-telemetry-fields.json";
 
 installFrontendDiagnostics("composite", (diagnostic) =>
   invoke("record_frontend_error", { ...diagnostic })
@@ -58,6 +59,7 @@ interface OverlayHostViewport {
 
 interface TelemetryBatch {
   targets: OverlayId[];
+  /** Only the union of the targets' projected fields is serialized. */
   frame: TelemetryFrame;
 }
 
@@ -66,103 +68,12 @@ const overlayIds: OverlayId[] = [
   "relative", "fuel", "pitstop", "flags", "rejoin", "trackmap",
   "forecast", "conditions", "dashboard", "sessioninfo", "chat"
 ];
-// Projected into every overlay on top of its own allowlist: an overlay has to
-// know what the active simulator can report before it decides what to draw.
-const sharedTelemetryFields: readonly (keyof TelemetryFrame)[] = ["capabilities"];
-
-const telemetryFields: Record<OverlayId, readonly (keyof TelemetryFrame)[]> = {
-  delta: ["delta_model"],
-  timing: ["timing_model"],
-  stinthistory: ["stint_history_model"],
-  driving: [
-    "speed_kph", "gear", "throttle", "brake", "clutch", "tc_active", "abs_active",
-    "steering_angle_degrees", "force_feedback", "rpm", "max_rpm"
-  ],
-  liftcoast: ["lift_and_coast_progress"],
-  tires: [
-    "capabilities",
-    "player_damage_percent", "player_aero_damage_percent", "player_damage_severity",
-    "player_engine_overheating", "player_engine_oil_temperature_c",
-    "player_engine_water_temperature_c",
-    "player_part_detached", "player_rear_wing_detached", "player_tire_temperature_c",
-    "player_tire_temperature_by_zone_c",
-    "player_brake_temperature_c", "player_tire_remaining_by_wheel_percent",
-    "player_tire_flat_spot_percent", "player_tire_compounds",
-    "player_tire_optimal_temperature_c", "player_tire_flat",
-    "player_tire_detached", "player_suspension_damage_by_wheel_percent"
-  ],
-  damage: [
-    "player_aero_damage_percent", "player_body_damage_percent",
-    "player_suspension_damage_percent", "player_tire_remaining_by_wheel_percent"
-  ],
-  standings: [
-    "connected", "player_active",
-    "session_type", "session_max_laps", "session_time_remaining", "game_time_of_day_seconds", "session_max_time_seconds",
-    "session_split_number", "session_split_count", "rest_weather_available", "ambient_temperature_c",
-    "track_temperature_c", "player_total_laps", "brake_bias_percent", "track_limits_steps",
-    "track_limits_steps_per_penalty", "session_total_laps_estimated", "session_extra_laps_estimated", "session_extra_laps_approximate", "standings_model",
-    "standings"
-  ],
-  relative: [
-    "connected", "player_active",
-    "session_type",
-    "game_time_of_day_seconds", "rest_weather_available", "ambient_temperature_c", "track_temperature_c",
-    "brake_bias_percent", "track_limits_steps", "track_limits_steps_per_penalty",
-    "relative_model", "standings"
-  ],
-  fuel: [
-    "connected", "player_active",
-    "fuel_liters", "fuel_capacity_liters", "fuel_per_lap", "fuel_last_lap",
-    "fuel_qualifying_lap", "resource_autonomy",
-    "fuel_ratio_assigned", "fuel_ratio_average", "fuel_ratio_last",
-    "virtual_energy_active", "virtual_energy_percent",
-    "virtual_energy_per_lap", "virtual_energy_last_lap", "virtual_energy_qualifying_lap",
-    "fuel_strategies", "pit_traversal_approximate"
-  ],
-  pitstop: [
-    "virtual_energy_active", "pit_stop_estimate_available", "pit_stop_estimate_seconds",
-    "pit_stop_fuel_seconds", "pit_stop_energy_seconds", "pit_stop_tire_seconds",
-    "pit_stop_damage_seconds", "pit_stop_penalty_seconds", "pit_stop_driver_swap_seconds",
-    "pit_stop_menu_changes"
-  ],
-  flags: ["flag_warning"],
-  rejoin: ["rejoin_warning"],
-  trackmap: ["performance_profile", "track_name", "track_length_meters", "track_map_vehicles", "track_map_model"],
-  forecast: ["rest_weather_available", "ambient_temperature_c", "rain_percent", "cloud_coverage", "weather_forecast"],
-  conditions: [
-    "rest_weather_available", "ambient_temperature_c", "track_temperature_c",
-    "rain_percent", "track_wetness_percent", "wind_speed_ms", "wind_direction_degrees",
-    "wind_relative_direction_degrees",
-    "player_grip_percent", "track_rubber_percent", "track_grip_state", "cloud_coverage", "current_humidity_percent",
-    "weather_forecast"
-  ],
-  dashboard: [
-    "capabilities", "source", "track_name", "track_length_meters", "player_vehicle_name",
-    "player_vehicle_class", "player_vehicle_livery_name", "session_type", "game_phase",
-    "session_max_laps", "session_max_time_seconds", "player_active", "gear", "speed_kph", "rpm", "max_rpm",
-    "player_position", "player_class_position",
-    "lap_number", "session_max_laps", "session_total_laps_estimated", "session_time_remaining",
-    "delta_model", "timing_model",
-    "fuel_liters", "resource_autonomy",
-    "virtual_energy_active", "virtual_energy_percent",
-    "hybrid_available", "battery_charge_percent", "hybrid_motor_state",
-    "car_electronics_available", "engine_map", "engine_map_max",
-    "traction_control_level", "traction_control_max",
-    "traction_control_slip", "traction_control_slip_max",
-    "traction_control_cut", "traction_control_cut_max",
-    "anti_lock_brakes_level", "anti_lock_brakes_max", "brake_bias_percent",
-    "speed_limiter_active", "headlights_on", "wiper_state", "local_vehicle_selected", "lift_and_coast_progress",
-    "ambient_temperature_c", "track_temperature_c"
-  ],
-  sessioninfo: [
-    "connected", "game_phase", "track_name", "session_type", "game_time_of_day_seconds", "session_time_remaining",
-    "session_laps_remaining", "session_laps_remaining_estimated", "lap_number",
-    "session_total_laps_estimated", "rest_weather_available", "track_temperature_c",
-    "ambient_temperature_c", "cloud_coverage", "rain_percent", "track_limits_steps",
-    "track_limits_steps_per_penalty"
-  ],
-  chat: []
-};
+// One table shared with the backend: Rust serializes only the union of the
+// fields a batch's targets need, and the host projects each overlay onto its
+// own list. `shared` reaches every overlay: an overlay has to know what the
+// active simulator can report before it decides what to draw.
+const sharedTelemetryFields = overlayTelemetryFields.shared as readonly (keyof TelemetryFrame)[];
+const telemetryFields = overlayTelemetryFields.overlays as Record<OverlayId, readonly (keyof TelemetryFrame)[]>;
 const overlayTitleKeys: Record<OverlayId, import("./i18n").TranslationKey> = {
   delta: "card.delta", timing: "card.timing", stinthistory: "card.stintHistory", driving: "card.driving", liftcoast: "card.liftcoast", tires: "card.tires",
   damage: "card.damage", standings: "card.standings", relative: "card.relative", fuel: "card.fuel",
@@ -600,14 +511,38 @@ const applyInteractionMode = (mode: InteractionMode): void => {
   synchronizeHostBounds();
 };
 
-void listen<TelemetryBatch>("telemetry://batch", ({ payload }) => {
-  for (const overlay of payload.targets) {
-    if (!frames.has(overlay)) continue;
-    const frame = projectTelemetryFrame(overlay, payload.frame);
+// Telemetry arrives on an IPC channel as raw bytes rather than as an event.
+// Tauri delivers an event by evaluating a fresh script with the payload
+// embedded, and at ~50 batches a second V8 compiled megabytes of one-off code
+// per second into the old generation: the host heap climbed to ~540 MB and its
+// main-thread cost rose with it. Raw bytes are fetched and parsed instead.
+interface TelemetryChannelMessage {
+  message?: ArrayBuffer | number[];
+  index: number;
+}
+
+const batchDecoder = new TextDecoder();
+// Fetched payloads can resolve out of order. Telemetry only wants the newest
+// frame, so a batch older than one already shown for an overlay is dropped for
+// that overlay instead of stalling every later batch behind it.
+const deliveredBatchIndex = new Map<OverlayId, number>();
+
+const receiveTelemetryBatch = ({ message, index }: TelemetryChannelMessage): void => {
+  if (!message) return;
+  const bytes = message instanceof ArrayBuffer ? new Uint8Array(message) : Uint8Array.from(message);
+  const batch = JSON.parse(batchDecoder.decode(bytes)) as TelemetryBatch;
+  for (const overlay of batch.targets) {
+    if (!frames.has(overlay) || (deliveredBatchIndex.get(overlay) ?? -1) > index) continue;
+    deliveredBatchIndex.set(overlay, index);
+    const frame = projectTelemetryFrame(overlay, batch.frame);
     latestFrames.set(overlay, frame);
     postEvent(overlay, "telemetry://frame", frame);
   }
-});
+};
+
+const telemetryChannelId = transformCallback<TelemetryChannelMessage>(receiveTelemetryBatch);
+void invoke("subscribe_overlay_telemetry", { channel: `__CHANNEL__:${telemetryChannelId}` })
+  .catch((error) => console.error("No se pudo suscribir la telemetría del host:", error));
 
 void listen<ChatUpdate>("chat://update", ({ payload }) => {
   if (frames.has("chat")) postEvent("chat", "chat://update", payload);

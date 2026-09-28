@@ -154,6 +154,10 @@ in `docs/overlays/` and should not be duplicated here.
   performance diagnostics as strategy data.
 - Composite hosts retain grouped native batches and same-origin `postMessage`
   field projection; measured direct cross-realm object events were slower.
+- Per-cycle telemetry reaches the hosts over an IPC channel as raw bytes, never
+  as Tauri events. An event is delivered by evaluating a new script with the
+  payload embedded, and at the overlay cadence that grew the host heap to
+  ~540 MB and its main-thread cost with it.
 - TinyPedal is a behavioral/performance reference only and GPL source is not
   copied. Dox and Go Fast are design/behavior references only.
 

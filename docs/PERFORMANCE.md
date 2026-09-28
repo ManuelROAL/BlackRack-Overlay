@@ -63,7 +63,9 @@ reach the inspector. Release builds keep both disabled and a failed
 registration is only logged, never fatal.
 
 Use `npm run tauri dev` for this: the frontend is unminified, so a heap snapshot
-names real classes and functions. Renderer memory is where growth has been
+names real classes and functions. A heap snapshot collects garbage first, so it
+shows only the live set. Use the sampling heap profiler with
+`includeObjectsCollectedByMajorGC` to see what is promoted and later discarded. Renderer memory is where growth has been
 observed; the Rust process stayed at 29 MB across a six-minute session while the
 host renderer reached 704 MB.
 
@@ -122,30 +124,22 @@ identifies the largest remaining cost.
 
 ## Next memory step
 
-Attribution is done. The overlay host renderer holds 829 MB and the GPU process
-201 MB, together 87% of the application, while the control panel renderer is
-58 MB and the Rust process 30 MB. The JS heap is 33 MB, so what has to be
-explained is roughly 800 MB of non-script memory in one renderer.
+The host renderer's plateau was attributed to old-generation garbage from Tauri
+event delivery. It is not compositing tiles or per-document cost. Telemetry now
+reaches the hosts over an IPC channel as raw bytes, one projected batch per
+cycle (see `docs/PERFORMANCE_HISTORY.md`, 2026-09-28). The dev-build mock
+capture dropped the host from 766 to 182 MB private and kept its main-thread
+cost flat.
 
-Two hypotheses remain and one experiment separates them. Take two warm captures
-with the same overlays and the same content, changing only the layout: one with
-the panels spread so the bounded host covers the whole monitor, one with them
-clustered so it covers a small fraction of it.
+Confirm it with a warm production capture against LMU: host renderer private
+memory on the plateau, GPU process, CPU average/P95 and whether the ramp still
+exists. Measure the JS heap with `Performance.getMetrics` or the renderer's
+private bytes, never with a heap snapshot: a snapshot collects first and hides
+exactly this kind of garbage.
 
-- If the host renderer scales with the host rectangle, the memory is compositing
-  tiles. The lever is then the graphics budget, not the V8 heap that failed:
-  `--force-gpu-mem-available-mb` and the discardable limit starve a subsystem
-  that has no garbage collector to storm, and must be measured for raster churn
-  the same way.
-- If it stays flat, the memory belongs to the mounted documents rather than the
-  painted area, and the lever is what each overlay iframe costs, measured by
-  warm plateau per overlay rather than by slope.
-
-A debug build reaches the same answer faster: `Ctrl+Shift+D` opens the inspector
-on the host, and the Layers panel lists every composited layer with its size.
-Layer structure is the same in debug even though the totals are not.
-
-Do not change any argument or lifetime before one of these two says which.
+Any remaining high-frequency `emit` to a webview carries the same cost per
+byte. The control panel's 2 Hz `telemetry://frame` is small enough to leave
+as an event. Do not add a new per-cycle event.
 
 ## Likely measured follow-ups
 

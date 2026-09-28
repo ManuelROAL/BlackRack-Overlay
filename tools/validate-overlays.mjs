@@ -141,19 +141,6 @@ const visitComposite = (node) => {
       .filter(ts.isStringLiteral)
       .map((element) => element.text);
   }
-  if (ts.isVariableDeclaration(node)
-    && ts.isIdentifier(node.name)
-    && node.name.text === "telemetryFields"
-    && node.initializer
-    && ts.isObjectLiteralExpression(node.initializer)) {
-    for (const property of node.initializer.properties) {
-      if (!ts.isPropertyAssignment(property) || !ts.isIdentifier(property.name)
-        || !ts.isArrayLiteralExpression(property.initializer)) continue;
-      projections.set(property.name.text, new Set(
-        property.initializer.elements.filter(ts.isStringLiteral).map((element) => element.text)
-      ));
-    }
-  }
   ts.forEachChild(node, visitComposite);
 };
 visitComposite(compositeSource);
@@ -165,7 +152,13 @@ if (compositeOverlayIds === null) {
   // walks OVERLAY_LABELS in the same one, so both have to track OverlayId exactly.
   compareRoster("composite overlayIds", compositeOverlayIds, { ordered: true });
 }
-compareRoster("composite telemetryFields", [...projections.keys()]);
+// The composite host and the Rust batch serializer both project with this table.
+const telemetryFieldsFile = "src/overlay-telemetry-fields.json";
+const telemetryFieldTable = JSON.parse(read(telemetryFieldsFile));
+for (const [overlay, fields] of Object.entries(telemetryFieldTable.overlays ?? {})) {
+  projections.set(overlay, new Set(fields));
+}
+compareRoster(`${telemetryFieldsFile} overlays`, [...projections.keys()]);
 
 // The layout module keeps its own roster to validate a stored placement set.
 // An overlay missing from it makes readCompositeLayout report a layout that has
@@ -248,6 +241,13 @@ telemetryTypesSource.forEachChild((node) => {
     }
   }
 });
+
+for (const field of [
+  ...(telemetryFieldTable.shared ?? []),
+  ...[...projections.values()].flatMap((fields) => [...fields])
+]) {
+  if (!frontendFrameFields.has(field)) fail(`${telemetryFieldsFile}: unknown TelemetryFrame field ${field}`);
+}
 
 const telemetryRust = read("src-tauri/src/telemetry/mod.rs");
 const rustFrameBody = telemetryRust.match(/pub struct TelemetryFrame \{([\s\S]*?)\r?\n\}/)?.[1];

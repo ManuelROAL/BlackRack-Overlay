@@ -3,6 +3,42 @@
 This file preserves completed measurements. The active procedure and next target
 live in `docs/PERFORMANCE.md`.
 
+## The host plateau was event garbage — 2026-09-28
+
+The overlay host's plateau was script after all. Tauri 2 delivers an event by
+evaluating a new script in the webview with the payload embedded as a JSON
+literal. The host received about 104 `telemetry://batch` events a second, 15 KB
+on average and up to 20 KB, each carrying the whole frame. That had V8 compile
+about 1.5 MB/s of one-off code. Bytecode and script sources are allocated
+straight into the old generation, which only a major GC reclaims, so the host
+heap climbed until V8 settled into repeated major collections on a heap of
+hundreds of MB.
+
+The earlier readings of a flat 33 MB heap came from heap snapshots. A snapshot
+forces a full GC first, so it showed the live set and never the garbage. A
+sampling profile of the objects that survive minor GCs showed where the memory
+came from: `(V8 API)` 32 MB, `(BYTECODE_COMPILER)` 19 MB and anonymous
+line-1 code, 114 MB promoted in 20 s. A forced GC dropped the heap from 40 to
+10.6 MB.
+
+The fix sends one batch per cycle over a `tauri::ipc::Channel` as raw bytes. The
+host fetches and parses them instead of compiling them, and Rust serializes only
+the fields the batch's targets read. Measured with the dev build on the mock
+source, all 16 overlays visible and focus on the app, over 300 s:
+
+- Host JS heap: 300 to 545 MB before, 13 to 27 MB after.
+- Host renderer private memory: 766 MB before, 182 MB after.
+- Host main-thread work: 0.105 s/s rising to 0.13-0.15 s/s at the plateau
+  before, flat at 0.104-0.108 s/s after.
+- Promoted in 20 s: 114 MB before, 42 MB after. The compiler and V8 API
+  entries are gone. What remains is mostly iframe `postMessage`
+  deserialization.
+- The Rust process stayed at 23 MB, so the channel's fetch queue does not
+  accumulate.
+
+These are dev-build, mock-source figures. A warm production capture against LMU
+still has to confirm the plateau.
+
 ## Where the plateau lives — 2026-09-02
 
 The first capture with per-process attribution answers what the totals never

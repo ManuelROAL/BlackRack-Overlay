@@ -42,9 +42,9 @@ Tauri events    analysis JSONL/strategy CSV    browser-source SSE
     already occupied.
   - Exposes Tauri commands for overlays, logging, shortcuts, dependencies and the
     browser source.
-  - Emits telemetry to the monitor hosts as filtered `telemetry://batch` events.
-    Each batch serializes one frame once and carries the overlay IDs that consume
-    that payload variant.
+  - Sends telemetry to the monitor hosts over their IPC channels as raw bytes:
+    one batch per cycle, naming the overlays due and carrying only their fields
+    from `src/overlay-telemetry-fields.json`.
 - `src-tauri/src/telemetry/mod.rs`
   - Defines `TelemetryFrame`, `StandingEntry` and the warnings, and stays
     simulator agnostic: the source contract lives in `telemetry/sim`.
