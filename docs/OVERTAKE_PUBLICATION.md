@@ -11,12 +11,12 @@ SimHub package.
 ## Resource fields
 
 - Title: `BlackRack Overlay`
-- Version: `0.9.0`
+- Version: `0.10.0`
 - Category: `Le Mans Ultimate`
 - Tag line: `Lightweight, configurable LMU telemetry overlays — no SimHub required.`
 - Tags: `le mans ultimate`, `lmu`, `overlay`, `standings`, `relative`,
   `delta bar`, `fuel calculator`, `virtual energy`, `track map`, `obs`
-- Download: `release/0.9.0/BlackRack Overlay_0.9.0_x64-setup.exe`
+- Download: `release/0.10.0/BlackRack Overlay_0.10.0_x64-setup.exe`
 - Support URL: `https://ko-fi.com/blackrack`
 
 ## Overview copy
@@ -70,7 +70,7 @@ optional service is unavailable, the overlays keep running.
 
 ### Installation
 
-1. Download and run `BlackRack Overlay_0.9.0_x64-setup.exe`.
+1. Download and run `BlackRack Overlay_0.10.0_x64-setup.exe`.
 2. Start Le Mans Ultimate in windowed or borderless-windowed mode.
 3. Open BlackRack Overlay and enable the panels you want to use.
 
@@ -215,6 +215,20 @@ https://ko-fi.com/blackrack.
 - Added rollback requests for earlier releases and improved telemetry cleanup
   and stability diagnostics.
 
+### 0.10.0 — Driving controls, tyre history and session data
+
+- Refreshed Trailing + Pedal and added independent positions for its graph,
+  current inputs and driving data, plus an option to hide pedal labels.
+- Improved Tyres flat-spot history so compatible used tyres retain their
+  recorded marks, including while the car remains in the garage.
+- Standings and Relative now follow the selected session profile for their
+  columns and expose virtual energy in configured sessions.
+- Delta now uses a global keyboard shortcut instead of polling wheel buttons.
+  Reassign the desired wheel button to that shortcut in the wheel software or
+  SimHub; previous direct wheel-button assignments are not carried over.
+- Clarified profile deletion confirmation and vertically centered Chat
+  timestamps.
+
 ## Decisions required before submission
 
 Choose and insert the resource's usage terms. Do not inherit the doX listing's
@@ -234,7 +248,7 @@ Prepare at least one real in-game hero image before publishing. Recommended set:
 
 ## Final checklist
 
-- [x] Version synchronized at `0.9.0` in npm, Cargo and Tauri.
+- [x] Version synchronized at `0.10.0` in npm, Cargo and Tauri.
 - [x] Frontend production build and localization checks pass.
 - [x] Rust library tests pass with the official LMU SDK detected.
 - [x] Production NSIS installer generated under the BlackRack name.

@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "version": "0.10.0",
+  "packageUrl": "https://github.com/ManuelROAL/BlackRack-Overlay/releases/download/v0.10.0/BlackRack.Overlay_0.10.0_x64-setup.exe",
+  "sha256": "e148ae75aed8fd62a833a514ea0d1d0779db1a8f25c2ebd8af514af4ad5e4615",
+  "fileName": "BlackRack.Overlay_0.10.0_x64-setup.exe",
+  "releasePageUrl": "https://github.com/ManuelROAL/BlackRack-Overlay/releases/tag/v0.10.0",
+  "updateTitle": "BlackRack Overlay 0.10.0",
+  "fullTitle": "BlackRack Overlay 0.10.0",
+  "changelog": [
+    "Actualizado el overlay Trailing + Pedal con posiciones y etiquetas configurables.",
+    "Tyres conserva las marcas de flat spot en neumáticos usados compatibles y en el garaje.",
+    "Standings y Relative respetan los perfiles de sesión y muestran energía virtual.",
+    "Delta usa un atajo global; asigna el botón del volante desde su software o SimHub.",
+    "Mejoradas las confirmaciones de perfiles y la presentación de las marcas de tiempo de Chat."
+  ],
+  "localized": {
+    "es": {
+      "updateTitle": "BlackRack Overlay 0.10.0",
+      "fullTitle": "BlackRack Overlay 0.10.0",
+      "changelog": [
+        "Actualizado el overlay Trailing + Pedal con posiciones y etiquetas configurables.",
+        "Tyres conserva las marcas de flat spot en neumáticos usados compatibles y en el garaje.",
+        "Standings y Relative respetan los perfiles de sesión y muestran energía virtual.",
+        "Delta usa un atajo global; asigna el botón del volante desde su software o SimHub.",
+        "Mejoradas las confirmaciones de perfiles y la presentación de las marcas de tiempo de Chat."
+      ]
+    },
+    "en": {
+      "updateTitle": "BlackRack Overlay 0.10.0",
+      "fullTitle": "BlackRack Overlay 0.10.0",
+      "changelog": [
+        "Refreshed Trailing + Pedal with configurable positions and labels.",
+        "Tyres preserves flat-spot marks on compatible used tyres and in the garage.",
+        "Standings and Relative follow session profiles and show virtual energy.",
+        "Delta uses a global shortcut; map the wheel button in its software or SimHub.",
+        "Improved profile confirmations and Chat timestamp presentation."
+      ]
+    }
+  }
+}
