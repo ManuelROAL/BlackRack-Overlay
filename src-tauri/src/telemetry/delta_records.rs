@@ -178,14 +178,25 @@ pub(crate) fn delete_lap_record(key: String) -> Result<(), String> {
     Ok(())
 }
 
-fn take_deleted_keys() -> Vec<String> {
+fn take_deleted_key(key: &str) -> bool {
     if !DELETIONS_PENDING.swap(false, Ordering::Acquire) {
-        return Vec::new();
+        return false;
     }
-    DELETED_KEYS
-        .lock()
-        .map(|mut deleted| std::mem::take(&mut *deleted))
-        .unwrap_or_default()
+    let Ok(mut deleted) = DELETED_KEYS.lock() else {
+        DELETIONS_PENDING.store(true, Ordering::Release);
+        return false;
+    };
+    let found = take_deleted_key_from(&mut deleted, key);
+    DELETIONS_PENDING.store(!deleted.is_empty(), Ordering::Release);
+    found
+}
+
+fn take_deleted_key_from(deleted: &mut Vec<String>, key: &str) -> bool {
+    let found = deleted.iter().any(|deleted_key| deleted_key == key);
+    if found {
+        deleted.retain(|deleted_key| deleted_key != key);
+    }
+    found
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, Eq)]
@@ -992,6 +1003,10 @@ enum StorageCommand {
         sequence: u64,
         reply: Sender<Result<(), String>>,
     },
+    Resume {
+        key: String,
+        sequence: u64,
+    },
 }
 
 struct DeltaStorage {
@@ -1200,18 +1215,24 @@ impl DeltaEngine {
     }
 
     fn forget_deleted_records(&mut self) {
-        let deleted = take_deleted_keys();
         let Some(identity) = self.identity.as_ref() else {
             return;
         };
-        if !deleted.contains(&identity.key) {
+        let identity_key = identity.key.clone();
+        if !take_deleted_key(&identity_key) {
             return;
         }
         // A load still in flight would bring the deleted record back.
         self.pending_load = None;
         self.overall = ReferenceSet::default();
         self.overall_timing_sectors = [None; 3];
+        self.current_lap = None;
+        self.pending_lap = None;
         self.generation = self.generation.wrapping_add(1);
+        self.storage.send(StorageCommand::Resume {
+            key: identity_key,
+            sequence: next_storage_sequence(),
+        });
     }
 
     fn poll_load(&mut self) {
@@ -2053,7 +2074,8 @@ fn initialize_database(connection: &Connection) -> rusqlite::Result<()> {
          );
          CREATE TABLE IF NOT EXISTS deleted_delta_identities (
            identity_key TEXT PRIMARY KEY,
-           sequence INTEGER NOT NULL
+           sequence INTEGER NOT NULL,
+           blocked INTEGER NOT NULL DEFAULT 1
          );
          CREATE TABLE IF NOT EXISTS sessions (
            id TEXT PRIMARY KEY,
@@ -2091,7 +2113,22 @@ fn initialize_database(connection: &Connection) -> rusqlite::Result<()> {
            tire_used REAL NOT NULL,
            recorded_unix_ms INTEGER NOT NULL
          );",
-    )
+    )?;
+    let has_blocked_column = {
+        let mut statement = connection.prepare("PRAGMA table_info(deleted_delta_identities)")?;
+        let columns = statement.query_map([], |row| row.get::<_, String>(1))?;
+        columns
+            .collect::<rusqlite::Result<Vec<_>>>()?
+            .iter()
+            .any(|column| column == "blocked")
+    };
+    if !has_blocked_column {
+        connection.execute(
+            "ALTER TABLE deleted_delta_identities ADD COLUMN blocked INTEGER NOT NULL DEFAULT 1",
+            [],
+        )?;
+    }
+    Ok(())
 }
 
 fn handle_storage_command(
@@ -2100,17 +2137,33 @@ fn handle_storage_command(
 ) -> rusqlite::Result<()> {
     match command {
         StorageCommand::Load { keys, reply } => {
-            let deleted_current = keys.first().is_some_and(|key| {
-                connection.query_row(
-                    "SELECT EXISTS(SELECT 1 FROM deleted_delta_identities WHERE identity_key = ?1)",
-                    params![key],
-                    |row| row.get::<_, bool>(0),
-                ).unwrap_or(false)
+            let deletion_state = keys.first().and_then(|key| {
+                connection
+                    .query_row(
+                        "SELECT blocked FROM deleted_delta_identities WHERE identity_key = ?1",
+                        params![key],
+                        |row| row.get::<_, bool>(0),
+                    )
+                    .ok()
             });
-            let (loaded, needs_migration) = if deleted_current {
-                (PersistentReferences::default(), false)
-            } else {
-                keys.into_iter()
+            let (loaded, needs_migration) = match deletion_state {
+                Some(true) => (PersistentReferences::default(), false),
+                Some(false) => keys
+                    .first()
+                    .and_then(|key| {
+                        connection
+                            .query_row(
+                                "SELECT payload FROM delta_references WHERE identity_key = ?1",
+                                params![key],
+                                |row| row.get::<_, Vec<u8>>(0),
+                            )
+                            .ok()
+                    })
+                    .and_then(|bytes| serde_json::from_slice(&bytes).ok())
+                    .map(|references| (references, false))
+                    .unwrap_or_default(),
+                None => keys
+                    .into_iter()
                     .enumerate()
                     .find_map(|(index, key)| {
                         connection
@@ -2123,7 +2176,7 @@ fn handle_storage_command(
                             .and_then(|bytes| serde_json::from_slice(&bytes).ok())
                             .map(|references| (references, index > 0))
                     })
-                    .unwrap_or_default()
+                    .unwrap_or_default(),
             };
             let _ = reply.send((loaded, needs_migration));
         }
@@ -2132,14 +2185,16 @@ fn handle_storage_command(
             references,
             sequence,
         } => {
-            let deleted_sequence = connection
+            let deletion_state = connection
                 .query_row(
-                    "SELECT sequence FROM deleted_delta_identities WHERE identity_key = ?1",
+                    "SELECT sequence, blocked FROM deleted_delta_identities WHERE identity_key = ?1",
                     params![identity.key],
-                    |row| row.get::<_, u64>(0),
+                    |row| Ok((row.get::<_, u64>(0)?, row.get::<_, bool>(1)?)),
                 )
                 .ok();
-            if deleted_sequence.is_some_and(|deleted| sequence <= deleted) {
+            if deletion_state
+                .is_some_and(|(released_at, blocked)| blocked || sequence <= released_at)
+            {
                 return Ok(());
             }
             let payload = serde_json::to_vec(&references).unwrap_or_default();
@@ -2160,10 +2215,6 @@ fn handle_storage_command(
                     payload,
                     unix_millis()
                 ],
-            )?;
-            connection.execute(
-                "DELETE FROM deleted_delta_identities WHERE identity_key = ?1",
-                params![identity.key],
             )?;
         }
         StorageCommand::StartSession {
@@ -2240,14 +2291,21 @@ fn handle_storage_command(
                     params![key],
                 )?;
                 connection.execute(
-                    "INSERT INTO deleted_delta_identities (identity_key, sequence) VALUES (?1, ?2)
-                     ON CONFLICT(identity_key) DO UPDATE SET sequence=MAX(sequence, excluded.sequence)",
+                    "INSERT INTO deleted_delta_identities (identity_key, sequence, blocked) VALUES (?1, ?2, 1)
+                     ON CONFLICT(identity_key) DO UPDATE SET sequence=MAX(sequence, excluded.sequence), blocked=1",
                     params![key, sequence],
                 )?;
                 Ok(())
             })()
             .map_err(|error: rusqlite::Error| error.to_string());
             let _ = reply.send(result);
+        }
+        StorageCommand::Resume { key, sequence } => {
+            connection.execute(
+                "UPDATE deleted_delta_identities SET sequence=MAX(sequence, ?2), blocked=0
+                 WHERE identity_key = ?1",
+                params![key, sequence],
+            )?;
         }
     }
     Ok(())
@@ -2291,10 +2349,10 @@ mod tests {
         average_timing_laps, build_sectors, can_show_live_delta, classify_delta_trend,
         handle_storage_command, initialize_database, interpolate, limit_delta_seconds,
         native_session_delta, next_storage_sequence, round_delta_for_trend, sector_count,
-        sector_state, should_reset_delta_at_lap_start, three_sector_times, timing_comparison,
-        timing_improvement, CompletedLap, CurrentLap, DeltaMode, DeltaTrend, Identity, LapTrace,
-        PersistentReferences, ReferenceSet, SectorBank, StintAccumulator, StorageCommand,
-        TimingLapView, TimingSectorReference, TracePoint, STORE_VERSION,
+        sector_state, should_reset_delta_at_lap_start, take_deleted_key_from, three_sector_times,
+        timing_comparison, timing_improvement, CompletedLap, CurrentLap, DeltaMode, DeltaTrend,
+        Identity, LapTrace, PersistentReferences, ReferenceSet, SectorBank, StintAccumulator,
+        StorageCommand, TimingLapView, TimingSectorReference, TracePoint, STORE_VERSION,
     };
     use crate::telemetry::TelemetryFrame;
 
@@ -2967,10 +3025,18 @@ mod tests {
         receiver.recv().unwrap().unwrap();
         handle_storage_command(
             &connection,
+            StorageCommand::Resume {
+                key: identity.key.clone(),
+                sequence: 22,
+            },
+        )
+        .unwrap();
+        handle_storage_command(
+            &connection,
             StorageCommand::Save {
                 identity: identity.clone(),
                 references,
-                sequence: 10,
+                sequence: 21,
             },
         )
         .unwrap();
@@ -3006,7 +3072,7 @@ mod tests {
                     },
                     timing_sectors: [None; 3],
                 },
-                sequence: 30,
+                sequence: 23,
             },
         )
         .unwrap();
@@ -3023,6 +3089,16 @@ mod tests {
             receiver.recv().unwrap().0.overall.best.unwrap().lap_time,
             99.0
         );
+    }
+
+    #[test]
+    fn taking_one_deleted_identity_retains_other_pending_keys() {
+        let mut deleted = vec!["later".to_owned(), "active".to_owned()];
+
+        assert!(take_deleted_key_from(&mut deleted, "active"));
+        assert_eq!(deleted, ["later"]);
+        assert!(!take_deleted_key_from(&mut deleted, "missing"));
+        assert_eq!(deleted, ["later"]);
     }
 
     #[test]
@@ -3091,6 +3167,14 @@ mod tests {
         )
         .unwrap();
         receiver.recv().unwrap().unwrap();
+        handle_storage_command(
+            &connection,
+            StorageCommand::Resume {
+                key: current.key.clone(),
+                sequence: 4,
+            },
+        )
+        .unwrap();
         let (reply, receiver) = mpsc::channel();
         handle_storage_command(
             &connection,
