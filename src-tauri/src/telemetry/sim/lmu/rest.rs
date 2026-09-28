@@ -1053,8 +1053,13 @@ impl LocalRestResolver {
         })
     }
 
+    /// Whether the standings are recent enough to say which car has focus.
+    pub(super) fn focus_is_known(&self) -> bool {
+        is_fresh(self.standings_received_at, FOCUS_MAX_AGE)
+    }
+
     pub(super) fn focused_standing(&self) -> Option<&RestStanding> {
-        if !is_fresh(self.standings_received_at, FOCUS_MAX_AGE) {
+        if !self.focus_is_known() {
             return None;
         }
         self.standings_by_name

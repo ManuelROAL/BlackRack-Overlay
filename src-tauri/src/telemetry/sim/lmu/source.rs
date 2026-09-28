@@ -1193,6 +1193,8 @@ pub struct LmuTelemetrySource {
     driver_rank_prerace_scores: HashMap<String, f64>,
     session_split: SessionSplitResolver,
     local_rest: LocalRestResolver,
+    /// Normalized name of the driver spectator mode last saw focused.
+    spectator_driver_name: String,
     rejoin_hold_frames: u16,
     rejoin_reason: &'static str,
     last_gap_log_at: Option<Instant>,
@@ -1628,6 +1630,7 @@ impl LmuTelemetrySource {
                     LocalRestResolver::discover()
                 }
             },
+            spectator_driver_name: String::new(),
             rejoin_hold_frames: 0,
             rejoin_reason: "rejoin",
             last_gap_log_at: None,

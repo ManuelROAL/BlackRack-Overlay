@@ -29,6 +29,9 @@ impl TelemetrySource for LmuTelemetrySource {
 
         let snapshot_started = Instant::now();
         let mut snapshot = LmuSnapshot::default();
+        if !crate::telemetry::spectator_mode() {
+            self.spectator_driver_name.clear();
+        }
         let spectator_vehicle_id = if crate::telemetry::team_mode() {
             self.team_vehicle_id().unwrap_or(-1)
         } else if crate::telemetry::spectator_mode() {
@@ -83,6 +86,7 @@ impl TelemetrySource for LmuTelemetrySource {
             self.clear_standings_cache();
             self.last_valid_snapshot = None;
             self.last_valid_snapshot_at = None;
+            self.spectator_driver_name.clear();
             self.player_lap_distance.reset();
             self.player_lap_times.reset();
             return TelemetryFrame::waiting_for_simulator(false);

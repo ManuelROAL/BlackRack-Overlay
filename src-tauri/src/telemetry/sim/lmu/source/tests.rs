@@ -702,6 +702,42 @@ fn spectator_resolves_rest_focus_by_driver_identity() {
 }
 
 #[test]
+fn spectator_keeps_the_watched_car_while_rest_focus_is_unknown() {
+    let mut source = LmuTelemetrySource::new();
+    source.local_rest.seed_standings(vec![RestStanding {
+        slot_id: 7,
+        driver_name: "Maxime Baruchello".into(),
+        focus: true,
+        has_focus: true,
+        ..RestStanding::default()
+    }]);
+    let mut snapshot = LmuSnapshot {
+        standings_count: 2,
+        ..LmuSnapshot::default()
+    };
+    snapshot.standings[0].vehicle_id = 7;
+    set_chars(&mut snapshot.standings[0].driver_name, "Maxime Baruchello");
+    snapshot.standings[1].vehicle_id = 10;
+    set_chars(&mut snapshot.standings[1].driver_name, "Local Driver");
+    source.last_valid_snapshot = Some(snapshot);
+    assert_eq!(source.spectator_vehicle_id(), Some(7));
+
+    // A context reset empties the REST standings. Falling back to the local
+    // car here changed the context again and looped the overlays between it
+    // and the local car parked in its garage.
+    source.local_rest.reset_session_history();
+    assert_eq!(source.spectator_vehicle_id(), Some(7));
+
+    // Fresh standings without a focused car do release the watched one.
+    source.local_rest.seed_standings(vec![RestStanding {
+        slot_id: 7,
+        driver_name: "Maxime Baruchello".into(),
+        ..RestStanding::default()
+    }]);
+    assert_eq!(source.spectator_vehicle_id(), None);
+}
+
+#[test]
 fn team_mode_resolves_registered_team_independently_of_focus() {
     let mut source = LmuTelemetrySource::new();
     source.local_rest.seed_team_reference(

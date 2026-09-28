@@ -3,15 +3,28 @@
 use super::*;
 
 impl LmuTelemetrySource {
-    pub(super) fn spectator_vehicle_id(&self) -> Option<i32> {
-        let focused = self.local_rest.focused_standing()?;
-        let focused_name = normalized_name(&focused.driver_name);
+    /// The watched car. The focused driver is remembered while REST has no
+    /// fresh standings: falling back to the local car in that gap changes the
+    /// session context, whose reset empties the REST standings again, and the
+    /// overlays then alternate with the local car in its garage for good.
+    pub(super) fn spectator_vehicle_id(&mut self) -> Option<i32> {
+        if self.local_rest.focus_is_known() {
+            self.spectator_driver_name = self
+                .local_rest
+                .focused_standing()
+                .map(|focused| normalized_name(&focused.driver_name))
+                .unwrap_or_default();
+        }
+        if self.spectator_driver_name.is_empty() {
+            return None;
+        }
         let snapshot = self.last_valid_snapshot.as_ref()?;
         let count = (snapshot.standings_count as usize).min(MAX_VEHICLES);
         snapshot.standings[..count]
             .iter()
             .find(|entry| {
-                normalized_name(&Self::string_from_chars(&entry.driver_name)) == focused_name
+                normalized_name(&Self::string_from_chars(&entry.driver_name))
+                    == self.spectator_driver_name
             })
             .map(|entry| entry.vehicle_id)
     }
