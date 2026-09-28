@@ -563,6 +563,7 @@ for (const event of [
   "liftcoast://settings",
   "pitstop://settings",
   "chat://settings",
+  "minimap://settings",
   "overlay://background-transparency",
   "overlay://font-size",
   "display-units://change",

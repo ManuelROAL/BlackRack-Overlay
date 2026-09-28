@@ -18,9 +18,12 @@ or the REST supplement.
 
 ## View
 
-- A 260 px disc with the player fixed at its centre. It shows 190 m of circuit
-  between the centre and the rim.
-- The disc turns so the direction of travel points up. The frame carries no yaw,
+- A 260 px disc with the player fixed at its centre. It shows the configured range
+  of circuit between the centre and the rim (190 m by default).
+- In heading-up orientation (the default) the disc turns so the direction of
+  travel points up. North-up keeps the world fixed, with the same axes as the
+  Track Map. The heading is tracked in both modes so switching back is immediate.
+  The frame carries no yaw,
   so the heading comes from the player's own movement: a new direction needs at
   least 2 m of travel, a jump of more than 80 m between frames (teleport, return
   to the garage) re-anchors without turning, and the rotation eases towards the
@@ -32,6 +35,18 @@ or the REST supplement.
 - Without geometry only the cars are drawn and the status reads *learning
   circuit*. Without a player position (garage, no car) the map is hidden and the
   status reads *waiting for car*.
+
+## Settings
+
+- `viewRadiusMeters`: 80 to 500 m in 10 m steps, default 190. The scale is
+  derived from it, so the track keeps its width in metres and a wider range
+  draws a thinner line.
+- `orientation`: `heading` (default) or `north`.
+- Stored under `blackrack-overlay.minimap-settings.v1`, applied live through
+  `minimap://settings` (forwarded by the composite host), copied to OBS through
+  the browser-source preferences, and saved in profiles and configuration exports
+  from schema 28. Older profiles and imports take the defaults; an import with
+  out-of-range values is rejected.
 
 ## Markers
 

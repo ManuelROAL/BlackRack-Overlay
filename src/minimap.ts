@@ -13,6 +13,11 @@ import {
   type GeometryPoint
 } from "./track-map-common";
 import { normalizeTrackMapSettings, readTrackMapSettings, type TrackMapSettings } from "./trackmap-settings";
+import {
+  normalizeMinimapSettings,
+  readMinimapSettings,
+  type MinimapSettings
+} from "./minimap-settings";
 import type { TelemetryFrame, TrackMapVehicle } from "./telemetry-types";
 import { t } from "./i18n";
 
@@ -38,9 +43,6 @@ interface WorldPosition {
 
 const SIZE = 260;
 const CENTER = SIZE / 2;
-/** Metres of circuit between the player and the edge of the disc. */
-const VIEW_RADIUS_METERS = 190;
-const SCALE = CENTER / VIEW_RADIUS_METERS;
 /** Cars this far past the rim are dropped rather than drawn clipped. */
 const MARKER_MARGIN = 12;
 /** Movement needed before the travel direction is trusted. */
@@ -71,6 +73,9 @@ let hasGeometry = false;
 let worldTransform = "";
 const markers = new Map<number, MarkerView>();
 let trackMapSettings = readTrackMapSettings();
+let minimapSettings = readMinimapSettings();
+/** Pixels per metre: the configured range always reaches the rim. */
+let scale = CENTER / minimapSettings.viewRadiusMeters;
 
 // Rotation, in radians, that turns the player's direction of travel to the top
 // of the disc. It follows the movement itself because the frame carries no yaw.
@@ -151,17 +156,21 @@ const requestGeometry = (key: string): void => {
     });
 };
 
+/** North-up keeps the world still; the heading is still tracked for a switch back. */
+const viewRotation = (): number => minimapSettings.orientation === "north" ? 0 : rotation;
+
 const toScreen = (x: number, y: number, origin: WorldPosition): [number, number] => {
-  const dx = (x - origin.x) * SCALE;
-  const dy = (y - origin.y) * SCALE;
-  const cos = Math.cos(rotation);
-  const sin = Math.sin(rotation);
+  const dx = (x - origin.x) * scale;
+  const dy = (y - origin.y) * scale;
+  const angle = viewRotation();
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
   return [CENTER + dx * cos - dy * sin, CENTER + dx * sin + dy * cos];
 };
 
 const renderWorld = (origin: WorldPosition | null): void => {
   const next = origin
-    ? `translate(${CENTER} ${CENTER}) rotate(${(rotation * 180 / Math.PI).toFixed(2)}) scale(${SCALE.toFixed(5)}) translate(${(-origin.x).toFixed(2)} ${(-origin.y).toFixed(2)})`
+    ? `translate(${CENTER} ${CENTER}) rotate(${(viewRotation() * 180 / Math.PI).toFixed(2)}) scale(${scale.toFixed(5)}) translate(${(-origin.x).toFixed(2)} ${(-origin.y).toFixed(2)})`
     : "";
   if (next === worldTransform) return;
   worldTransform = next;
@@ -338,6 +347,10 @@ void listenTelemetry((frame) => renderPerformance.measure(
 ));
 void listenRuntimeEvent<TrackMapSettings>("trackmap://settings", (settings) => {
   trackMapSettings = normalizeTrackMapSettings(settings);
+});
+void listenRuntimeEvent<MinimapSettings>("minimap://settings", (settings) => {
+  minimapSettings = normalizeMinimapSettings(settings);
+  scale = CENTER / minimapSettings.viewRadiusMeters;
 });
 
 if (import.meta.env.DEV && new URLSearchParams(window.location.search).has("preview")) {

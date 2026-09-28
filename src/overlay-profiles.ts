@@ -1,6 +1,7 @@
 import type { CompositeLayout } from "./composite-layout";
 import type { ConditionsSettings } from "./conditions-settings";
 import { normalizeChatSettings, type ChatSettings } from "./chat-settings";
+import { normalizeMinimapSettings, type MinimapSettings } from "./minimap-settings";
 import type { DashboardSettings } from "./dashboard-settings";
 import type { DeltaSettings } from "./delta-settings";
 import type { DrivingSettings } from "./driving-settings";
@@ -83,6 +84,8 @@ export interface OverlayProfileData {
   pitstop?: PitStopSettings;
   /** Optional for profiles saved before the chat message limit was added. */
   chat?: ChatSettings;
+  /** Optional for profiles saved before the Minimap had its own settings. */
+  minimap?: MinimapSettings;
 }
 
 export interface OverlayProfile {
@@ -150,6 +153,7 @@ export const normalizeProfiles = (
       data: {
         ...data,
         chat: normalizeChatSettings(data.chat),
+        minimap: normalizeMinimapSettings(data.minimap),
         trackMap: normalizeTrackMapSettings(data.trackMap)
       } as unknown as OverlayProfileData
     });
