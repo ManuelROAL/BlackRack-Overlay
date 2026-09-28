@@ -39,6 +39,10 @@
           <span data-i18n="nav.overlays">OVERLAYS</span>
           <small data-i18n="nav.overlaysSub">Visibilidad y ajustes</small>
         </button>
+        <button type="button" data-control-view="records">
+          <span data-i18n="nav.records">TIEMPOS</span>
+          <small data-i18n="nav.recordsSub">Récords por circuito y coche</small>
+        </button>
         <button type="button" data-control-view="integrations">
           <span data-i18n="nav.integrations">INTEGRACIONES</span>
           <small data-i18n="nav.integrationsSub">OBS y diagnóstico</small>
@@ -88,6 +92,23 @@
         </header>
         <p id="rollback-status" class="rollback-status" aria-live="polite"></p>
         <div id="release-notes-list" class="release-notes-list"></div>
+      </section>
+
+      <section class="general-settings-section general-settings-lead lap-records-section" data-view-section="records" aria-label="Tiempos guardados" data-i18n-aria-label="records.aria">
+        <header class="settings-section-heading">
+          <span data-i18n="records.heading">TIEMPOS</span>
+          <strong data-i18n="records.title">Récords por circuito y coche</strong>
+          <small data-i18n="records.sub">Mejor vuelta, vuelta óptima y mejores sectores que usan Delta y Timing como referencia.</small>
+        </header>
+        <div class="lap-records-toolbar">
+          <label class="overlay-search">
+            <span aria-hidden="true">⌕</span>
+            <input id="lap-records-search" type="search" placeholder="Buscar circuito o coche..." data-i18n-placeholder="records.search" autocomplete="off" />
+          </label>
+          <button id="lap-records-refresh" type="button" data-i18n="records.refresh">ACTUALIZAR</button>
+        </div>
+        <p id="lap-records-status" class="lap-records-status" aria-live="polite"></p>
+        <div id="lap-records-list" class="lap-records-list"></div>
       </section>
 
       <section class="control-intro" data-view-section="overlays">

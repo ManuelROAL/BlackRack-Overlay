@@ -14,6 +14,7 @@ import {
   type ChatSettings
 } from "./chat-settings";
 import { installFrontendDiagnostics } from "./frontend-diagnostics";
+import { installLapRecordsPanel } from "./lap-records";
 import {
   applyDisplayUnits,
   normalizeDisplayUnits,
@@ -1654,6 +1655,8 @@ const confirmReset = (
     dialog.addEventListener("close", () => resolve(dialog.returnValue === "confirm"), { once: true });
   });
 };
+
+installLapRecordsPanel(confirmReset);
 
 const overlayDisplayName = (id: OverlayId): string =>
   document.querySelector<HTMLElement>(`[data-overlay-card="${id}"] .overlay-copy strong`)

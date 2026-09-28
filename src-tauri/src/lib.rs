@@ -1547,6 +1547,20 @@ fn set_telemetry_logging(
 }
 
 #[tauri::command]
+async fn list_lap_records(
+    window: WebviewWindow,
+) -> Result<Vec<telemetry::LapRecordSummary>, String> {
+    require_control_window(&window)?;
+    telemetry::list_lap_records()
+}
+
+#[tauri::command]
+async fn delete_lap_record(window: WebviewWindow, key: String) -> Result<(), String> {
+    require_control_window(&window)?;
+    telemetry::delete_lap_record(key)
+}
+
+#[tauri::command]
 fn set_performance_profile(window: WebviewWindow, profile: String) -> Result<(), String> {
     require_control_window(&window)?;
     telemetry::set_performance_profile(&profile)
@@ -2460,6 +2474,8 @@ pub fn run() {
             toggle_interaction_mode_command,
             get_telemetry_logging,
             set_telemetry_logging,
+            list_lap_records,
+            delete_lap_record,
             set_performance_profile,
             set_spectator_mode,
             set_team_mode,

@@ -165,6 +165,14 @@ in-memory model; a dedicated storage worker loads references and writes only at
 lap, stint and session boundaries. Learned records and history are deliberately
 excluded from configuration import/export and configuration reset.
 
+The control panel's LAP TIMES view (`src/lap-records.ts`) lists every
+`delta_references` row through `list_lap_records`: best lap, optimal lap and the
+three best timing sectors per track, layout length and car. `delete_lap_record`
+removes one row through the same storage worker, so it is ordered against the
+telemetry thread's writes, and the engine then drops its in-memory overall
+references for that identity so the next valid lap starts a new record instead
+of writing the deleted one back. Lap, stint and session history is kept.
+
 ## Focused verification
 
 - `cargo test --manifest-path src-tauri\Cargo.toml --lib` covers interpolation,

@@ -228,7 +228,7 @@ select {
   z-index: 10;
   top: 0;
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   padding: 0 28px;
   border-bottom: 1px solid rgb(255 255 255 / 8%);
   background: rgb(9 13 19 / 94%);
@@ -989,6 +989,175 @@ select {
   display: grid;
   gap: 10px;
   padding: 14px;
+}
+
+.lap-records-section .settings-section-heading small {
+  color: #a6b3c0;
+  font-size: 12px;
+}
+
+.lap-records-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  padding: 14px 14px 0;
+}
+
+.lap-records-toolbar > button,
+.lap-record-delete {
+  padding: 7px 12px;
+  border: 1px solid rgb(216 255 62 / 32%);
+  border-radius: 5px;
+  color: #d8ff3e;
+  background: rgb(216 255 62 / 7%);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .07em;
+}
+
+.lap-records-toolbar > button:hover:not(:disabled) {
+  border-color: rgb(216 255 62 / 60%);
+  background: rgb(216 255 62 / 11%);
+}
+
+.lap-records-toolbar > button:disabled,
+.lap-record-delete:disabled {
+  cursor: wait;
+  opacity: .55;
+}
+
+.lap-records-status {
+  margin: 0;
+  padding: 10px 14px 0;
+  color: #a6b3c0;
+  font-size: 12px;
+}
+
+.lap-records-status:empty {
+  display: none;
+}
+
+.lap-records-list {
+  display: grid;
+  gap: 10px;
+  padding: 12px 14px 14px;
+}
+
+.lap-records-list:empty {
+  display: none;
+}
+
+.lap-records-track {
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255 / 8%);
+  border-radius: 7px;
+  background: rgb(255 255 255 / 2.5%);
+}
+
+.lap-records-track > header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border-bottom: 1px solid rgb(255 255 255 / 7%);
+}
+
+.lap-records-track > header strong {
+  min-width: 0;
+  overflow: hidden;
+  color: #edf1f4;
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lap-records-track > header small {
+  flex: none;
+  color: #8b96a3;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .06em;
+}
+
+.lap-record-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 74px 74px 158px 76px;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  color: #dbe3ea;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.lap-record-row + .lap-record-row {
+  border-top: 1px solid rgb(255 255 255 / 5%);
+}
+
+.lap-record-header {
+  padding-top: 7px;
+  padding-bottom: 6px;
+  color: #8b96a3;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .1em;
+}
+
+.lap-record-vehicle {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.lap-record-vehicle strong {
+  overflow: hidden;
+  color: #edf1f4;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lap-record-vehicle small {
+  color: #8b96a3;
+  font-size: 11px;
+}
+
+.lap-record-best {
+  color: #d8ff3e;
+  font-weight: 800;
+}
+
+.lap-record-sectors {
+  color: #a6b3c0;
+  font-size: 12px;
+}
+
+.lap-record-actions {
+  justify-self: end;
+}
+
+.lap-record-delete {
+  border-color: rgb(255 108 108 / 32%);
+  color: #ff8c8c;
+  background: rgb(255 108 108 / 7%);
+}
+
+.lap-record-delete:hover:not(:disabled) {
+  border-color: rgb(255 108 108 / 60%);
+  background: rgb(255 108 108 / 12%);
+}
+
+@media (max-width: 620px) {
+  .lap-record-row {
+    grid-template-columns: minmax(0, 1fr) 74px 74px auto;
+  }
+
+  .lap-record-sectors,
+  .lap-record-header > :nth-child(4) {
+    display: none;
+  }
 }
 
 .rollback-status {

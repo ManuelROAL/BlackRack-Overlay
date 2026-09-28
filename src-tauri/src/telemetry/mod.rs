@@ -47,8 +47,9 @@ use tauri::{AppHandle, Emitter, Manager};
 use fuel_strategy::{FuelStrategies, ResourceAutonomy};
 
 pub(crate) use delta_records::{
-    cycle_mode as cycle_delta_mode, set_settings as set_delta_settings, set_timing_settings,
-    DeltaSettings, TimingSettings,
+    cycle_mode as cycle_delta_mode, delete_lap_record, list_lap_records,
+    set_settings as set_delta_settings, set_timing_settings, DeltaSettings, LapRecordSummary,
+    TimingSettings,
 };
 pub(crate) use dr_estimate_log::{
     set_enabled as set_driver_rank_estimate_logging, status as driver_rank_estimate_logging_status,

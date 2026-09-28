@@ -1,8 +1,9 @@
 use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicU8, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
 use std::sync::mpsc::{self, Receiver, Sender};
+use std::sync::{Mutex, OnceLock};
 use std::thread;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
@@ -108,6 +109,70 @@ pub(crate) fn cycle_mode() -> DeltaMode {
 
 fn active_mode() -> DeltaMode {
     DeltaMode::from_u8(DELTA_MODE.load(Ordering::Relaxed))
+}
+
+const STORAGE_REPLY_TIMEOUT: Duration = Duration::from_secs(5);
+
+/// The worker's queue, shared with the control panel so listing and deleting
+/// records are ordered against the telemetry thread's own writes.
+static STORAGE_SENDER: OnceLock<Sender<StorageCommand>> = OnceLock::new();
+/// Identity keys the panel deleted and the engine has not yet forgotten.
+static DELETED_KEYS: Mutex<Vec<String>> = Mutex::new(Vec::new());
+static DELETIONS_PENDING: AtomicBool = AtomicBool::new(false);
+
+/// One stored track and car combination as the control panel lists it.
+#[derive(Clone, Debug, Serialize, PartialEq)]
+pub(crate) struct LapRecordSummary {
+    key: String,
+    track: String,
+    vehicle: String,
+    track_length_meters: f64,
+    best_lap_seconds: Option<f64>,
+    optimal_lap_seconds: Option<f64>,
+    best_sector_seconds: [Option<f64>; 3],
+    updated_unix_ms: u64,
+}
+
+fn storage_request<T>(command: impl FnOnce(Sender<T>) -> StorageCommand) -> Result<T, String> {
+    let sender = STORAGE_SENDER
+        .get()
+        .ok_or_else(|| "lap_records_unavailable".to_owned())?;
+    let (reply, receiver) = mpsc::channel();
+    sender
+        .send(command(reply))
+        .map_err(|_| "lap_records_unavailable".to_owned())?;
+    receiver
+        .recv_timeout(STORAGE_REPLY_TIMEOUT)
+        .map_err(|_| "lap_records_unavailable".to_owned())
+}
+
+pub(crate) fn list_lap_records() -> Result<Vec<LapRecordSummary>, String> {
+    storage_request(|reply| StorageCommand::List { reply })?
+}
+
+/// Forgets the stored references of one track and car combination. The
+/// telemetry thread drops its in-memory copy too, so the next valid lap starts
+/// a fresh record instead of writing the deleted one back.
+pub(crate) fn delete_lap_record(key: String) -> Result<(), String> {
+    storage_request(|reply| StorageCommand::Delete {
+        key: key.clone(),
+        reply,
+    })??;
+    if let Ok(mut deleted) = DELETED_KEYS.lock() {
+        deleted.push(key);
+        DELETIONS_PENDING.store(true, Ordering::Release);
+    }
+    Ok(())
+}
+
+fn take_deleted_keys() -> Vec<String> {
+    if !DELETIONS_PENDING.swap(false, Ordering::Acquire) {
+        return Vec::new();
+    }
+    DELETED_KEYS
+        .lock()
+        .map(|mut deleted| std::mem::take(&mut *deleted))
+        .unwrap_or_default()
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, Eq)]
@@ -905,6 +970,13 @@ enum StorageCommand {
     },
     RecordLap(LapRecord),
     RecordStint(StintRecord),
+    List {
+        reply: Sender<Result<Vec<LapRecordSummary>, String>>,
+    },
+    Delete {
+        key: String,
+        reply: Sender<Result<(), String>>,
+    },
 }
 
 struct DeltaStorage {
@@ -917,6 +989,7 @@ impl DeltaStorage {
         let _ = thread::Builder::new()
             .name("lmu-lap-records".into())
             .spawn(move || storage_worker(path, receiver));
+        let _ = STORAGE_SENDER.set(sender.clone());
         Self { sender }
     }
 
@@ -1007,6 +1080,7 @@ impl DeltaEngine {
         timing_requested: bool,
         stint_history_requested: bool,
     ) {
+        self.forget_deleted_records();
         self.poll_load();
         let mode = active_mode();
         if !frame.connected || !frame.player_active {
@@ -1108,6 +1182,21 @@ impl DeltaEngine {
         self.reset_delta_trend();
         self.timing_smoothed_delta = 0.0;
         self.last_timing_update = Instant::now();
+    }
+
+    fn forget_deleted_records(&mut self) {
+        let deleted = take_deleted_keys();
+        let Some(identity) = self.identity.as_ref() else {
+            return;
+        };
+        if !deleted.contains(&identity.key) {
+            return;
+        }
+        // A load still in flight would bring the deleted record back.
+        self.pending_load = None;
+        self.overall = ReferenceSet::default();
+        self.overall_timing_sectors = [None; 3];
+        self.generation = self.generation.wrapping_add(1);
     }
 
     fn poll_load(&mut self) {
@@ -2091,8 +2180,49 @@ fn handle_storage_command(
                 ],
             )?;
         }
+        StorageCommand::List { reply } => {
+            let _ = reply.send(list_stored_records(connection).map_err(|error| error.to_string()));
+        }
+        StorageCommand::Delete { key, reply } => {
+            let result = connection
+                .execute(
+                    "DELETE FROM delta_references WHERE identity_key = ?1",
+                    params![key],
+                )
+                .map(|_| ())
+                .map_err(|error| error.to_string());
+            let _ = reply.send(result);
+        }
     }
     Ok(())
+}
+
+fn list_stored_records(connection: &Connection) -> rusqlite::Result<Vec<LapRecordSummary>> {
+    let mut statement = connection.prepare(
+        "SELECT identity_key, track_name, vehicle_name, track_length, payload, updated_unix_ms
+         FROM delta_references
+         ORDER BY track_name COLLATE NOCASE, vehicle_name COLLATE NOCASE",
+    )?;
+    let rows = statement.query_map([], |row| {
+        let payload: Vec<u8> = row.get(4)?;
+        // A record from another store version still lists, without times, so
+        // it can be deleted.
+        let references = serde_json::from_slice::<PersistentReferences>(&payload)
+            .ok()
+            .filter(|references| references.version == STORE_VERSION)
+            .unwrap_or_default();
+        Ok(LapRecordSummary {
+            key: row.get(0)?,
+            track: row.get(1)?,
+            vehicle: row.get(2)?,
+            track_length_meters: row.get(3)?,
+            best_lap_seconds: references.overall.best.as_ref().map(|lap| lap.lap_time),
+            optimal_lap_seconds: references.overall.optimal.total(),
+            best_sector_seconds: references.timing_sectors,
+            updated_unix_ms: row.get::<_, i64>(5)?.max(0) as u64,
+        })
+    })?;
+    rows.collect()
 }
 
 #[cfg(test)]
@@ -2676,5 +2806,73 @@ mod tests {
         let (loaded, needs_migration) = receiver.recv().unwrap();
         assert!(needs_migration);
         assert_eq!(loaded.version, STORE_VERSION);
+    }
+
+    #[test]
+    fn stored_records_list_their_times_and_can_be_deleted() {
+        let connection = Connection::open_in_memory().unwrap();
+        initialize_database(&connection).unwrap();
+        let save = |track: &str, vehicle: &str, seconds: f64| {
+            let lap = linear_lap(seconds, 5_000.0);
+            let mut optimal = SectorBank::default();
+            optimal.update(&build_sectors(&lap));
+            handle_storage_command(
+                &connection,
+                StorageCommand::Save {
+                    identity: Identity {
+                        key: format!("{track}\u{1f}{vehicle}\u{1f}5000"),
+                        legacy_key: None,
+                        track: track.into(),
+                        vehicle: vehicle.into(),
+                        track_length: 5_000.0,
+                    },
+                    references: PersistentReferences {
+                        version: STORE_VERSION,
+                        overall: ReferenceSet {
+                            best: Some(lap),
+                            optimal,
+                        },
+                        timing_sectors: [Some(30.0), Some(40.0), Some(29.5)],
+                    },
+                },
+            )
+            .unwrap();
+        };
+        save("Spa", "Porsche", 130.0);
+        save("monza", "Ferrari", 105.0);
+        let list = |connection: &Connection| {
+            let (reply, receiver) = mpsc::channel();
+            handle_storage_command(connection, StorageCommand::List { reply }).unwrap();
+            receiver.recv().unwrap().unwrap()
+        };
+
+        let records = list(&connection);
+        assert_eq!(
+            records
+                .iter()
+                .map(|record| record.track.as_str())
+                .collect::<Vec<_>>(),
+            ["monza", "Spa"]
+        );
+        assert_eq!(records[0].best_lap_seconds, Some(105.0));
+        assert_eq!(records[0].optimal_lap_seconds, Some(105.0));
+        assert_eq!(
+            records[0].best_sector_seconds,
+            [Some(30.0), Some(40.0), Some(29.5)]
+        );
+
+        let (reply, receiver) = mpsc::channel();
+        handle_storage_command(
+            &connection,
+            StorageCommand::Delete {
+                key: records[0].key.clone(),
+                reply,
+            },
+        )
+        .unwrap();
+        receiver.recv().unwrap().unwrap();
+        let remaining = list(&connection);
+        assert_eq!(remaining.len(), 1);
+        assert_eq!(remaining[0].vehicle, "Porsche");
     }
 }

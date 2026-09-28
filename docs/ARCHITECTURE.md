@@ -120,6 +120,8 @@ Tauri events    analysis JSONL/strategy CSV    browser-source SSE
   application WebView.
   Known browser-server and shortcut failures are localized from stable backend
   kinds/codes; raw system details are logged rather than rendered as UI copy.
+- `src/lap-records.ts`: the control panel's LAP TIMES view, which lists and
+  deletes the learned references stored per track and car.
 - `browser.html` and `src/browser-index.ts`: catalog-driven OBS route index. The
   backend serves this built entry and injects the same locale metadata used by
   overlay pages; it does not maintain a second translated route catalog.
