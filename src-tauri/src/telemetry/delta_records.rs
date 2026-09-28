@@ -1,7 +1,7 @@
 use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering};
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::{Mutex, OnceLock};
 use std::thread;
@@ -20,6 +20,18 @@ const MIN_SECTOR_DURATION_SECONDS: f64 = 5.0;
 const TIMING_RESULT_FREEZE: Duration = Duration::from_secs(3);
 const TIMING_COMPARISON_FREEZE: Duration = Duration::from_secs(15);
 const STORE_VERSION: u32 = 1;
+static STORAGE_SEQUENCE: AtomicU64 = AtomicU64::new(0);
+
+fn next_storage_sequence() -> u64 {
+    let wall_clock = unix_millis().saturating_mul(1_000);
+    STORAGE_SEQUENCE
+        .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |current| {
+            Some(current.max(wall_clock).saturating_add(1))
+        })
+        .unwrap_or(wall_clock)
+        .max(wall_clock)
+        .saturating_add(1)
+}
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
@@ -156,6 +168,7 @@ pub(crate) fn list_lap_records() -> Result<Vec<LapRecordSummary>, String> {
 pub(crate) fn delete_lap_record(key: String) -> Result<(), String> {
     storage_request(|reply| StorageCommand::Delete {
         key: key.clone(),
+        sequence: next_storage_sequence(),
         reply,
     })??;
     if let Ok(mut deleted) = DELETED_KEYS.lock() {
@@ -962,6 +975,7 @@ enum StorageCommand {
     Save {
         identity: Identity,
         references: PersistentReferences,
+        sequence: u64,
     },
     StartSession {
         id: String,
@@ -975,6 +989,7 @@ enum StorageCommand {
     },
     Delete {
         key: String,
+        sequence: u64,
         reply: Sender<Result<(), String>>,
     },
 }
@@ -1215,6 +1230,7 @@ impl DeltaEngine {
                         self.storage.send(StorageCommand::Save {
                             identity,
                             references: loaded,
+                            sequence: next_storage_sequence(),
                         });
                     }
                 }
@@ -1464,6 +1480,7 @@ impl DeltaEngine {
                     overall: self.overall.clone(),
                     timing_sectors: self.overall_timing_sectors,
                 },
+                sequence: next_storage_sequence(),
             });
         }
     }
@@ -2034,6 +2051,10 @@ fn initialize_database(connection: &Connection) -> rusqlite::Result<()> {
            payload BLOB NOT NULL,
            updated_unix_ms INTEGER NOT NULL
          );
+         CREATE TABLE IF NOT EXISTS deleted_delta_identities (
+           identity_key TEXT PRIMARY KEY,
+           sequence INTEGER NOT NULL
+         );
          CREATE TABLE IF NOT EXISTS sessions (
            id TEXT PRIMARY KEY,
            identity_key TEXT NOT NULL,
@@ -2079,27 +2100,48 @@ fn handle_storage_command(
 ) -> rusqlite::Result<()> {
     match command {
         StorageCommand::Load { keys, reply } => {
-            let (loaded, needs_migration) = keys
-                .into_iter()
-                .enumerate()
-                .find_map(|(index, key)| {
-                    connection
-                        .query_row(
-                            "SELECT payload FROM delta_references WHERE identity_key = ?1",
-                            params![key],
-                            |row| row.get::<_, Vec<u8>>(0),
-                        )
-                        .ok()
-                        .and_then(|bytes| serde_json::from_slice(&bytes).ok())
-                        .map(|references| (references, index > 0))
-                })
-                .unwrap_or_default();
+            let deleted_current = keys.first().is_some_and(|key| {
+                connection.query_row(
+                    "SELECT EXISTS(SELECT 1 FROM deleted_delta_identities WHERE identity_key = ?1)",
+                    params![key],
+                    |row| row.get::<_, bool>(0),
+                ).unwrap_or(false)
+            });
+            let (loaded, needs_migration) = if deleted_current {
+                (PersistentReferences::default(), false)
+            } else {
+                keys.into_iter()
+                    .enumerate()
+                    .find_map(|(index, key)| {
+                        connection
+                            .query_row(
+                                "SELECT payload FROM delta_references WHERE identity_key = ?1",
+                                params![key],
+                                |row| row.get::<_, Vec<u8>>(0),
+                            )
+                            .ok()
+                            .and_then(|bytes| serde_json::from_slice(&bytes).ok())
+                            .map(|references| (references, index > 0))
+                    })
+                    .unwrap_or_default()
+            };
             let _ = reply.send((loaded, needs_migration));
         }
         StorageCommand::Save {
             identity,
             references,
+            sequence,
         } => {
+            let deleted_sequence = connection
+                .query_row(
+                    "SELECT sequence FROM deleted_delta_identities WHERE identity_key = ?1",
+                    params![identity.key],
+                    |row| row.get::<_, u64>(0),
+                )
+                .ok();
+            if deleted_sequence.is_some_and(|deleted| sequence <= deleted) {
+                return Ok(());
+            }
             let payload = serde_json::to_vec(&references).unwrap_or_default();
             connection.execute(
                 "INSERT INTO delta_references
@@ -2118,6 +2160,10 @@ fn handle_storage_command(
                     payload,
                     unix_millis()
                 ],
+            )?;
+            connection.execute(
+                "DELETE FROM deleted_delta_identities WHERE identity_key = ?1",
+                params![identity.key],
             )?;
         }
         StorageCommand::StartSession {
@@ -2183,14 +2229,24 @@ fn handle_storage_command(
         StorageCommand::List { reply } => {
             let _ = reply.send(list_stored_records(connection).map_err(|error| error.to_string()));
         }
-        StorageCommand::Delete { key, reply } => {
-            let result = connection
-                .execute(
+        StorageCommand::Delete {
+            key,
+            sequence,
+            reply,
+        } => {
+            let result = (|| {
+                connection.execute(
                     "DELETE FROM delta_references WHERE identity_key = ?1",
                     params![key],
-                )
-                .map(|_| ())
-                .map_err(|error| error.to_string());
+                )?;
+                connection.execute(
+                    "INSERT INTO deleted_delta_identities (identity_key, sequence) VALUES (?1, ?2)
+                     ON CONFLICT(identity_key) DO UPDATE SET sequence=MAX(sequence, excluded.sequence)",
+                    params![key, sequence],
+                )?;
+                Ok(())
+            })()
+            .map_err(|error: rusqlite::Error| error.to_string());
             let _ = reply.send(result);
         }
     }
@@ -2234,11 +2290,11 @@ mod tests {
     use super::{
         average_timing_laps, build_sectors, can_show_live_delta, classify_delta_trend,
         handle_storage_command, initialize_database, interpolate, limit_delta_seconds,
-        native_session_delta, round_delta_for_trend, sector_count, sector_state,
-        should_reset_delta_at_lap_start, three_sector_times, timing_comparison, timing_improvement,
-        CompletedLap, CurrentLap, DeltaMode, DeltaTrend, Identity, LapTrace, PersistentReferences,
-        ReferenceSet, SectorBank, StintAccumulator, StorageCommand, TimingLapView,
-        TimingSectorReference, TracePoint, STORE_VERSION,
+        native_session_delta, next_storage_sequence, round_delta_for_trend, sector_count,
+        sector_state, should_reset_delta_at_lap_start, three_sector_times, timing_comparison,
+        timing_improvement, CompletedLap, CurrentLap, DeltaMode, DeltaTrend, Identity, LapTrace,
+        PersistentReferences, ReferenceSet, SectorBank, StintAccumulator, StorageCommand,
+        TimingLapView, TimingSectorReference, TracePoint, STORE_VERSION,
     };
     use crate::telemetry::TelemetryFrame;
 
@@ -2775,6 +2831,7 @@ mod tests {
                     },
                     timing_sectors: [None; 3],
                 },
+                sequence: next_storage_sequence(),
             },
         )
         .unwrap();
@@ -2834,6 +2891,7 @@ mod tests {
                         },
                         timing_sectors: [Some(30.0), Some(40.0), Some(29.5)],
                     },
+                    sequence: next_storage_sequence(),
                 },
             )
             .unwrap();
@@ -2866,6 +2924,7 @@ mod tests {
             &connection,
             StorageCommand::Delete {
                 key: records[0].key.clone(),
+                sequence: next_storage_sequence(),
                 reply,
             },
         )
@@ -2874,5 +2933,175 @@ mod tests {
         let remaining = list(&connection);
         assert_eq!(remaining.len(), 1);
         assert_eq!(remaining[0].vehicle, "Porsche");
+    }
+
+    #[test]
+    fn stale_save_after_delete_does_not_restore_a_record() {
+        let connection = Connection::open_in_memory().unwrap();
+        initialize_database(&connection).unwrap();
+        let identity = Identity {
+            key: "track\u{1f}car\u{1f}5000".into(),
+            legacy_key: None,
+            track: "track".into(),
+            vehicle: "car".into(),
+            track_length: 5_000.0,
+        };
+        let references = PersistentReferences {
+            version: STORE_VERSION,
+            overall: ReferenceSet {
+                best: Some(linear_lap(100.0, 5_000.0)),
+                ..ReferenceSet::default()
+            },
+            timing_sectors: [None; 3],
+        };
+        let (reply, receiver) = mpsc::channel();
+        handle_storage_command(
+            &connection,
+            StorageCommand::Delete {
+                key: identity.key.clone(),
+                sequence: 20,
+                reply,
+            },
+        )
+        .unwrap();
+        receiver.recv().unwrap().unwrap();
+        handle_storage_command(
+            &connection,
+            StorageCommand::Save {
+                identity: identity.clone(),
+                references,
+                sequence: 10,
+            },
+        )
+        .unwrap();
+
+        let (reply, receiver) = mpsc::channel();
+        handle_storage_command(
+            &connection,
+            StorageCommand::Load {
+                keys: vec![identity.key],
+                reply,
+            },
+        )
+        .unwrap();
+        let (loaded, needs_migration) = receiver.recv().unwrap();
+        assert!(!needs_migration);
+        assert!(loaded.overall.best.is_none());
+
+        handle_storage_command(
+            &connection,
+            StorageCommand::Save {
+                identity: Identity {
+                    key: "track\u{1f}car\u{1f}5000".into(),
+                    legacy_key: None,
+                    track: "track".into(),
+                    vehicle: "car".into(),
+                    track_length: 5_000.0,
+                },
+                references: PersistentReferences {
+                    version: STORE_VERSION,
+                    overall: ReferenceSet {
+                        best: Some(linear_lap(99.0, 5_000.0)),
+                        ..ReferenceSet::default()
+                    },
+                    timing_sectors: [None; 3],
+                },
+                sequence: 30,
+            },
+        )
+        .unwrap();
+        let (reply, receiver) = mpsc::channel();
+        handle_storage_command(
+            &connection,
+            StorageCommand::Load {
+                keys: vec!["track\u{1f}car\u{1f}5000".into()],
+                reply,
+            },
+        )
+        .unwrap();
+        assert_eq!(
+            receiver.recv().unwrap().0.overall.best.unwrap().lap_time,
+            99.0
+        );
+    }
+
+    #[test]
+    fn deleting_migrated_record_prevents_legacy_fallback() {
+        let connection = Connection::open_in_memory().unwrap();
+        initialize_database(&connection).unwrap();
+        let current = Identity {
+            key: "track\u{1f}new-car\u{1f}5000".into(),
+            legacy_key: Some("track\u{1f}old-car\u{1f}5000".into()),
+            track: "track".into(),
+            vehicle: "new-car".into(),
+            track_length: 5_000.0,
+        };
+        let legacy = Identity {
+            key: current.legacy_key.clone().unwrap(),
+            legacy_key: None,
+            track: "track".into(),
+            vehicle: "old-car".into(),
+            track_length: 5_000.0,
+        };
+        let references = PersistentReferences {
+            version: STORE_VERSION,
+            overall: ReferenceSet {
+                best: Some(linear_lap(100.0, 5_000.0)),
+                ..ReferenceSet::default()
+            },
+            timing_sectors: [None; 3],
+        };
+        handle_storage_command(
+            &connection,
+            StorageCommand::Save {
+                identity: legacy,
+                references: references.clone(),
+                sequence: 1,
+            },
+        )
+        .unwrap();
+        let (reply, receiver) = mpsc::channel();
+        handle_storage_command(
+            &connection,
+            StorageCommand::Load {
+                keys: vec![current.key.clone(), current.legacy_key.clone().unwrap()],
+                reply,
+            },
+        )
+        .unwrap();
+        assert!(receiver.recv().unwrap().1);
+
+        handle_storage_command(
+            &connection,
+            StorageCommand::Save {
+                identity: current.clone(),
+                references,
+                sequence: 2,
+            },
+        )
+        .unwrap();
+        let (reply, receiver) = mpsc::channel();
+        handle_storage_command(
+            &connection,
+            StorageCommand::Delete {
+                key: current.key.clone(),
+                sequence: 3,
+                reply,
+            },
+        )
+        .unwrap();
+        receiver.recv().unwrap().unwrap();
+        let (reply, receiver) = mpsc::channel();
+        handle_storage_command(
+            &connection,
+            StorageCommand::Load {
+                keys: vec![current.key, current.legacy_key.unwrap()],
+                reply,
+            },
+        )
+        .unwrap();
+        let (loaded, needs_migration) = receiver.recv().unwrap();
+        assert!(!needs_migration);
+        assert!(loaded.overall.best.is_none());
     }
 }
