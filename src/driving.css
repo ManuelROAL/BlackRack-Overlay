@@ -119,9 +119,10 @@
   border-radius: 50%;
 }
 
+/* A near-black disc on a muted rim; the steering arc rides on that rim. */
 .dial-face {
-  border: 2px solid rgb(255 255 255 / 20%);
-  background: radial-gradient(circle at 50% 38%, rgb(27 34 41 / 94%), rgb(7 10 14 / 98%) 72%);
+  border: 2px solid rgb(255 255 255 / 18%);
+  background: radial-gradient(circle at 50% 40%, rgb(16 20 25 / 96%), rgb(5 7 10 / 98%) 72%);
   box-shadow:
     0 0 0 1px rgb(0 0 0 / 70%),
     inset 0 0 0 1px rgb(255 255 255 / 5%);
@@ -135,10 +136,11 @@
 .steering-indicator svg {
   width: 100%;
   height: 100%;
+  overflow: visible;
   fill: none;
   stroke: #f4f7f9;
   stroke-linecap: round;
-  stroke-width: 6px;
+  stroke-width: 3.5px;
 }
 
 .dial-gear,
@@ -150,25 +152,22 @@
   text-align: center;
 }
 
+/* Gear and speed read as one centred group in the disc: the gear large, the
+   speed small and muted right under it, without a unit. Both offsets scale
+   from the disc centre (40 px) so the group stays centred at any text size. */
 .dial-gear {
-  top: calc(38px - 13px * var(--overlay-font-scale, 1));
+  top: calc(40px - 20px * var(--overlay-font-scale, 1));
   color: #f4f7f9;
-  font-size: calc(31px * var(--overlay-font-scale, 1));
+  font-size: calc(28px * var(--overlay-font-scale, 1));
   font-weight: 900;
   line-height: 1;
 }
 
-.dial-speed::after {
-  content: " " attr(data-unit);
-  font-size: .72em;
-  font-weight: 700;
-}
-
 .dial-speed {
-  top: calc(44px + 15px * var(--overlay-font-scale, 1));
-  color: #b8c3ce;
-  font-size: calc(12px * var(--overlay-font-scale, 1));
-  font-weight: 900;
+  top: calc(40px + 10px * var(--overlay-font-scale, 1));
+  color: #9aa6b2;
+  font-size: calc(10px * var(--overlay-font-scale, 1));
+  font-weight: 800;
   line-height: 1;
 }
 

@@ -54,8 +54,12 @@
   in `src/rpm-leds.ts`, shared with Dashboard's strip: two panels disagreeing
   about when to shift is worse than either being slightly wrong. Change the
   reading there, not here.
-- Represent the in-game steering angle with the rotating white centre arc; do
-  not add a separate numeric angle readout.
+- Represent the in-game steering angle with the rotating white arc drawn on the
+  dial's muted rim; do not add a separate numeric angle readout.
+- The dial is a near-black disc. Gear and speed form one group centred in it:
+  the gear large, the speed small and muted directly under it, without a unit.
+  Both offsets scale from the disc centre so the group stays centred at any
+  text size.
 - Keep the trace free of a title and color legend. The established pedal-line and
   TC/ABS marker colors identify its contents while preserving graph space.
 - Render TC intervention markers in electric blue and ABS intervention markers in
