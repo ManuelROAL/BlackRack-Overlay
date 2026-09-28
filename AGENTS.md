@@ -72,14 +72,8 @@ irreversible actions require an explicit request and a known target.
 User instructions take precedence. Preserve unrelated edits and never claim a
 review, test, or delegated result that was not actually observed.
 
+## Delegation
 
-# Codex project instructions
-
-For complex coding tasks, use the `astra-orchestrator` skill when its trigger conditions match.
-
-The root agent owns architecture, decomposition, integration, and final verification.
-Prefer specialized subagents for bounded exploration, implementation, testing, review, and technical research.
-
-Do not delegate trivial work merely for parallelism.
-Do not let multiple implementation agents edit the same files without explicit ownership boundaries.
-User instructions always take precedence over this orchestration policy.
+When work is delegated to subagents, the delegating agent keeps ownership of
+architecture, integration and final verification, and gives each implementation
+agent its own files. Delegate only work that benefits from separate context.
