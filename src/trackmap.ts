@@ -5,31 +5,21 @@ import { bindOverlayInteractionMode } from "./overlay-interaction";
 import { bindOverlayTransparency } from "./overlay-appearance";
 import { createOverlayPerformanceTracker } from "./overlay-performance";
 import { invokeRuntime, isTauriRuntime, listenRuntimeEvent, listenTelemetry } from "./runtime-events";
+import {
+  classColor,
+  classPositions as computeClassPositions,
+  fetchTrackMapGeometry,
+  isUsableTrackMapGeometry,
+  type GeometryPoint,
+  type MapPoint
+} from "./track-map-common";
 import { normalizeTrackMapSettings, readTrackMapSettings, type TrackMapSettings } from "./trackmap-settings";
 import type { TelemetryFrame, TrackMapVehicle } from "./telemetry-types";
 import { t } from "./i18n";
 
-interface MapPoint {
-  x: number;
-  y: number;
-  distance: number;
-}
-
 interface Transform {
   x: (worldX: number) => number;
   y: (worldY: number) => number;
-}
-
-interface GeometryPoint {
-  x: number;
-  y: number;
-}
-
-interface TrackMapGeometry {
-  source: "official" | "learned";
-  mainPath: MapPoint[];
-  mainLength: number;
-  pitPath: GeometryPoint[];
 }
 
 interface PreparedGeometry {
@@ -148,25 +138,13 @@ const wrappedDelta = (next: number, previous: number, length: number): number =>
   return delta;
 };
 
-const fetchOfficialGeometry = async (key: string): Promise<TrackMapGeometry> => {
-  if (isTauriRuntime()) {
-    return invokeRuntime<TrackMapGeometry>("get_track_map_geometry", { cacheKey: key });
-  }
-  if (document.documentElement.dataset.browserSource === "true") {
-    const response = await fetch(`/api/trackmap?key=${encodeURIComponent(key)}`);
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    return response.json() as Promise<TrackMapGeometry>;
-  }
-  throw new Error("Geometria oficial no disponible en la vista previa");
-};
-
 const requestOfficialGeometry = (key: string): void => {
   if (!key || geometryLoadedKey === key || geometryRequestKey === key || Date.now() < geometryRetryAfter) return;
   geometryRequestKey = key;
-  void fetchOfficialGeometry(key)
+  void fetchTrackMapGeometry(key)
     .then((geometry) => {
       if (mapKey !== key) return;
-      if (geometry.mainPath.length < 40 || geometry.mainLength < 100) {
+      if (!isUsableTrackMapGeometry(geometry)) {
         throw new Error("Geometria del circuito incompleta");
       }
       officialGeometry = geometry.source === "official"
@@ -453,16 +431,6 @@ const renderPitPrediction = (lapDistance: number | null, trackLength: number, ap
   }
 };
 
-const classColor = (vehicleClass: string): string => {
-  const value = vehicleClass.toUpperCase();
-  if (value.includes("HYPER") || value.includes("GTP")) return "#e33b3b";
-  if (value.includes("LMP2")) return "#3988ed";
-  if (value.includes("LMP3")) return "#8065ed";
-  if (value.includes("GT3")) return "#35c969";
-  if (value.includes("GTE")) return "#e2b93b";
-  return "#d8dde2";
-};
-
 const setMarkerPosition = (marker: MarkerView, x: number, y: number): void => {
   const nextTransform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0)`;
   if (marker.transform === nextTransform) return;
@@ -520,19 +488,12 @@ const createMarker = (vehicle: TrackMapVehicle): MarkerView => {
 
 const renderVehicles = (vehicles: TrackMapVehicle[], trackLength: number): void => {
   const active = new Set<number>();
-  const classPositions = new Map<number, number>();
-  const classCounts = new Map<string, number>();
+  const classPositions = computeClassPositions(vehicles);
   const pulseEnabled = latestPerformanceProfile !== "efficiency";
   const pulsePhase = pulseEnabled ? performance.now() % 900 / 900 * Math.PI * 2 : 0;
   const markerHaloOpacity = pulseEnabled
     ? (0.65 - Math.cos(pulsePhase) * 0.35).toFixed(2)
     : "0.45";
-  [...vehicles].sort((a, b) => a.overall_position - b.overall_position).forEach((vehicle) => {
-    const key = vehicle.vehicle_class.toUpperCase();
-    const position = (classCounts.get(key) ?? 0) + 1;
-    classCounts.set(key, position);
-    classPositions.set(vehicle.vehicle_id, position);
-  });
   for (const vehicle of vehicles) {
     if (vehicle.in_garage) continue;
     active.add(vehicle.vehicle_id);

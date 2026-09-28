@@ -1,0 +1,170 @@
+.minimap-body {
+  padding: 8px;
+  font-family: "Roboto Condensed", sans-serif;
+  text-rendering: optimizeLegibility;
+}
+
+.minimap-shell {
+  position: relative;
+  width: 260px;
+  height: 260px;
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255 / 12%);
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 50% 50%,
+    rgb(11 15 21 / var(--overlay-background-opacity)),
+    rgb(5 8 12 / var(--overlay-background-opacity))
+  );
+  cursor: move;
+}
+
+#minimap {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Stroke widths are in metres: the world group is drawn at circuit scale. */
+.minimap-track-outline,
+.minimap-track-line,
+.minimap-pit-outline,
+.minimap-pit-line {
+  fill: none;
+  pointer-events: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.minimap-track-outline {
+  stroke: rgb(12 16 21 / 88%);
+  stroke-width: 22px;
+}
+
+.minimap-track-line {
+  stroke: rgb(218 222 225 / 94%);
+  stroke-width: 15px;
+}
+
+.minimap-pit-outline {
+  stroke: rgb(12 16 21 / 88%);
+  stroke-width: 10px;
+}
+
+.minimap-pit-line {
+  stroke: rgb(145 154 163 / 92%);
+  stroke-width: 7px;
+}
+
+.minimap-vehicle-layer {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  pointer-events: none;
+}
+
+.minimap-marker {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  z-index: 1;
+  will-change: transform;
+  transition: none;
+}
+
+.minimap-marker[hidden] {
+  display: none;
+}
+
+.minimap-marker.is-player {
+  z-index: 11;
+}
+
+.minimap-disc {
+  position: absolute;
+  top: -10px;
+  left: -10px;
+  display: grid;
+  width: 20px;
+  height: 20px;
+  place-items: center;
+  border: 2px solid rgb(8 11 15 / 92%);
+  border-radius: 50%;
+  isolation: isolate;
+}
+
+.minimap-label {
+  color: #0b1015;
+  font-size: calc(11px * var(--overlay-font-scale, 1));
+  font-weight: 900;
+  line-height: 1;
+}
+
+/* A static ring: no animation keeps the WebView2 GPU process idle. */
+.minimap-marker.is-player .minimap-disc {
+  top: -13px;
+  left: -13px;
+  width: 26px;
+  height: 26px;
+  border: 2.5px solid #f4fff6;
+  box-shadow: 0 0 0 3px #54ff79;
+}
+
+.minimap-marker.is-causing-yellow .minimap-disc {
+  box-shadow: 0 0 0 3px #ffe34f;
+}
+
+.minimap-marker.is-pit {
+  opacity: 0.55;
+}
+
+.minimap-player-icon {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  pointer-events: none;
+}
+
+.minimap-marker.is-player.has-custom-color .minimap-label {
+  position: absolute;
+  z-index: 1;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  padding: 2px 3px;
+  border-radius: 4px;
+  background: rgb(8 11 15 / 78%);
+  color: #fff;
+  text-shadow: 0 1px 2px #000;
+}
+
+.minimap-marker.is-player.has-custom-icon .minimap-label {
+  display: none;
+}
+
+.minimap-status {
+  position: absolute;
+  z-index: 2;
+  bottom: 22px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 3px 7px;
+  color: rgb(255 255 255 / 72%);
+  background: rgb(8 12 17 / 58%);
+  border-radius: 3px;
+  font-size: calc(10px * var(--overlay-font-scale, 1));
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.minimap-status[hidden] {
+  display: none;
+}

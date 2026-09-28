@@ -30,7 +30,7 @@ const MAX_ACCEPTS_PER_ITERATION: usize = 2;
 const REQUEST_READ_ATTEMPTS: usize = 8;
 const REQUEST_READ_TIMEOUT: Duration = Duration::from_millis(50);
 const HTML_SECURITY_POLICY: &str = "default-src 'self'; connect-src 'self' ws://localhost:6398 ws://127.0.0.1:6398; img-src 'self' data:; style-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'self'; object-src 'none'";
-const BROWSER_OVERLAYS: [(&str, &str); 19] = [
+const BROWSER_OVERLAYS: [(&str, &str); 20] = [
     ("standings", "standings.html"),
     ("relative", "relative.html"),
     ("fuel", "fuel.html"),
@@ -50,6 +50,7 @@ const BROWSER_OVERLAYS: [(&str, &str); 19] = [
     ("dashboard", "dashboard.html"),
     ("sessioninfo", "sessioninfo.html"),
     ("chat", "chat.html"),
+    ("minimap", "minimap.html"),
 ];
 const ALL_OVERLAY_DEMANDS: u32 = (1 << BROWSER_OVERLAYS.len()) - 1;
 

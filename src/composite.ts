@@ -66,7 +66,7 @@ interface TelemetryBatch {
 const overlayIds: OverlayId[] = [
   "delta", "timing", "stinthistory", "driving", "liftcoast", "tires", "damage", "standings",
   "relative", "fuel", "pitstop", "flags", "rejoin", "trackmap",
-  "forecast", "conditions", "dashboard", "sessioninfo", "chat"
+  "forecast", "conditions", "dashboard", "sessioninfo", "chat", "minimap"
 ];
 // One table shared with the backend: Rust serializes only the union of the
 // fields a batch's targets need, and the host projects each overlay onto its
@@ -79,7 +79,7 @@ const overlayTitleKeys: Record<OverlayId, import("./i18n").TranslationKey> = {
   damage: "card.damage", standings: "card.standings", relative: "card.relative", fuel: "card.fuel",
   pitstop: "card.pitstop", flags: "card.flags", rejoin: "card.rejoin", trackmap: "card.trackmap",
   forecast: "card.forecast", conditions: "card.conditions", dashboard: "card.dashboard", sessioninfo: "card.sessioninfo",
-  chat: "card.chat"
+  chat: "card.chat", minimap: "card.minimap"
 };
 const overlayTitle = (overlay: OverlayId): string => t(overlayTitleKeys[overlay]).toLocaleUpperCase(getLocale());
 

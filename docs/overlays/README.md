@@ -18,6 +18,7 @@ UI behavior, telemetry semantics, cadence and special invariants.
 | Detailed Damage | [damage.md](damage.md) | `damage.html` | `/damage` | 20 Hz |
 | Pit-stop estimate | [pitstop.md](pitstop.md) | `pitstop.html` | `/pitstop` | 20 Hz |
 | Track Map | [trackmap.md](trackmap.md) | `trackmap.html` | `/trackmap` | approximately 30 Hz |
+| Minimap | [minimap.md](minimap.md) | `minimap.html` | `/minimap` | approximately 30 Hz |
 | Flags | [flags.md](flags.md) | `flags.html` | `/flags` | 50 Hz active, 4 Hz inactive |
 | Rejoin | [rejoin.md](rejoin.md) | `rejoin.html` | `/rejoin` | 20 Hz active, 4 Hz inactive |
 | Weather Forecast | [forecast.md](forecast.md) | `forecast.html` | `/forecast` | 2 Hz |

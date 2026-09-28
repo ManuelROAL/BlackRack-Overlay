@@ -205,7 +205,7 @@ profile and diagnostics.
   the explicit DR-estimate logger.
 - Relative: Smooth 50 ms, Balanced 80 ms, Efficiency 120 ms while active. Cycles coinciding
   with Standings reuse the same constructed roster.
-- Track Map: Smooth 33 ms, Balanced 60 ms and Efficiency 120 ms. Every profile
+- Track Map and Minimap: Smooth 33 ms, Balanced 60 ms and Efficiency 120 ms. Every profile
   retains the complete lightweight coordinate roster.
 - Detailed damage and pit-stop estimate: Smooth 50 ms, Balanced 80 ms and
   Efficiency 120 ms.

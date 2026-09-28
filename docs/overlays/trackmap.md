@@ -4,6 +4,8 @@
 
 - Entry: `trackmap.html`
 - Renderer/style: `src/trackmap.ts`, `src/trackmap.css`
+- Shared with Minimap: `src/track-map-common.ts` (geometry fetch, class colours
+  and class positions); see [minimap.md](minimap.md).
 - Rust model: `src-tauri/src/telemetry/track_map_model.rs`
 - REST geometry: `src-tauri/src/telemetry/track_geometry.rs`
 - Shared-memory coordinates: `src-tauri/src/telemetry/sim/lmu/bridge.cpp`

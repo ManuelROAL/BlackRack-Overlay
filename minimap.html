@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title data-i18n="title.minimap">Minimapa</title>
+  </head>
+  <body class="minimap-body">
+    <main class="minimap-shell" data-tauri-drag-region>
+      <svg id="minimap" viewBox="0 0 260 260" role="img" aria-label="Minimapa" data-i18n-aria-label="minimap.aria">
+        <g id="minimap-world">
+          <path id="minimap-pit-outline" class="minimap-pit-outline"></path>
+          <path id="minimap-pit-line" class="minimap-pit-line"></path>
+          <path id="minimap-track-outline" class="minimap-track-outline"></path>
+          <path id="minimap-track-line" class="minimap-track-line"></path>
+        </g>
+      </svg>
+      <div id="minimap-vehicle-layer" class="minimap-vehicle-layer" aria-hidden="true"></div>
+      <div id="minimap-status" class="minimap-status" data-i18n="minimap.learning">APRENDIENDO CIRCUITO</div>
+    </main>
+    <script type="module" src="/src/minimap.ts"></script>
+  </body>
+</html>

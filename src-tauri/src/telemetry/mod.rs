@@ -1204,9 +1204,12 @@ pub fn spawn_source(app: AppHandle) {
             let standings_visible = super::overlay_is_active(&app, "standings");
             let relative_visible = super::overlay_is_active(&app, "relative");
             let track_map_visible = super::overlay_is_active(&app, "trackmap");
+            // The minimap draws the same coordinate roster around the player.
+            let minimap_visible = super::overlay_is_active(&app, "minimap");
             let browser_standings = crate::browser_source::overlay_has_clients("standings");
             let browser_relative = crate::browser_source::overlay_has_clients("relative");
-            let browser_track_map = crate::browser_source::overlay_has_clients("trackmap");
+            let browser_track_map = crate::browser_source::overlay_has_clients("trackmap")
+                || crate::browser_source::overlay_has_clients("minimap");
             let standings_requested = (standings_due
                 && (standings_visible
                     || browser_standings
@@ -1214,8 +1217,8 @@ pub fn spawn_source(app: AppHandle) {
                     || dr_estimate_log::enabled()))
                 || (relative_due && relative_visible);
             let source_started = Instant::now();
-            let track_map_requested =
-                (track_map_due && track_map_visible) || (standings_due && browser_track_map);
+            let track_map_requested = (track_map_due && (track_map_visible || minimap_visible))
+                || (standings_due && browser_track_map);
             let fuel_requested = super::overlay_is_active(&app, "fuel")
                 || (standings_due && crate::browser_source::overlay_has_clients("fuel"));
             let tire_life_requested = super::overlay_is_active(&app, "tires")
@@ -1311,6 +1314,7 @@ pub fn spawn_source(app: AppHandle) {
             let emit_standings = standings_due && standings_visible;
             let emit_relative = relative_due && relative_visible;
             let emit_track_map = track_map_due && track_map_visible;
+            let emit_minimap = track_map_due && minimap_visible;
             if standings_due {
                 crate::browser_source::publish_frame(&frame);
             }
@@ -1371,8 +1375,9 @@ pub fn spawn_source(app: AppHandle) {
                 ("conditions", emit_conditions),
                 ("dashboard", emit_dashboard),
                 ("sessioninfo", emit_sessioninfo),
+                ("minimap", emit_minimap),
             ];
-            let mut targets = [""; 18];
+            let mut targets = [""; 19];
             let mut target_count = 0;
             for (label, should_emit) in emissions {
                 if should_emit {

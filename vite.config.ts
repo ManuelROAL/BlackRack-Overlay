@@ -44,7 +44,8 @@ export default defineConfig({
         conditions: "conditions.html",
         dashboard: "dashboard.html",
         sessioninfo: "sessioninfo.html",
-        chat: "chat.html"
+        chat: "chat.html",
+        minimap: "minimap.html"
       }
     }
   },

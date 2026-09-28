@@ -152,6 +152,13 @@ export const OVERLAY_GUIDE: Record<OverlayId, OverlayGuideEntry> = {
     purpose: "guide.chat.purpose",
     reading: "guide.chat.reading",
     tip: "guide.chat.tip"
+  },
+  minimap: {
+    icon: "◎",
+    title: "card.minimap",
+    purpose: "guide.minimap.purpose",
+    reading: "guide.minimap.reading",
+    tip: "guide.minimap.tip"
   }
 };
 
@@ -170,6 +177,7 @@ export const OVERLAY_GUIDE_ORDER = [
   "timing",
   "stinthistory",
   "trackmap",
+  "minimap",
   "forecast",
   "conditions",
   "dashboard",

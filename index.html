@@ -886,6 +886,18 @@
           <p class="settings-note" data-i18n="settings.mapNote">El mapa contin&uacute;a aprendiendo el tr&aacute;nsito por boxes aunque se oculte la predicci&oacute;n.</p>
         </section>
 
+        <article class="overlay-option" data-overlay-card="minimap" data-overlay-category="race">
+          <div class="overlay-icon">◎</div>
+          <div class="overlay-copy">
+            <strong data-i18n="card.minimap">Minimapa</strong>
+            <span data-i18n="card.minimapSub">El tramo de circuito que rodea tu coche y los rivales cercanos.</span>
+          </div>
+          <label class="switch">
+            <input type="checkbox" data-overlay="minimap" aria-label="Mostrar minimapa" />
+            <span></span>
+          </label>
+        </article>
+
         <article class="overlay-option" data-overlay-card="forecast" data-overlay-category="race">
           <div class="overlay-icon">☁</div>
           <div class="overlay-copy">
@@ -1063,6 +1075,7 @@
             <div data-browser-overlay="dashboard"><code></code><button type="button" data-i18n="browser.copy">COPIAR</button></div>
             <div data-browser-overlay="sessioninfo"><code></code><button type="button" data-i18n="browser.copy">COPIAR</button></div>
             <div data-browser-overlay="chat"><code></code><button type="button" data-i18n="browser.copy">COPIAR</button></div>
+            <div data-browser-overlay="minimap"><code></code><button type="button" data-i18n="browser.copy">COPIAR</button></div>
           </div>
         </div>
       </details>
