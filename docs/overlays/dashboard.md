@@ -142,6 +142,10 @@ fields may be enabled, including all of them. The strip grows with its content.
   change replaces the previous notice (simultaneous changes follow field order,
   with brake bias taking precedence). Values are compared at their displayed
   precision so sub-display brake-bias noise does not trigger a notice.
+- Notices only follow the local car or a car the local player drives
+  (`local_vehicle_selected`: scoring `mIsPlayer` or `mControl == 0`). LMU's AI
+  moves its brake bias continuously, so a spectated AI car would otherwise keep
+  the notice up permanently.
 - Initial telemetry, inactive players, a changed source/track/vehicle identity,
   circuit length, session phase/type or session limit and newly available
   electronics establish a baseline without a notice. The context includes the

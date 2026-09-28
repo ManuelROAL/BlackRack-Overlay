@@ -175,6 +175,7 @@ struct LmuSnapshot {
     uint8_t speed_limiter_active;
     uint8_t headlights_on;
     uint8_t wiper_state;
+    uint8_t local_vehicle_selected;
     char vehicle_name[64];
     char vehicle_model[30];
     char track_name[64];
@@ -575,6 +576,10 @@ extern "C" int lmu_read_snapshot(LmuSnapshot* output, int32_t spectator_vehicle_
         if (destination.is_player) {
             output->player_position = static_cast<int32_t>(source.mPlace);
             output->player_in_garage = source.mInGarageStall ? 1u : 0u;
+            // The local car, or one the local player drives. AI cars adjust
+            // their own brake bias continuously and are neither.
+            output->local_vehicle_selected =
+                source.mIsPlayer || source.mControl == 0 ? 1u : 0u;
             output->player_sector = static_cast<int32_t>(source.mSector);
             output->player_total_laps = static_cast<int32_t>(source.mTotalLaps);
             output->estimated_lap_time = source.mEstimatedLapTime;

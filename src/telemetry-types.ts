@@ -269,6 +269,7 @@ export interface TelemetryFrame {
   speed_limiter_active: boolean;
   headlights_on: boolean;
   wiper_state: number;
+  local_vehicle_selected: boolean;
   hybrid_available: boolean;
   battery_charge_percent: number;
   hybrid_regen_kw: number;

@@ -264,7 +264,10 @@ const renderAdjustment = (frame: TelemetryFrame): void => {
     frame.session_max_laps,
     frame.session_max_time_seconds
   ]);
-  const reset = !frame.player_active || context !== adjustmentContext;
+  // Adjustment notices confirm the local driver's own input. AI cars move
+  // their brake bias continuously, so a spectated car would never stop.
+  const reset = !frame.player_active || !frame.local_vehicle_selected
+    || context !== adjustmentContext;
   if (reset) {
     adjustmentUntil = 0;
     lastAdjustment = undefined;
@@ -358,6 +361,7 @@ const previewFrame = {
   virtual_energy_percent: 58,
   headlights_on: true,
   wiper_state: 2,
+  local_vehicle_selected: true,
   estimated_virtual_energy_laps: 15.2,
   hybrid_available: true,
   battery_charge_percent: 62,

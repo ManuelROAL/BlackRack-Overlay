@@ -303,6 +303,7 @@ impl TelemetrySource for MockTelemetrySource {
             speed_limiter_active: false,
             headlights_on: true,
             wiper_state: 0,
+            local_vehicle_selected: true,
             hybrid_available: true,
             battery_charge_percent: 50.0 + (elapsed * 0.9).sin() * 42.0,
             hybrid_regen_kw: if brake > 0.2 { brake * 145.0 } else { 0.0 },

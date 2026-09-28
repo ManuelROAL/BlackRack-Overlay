@@ -856,6 +856,7 @@ impl TelemetrySource for LmuTelemetrySource {
             speed_limiter_active: snapshot.speed_limiter_active != 0,
             headlights_on: snapshot.headlights_on != 0,
             wiper_state: snapshot.wiper_state,
+            local_vehicle_selected: snapshot.local_vehicle_selected != 0,
             // A GT or LMP2 car reports an unavailable motor and no charge, so
             // the panel can drop the whole hybrid block instead of drawing an
             // empty battery the driver would read as a flat one.

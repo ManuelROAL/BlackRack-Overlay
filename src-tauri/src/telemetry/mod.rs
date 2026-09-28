@@ -713,6 +713,7 @@ pub struct TelemetryFrame {
     speed_limiter_active: bool,
     headlights_on: bool,
     wiper_state: u8,
+    local_vehicle_selected: bool,
     /// Whether the car carries an electric boost system at all. Hypercars do;
     /// the GT and LMP2 classes sharing the grid do not.
     hybrid_available: bool,
@@ -1041,6 +1042,7 @@ impl TelemetryFrame {
             speed_limiter_active: false,
             headlights_on: false,
             wiper_state: 0,
+            local_vehicle_selected: false,
             hybrid_available: false,
             battery_charge_percent: 0.0,
             hybrid_regen_kw: 0.0,
