@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "version": "0.11.0",
+  "packageUrl": "https://github.com/ManuelROAL/BlackRack-Overlay/releases/download/v0.11.0/BlackRack.Overlay_0.11.0_x64-setup.exe",
+  "sha256": "2be632274caafde9774c86fbc066b86daee255dcc8e8280649440307b9ac5d9e",
+  "fileName": "BlackRack.Overlay_0.11.0_x64-setup.exe",
+  "releasePageUrl": "https://github.com/ManuelROAL/BlackRack-Overlay/releases/tag/v0.11.0",
+  "updateTitle": "BlackRack Overlay 0.11.0",
+  "fullTitle": "BlackRack Overlay 0.11.0",
+  "changelog": [
+    "Añadida la vista Lap Times para consultar y borrar récords guardados.",
+    "Los récords eliminados permanecen borrados y no reaparecen tras reiniciar.",
+    "Dashboard evita repetir los avisos de reparto de frenada al seguir coches de IA.",
+    "Los overlays dejan de parpadear al espectar mientras el coche local está en el garaje.",
+    "Mejoradas la fluidez y la estabilidad en sesiones largas."
+  ],
+  "localized": {
+    "es": {
+      "updateTitle": "BlackRack Overlay 0.11.0",
+      "fullTitle": "BlackRack Overlay 0.11.0",
+      "changelog": [
+        "Añadida la vista Lap Times para consultar y borrar récords guardados.",
+        "Los récords eliminados permanecen borrados y no reaparecen tras reiniciar.",
+        "Dashboard evita repetir los avisos de reparto de frenada al seguir coches de IA.",
+        "Los overlays dejan de parpadear al espectar mientras el coche local está en el garaje.",
+        "Mejoradas la fluidez y la estabilidad en sesiones largas."
+      ]
+    },
+    "en": {
+      "updateTitle": "BlackRack Overlay 0.11.0",
+      "fullTitle": "BlackRack Overlay 0.11.0",
+      "changelog": [
+        "Added the Lap Times view to review and delete saved records.",
+        "Deleted records stay removed and do not return after a restart.",
+        "Dashboard no longer repeats brake-bias notices while following AI cars.",
+        "Overlays no longer flicker in spectator mode while the local car is in the garage.",
+        "Improved smoothness and stability during long sessions."
+      ]
+    }
+  }
+}
