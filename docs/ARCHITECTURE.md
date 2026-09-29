@@ -45,6 +45,18 @@ Tauri events    analysis JSONL/strategy CSV    browser-source SSE
   - Sends telemetry to the monitor hosts over their IPC channels as raw bytes:
     one batch per cycle, naming the overlays due and carrying only their fields
     from `src/overlay-telemetry-fields.json`.
+  - Allows one running instance; a second launch shows the existing panel.
+  - Watches the monitor topology on a background thread and announces changes
+    with `overlay://monitors-changed`, because the panel that places hosts is
+    throttled while hidden.
+- `src-tauri/src/tray.rs`
+  - Owns the tray icon and its menu (show panel, hide/show overlays, quit) and
+    the close-to-tray setting. Closing the panel hides it only while that setting
+    is on and the tray icon exists; every deliberate exit marks the application
+    as quitting first. Showing the panel emits `control://shown` so it refreshes
+    monitors, simulator status and a due update check.
+  - Menu labels start in English and are replaced by the panel's catalog through
+    `set_tray_labels`.
 - `src-tauri/src/telemetry/mod.rs`
   - Defines `TelemetryFrame`, `StandingEntry` and the warnings, and stays
     simulator agnostic: the source contract lives in `telemetry/sim`.
@@ -235,6 +247,8 @@ blocking HTTP calls into `next_frame()`.
   `overlay-monitor.json` under the application config directory and acts as the
   target for the “move all overlays” control.
 - Browser source and shortcuts: JSON under the application config directory.
+- Close-to-tray choice: `window-behavior.json` under `%APPDATA%\BlackRack Overlay`;
+  missing or unreadable means on.
 - Overlay choices, columns, transparency and text size: WebView `localStorage`.
   Transparency and text size store individual values separately from their
   general/individual scopes.

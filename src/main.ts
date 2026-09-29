@@ -857,8 +857,14 @@ void invoke<string | null>("get_update_status")
   })
   .catch((error) => console.error("No se pudo leer el estado de actualización", error));
 
-const lastUpdateCheck = Number(localStorage.getItem(UPDATE_CHECK_STORAGE_KEY));
-if (!Number.isFinite(lastUpdateCheck) || Date.now() - lastUpdateCheck >= UPDATE_CHECK_INTERVAL_MS) {
+const isUpdateCheckDue = (): boolean => {
+  const lastUpdateCheck = Number(localStorage.getItem(UPDATE_CHECK_STORAGE_KEY));
+  return !Number.isFinite(lastUpdateCheck) || Date.now() - lastUpdateCheck >= UPDATE_CHECK_INTERVAL_MS;
+};
+const checkForUpdatesIfDue = (): void => {
+  if (isUpdateCheckDue()) void checkForUpdates(false);
+};
+if (isUpdateCheckDue()) {
   window.setTimeout(() => void checkForUpdates(false), 2000);
 }
 window.setInterval(() => void checkForUpdates(false), UPDATE_CHECK_INTERVAL_MS);
@@ -967,6 +973,33 @@ if (speedUnitSelect) {
   speedUnitSelect.addEventListener("change", () => updateDisplayUnits({
     ...displayUnits, speed: speedUnitSelect.value
   }));
+}
+// The tray menu is built in Rust with English labels; the locale switch reloads
+// this page, so translating them once on load keeps them current.
+void invoke("set_tray_labels", {
+  labels: { show: t("tray.show"), toggleOverlays: t("tray.toggleOverlays"), quit: t("tray.quit") }
+}).catch((error) => console.warn("No se pudieron traducir las opciones de la bandeja:", error));
+const closeBehaviorSelect = document.getElementById("close-behavior") as HTMLSelectElement | null;
+if (closeBehaviorSelect) {
+  const renderCloseBehavior = (closeToTray: boolean): void => {
+    closeBehaviorSelect.value = closeToTray ? "tray" : "exit";
+  };
+  void invoke<boolean>("get_close_to_tray")
+    .then(renderCloseBehavior)
+    .catch(reportInitializationError("close behavior"));
+  closeBehaviorSelect.addEventListener("change", () => {
+    const enabled = closeBehaviorSelect.value === "tray";
+    closeBehaviorSelect.disabled = true;
+    void invoke<boolean>("set_close_to_tray", { enabled })
+      .then(renderCloseBehavior)
+      .catch((error) => {
+        console.error("No se pudo guardar el comportamiento al cerrar", error);
+        renderCloseBehavior(!enabled);
+      })
+      .finally(() => {
+        closeBehaviorSelect.disabled = false;
+      });
+  });
 }
 const overlayTransparency = readOverlayTransparency();
 let overlayTransparencyScope: OverlayTransparencyScope = readOverlayTransparencyScope();
@@ -4580,11 +4613,15 @@ document.getElementById("toggle-interaction-mode")?.addEventListener("click", ()
 void restoreWindows().catch(reportInitializationError("overlay visibility"));
 void bindMonitorSelector().catch(reportInitializationError("monitor selector"));
 void bindOverlayMonitorSelectors().catch(reportInitializationError("overlay monitor selectors"));
-window.setInterval(() => {
+// Rust watches the monitor topology: this page's timers are throttled while it
+// is hidden in the tray, but events still arrive.
+const refreshMonitorInventoryQuietly = (): void => {
   void refreshMonitorInventory().catch((error) => {
     console.warn("No se pudo actualizar la topología de monitores:", error);
   });
-}, 2000);
+};
+void listen("overlay://monitors-changed", refreshMonitorInventoryQuietly)
+  .catch(reportInitializationError("monitor watcher"));
 syncBrowserSourcePreferences();
 void invoke<BrowserSourceStatus>("get_browser_source_status")
   .then(renderBrowserSourceStatus)
@@ -4602,6 +4639,13 @@ const refreshSimulatorStatus = (): void => {
   }).catch(reportInitializationError("simulator status"));
 };
 refreshSimulatorStatus();
+// Shown again from the tray, the taskbar or a shortcut: catch up on what the
+// throttled timers of the hidden page may have missed.
+void listen("control://shown", () => {
+  refreshMonitorInventoryQuietly();
+  refreshSimulatorStatus();
+  checkForUpdatesIfDue();
+}).catch(reportInitializationError("control panel shown"));
 
 const standingsPitLayout = document.getElementById("standings-pit-layout") as HTMLSelectElement | null;
 if (standingsPitLayout) {

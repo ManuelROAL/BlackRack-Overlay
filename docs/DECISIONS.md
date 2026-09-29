@@ -134,6 +134,15 @@ in `docs/overlays/` and should not be duplicated here.
 - Disabled panels remove their documents. Automatic LMU visibility hides/shows
   hosts without rebuilding active panels; host windows are created or closed only
   when the set of active monitor assignments changes.
+- Closing the control panel hides it to the system tray by default, so
+  telemetry and overlays keep running; the panel's close setting can restore
+  exiting on close. The panel is hidden rather than destroyed because it owns
+  host placement and its state. Its WebView throttles timers while hidden, so
+  work that must not wait is driven from Rust with events (monitor topology) or
+  refreshed when the panel is shown again. Only one instance runs: the tray makes
+  a hidden running copy easy to miss, and a second one would duplicate telemetry
+  and lose the global shortcuts. The updater helper is handled before the
+  single-instance check, so it is never redirected.
 - The global hide/show shortcut is a separate runtime state from profile
   visibility. Effective host visibility requires at least one desired overlay
   and neither global shortcut hiding nor automatic LMU hiding to be active.

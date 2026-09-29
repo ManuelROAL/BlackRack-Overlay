@@ -2,6 +2,7 @@ mod app_paths;
 mod browser_source;
 mod startup_log;
 mod telemetry;
+mod tray;
 mod updater;
 
 use serde::{Deserialize, Serialize};
@@ -241,6 +242,23 @@ fn save_control_window_position(window: &tauri::Window) {
     if let Ok(contents) = serde_json::to_vec_pretty(&state) {
         let _ = fs::write(path, contents);
     }
+}
+
+/// Ends the application on purpose: from the tray, or from closing the panel
+/// when close-to-tray is off. The panel position is saved while it is visible;
+/// a hidden panel already saved it when it was hidden.
+fn request_exit(app: &AppHandle, reason: &str) {
+    tray::mark_quitting(app);
+    app.state::<OverlayControl>()
+        .shutdown
+        .store(true, Ordering::Relaxed);
+    if let Some(panel) = app.get_webview_window(CONTROL_WINDOW_LABEL) {
+        if panel.is_visible().unwrap_or(false) {
+            save_control_window_position(&panel.as_ref().window());
+        }
+    }
+    startup_log::record(format!("shutdown requested reason={reason}"));
+    app.exit(0);
 }
 
 #[derive(Clone, Serialize)]
@@ -830,6 +848,65 @@ fn sorted_monitors(app: &AppHandle) -> Result<Vec<tauri::Monitor>, String> {
             .then(left.name().cmp(&right.name()))
     });
     Ok(monitors)
+}
+
+const MONITORS_CHANGED_EVENT: &str = "overlay://monitors-changed";
+const MONITOR_WATCH_INTERVAL: std::time::Duration = std::time::Duration::from_secs(2);
+
+type MonitorTopology = Vec<(String, i32, i32, u32, u32, u64)>;
+
+fn monitor_topology(app: &AppHandle) -> Option<MonitorTopology> {
+    let monitors = sorted_monitors(app).ok()?;
+    Some(
+        monitors
+            .iter()
+            .map(|monitor| {
+                (
+                    monitor.name().cloned().unwrap_or_default(),
+                    monitor.position().x,
+                    monitor.position().y,
+                    monitor.size().width,
+                    monitor.size().height,
+                    monitor.scale_factor().to_bits(),
+                )
+            })
+            .collect(),
+    )
+}
+
+/// Watches the monitor topology from Rust. The control panel owns host
+/// placement, but its timers are throttled while it is hidden in the tray, so
+/// a connected or removed display is announced with an event instead.
+fn spawn_monitor_watcher(app: AppHandle) {
+    let spawned = std::thread::Builder::new()
+        .name("monitor-watcher".into())
+        .spawn(move || {
+            let mut previous = monitor_topology(&app);
+            loop {
+                std::thread::sleep(MONITOR_WATCH_INTERVAL);
+                if app
+                    .state::<OverlayControl>()
+                    .shutdown
+                    .load(Ordering::Relaxed)
+                {
+                    return;
+                }
+                let Some(current) = monitor_topology(&app) else {
+                    continue;
+                };
+                if previous.as_ref() != Some(&current) {
+                    previous = Some(current);
+                    startup_log::record("monitor topology changed");
+                    let _ = app.emit_to(CONTROL_WINDOW_LABEL, MONITORS_CHANGED_EVENT, ());
+                }
+            }
+        });
+    if let Err(error) = spawned {
+        startup_log::record(format!(
+            "warning: monitor watcher unavailable: {}",
+            startup_log::sanitize(&error.to_string(), 500)
+        ));
+    }
 }
 
 #[cfg(windows)]
@@ -1991,8 +2068,7 @@ fn toggle_interaction_mode(app: &AppHandle) {
     if let Some(panel) = app.get_webview_window("control") {
         let _ = panel.set_always_on_top(!next);
         if !next {
-            let _ = panel.show();
-            let _ = panel.set_focus();
+            tray::show_control_panel(app);
         }
     }
     let _ = app.emit(
@@ -2031,13 +2107,8 @@ fn register_interaction_shortcut(app: &AppHandle, shortcut: &str) -> Result<(), 
 fn register_panel_shortcut(app: &AppHandle, shortcut: &str) -> Result<(), String> {
     app.global_shortcut()
         .on_shortcut(shortcut, |app, _, event| {
-            if event.state() != ShortcutState::Pressed {
-                return;
-            }
-            if let Some(panel) = app.get_webview_window("control") {
-                let _ = panel.show();
-                let _ = panel.unminimize();
-                let _ = panel.set_focus();
+            if event.state() == ShortcutState::Pressed {
+                tray::show_control_panel(app);
             }
         })
         .map_err(|error| error.to_string())
@@ -2467,6 +2538,13 @@ pub fn run() {
     startup_log::record("building Tauri application");
 
     let builder = tauri::Builder::default()
+        // Registered first so a second launch only brings the running panel
+        // back (it may be hidden in the tray) instead of starting another
+        // telemetry source and failing to claim the global shortcuts.
+        .plugin(tauri_plugin_single_instance::init(|app, _, _| {
+            startup_log::record("second instance launch redirected to running panel");
+            tray::show_control_panel(app);
+        }))
         .manage(OverlayControl {
             click_through: AtomicBool::new(DEFAULT_CLICK_THROUGH),
             auto_hidden: AtomicBool::new(true),
@@ -2478,6 +2556,7 @@ pub fn run() {
             edit_previous_foreground_window: Mutex::new(None),
         })
         .manage(ShortcutControl(Mutex::new(ShortcutRuntime::default())))
+        .manage(tray::TrayState::load())
         .manage(OverlayTelemetryChannels::default());
 
     builder
@@ -2528,6 +2607,9 @@ pub fn run() {
             updater::get_update_status,
             get_shortcut_settings,
             set_shortcut,
+            tray::set_tray_labels,
+            tray::get_close_to_tray,
+            tray::set_close_to_tray,
             export_overlay_configuration,
             import_overlay_configuration
         ])
@@ -2552,6 +2634,15 @@ pub fn run() {
             } else {
                 startup_log::record("warning: control window not found during setup");
             }
+
+            match tray::install(app.handle()) {
+                Ok(()) => startup_log::record("tray icon created"),
+                Err(error) => startup_log::record(format!(
+                    "warning: tray icon unavailable; closing the panel exits: {}",
+                    startup_log::sanitize(&error.to_string(), 500)
+                )),
+            }
+            spawn_monitor_watcher(app.handle().clone());
 
             startup_log::record("overlay hosts will be created on demand");
             #[cfg(debug_assertions)]
@@ -2737,13 +2828,17 @@ pub fn run() {
                         .unwrap_or_else(|poisoned| poisoned.into_inner());
                     focused_windows.remove(window.label());
                 }
-                tauri::WindowEvent::CloseRequested { .. }
+                tauri::WindowEvent::CloseRequested { api, .. }
                     if window.label() == CONTROL_WINDOW_LABEL =>
                 {
-                    control.shutdown.store(true, Ordering::Relaxed);
                     save_control_window_position(window);
-                    startup_log::record("shutdown requested reason=control_window_close_requested");
-                    window.app_handle().exit(0);
+                    if tray::should_hide_on_close(window.app_handle()) {
+                        api.prevent_close();
+                        let _ = window.hide();
+                        startup_log::record("control window hidden to tray");
+                    } else {
+                        request_exit(window.app_handle(), "control_window_close_requested");
+                    }
                 }
                 tauri::WindowEvent::CloseRequested { .. }
                     if window.label().starts_with(OVERLAY_HOST_PREFIX) =>
@@ -2761,9 +2856,13 @@ pub fn run() {
             startup_log::record(format!("fatal Tauri error cause={error} details={error:?}"));
             panic!("error al ejecutar BlackRack Overlay: {error}");
         })
-        .run(|_, event| {
-            if matches!(event, tauri::RunEvent::Exit) {
+        .run(|app, event| match event {
+            // The updater exits through `app.exit` directly; mark it here too
+            // so no close request during shutdown is turned into a hide.
+            tauri::RunEvent::ExitRequested { .. } => tray::mark_quitting(app),
+            tauri::RunEvent::Exit => {
                 startup_log::record("session end status=normal reason=event_loop_exit");
             }
+            _ => {}
         });
 }

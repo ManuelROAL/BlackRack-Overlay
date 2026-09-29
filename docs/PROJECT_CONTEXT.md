@@ -29,6 +29,8 @@ on their runtime or source code.
 - Safe rejoin and pit-exit warning.
 - Optional localhost browser source for OBS.
 - Configurable global shortcuts and click-through game mode.
+- System tray icon: closing the control panel keeps the application running in
+  the tray by default, and a second launch brings the running panel back.
 - Compact Lift & Coast lamps driven by LMU's official shared-memory progress.
 - Background transparency selectable as one general value or per overlay.
 - Text size selectable from 75% to 200% as one general value or per overlay.
