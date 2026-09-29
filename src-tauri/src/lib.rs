@@ -1,4 +1,5 @@
 mod app_paths;
+mod autostart;
 mod browser_source;
 mod startup_log;
 mod telemetry;
@@ -1136,7 +1137,7 @@ fn primary_work_area(app: &AppHandle) -> Option<(f64, f64)> {
     Some((size.width, size.height))
 }
 
-fn create_control_window(app: &AppHandle) -> Result<(), String> {
+fn create_control_window(app: &AppHandle, visible: bool) -> Result<(), String> {
     let (width, height) = control_window_size(primary_work_area(app));
     startup_log::record(&format!("control window size={width:.0}x{height:.0}"));
     WebviewWindowBuilder::new(app, "control", WebviewUrl::App("index.html".into()))
@@ -1151,6 +1152,7 @@ fn create_control_window(app: &AppHandle) -> Result<(), String> {
         .always_on_top(false)
         .skip_taskbar(false)
         .resizable(true)
+        .visible(visible)
         .devtools(cfg!(debug_assertions))
         .center()
         .build()
@@ -2673,6 +2675,8 @@ pub fn run() {
             tray::set_tray_labels,
             tray::get_close_to_tray,
             tray::set_close_to_tray,
+            autostart::get_launch_at_login,
+            autostart::set_launch_at_login,
             export_overlay_configuration,
             import_overlay_configuration
         ])
@@ -2680,7 +2684,26 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             startup_log::record("Tauri setup started");
-            create_control_window(app.handle())?;
+            let tray_available = match tray::install(app.handle()) {
+                Ok(()) => {
+                    startup_log::record("tray icon created");
+                    true
+                }
+                Err(error) => {
+                    startup_log::record(format!(
+                        "warning: tray icon unavailable; closing the panel exits: {}",
+                        startup_log::sanitize(&error.to_string(), 500)
+                    ));
+                    false
+                }
+            };
+            // A sign-in launch starts in the tray; without a tray icon the
+            // panel is shown, since only its shortcut could bring it back.
+            let start_hidden = tray_available && autostart::launched_at_login();
+            if start_hidden {
+                startup_log::record("launched at sign-in; control panel starts in the tray");
+            }
+            create_control_window(app.handle(), !start_hidden)?;
             if let Some(panel) = app.get_webview_window("control") {
                 startup_log::record("control window available");
                 if let Some(position) = load_control_window_position() {
@@ -2698,13 +2721,6 @@ pub fn run() {
                 startup_log::record("warning: control window not found during setup");
             }
 
-            match tray::install(app.handle()) {
-                Ok(()) => startup_log::record("tray icon created"),
-                Err(error) => startup_log::record(format!(
-                    "warning: tray icon unavailable; closing the panel exits: {}",
-                    startup_log::sanitize(&error.to_string(), 500)
-                )),
-            }
             spawn_monitor_watcher(app.handle().clone());
 
             startup_log::record("overlay hosts will be created on demand");

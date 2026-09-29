@@ -1004,6 +1004,35 @@ if (closeBehaviorSelect) {
       });
   });
 }
+const launchAtLoginSelect = document.getElementById("launch-at-login") as HTMLSelectElement | null;
+if (launchAtLoginSelect) {
+  const renderLaunchAtLogin = (enabled: boolean): void => {
+    launchAtLoginSelect.value = enabled ? "tray" : "off";
+  };
+  // Read on load and whenever the panel is shown again: the entry can also be
+  // turned off from Task Manager or Windows Settings.
+  const refreshLaunchAtLogin = (): void => {
+    void invoke<boolean>("get_launch_at_login")
+      .then(renderLaunchAtLogin)
+      .catch(reportInitializationError("launch at login"));
+  };
+  refreshLaunchAtLogin();
+  void listen("control://shown", refreshLaunchAtLogin)
+    .catch(reportInitializationError("launch at login refresh"));
+  launchAtLoginSelect.addEventListener("change", () => {
+    const enabled = launchAtLoginSelect.value === "tray";
+    launchAtLoginSelect.disabled = true;
+    void invoke<boolean>("set_launch_at_login", { enabled })
+      .then(renderLaunchAtLogin)
+      .catch((error) => {
+        console.error("No se pudo cambiar el inicio con Windows", error);
+        renderLaunchAtLogin(!enabled);
+      })
+      .finally(() => {
+        launchAtLoginSelect.disabled = false;
+      });
+  });
+}
 const overlayTransparency = readOverlayTransparency();
 let overlayTransparencyScope: OverlayTransparencyScope = readOverlayTransparencyScope();
 const overlayFontSize = readOverlayFontSize();

@@ -143,6 +143,10 @@ in `docs/overlays/` and should not be duplicated here.
   a hidden running copy easy to miss, and a second one would duplicate telemetry
   and lose the global shortcuts. The updater helper is handled before the
   single-instance check, so it is never redirected.
+- Launch at sign-in is opt-in and always starts in the tray. It writes the
+  `Run` value directly instead of using `tauri-plugin-autostart`, whose current
+  release requires a newer Tauri than the one pinned here; the value name
+  matches the NSIS product name so uninstalling removes it.
 - The global hide/show shortcut is a separate runtime state from profile
   visibility. Effective host visibility requires at least one desired overlay
   and neither global shortcut hiding nor automatic LMU hiding to be active.

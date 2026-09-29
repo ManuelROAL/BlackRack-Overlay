@@ -57,6 +57,12 @@ Tauri events    analysis JSONL/strategy CSV    browser-source SSE
     monitors, simulator status and a due update check.
   - Menu labels start in English and are replaced by the panel's catalog through
     `set_tray_labels`.
+- `src-tauri/src/autostart.rs`
+  - Owns launch at sign-in through the current user's `Run` registry value
+    `BlackRack Overlay`, which the NSIS uninstaller removes and updates keep. The
+    entry passes `--autostart`; that launch creates the panel hidden when the
+    tray icon exists. An entry turned off in Task Manager counts as off, and
+    changing the option in the panel clears that marker.
 - `src-tauri/src/telemetry/mod.rs`
   - Defines `TelemetryFrame`, `StandingEntry` and the warnings, and stays
     simulator agnostic: the source contract lives in `telemetry/sim`.
@@ -255,6 +261,8 @@ blocking HTTP calls into `next_frame()`.
 - Browser source and shortcuts: JSON under the application config directory.
 - Close-to-tray choice: `window-behavior.json` under `%APPDATA%\BlackRack Overlay`;
   missing or unreadable means on.
+- Launch at sign-in: the registry itself (`HKCU\...\CurrentVersion\Run`); off by
+  default and read back from Windows rather than stored separately.
 - Overlay choices, columns, transparency and text size: WebView `localStorage`.
   Transparency and text size store individual values separately from their
   general/individual scopes.
