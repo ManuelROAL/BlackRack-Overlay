@@ -80,6 +80,52 @@ select {
   gap: 10px;
 }
 
+.panel-zoom {
+  display: flex;
+  align-items: center;
+  border: 1px solid rgb(255 255 255 / 12%);
+  border-radius: 999px;
+  background: rgb(255 255 255 / 5%);
+  overflow: hidden;
+}
+
+.panel-zoom button {
+  min-width: 30px;
+  height: 30px;
+  padding: 0 8px;
+  border: 0;
+  color: #b0bcc8;
+  background: transparent;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+
+.panel-zoom button:first-child,
+.panel-zoom button:last-child {
+  font-size: 16px;
+  line-height: 1;
+}
+
+#panel-zoom-reset {
+  min-width: 52px;
+  border-inline: 1px solid rgb(255 255 255 / 8%);
+  font-variant-numeric: tabular-nums;
+}
+
+.panel-zoom button:hover:not(:disabled),
+.panel-zoom button:focus-visible {
+  color: #f4f6f8;
+  background: rgb(255 255 255 / 8%);
+  outline: none;
+}
+
+.panel-zoom button:disabled {
+  color: rgb(176 188 200 / 35%);
+  cursor: default;
+}
+
 .simulator-picker[hidden] {
   display: none;
 }

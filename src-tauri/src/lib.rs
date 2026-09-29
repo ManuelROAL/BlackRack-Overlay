@@ -1075,19 +1075,82 @@ fn save_overlay_monitor_index(app: &AppHandle, index: usize) -> Result<(), Strin
         .map_err(|error| startup_log::command_error("settings_write_failed", error))
 }
 
+const CONTROL_WINDOW_SIZE: (f64, f64) = (700.0, 950.0);
+const CONTROL_WINDOW_MIN_SIZE: (f64, f64) = (480.0, 540.0);
+/// Logical pixels kept free around the client area for the title bar,
+/// borders and a small gap, so the whole window lands inside the work area.
+const CONTROL_WINDOW_FRAME_ALLOWANCE: (f64, f64) = (16.0, 48.0);
+
+/// Starting client size of the control panel: the designed size, shrunk to
+/// fit a smaller work area (laptops, 125 % scaling) but never below the
+/// minimum the layout supports; the page scrolls from there.
+fn control_window_size(work_area: Option<(f64, f64)>) -> (f64, f64) {
+    let Some((width, height)) = work_area else {
+        return CONTROL_WINDOW_SIZE;
+    };
+    (
+        CONTROL_WINDOW_SIZE
+            .0
+            .min(width - CONTROL_WINDOW_FRAME_ALLOWANCE.0)
+            .max(CONTROL_WINDOW_MIN_SIZE.0),
+        CONTROL_WINDOW_SIZE
+            .1
+            .min(height - CONTROL_WINDOW_FRAME_ALLOWANCE.1)
+            .max(CONTROL_WINDOW_MIN_SIZE.1),
+    )
+}
+
+#[cfg(test)]
+mod control_window_size_tests {
+    use super::*;
+
+    #[test]
+    fn keeps_the_designed_size_when_it_fits() {
+        assert_eq!(control_window_size(Some((1920.0, 1032.0))), (700.0, 950.0));
+        assert_eq!(control_window_size(None), CONTROL_WINDOW_SIZE);
+    }
+
+    #[test]
+    fn shrinks_to_a_short_work_area() {
+        // 1920x1080 at 125 % leaves about 1536x826 logical pixels.
+        assert_eq!(control_window_size(Some((1536.0, 826.0))), (700.0, 778.0));
+    }
+
+    #[test]
+    fn never_goes_below_the_minimum() {
+        assert_eq!(
+            control_window_size(Some((400.0, 300.0))),
+            CONTROL_WINDOW_MIN_SIZE
+        );
+    }
+}
+
+fn primary_work_area(app: &AppHandle) -> Option<(f64, f64)> {
+    let monitor = app.primary_monitor().ok().flatten()?;
+    let scale_factor = if monitor.scale_factor() > 0.0 {
+        monitor.scale_factor()
+    } else {
+        1.0
+    };
+    let size = monitor.work_area().size.to_logical::<f64>(scale_factor);
+    Some((size.width, size.height))
+}
+
 fn create_control_window(app: &AppHandle) -> Result<(), String> {
+    let (width, height) = control_window_size(primary_work_area(app));
+    startup_log::record(&format!("control window size={width:.0}x{height:.0}"));
     WebviewWindowBuilder::new(app, "control", WebviewUrl::App("index.html".into()))
         .data_directory(app_paths::webview_data_directory())
         .additional_browser_args(WEBVIEW_BROWSER_ARGUMENTS)
         .title("BlackRack Overlay · Panel de control")
-        .inner_size(700.0, 950.0)
-        .min_inner_size(670.0, 920.0)
+        .inner_size(width, height)
+        .min_inner_size(CONTROL_WINDOW_MIN_SIZE.0, CONTROL_WINDOW_MIN_SIZE.1)
         .transparent(false)
         .decorations(true)
         .shadow(true)
         .always_on_top(false)
         .skip_taskbar(false)
-        .resizable(false)
+        .resizable(true)
         .devtools(cfg!(debug_assertions))
         .center()
         .build()

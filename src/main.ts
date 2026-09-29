@@ -25,6 +25,7 @@ import {
 } from "./minimap-settings";
 import { installFrontendDiagnostics } from "./frontend-diagnostics";
 import { installLapRecordsPanel } from "./lap-records";
+import { installPanelZoom } from "./panel-zoom";
 import {
   applyDisplayUnits,
   normalizeDisplayUnits,
@@ -533,6 +534,8 @@ for (const button of performanceProfileButtons) {
     });
   });
 }
+
+installPanelZoom();
 
 const localeSelect = document.getElementById("interface-locale") as HTMLSelectElement | null;
 if (localeSelect) {

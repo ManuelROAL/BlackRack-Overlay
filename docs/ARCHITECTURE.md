@@ -132,6 +132,12 @@ Tauri events    analysis JSONL/strategy CSV    browser-source SSE
   application WebView.
   Known browser-server and shortcut failures are localized from stable backend
   kinds/codes; raw system details are logged rather than rendered as UI copy.
+- `src/panel-zoom.ts`: the control panel's header zoom (75–150 %, also Ctrl +/−/0
+  and Ctrl + wheel). It zooms only the control webview, through a capability
+  granted to the `control` window alone, and remembers the step in that
+  webview's storage. The window itself is resizable; Rust starts it at 700×950
+  shrunk to the primary monitor's work area, never below 480×540, and the page
+  scrolls and switches to its narrow layouts from there.
 - `src/lap-records.ts`: the control panel's LAP TIMES view, which lists and
   deletes the learned references stored per track and car.
 - `browser.html` and `src/browser-index.ts`: catalog-driven OBS route index. The
