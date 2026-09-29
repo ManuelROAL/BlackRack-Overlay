@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "version": "0.12.0",
+  "packageUrl": "https://github.com/ManuelROAL/BlackRack-Overlay/releases/download/v0.12.0/BlackRack.Overlay_0.12.0_x64-setup.exe",
+  "sha256": "<installer-sha256>",
+  "fileName": "BlackRack.Overlay_0.12.0_x64-setup.exe",
+  "releasePageUrl": "https://github.com/ManuelROAL/BlackRack-Overlay/releases/tag/v0.12.0",
+  "updateTitle": "BlackRack Overlay 0.12.0",
+  "fullTitle": "BlackRack Overlay 0.12.0",
+  "changelog": [
+    "Añadido Minimap con orientación configurable, rango y coches cercanos.",
+    "El panel de control admite redimensionado, zoom completo desde el encabezado y opciones de bandeja.",
+    "Añadida una guía de Atajos globales para configurar botones del volante.",
+    "Mejorados los ajustes de Dashboard, Chat, Lift & Coast y Trailing + Pedal.",
+    "Las posiciones de los overlays y el monitor se conservan ante cambios temporales de pantalla."
+  ],
+  "localized": {
+    "es": {
+      "updateTitle": "BlackRack Overlay 0.12.0",
+      "fullTitle": "BlackRack Overlay 0.12.0",
+      "changelog": [
+        "Añadido Minimap con orientación configurable, rango y coches cercanos.",
+        "El panel de control admite redimensionado, zoom completo desde el encabezado y opciones de bandeja.",
+        "Añadida una guía de Atajos globales para configurar botones del volante.",
+        "Mejorados los ajustes de Dashboard, Chat, Lift & Coast y Trailing + Pedal.",
+        "Las posiciones de los overlays y el monitor se conservan ante cambios temporales de pantalla."
+      ]
+    },
+    "en": {
+      "updateTitle": "BlackRack Overlay 0.12.0",
+      "fullTitle": "BlackRack Overlay 0.12.0",
+      "changelog": [
+        "Added Minimap with configurable orientation, range and nearby cars.",
+        "The control panel now supports resizing, full-panel zoom from the header and tray options.",
+        "Added a Global shortcuts guide for assigning wheel buttons.",
+        "Improved the settings layouts for Dashboard, Chat, Lift & Coast and Trailing + Pedal.",
+        "Overlay positions and monitor selection survive temporary monitor changes."
+      ]
+    }
+  }
+}

@@ -76,8 +76,8 @@ information over the simulator.
 Download the [latest release](https://github.com/ManuelROAL/BlackRack-Overlay/releases/latest),
 run the installer, select the language and monitor in **General**, then enable
 the overlays you need. No SimHub, Node.js, Rust or Tauri installation is
-required. Version 0.11.0 adds the Lap Times view for saved records and improves
-spectator stability, dashboard notices and long-session smoothness.
+required. Version 0.12.0 adds the Minimap, more control-panel and tray options,
+and layout improvements across several overlays.
 
 The control panel checks for updates automatically and on demand. Downloads are
 verified with SHA-256 before installation. The installer is not digitally signed,

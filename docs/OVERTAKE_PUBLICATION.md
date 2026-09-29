@@ -11,12 +11,12 @@ SimHub package.
 ## Resource fields
 
 - Title: `BlackRack Overlay`
-- Version: `0.11.0`
+- Version: `0.12.0`
 - Category: `Le Mans Ultimate`
 - Tag line: `Lightweight, configurable LMU telemetry overlays — no SimHub required.`
 - Tags: `le mans ultimate`, `lmu`, `overlay`, `standings`, `relative`,
   `delta bar`, `fuel calculator`, `virtual energy`, `track map`, `obs`
-- Download: `release/0.11.0/BlackRack Overlay_0.11.0_x64-setup.exe`
+- Download: `release/0.12.0/BlackRack Overlay_0.12.0_x64-setup.exe`
 - Support URL: `https://ko-fi.com/blackrack`
 
 ## Overview copy
@@ -70,7 +70,7 @@ optional service is unavailable, the overlays keep running.
 
 ### Installation
 
-1. Download and run `BlackRack Overlay_0.11.0_x64-setup.exe`.
+1. Download and run `BlackRack Overlay_0.12.0_x64-setup.exe`.
 2. Start Le Mans Ultimate in windowed or borderless-windowed mode.
 3. Open BlackRack Overlay and enable the panels you want to use.
 
@@ -242,6 +242,26 @@ https://ko-fi.com/blackrack.
 - Improved long-session smoothness and stability without changing the visible
   telemetry information.
 
+### 0.12.0 — Minimap, tray options and layout improvements
+
+- Added the **Minimap**, centred on the player's car, with heading-up or
+  north-up orientation, configurable range and nearby-car markers.
+- The Minimap now shares the player's colour and icon with **Track Map**, and
+  its settings use the same control-panel layout as the other overlays.
+- The control panel can be resized and its full-panel zoom can be adjusted from
+  the header controls.
+- By default, closing the control panel keeps BlackRack Overlay running in the
+  system tray; the setting can be changed in General > Application, and the
+  tray menu provides the final Quit action. The application can optionally
+  start there with Windows.
+- Added a **Global shortcuts** guide explaining how to assign wheel buttons
+  through SimHub or another keyboard-emulation tool.
+- Refined the settings layouts for **Dashboard**, **Chat** and **Lift & Coast**.
+- **Trailing + Pedal** now centres the gear and speed group and removes the
+  redundant speed-unit label.
+- Overlay positions and monitor selection are preserved when a monitor appears
+  late or is briefly unavailable.
+
 ## Decisions required before submission
 
 Choose and insert the resource's usage terms. Do not inherit the doX listing's
@@ -261,7 +281,7 @@ Prepare at least one real in-game hero image before publishing. Recommended set:
 
 ## Final checklist
 
-- [x] Version synchronized at `0.11.0` in npm, Cargo and Tauri.
+- [x] Version synchronized at `0.12.0` in npm, Cargo and Tauri.
 - [x] Frontend production build and localization checks pass.
 - [x] Rust library tests pass with the official LMU SDK detected.
 - [x] Production NSIS installer generated under the BlackRack name.
