@@ -3,8 +3,9 @@ import { emit } from "@tauri-apps/api/event";
 import type { OverlayId } from "./overlay-appearance";
 import {
   effectiveOverlayMonitor,
-  normalizeOverlayMonitorScope,
   readOverlayMonitorScope,
+  reconcileOverlayMonitorScope,
+  sameOverlayMonitorScope,
   saveOverlayMonitorScope,
   type OverlayMonitorScope
 } from "./overlay-monitor";
@@ -24,6 +25,8 @@ export interface OverlayPlacement {
   overlay: OverlayId;
   /** Monitor index in the current Tauri monitor ordering. */
   monitor?: number;
+  /** Assigned monitor while it is disconnected; `monitor` holds the fallback. */
+  displacedMonitor?: number;
   x: number;
   y: number;
   width: number;
@@ -66,6 +69,31 @@ const validPlacement = (value: unknown, overlay: OverlayId): value is OverlayPla
         && Number.isInteger(placement.monitor) && placement.monitor >= 0))
     && (placement.scale === undefined
       || (typeof placement.scale === "number" && Number.isFinite(placement.scale) && placement.scale > 0));
+};
+
+/**
+ * Move a placement off a disconnected monitor while remembering it, and back
+ * once that monitor is connected again. Returns whether the placement changed.
+ */
+const reconcilePlacementMonitor = (
+  placement: OverlayPlacement,
+  available: ReadonlySet<number>,
+  fallback: number
+): boolean => {
+  const preferred = placement.displacedMonitor ?? placement.monitor;
+  const known = preferred !== undefined && Number.isInteger(preferred) && preferred >= 0;
+  if (known && available.has(preferred)) {
+    if (placement.monitor === preferred && placement.displacedMonitor === undefined) return false;
+    placement.monitor = preferred;
+    delete placement.displacedMonitor;
+    return true;
+  }
+  const displaced = known ? preferred : undefined;
+  if (placement.monitor === fallback && placement.displacedMonitor === displaced) return false;
+  placement.monitor = fallback;
+  if (displaced === undefined) delete placement.displacedMonitor;
+  else placement.displacedMonitor = displaced;
+  return true;
 };
 
 const correctedDefaultSizes: Partial<Record<OverlayId, readonly [number, number, number, number]>> = {
@@ -217,10 +245,11 @@ export const setOverlayMonitor = async (index: number): Promise<number> => {
 export const setOverlayMonitorScope = async (scope: OverlayMonitorScope): Promise<OverlayMonitorScope> => {
   const displays = await getOverlayDisplays();
   const fallback = displays[0]?.index ?? 0;
-  const normalized = normalizeOverlayMonitorScope(scope, { mode: scope.mode, globalMonitor: fallback });
-  normalized.globalMonitor = displays.some(({ index }) => index === normalized.globalMonitor)
-    ? normalized.globalMonitor
-    : fallback;
+  const normalized = reconcileOverlayMonitorScope(
+    scope,
+    new Set(displays.map(({ index }) => index)),
+    fallback
+  );
   saveOverlayMonitorScope(normalized);
   await setOverlayMonitorPreference(normalized.globalMonitor);
   await emit("overlay://layout", normalized);
@@ -258,11 +287,7 @@ export const ensureCompositeLayout = async (): Promise<CompositeLayout> => {
     } as CompositeLayout;
     for (const overlay of overlayIds) {
       const placement = layout[overlay];
-      if (!placement) continue;
-      const assigned = placement.monitor;
-      placement.monitor = Number.isInteger(assigned) && assigned !== undefined && available.has(assigned)
-        ? assigned
-        : fallback;
+      if (placement) reconcilePlacementMonitor(placement, available, fallback);
     }
     localStorage.setItem(COMPOSITE_LAYOUT_KEY, JSON.stringify(layout));
     return layout;
@@ -334,20 +359,17 @@ export const synchronizeOverlayHosts = async (providedLayout?: CompositeLayout):
     const layout = readCompositeLayout() ?? initialLayout;
     const available = new Set(displays.map(({ index }) => index));
     const fallback = available.has(fallbackMonitor) ? fallbackMonitor : displays[0]?.index ?? 0;
-    const monitorScope = readOverlayMonitorScope();
-    if (!available.has(monitorScope.globalMonitor)) {
-      saveOverlayMonitorScope({ ...monitorScope, globalMonitor: fallback });
-    }
+    // A monitor missing right now (not awake yet at startup, or briefly
+    // re-enumerated) is remembered rather than replaced, so it is used again
+    // as soon as it comes back.
+    const storedScope = readOverlayMonitorScope();
+    const monitorScope = reconcileOverlayMonitorScope(storedScope, available, fallback);
+    if (!sameOverlayMonitorScope(storedScope, monitorScope)) saveOverlayMonitorScope(monitorScope);
     let normalized = false;
     if (monitorScope.mode === "individual") {
       for (const overlay of overlayIds) {
         const placement = layout[overlay];
-        if (!placement) continue;
-        const assigned = placement.monitor;
-        if (!Number.isInteger(assigned) || assigned === undefined || !available.has(assigned)) {
-          placement.monitor = fallback;
-          normalized = true;
-        }
+        if (placement && reconcilePlacementMonitor(placement, available, fallback)) normalized = true;
       }
     }
     if (normalized) {
@@ -379,7 +401,8 @@ export const setOverlayPlacementMonitor = async (
   const layout = readCompositeLayout() ?? await ensureCompositeLayout();
   const current = layout[overlay];
   if (!current) throw new Error(`Missing placement for ${overlay}`);
-  const next = { ...current, monitor } satisfies OverlayPlacement;
+  const { displacedMonitor: _displaced, ...assigned } = current;
+  const next = { ...assigned, monitor } satisfies OverlayPlacement;
   layout[overlay] = next;
   localStorage.setItem(COMPOSITE_LAYOUT_KEY, JSON.stringify(layout));
   layoutPromise = Promise.resolve(layout);

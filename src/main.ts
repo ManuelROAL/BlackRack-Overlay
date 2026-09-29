@@ -259,6 +259,7 @@ import {
   normalizeOverlayMonitorScope,
   OVERLAY_MONITOR_SCOPE_KEY,
   readOverlayMonitorScope,
+  reconcileOverlayMonitorScope,
   saveOverlayMonitorScope,
   type OverlayMonitorScope
 } from "./overlay-monitor";
@@ -2788,9 +2789,13 @@ const bindMonitorSelector = async (): Promise<void> => {
   const select = document.getElementById("overlay-monitor") as HTMLSelectElement | null;
   const modeSelect = document.getElementById("overlay-monitor-mode") as HTMLSelectElement | null;
   if (!select) return;
-  selectedMonitor = renderMonitorOptions(select, displays, overlayMonitorScope.globalMonitor, monitor);
-  overlayMonitorScope = { ...overlayMonitorScope, globalMonitor: selectedMonitor };
+  overlayMonitorScope = reconcileOverlayMonitorScope(
+    readOverlayMonitorScope(),
+    new Set(displays.map(({ index }) => index)),
+    monitor
+  );
   saveOverlayMonitorScope(overlayMonitorScope);
+  selectedMonitor = renderMonitorOptions(select, displays, overlayMonitorScope.globalMonitor, monitor);
   renderOverlayMonitorScope();
   modeSelect?.addEventListener("change", () => {
     if (modeSelect.value !== "global" && modeSelect.value !== "individual") return;
@@ -2804,7 +2809,8 @@ const bindMonitorSelector = async (): Promise<void> => {
     select.disabled = true;
     void setOverlayMonitor(Number(select.value)).then((result) => {
       selectedMonitor = result;
-      overlayMonitorScope = { ...overlayMonitorScope, globalMonitor: result };
+      // An explicit choice replaces any monitor waiting to reconnect.
+      overlayMonitorScope = { mode: overlayMonitorScope.mode, globalMonitor: result };
       renderOverlayMonitorScope();
     }).catch(() => {
       select.value = String(selectedMonitor);
@@ -2854,13 +2860,11 @@ const refreshMonitorInventory = async (): Promise<void> => {
 
     const fallback = displays[0]?.index ?? 0;
     const monitor = await resolveOverlayMonitor();
-    overlayMonitorScope = normalizeOverlayMonitorScope(readOverlayMonitorScope(), {
-      mode: overlayMonitorScope.mode,
-      globalMonitor: monitor
-    });
-    overlayMonitorScope.globalMonitor = displays.some(({ index }) => index === overlayMonitorScope.globalMonitor)
-      ? overlayMonitorScope.globalMonitor
-      : monitor;
+    overlayMonitorScope = reconcileOverlayMonitorScope(
+      readOverlayMonitorScope(),
+      new Set(displays.map(({ index }) => index)),
+      monitor
+    );
     saveOverlayMonitorScope(overlayMonitorScope);
     selectedMonitor = renderMonitorOptions(
       document.getElementById("overlay-monitor") as HTMLSelectElement,

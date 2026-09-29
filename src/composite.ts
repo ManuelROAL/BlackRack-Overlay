@@ -343,7 +343,10 @@ const bindPointerMove = (
   const panel = panels.get(overlay);
   const layout = readCompositeLayout();
   if (!panel || !layout) return;
-  const initial = { ...layout[overlay] };
+  // Drag from where the panel is shown: the saved position may lie beyond this
+  // host's monitor and is only clamped for display.
+  const shown = placements.get(overlay);
+  const initial = { ...layout[overlay], ...(shown ? { x: shown.x, y: shown.y } : {}) };
   const designSize = designSizes.get(overlay) ?? {
     width: initial.width,
     height: initial.height
@@ -492,7 +495,15 @@ const synchronizePanels = async (): Promise<void> => {
     const stored = readCompositeLayout() ?? storedLayout;
     for (const overlay of overlayIds) {
       if (layout[overlay] && stored[overlay]) {
-        stored[overlay] = { ...layout[overlay], monitor: stored[overlay].monitor };
+        // Keep the saved position: the clamp only fits this host's monitor, and
+        // persisting it moved panels for good whenever they were shown, even
+        // briefly, on a smaller screen.
+        stored[overlay] = {
+          ...layout[overlay],
+          monitor: stored[overlay].monitor,
+          x: stored[overlay].x,
+          y: stored[overlay].y
+        };
       }
     }
     localStorage.setItem(COMPOSITE_LAYOUT_KEY, JSON.stringify(stored));
@@ -616,7 +627,7 @@ window.addEventListener("message", (event: MessageEvent<RuntimeMessage>) => {
         ? current.width / nextSize.width
         : Math.min(current.width / nextSize.width, current.height / nextSize.height));
     const nextHeight = nextSize.height * scale;
-    const fitted = fitPlacementToMonitor({
+    const resized = {
       ...current,
       width: nextSize.width * scale,
       height: nextHeight,
@@ -626,16 +637,18 @@ window.addEventListener("message", (event: MessageEvent<RuntimeMessage>) => {
         ? { y: current.y + current.height - nextHeight }
         : {}),
       scale
-    });
+    };
+    const fitted = fitPlacementToMonitor(resized);
     const changed = Math.abs(fitted.width - current.width) > 0.5
       || Math.abs(fitted.height - current.height) > 0.5
       || fitted.scale !== current.scale;
     if (changed) {
-      layout[overlay] = fitted;
+      const saved = { ...fitted, x: resized.x, y: resized.y };
+      layout[overlay] = saved;
       applyPlacement(panel, fitted);
       scheduleInteractionRegionSync();
       synchronizeHostBounds();
-      void saveOverlayPlacement(fitted);
+      void saveOverlayPlacement(saved);
     }
     return;
   }

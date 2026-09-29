@@ -7,6 +7,10 @@ in `docs/overlays/` and should not be duplicated here.
 
 - Monitor scope is persisted separately from layout. Global mode projects every
   overlay onto `globalMonitor`; individual mode restores stored assignments.
+  A monitor that is missing (not awake yet at startup, or briefly
+  re-enumerated) is kept as `displacedMonitor` while its overlays render on the
+  fallback, and it is restored as soon as it reconnects. Only an explicit choice
+  replaces it.
 
 - The product name is **BlackRack Overlay**. Its technical bundle identifier is
   `com.blackrack.overlay`, while user-owned backend data uses the readable
@@ -25,7 +29,9 @@ in `docs/overlays/` and should not be duplicated here.
   intercepted because it conflicts with LMU controls.
 - Positions, proportional sizes, each overlay's monitor assignment, the general
   monitor fallback and user preferences persist. A panel may be deliberately
-  cropped at the monitor edge while retaining a recoverable strip.
+  cropped at the monitor edge while retaining a recoverable strip. That clamp
+  is display-only: a host never persists a position it clamped, so showing a
+  layout on a smaller monitor does not move it on the monitor it was made for.
 - Roboto Condensed and all required flags, logos and badges remain bundled.
   Flags and manufacturer logos are pre-rasterised to small PNGs by
   `tools/rasterize-icons.mjs` and committed, because the overlays draw them into
