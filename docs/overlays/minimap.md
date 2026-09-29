@@ -58,6 +58,8 @@ or the REST supplement.
   static yellow ring, and pit cars are dimmed.
 - The player's custom colour and image come from the Track Map settings and follow
   its `trackmap://settings` event, so both maps always show the same marker.
+  The Minimap settings section only carries a note pointing to the Track Map
+  controls; it has no copy of them.
 - Like the Track Map, markers are cached HTML elements moved with transforms. No
   CSS transition, animation loop or SVG filter is used: every change happens on a
   telemetry event, which keeps the WebView2 GPU process idle between frames.
