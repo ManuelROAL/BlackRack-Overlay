@@ -2014,6 +2014,49 @@ select {
   min-width: 0;
 }
 
+/* Shared layout for a slider or a select placed directly in an overlay settings
+   section: inset like the heading, bounded width, lime slider with its value on
+   the right. New settings reuse these instead of per-overlay copies. */
+[data-settings-for] > .settings-slider-field {
+  max-width: 360px;
+  margin: 0 16px 14px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+[data-settings-for] .settings-slider-field > span {
+  grid-column: 1 / -1;
+}
+
+[data-settings-for] .settings-slider-field input[type="range"] {
+  grid-column: 1;
+  grid-row: 2;
+  width: 100%;
+  height: 4px;
+  padding: 0;
+  border: 0;
+  accent-color: #d8ff3e;
+  cursor: pointer;
+}
+
+[data-settings-for] .settings-slider-field output {
+  grid-column: 2;
+  grid-row: 2;
+  color: #b8c2cc;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+[data-settings-for] > .settings-select-field {
+  max-width: 260px;
+  margin: 0 16px 14px;
+}
+
+[data-settings-for] .settings-select-field select {
+  width: 100%;
+  min-width: 0;
+}
+
 .column-order-button:hover:not(:disabled) {
   border-color: rgb(216 255 62 / 45%);
   color: #d8ff3e;

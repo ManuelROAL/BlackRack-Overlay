@@ -22,6 +22,12 @@ assignments; per-overlay mode restores those assignments.
 - Overlay-specific configuration panels render text in sentence case at one
   12 px size. Their selects share the same dark surface, neutral border, and lime
   focus treatment while retaining widths suited to each panel layout.
+- A slider or select placed directly in an overlay's configuration section never
+  touches the section edge or stretches across it. Give a slider label the
+  `settings-slider-field` class (16 px inset, at most 360 px, lime track, value on
+  the right) and a select label `settings-select-field` (16 px inset, at most
+  260 px), as the Minimap does, rather than per-overlay copies. Chat and Lift &
+  Coast carry the same layout under older overlay-specific rules.
 - Keep each overlay's CSS in its own file. Shared primitives belong in
   `src/styles.css` only when they are genuinely shared.
 - Do not set `color-scheme: dark` on an embedded document root; WebView2 can paint
