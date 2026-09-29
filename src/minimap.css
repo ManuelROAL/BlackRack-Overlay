@@ -9,7 +9,8 @@
   width: 260px;
   height: 260px;
   overflow: hidden;
-  border: 1px solid rgb(255 255 255 / 12%);
+  /* The rim fades with the background, so full transparency leaves no ring. */
+  border: 1px solid rgb(255 255 255 / calc(var(--overlay-background-opacity) * 0.12));
   border-radius: 50%;
   background: radial-gradient(
     circle at 50% 50%,

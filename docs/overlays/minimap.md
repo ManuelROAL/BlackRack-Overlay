@@ -18,7 +18,9 @@ or the REST supplement.
 
 ## View
 
-- A 260 px disc with the player fixed at its centre. It shows the configured range
+- A 260 px disc with the player fixed at its centre. Its background and thin rim
+  both follow the overlay transparency, so full transparency leaves no ring.
+  It shows the configured range
   of circuit between the centre and the rim (190 m by default).
 - In heading-up orientation (the default) the disc turns so the direction of
   travel points up. North-up keeps the world fixed, with the same axes as the
