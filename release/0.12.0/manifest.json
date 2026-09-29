@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "version": "0.12.0",
   "packageUrl": "https://github.com/ManuelROAL/BlackRack-Overlay/releases/download/v0.12.0/BlackRack.Overlay_0.12.0_x64-setup.exe",
-  "sha256": "<installer-sha256>",
+  "sha256": "5a994c5d5b0f475874ab37dd7e35f4aff552f839a5d11dfdc93f838ab8c8312c",
   "fileName": "BlackRack.Overlay_0.12.0_x64-setup.exe",
   "releasePageUrl": "https://github.com/ManuelROAL/BlackRack-Overlay/releases/tag/v0.12.0",
   "updateTitle": "BlackRack Overlay 0.12.0",
