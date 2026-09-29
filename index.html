@@ -234,6 +234,8 @@
             <p id="shortcut-message" class="shortcut-message" data-i18n="shortcuts.instruction">
               Haz clic en un campo y pulsa la nueva combinación.
             </p>
+            <button id="open-shortcuts-guide" class="shortcut-guide-link" type="button"
+              aria-controls="overlay-guide" data-i18n="shortcuts.guideLink">¿Quieres usar un botón del volante? Abre la guía de atajos</button>
             <button id="toggle-interaction-mode" class="mode-action" type="button" data-i18n="mode.toEdit">
               CAMBIAR A MODO EDICIÓN
             </button>
@@ -1228,24 +1230,24 @@
             <header class="overlay-guide-overlay-heading">
               <span id="overlay-guide-icon" class="overlay-guide-icon" aria-hidden="true"></span>
               <div>
-                <small data-i18n="guide.overlay">OVERLAY</small>
+                <small id="overlay-guide-kind"></small>
                 <strong id="overlay-guide-overlay-title"></strong>
               </div>
             </header>
             <section>
-              <h2 data-i18n="guide.shows">QUÉ MUESTRA</h2>
+              <h2 id="overlay-guide-purpose-heading"></h2>
               <p id="overlay-guide-purpose"></p>
             </section>
             <section>
-              <h2 data-i18n="guide.reading">CÓMO LEERLO</h2>
+              <h2 id="overlay-guide-reading-heading"></h2>
               <p id="overlay-guide-reading"></p>
             </section>
             <section id="overlay-guide-warnings-section" hidden>
-              <h2 data-i18n="guide.warnings">AVISOS</h2>
+              <h2 id="overlay-guide-warnings-heading"></h2>
               <p id="overlay-guide-warnings"></p>
             </section>
             <aside>
-              <h2 data-i18n="guide.tip">CONSEJO DE USO</h2>
+              <h2 id="overlay-guide-tip-heading"></h2>
               <p id="overlay-guide-tip"></p>
             </aside>
           </article>

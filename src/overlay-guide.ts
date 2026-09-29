@@ -13,7 +13,32 @@ export interface OverlayGuideEntry {
    * section is left out entirely for the overlays that only ever show readouts.
    */
   warnings?: TranslationKey;
+  /** Heading overrides for topics that are not an overlay. */
+  kind?: TranslationKey;
+  purposeHeading?: TranslationKey;
+  readingHeading?: TranslationKey;
+  warningsHeading?: TranslationKey;
+  tipHeading?: TranslationKey;
 }
+
+/** Guide topics: every overlay, followed by the application-wide ones. */
+export type GuideTopicId = OverlayId | "shortcuts";
+
+export const SHORTCUTS_GUIDE: OverlayGuideEntry = {
+  icon: "⌨︎",
+  title: "guide.shortcuts.title",
+  kind: "guide.general",
+  purposeHeading: "guide.shortcuts.purposeHeading",
+  purpose: "guide.shortcuts.purpose",
+  readingHeading: "guide.shortcuts.readingHeading",
+  reading: "guide.shortcuts.reading",
+  warnings: "guide.shortcuts.warnings",
+  tipHeading: "guide.shortcuts.tipHeading",
+  tip: "guide.shortcuts.tip"
+};
+
+export const guideEntry = (id: GuideTopicId): OverlayGuideEntry =>
+  id === "shortcuts" ? SHORTCUTS_GUIDE : OVERLAY_GUIDE[id];
 
 export const OVERLAY_GUIDE: Record<OverlayId, OverlayGuideEntry> = {
   standings: {
@@ -184,3 +209,5 @@ export const OVERLAY_GUIDE_ORDER = [
   "sessioninfo",
   "chat"
 ] as const satisfies readonly OverlayId[];
+
+export const GENERAL_GUIDE_ORDER = ["shortcuts"] as const satisfies readonly GuideTopicId[];

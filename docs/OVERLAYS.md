@@ -186,7 +186,11 @@ assignments; per-overlay mode restores those assignments.
   action per card. Both open the same bundled, accessible dialog; contextual
   help selects that overlay directly. `src/overlay-guide.ts` owns the complete
   ordered overlay-to-copy mapping, while localized user-facing explanations live
-  in `src/i18n/catalogs.ts`. Keep this guide complete when adding an overlay and
+  in `src/i18n/catalogs.ts`. After the overlays, the navigation lists
+  application-wide topics (`GENERAL_GUIDE_ORDER`); the Global shortcuts topic
+  explains every shortcut and how to drive them from a wheel button through
+  SimHub's Keyboard Emulator or a similar tool, and the shortcuts settings link
+  to it directly. Keep this guide complete when adding an overlay and
   keep technical implementation detail in `docs/overlays/` rather than exposing
   it verbatim to users.
 - Use the same hierarchy and help-text treatment in every overlay configuration

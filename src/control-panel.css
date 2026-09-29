@@ -1575,6 +1575,23 @@ select {
   color: #79e99d;
 }
 
+.shortcut-guide-link {
+  justify-self: start;
+  padding: 0;
+  border: 0;
+  color: #d8ff3e;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  text-align: left;
+}
+
+.shortcut-guide-link:hover {
+  text-decoration: underline;
+}
+
 .standings-settings-section {
   grid-column: 1 / -1;
   margin: 0;
@@ -2624,6 +2641,21 @@ select {
 .overlay-guide-navigation button.active span {
   color: #d8ff3e;
   border-color: rgb(216 255 62 / 24%);
+}
+
+/* Application-wide topics follow the overlays, set apart by a divider. */
+.overlay-guide-navigation button.guide-general-topic {
+  position: relative;
+  margin-top: 13px;
+}
+
+.overlay-guide-navigation button.guide-general-topic::before {
+  position: absolute;
+  top: -8px;
+  right: 8px;
+  left: 8px;
+  border-top: 1px solid rgb(255 255 255 / 9%);
+  content: "";
 }
 
 .overlay-guide-content {

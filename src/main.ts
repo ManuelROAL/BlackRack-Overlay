@@ -263,7 +263,7 @@ import {
   saveOverlayMonitorScope,
   type OverlayMonitorScope
 } from "./overlay-monitor";
-import { OVERLAY_GUIDE, OVERLAY_GUIDE_ORDER } from "./overlay-guide";
+import { GENERAL_GUIDE_ORDER, OVERLAY_GUIDE_ORDER, guideEntry, type GuideTopicId } from "./overlay-guide";
 import { RELEASE_NOTES, selectReleaseNotes, type ReleaseNotesManifest } from "./release-notes";
 
 installFrontendDiagnostics("control", (diagnostic) =>
@@ -1711,11 +1711,21 @@ const overlayDisplayName = (id: OverlayId): string =>
 
 const overlayGuideDialog = document.getElementById("overlay-guide") as HTMLDialogElement | null;
 const overlayGuideNavigation = document.getElementById("overlay-guide-navigation");
-let selectedGuideOverlay: OverlayId = "standings";
+let selectedGuideOverlay: GuideTopicId = "standings";
 
-const renderOverlayGuide = (id: OverlayId): void => {
+const setGuideText = (elementId: string, key: TranslationKey): void => {
+  const element = document.getElementById(elementId);
+  if (element) element.textContent = t(key);
+};
+
+const renderOverlayGuide = (id: GuideTopicId): void => {
   selectedGuideOverlay = id;
-  const entry = OVERLAY_GUIDE[id];
+  const entry = guideEntry(id);
+  setGuideText("overlay-guide-kind", entry.kind ?? "guide.overlay");
+  setGuideText("overlay-guide-purpose-heading", entry.purposeHeading ?? "guide.shows");
+  setGuideText("overlay-guide-reading-heading", entry.readingHeading ?? "guide.reading");
+  setGuideText("overlay-guide-warnings-heading", entry.warningsHeading ?? "guide.warnings");
+  setGuideText("overlay-guide-tip-heading", entry.tipHeading ?? "guide.tip");
   const icon = document.getElementById("overlay-guide-icon");
   const title = document.getElementById("overlay-guide-overlay-title");
   const purpose = document.getElementById("overlay-guide-purpose");
@@ -1741,9 +1751,10 @@ const renderOverlayGuide = (id: OverlayId): void => {
 };
 
 if (overlayGuideNavigation) {
-  for (const id of OVERLAY_GUIDE_ORDER) {
-    const entry = OVERLAY_GUIDE[id];
+  for (const id of [...OVERLAY_GUIDE_ORDER, ...GENERAL_GUIDE_ORDER]) {
+    const entry = guideEntry(id);
     const button = document.createElement("button");
+    if (id === GENERAL_GUIDE_ORDER[0]) button.classList.add("guide-general-topic");
     const icon = document.createElement("span");
     const label = document.createElement("b");
     button.type = "button";
@@ -1757,7 +1768,7 @@ if (overlayGuideNavigation) {
   }
 }
 
-const openOverlayGuide = (id: OverlayId): void => {
+const openOverlayGuide = (id: GuideTopicId): void => {
   if (!overlayGuideDialog) return;
   renderOverlayGuide(id);
   if (!overlayGuideDialog.open) overlayGuideDialog.showModal();
@@ -1770,6 +1781,9 @@ const openOverlayGuide = (id: OverlayId): void => {
 
 document.getElementById("open-overlay-guide")?.addEventListener("click", () => {
   openOverlayGuide(selectedGuideOverlay);
+});
+document.getElementById("open-shortcuts-guide")?.addEventListener("click", () => {
+  openOverlayGuide("shortcuts");
 });
 overlayGuideDialog?.addEventListener("click", (event) => {
   if (event.target === overlayGuideDialog) overlayGuideDialog.close();
