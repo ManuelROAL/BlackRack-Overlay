@@ -3,7 +3,6 @@ import { getVersion } from "@tauri-apps/api/app";
 import { emit, listen } from "@tauri-apps/api/event";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import "./control-panel.css";
-import "./dashboard-settings.css";
 import { backendErrorMessage } from "./backend-errors";
 import {
   CHAT_SETTINGS_EVENT,

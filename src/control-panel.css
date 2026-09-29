@@ -1958,7 +1958,7 @@ select {
 /* Shared layout for a slider or a select placed directly in an overlay settings
    section: inset like the heading, bounded width, lime slider with its value on
    the right. Every overlay settings section uses these (Chat, Lift & Coast,
-   Minimap) instead of per-overlay copies. */
+   Dashboard, Minimap) instead of per-overlay copies. */
 [data-settings-for] > .settings-slider-field {
   max-width: 360px;
   margin: 0 16px 14px;
