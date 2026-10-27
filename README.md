@@ -2,10 +2,6 @@
 
 Overlays de telemetría configurables para **Le Mans Ultimate** en Windows.
 
-[Descargar la última versión](https://github.com/ManuelROAL/BlackRack-Overlay/releases/latest) ·
-[Ver cambios](https://github.com/ManuelROAL/BlackRack-Overlay/releases) ·
-[Apoyar el proyecto](https://ko-fi.com/blackrack)
-
 BlackRack Overlay muestra información de conducción, tiempos, clasificación,
 neumáticos, daños, combustible, energía, boxes, banderas, mapa y condiciones de
 pista sobre el simulador. Es gratuito y no necesita SimHub, Node.js, Rust ni
