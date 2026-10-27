@@ -11,8 +11,6 @@ Tauri para funcionar.
 
 - Windows 10 u 11 de 64 bits.
 - Le Mans Ultimate.
-- El plugin oficial de LMU en
-  `Plugins/LMU_SharedMemoryMapPlugin64.dll`.
 - Microsoft Edge WebView2 Runtime. El instalador incluye su bootstrapper; puede
   necesitar conexión a Internet si WebView2 no está instalado.
 
